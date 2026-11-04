@@ -496,18 +496,10 @@
           <div class="bb-detail__form-grid">
             <div class="bb-detail__form-field bb-detail__form-field--full">
               <label id="ordo-medicament-label" for="ordo-medicament">{{ 'ASC.CONSULTATION_DETAIL.MEDICAMENT_LABEL' | translate }}</label>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-detail__field-full">
-                <mat-select
-                  id="ordo-medicament"
-                  [(ngModel)]="ordonnanceForm.idMedicament"
-                  (selectionChange)="analyserMedicament()"
-                  [placeholder]="'ASC.CONSULTATION_DETAIL.MEDICAMENT_PH' | translate"
-                >
-                  @for (opt of medicamentOptions(); track opt.value) {
-                    <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
+              <app-liste-recherche inputId="ordo-medicament" [options]="optionsMedicaments()"
+                                   [ngModel]="ordonnanceForm.idMedicament"
+                                   (ngModelChange)="ordonnanceForm.idMedicament = $event ?? ''; analyserMedicament()"
+                                   [placeholder]="'ASC.CONSULTATION_DETAIL.MEDICAMENT_PH' | translate" />
 
               <!-- Securite de prescription (EF-05-05/06). L'alerte informe,
                    elle n'interdit pas : seul un motif est demande au-dela de
@@ -658,17 +650,9 @@
           <div class="bb-detail__form-grid">
             <div class="bb-detail__form-field bb-detail__form-field--full">
               <label id="ref-structure-label" for="ref-structure">{{ 'ASC.CONSULTATION_DETAIL.STRUCTURE_TARGET_SELECT_LABEL' | translate }}</label>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-detail__field-full">
-                <mat-select
-                  id="ref-structure"
-                  [(ngModel)]="referralForm.idStructureCible"
-                  [placeholder]="'ASC.CONSULTATION_DETAIL.STRUCTURE_TARGET_PH' | translate"
-                >
-                  @for (opt of structureOptions(); track opt.value) {
-                    <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
+              <app-liste-recherche inputId="ref-structure" [options]="structureOptions() | optionsDe"
+                                   [(ngModel)]="referralForm.idStructureCible"
+                                   [placeholder]="'ASC.CONSULTATION_DETAIL.STRUCTURE_TARGET_PH' | translate" />
             </div>
             <div class="bb-detail__form-field">
               <label id="ref-urgence-label" for="ref-urgence">{{ 'ASC.CONSULTATION_DETAIL.URGENCE_LEVEL_LABEL' | translate }}</label>

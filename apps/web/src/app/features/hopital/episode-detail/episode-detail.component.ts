@@ -20,16 +20,21 @@ import { ChoixLaboratoireComponent, ChoixLaboratoire } from '../../../shared/com
 import { statutDemandeClasse, statutEpisodeClasse, urgenceClasse } from '../hopital.utils';
 import { LaboratoireService } from '../../../core/services/laboratoire.service';
 import { interpretationClasse, referenceLisible } from '../../laboratoire/laboratoire.utils';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 type Panneau = 'aucun' | 'orientation' | 'analyse';
 
 @Component({
   selector: 'app-hopital-episode-detail',
   standalone: true,
-  imports: [RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatDialogModule, ChoixLaboratoireComponent, TranslatePipe],
+  imports: [ListeRechercheComponent, RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatDialogModule, ChoixLaboratoireComponent, TranslatePipe],
   templateUrl: './episode-detail.component.html',
 })
 export class EpisodeDetailComponent implements OnInit {
+  /** Les medecins : on cherche par nom ou par specialite. */
+  readonly optionsMedecins = computed<OptionListe[]>(() =>
+    this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: m.specialite ?? undefined })));
+
   private route   = inject(ActivatedRoute);
   private router  = inject(Router);
   private hopital = inject(HopitalService);

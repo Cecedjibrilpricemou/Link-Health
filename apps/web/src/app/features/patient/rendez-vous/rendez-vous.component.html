@@ -55,12 +55,9 @@
         <section class="bb-rdvp__carte">
           <label class="bb-rdvp__label" for="rdv-structure">{{ 'PATIENT.RDV.ETABLISSEMENT' | translate }}</label>
           <p class="bb-rdvp__aide">{{ 'PATIENT.RDV.ETABLISSEMENT_AIDE' | translate }}</p>
-          <select id="rdv-structure" class="bb-rdvp__select" [(ngModel)]="idStructure">
-            <option value="">{{ 'PATIENT.RDV.ETABLISSEMENT_CHOISIR' | translate }}</option>
-            @for (e of etablissements(); track e.id) {
-              <option [value]="e.id">{{ e.nom }} · {{ e.prefecture }}</option>
-            }
-          </select>
+          <app-liste-recherche inputId="rdv-structure" [options]="optionsEtablissements()"
+                               [(ngModel)]="idStructure"
+                               [placeholder]="'PATIENT.RDV.ETABLISSEMENT_CHOISIR' | translate" />
 
           <label class="bb-rdvp__label" for="rdv-motif">{{ 'PATIENT.RDV.MOTIF' | translate }}</label>
           <p class="bb-rdvp__aide">{{ 'PATIENT.RDV.MOTIF_AIDE' | translate }}</p>

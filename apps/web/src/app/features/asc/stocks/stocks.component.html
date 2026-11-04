@@ -59,15 +59,12 @@
     <form class="stock-add" (ngSubmit)="creerStock()" aria-labelledby="stock-add-title">
       <h3 id="stock-add-title" class="stock-add__title"><i class="pi pi-plus-circle" aria-hidden="true"></i> {{ 'ASC.STOCKS.ADD_TITLE' | translate }}</h3>
       <div class="stock-add__grid">
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="stock-add__med">
-          <mat-label>{{ 'ASC.STOCKS.ADD_MEDICAMENT' | translate }}</mat-label>
-          <mat-select name="idMedicament" [(ngModel)]="nouveau.idMedicament" required [disabled]="isLoadingCatalogue()">
-            @for (m of catalogueDisponible; track m.id) {
-              <mat-option [value]="m.id">{{ libelleMedicament(m) }}</mat-option>
-            }
-          </mat-select>
-          @if (isLoadingCatalogue()) { <mat-hint>{{ 'ASC.STOCKS.LOADING' | translate }}</mat-hint> }
-        </mat-form-field>
+        <div class="stock-add__med">
+          <label class="stock-add__label" for="asc-stock-med">{{ 'ASC.STOCKS.ADD_MEDICAMENT' | translate }}</label>
+          <app-liste-recherche inputId="asc-stock-med" name="idMedicament" [options]="optionsCatalogue()"
+                               [(ngModel)]="nouveau.idMedicament" required [desactive]="isLoadingCatalogue()" />
+          @if (isLoadingCatalogue()) { <small class="stock-add__aide">{{ 'ASC.STOCKS.LOADING' | translate }}</small> }
+        </div>
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>{{ 'ASC.STOCKS.ADD_QTY' | translate }}</mat-label>
           <input matInput name="quantite" type="number" min="0" [(ngModel)]="nouveau.quantite" required />

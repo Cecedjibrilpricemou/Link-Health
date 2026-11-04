@@ -13,6 +13,7 @@ import { PiecesAgrementComponent } from '../../../shared/components/pieces-agrem
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import type { CreationPharmacieView, CreationStructureView, StructureAdminView, TypePieceAgrement } from '@baobaoheath/shared-types';
+import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 // Contenu de la modale de confirmation : assemble cote client a partir de la
 // reponse de creation, il n'a pas d'equivalent dans une reponse d'API.
@@ -46,7 +47,7 @@ function normaliser(v: string): string {
 @Component({
   selector: 'app-structures',
   standalone: true,
-  imports: [
+  imports: [ListeRechercheComponent, OptionsDePipe, 
     MatFormFieldModule, MatInputModule, MatSelectModule,CommonModule, FormsModule, TranslatePipe,
     ExportListeComponent, PiecesAgrementComponent, DossierAgrementComponent],
   templateUrl: './structures.component.html',

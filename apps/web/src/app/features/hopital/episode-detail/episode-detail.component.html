@@ -56,12 +56,9 @@
       <div class="bb-hop-panel__grid">
         <div class="form-field-wrap">
           <label class="form-label" for="or-medecin">{{ 'HOPITAL.DETAIL.ORIENT_MEDECIN' | translate }}</label>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-            <mat-select id="or-medecin" [(ngModel)]="orientation.idMedecin">
-              <mat-option value="">{{ 'HOPITAL.DETAIL.ORIENT_MEDECIN_NONE' | translate }}</mat-option>
-              @for (m of medecins(); track m.id) { <mat-option [value]="m.id">Dr {{ m.prenom }} {{ m.nom }}@if (m.specialite) { · {{ m.specialite }} }</mat-option> }
-            </mat-select>
-          </mat-form-field>
+          <app-liste-recherche inputId="or-medecin" [options]="optionsMedecins()"
+                               [(ngModel)]="orientation.idMedecin"
+                               [videLibelle]="'HOPITAL.DETAIL.ORIENT_MEDECIN_NONE' | translate" />
         </div>
         <div class="form-field-wrap">
           <label class="form-label" for="or-service">{{ 'HOPITAL.DETAIL.ORIENT_SERVICE' | translate }}</label>

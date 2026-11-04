@@ -43,12 +43,8 @@
         <div class="bb-appro__ligne">
           <div class="bb-appro__ligne-produit">
             <label class="bb-appro__label-mini" [attr.for]="'l-med-' + $index">{{ 'PHARMACIEN.APPRO.PRODUIT' | translate }}</label>
-            <select [id]="'l-med-' + $index" class="bb-appro__champ" [(ngModel)]="l.idMedicament">
-              <option value="">—</option>
-              @for (m of medicaments(); track m.id) {
-                <option [value]="m.id">{{ libelleProduit(m) }}</option>
-              }
-            </select>
+            <app-liste-recherche [inputId]="'l-med-' + $index" [options]="optionsProduits()"
+                                 [(ngModel)]="l.idMedicament" videLibelle="—" />
           </div>
 
           <div class="bb-appro__ligne-champ">

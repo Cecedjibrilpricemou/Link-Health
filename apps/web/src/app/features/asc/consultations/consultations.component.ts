@@ -15,11 +15,12 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { Consultation } from '../../../core/models/asc.model';
 import { Patient } from '../../../core/models/patient.model';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 @Component({
   selector: 'app-consultations',
   standalone: true,
-  imports: [
+  imports: [ListeRechercheComponent, 
     CommonModule, FormsModule,
     MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     TranslatePipe,
@@ -28,6 +29,14 @@ import { Patient } from '../../../core/models/patient.model';
   styleUrl: './consultations.component.scss'
 })
 export class ConsultationsComponent implements OnInit {
+  /** Les patients : on cherche par nom ou par telephone. */
+  readonly optionsPatients = computed<OptionListe[]>(() =>
+    this.patients().map((p) => ({
+      valeur: p.id,
+      libelle: `${p.utilisateur?.prenom ?? ''} ${p.utilisateur?.nom ?? ''}`.trim(),
+      detail: p.utilisateur?.telephone ?? undefined,
+    })));
+
   private ascService = inject(AscService);
   private authService = inject(AuthService);
   private router = inject(Router);

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { E2E, login } from './helpers';
+import { E2E, login, choisirDansListe } from './helpers';
 
 const API = process.env['E2E_API_URL'] ?? 'http://localhost:3000/api/v1';
 
@@ -104,7 +104,7 @@ test('Pharmacie — catalogue, stock, vente, agents et cloisonnement entre offic
   await expect(page.getByRole('heading', { name: /Inventaire par lot/ })).toBeVisible();
 
   await page.goto('/pharmacien/caisse');
-  await page.locator('#c-med-0').selectOption(produitId);
+  await choisirDansListe(page, 'c-med-0', libelleProduit);
   await page.locator('#c-qte-0').fill('1');
   const venteDepuisCaisse = page.waitForResponse((response) =>
     response.url().endsWith('/pharmacien/ventes') &&
@@ -130,7 +130,7 @@ test('Pharmacie — catalogue, stock, vente, agents et cloisonnement entre offic
   await page.getByRole('button', { name: 'Saisir une facture' }).click();
   await page.locator('#ap-fournisseur').fill('Grossiste acceptance');
   await page.locator('#ap-numero').fill(`FAC-${suffixe}`);
-  await page.locator('#l-med-0').selectOption(produitId);
+  await choisirDansListe(page, 'l-med-0', libelleProduit);
   await page.locator('#l-qte-0').fill('4');
   await page.locator('#l-lot-0').fill(`LOT-${suffixe}`);
   await page.locator('#l-per-0').fill('2028-12-31');
@@ -206,7 +206,8 @@ test('Pharmacie — catalogue, stock, vente, agents et cloisonnement entre offic
 
   await page.goto('/pharmacien/caisse');
   await expect(page.locator('.bb-page-head__title')).toBeVisible();
-  await expect(page.locator('select#c-med-0 option', { hasText: libelleProduit })).toHaveCount(1);
+  await page.locator('#c-med-0').fill(libelleProduit);
+  await expect(page.locator('#c-med-0-liste [role="option"]', { hasText: libelleProduit })).toHaveCount(1);
 
   await page.goto('/pharmacien/agents');
   await expect(page.locator('.bb-page-head__title')).toBeVisible();

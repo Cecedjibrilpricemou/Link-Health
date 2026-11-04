@@ -8,6 +8,7 @@
 // justificatif ; la lecture du document viendra ensuite, et devra toujours
 // être relue avant enregistrement.
 import { Component, OnInit, WritableSignal, computed, inject, signal } from '@angular/core';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -39,7 +40,7 @@ type LigneSaisie = {
 @Component({
   selector: 'app-pharmacien-approvisionnements',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, FormsModule, MatButtonModule, TranslatePipe, ExportListeComponent],
+  imports: [ListeRechercheComponent, DatePipe, DecimalPipe, FormsModule, MatButtonModule, TranslatePipe, ExportListeComponent],
   templateUrl: './approvisionnements.component.html',
   styleUrl: './approvisionnements.component.scss',
 })
@@ -176,6 +177,13 @@ export class ApprovisionnementsComponent implements OnInit {
     this.justificatifUrl.set('');
     this.lignes.set([this.ligneVide()]);
   }
+
+  /** Le produit de chaque ligne de facture : on peut taper pour filtrer. */
+  readonly optionsProduits = computed<OptionListe[]>(() => this.medicaments().map((m) => ({
+    valeur: m.id,
+    libelle: this.libelleProduit(m),
+    recherche: [m.dci, m.nomCommercial].filter(Boolean).join(' '),
+  })));
 
   libelleProduit(m: MedicamentInfo): string {
     return this.composer(m.libelle, m.dosage, m.forme);

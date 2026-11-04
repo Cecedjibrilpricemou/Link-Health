@@ -230,3 +230,8 @@
   from { transform: scaleX(0); }
   to   { transform: scaleX(1); }
 }
+
+// Champ « medicament » : liste avec recherche, libelle au-dessus.
+.stock-add__med { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stock-add__label { font-size: 13px; font-weight: 600; color: var(--bb-text-secondary); }
+.stock-add__aide { font-size: 12px; color: var(--bb-text-muted); }

@@ -80,7 +80,7 @@ export async function cliquer(page: Page, el: Locator) {
 
 /** Ouvre un mat-select (overlay Material) et choisit l'option dont le libelle contient `texte`. */
 export async function choisirOption(page: Page, selectId: string, texte: string) {
-  await page.locator(`mat-select#${selectId}`).click();
+  await page.locator(`#${selectId}`).click();
   await page.getByRole('option', { name: new RegExp(texte, 'i') }).first().click();
 }
 
@@ -88,4 +88,15 @@ export async function choisirOption(page: Page, selectId: string, texte: string)
 export async function fermerOverlay(page: Page) {
   await page.keyboard.press('Escape');
   await expect(page.locator('.cdk-overlay-pane mat-option').first()).toBeHidden();
+}
+
+/**
+ * Liste avec recherche : tape le texte puis choisit l'option qui le contient.
+ * Le texte est cherche tel quel (pas d'expression reguliere).
+ */
+export async function choisirDansListe(page: Page, id: string, texte: string) {
+  const champ = page.locator(`#${id}`);
+  await champ.click();
+  await champ.fill(texte);
+  await page.locator(`#${id}-liste [role="option"]`, { hasText: texte }).first().click();
 }

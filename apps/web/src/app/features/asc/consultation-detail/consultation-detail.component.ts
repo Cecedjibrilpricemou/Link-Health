@@ -1,5 +1,6 @@
 // features/asc/consultation-detail/consultation-detail.component.ts
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { ListeRechercheComponent, OptionListe, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -35,8 +36,8 @@ import type {
 @Component({
   selector: 'app-consultation-detail',
   standalone: true,
-  imports: [
-    CommonModule, FormsModule,
+  imports: [OptionsDePipe, 
+ListeRechercheComponent,     CommonModule, FormsModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatIconModule, MatButtonModule,
     TranslatePipe
@@ -245,6 +246,9 @@ export class ConsultationDetailComponent implements OnInit {
    * quand le libelle porte deja le nom commercial. Elle avait disparu du
    * libelle le 2026-10-01, et la liste ne se cherchait plus par molecule.
    */
+  readonly optionsMedicaments = computed<OptionListe[]>(() =>
+    this.medicamentOptions().map((o) => ({ valeur: o.value, libelle: o.label })));
+
   readonly medicamentOptions = computed(() =>
     this.medicaments().map(m => ({
       value: m.id,

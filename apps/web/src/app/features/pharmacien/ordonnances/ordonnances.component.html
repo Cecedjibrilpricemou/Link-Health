@@ -363,16 +363,9 @@
               <label class="form-label" for="ordo-substitut">
                 {{ 'PHARMACIEN.ORDONNANCES.SUBSTITUT' | translate }}
               </label>
-              <select id="ordo-substitut" class="bb-ordo__select"
-                      [value]="idSubstitut()"
-                      (change)="idSubstitut.set($any($event.target).value)">
-                <option value="">—</option>
-                @for (m of medicaments(); track m.id) {
-                  @if (m.id !== selected()!.ligne.medicament.id) {
-                    <option [value]="m.id">{{ m.libelle }}</option>
-                  }
-                }
-              </select>
+              <app-liste-recherche inputId="ordo-substitut" [options]="optionsSubstituts()"
+                                   [ngModel]="idSubstitut()" (ngModelChange)="idSubstitut.set($event ?? '')"
+                                   videLibelle="—" />
             </div>
           }
 

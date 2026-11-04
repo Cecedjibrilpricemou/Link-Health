@@ -10,13 +10,12 @@
     </div>
 
     <div class="bb-page-head__actions bb-dash__actions">
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-dash__filter">
-        <mat-select [(ngModel)]="prefiltreSelectionne" (selectionChange)="onPrefiltreChange()">
-          @for (opt of prefiltreOptions; track opt.value) {
-            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+      <div class="bb-dash__filter">
+        <app-liste-recherche inputId="analytics-prefecture" [options]="prefiltreOptions | optionsDe"
+                             [ngModel]="prefiltreSelectionne"
+                             (ngModelChange)="prefiltreSelectionne = $event ?? ''; onPrefiltreChange()"
+                             [ariaLabel]="'ADMIN.ANALYTICS.PREFILTRE_ARIA' | translate" />
+      </div>
 
       <a matButton="filled" routerLink="/admin/export" class="bb-dash__cta">
         <mat-icon fontSet="pi" fontIcon="pi-download" aria-hidden="true"></mat-icon>

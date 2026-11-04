@@ -5,7 +5,7 @@
 // laboratoire actif. La declaration met en tete de liste chez les medecins de
 // l'etablissement, sous « Partenaires declares ». Elle ne donne aucun droit,
 // n'engage aucun tarif, et se retire d'un geste.
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,15 +19,19 @@ import { AdminService } from '../../../core/services/admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 @Component({
   selector: 'app-admin-structure-conseillees',
   standalone: true,
-  imports: [DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatSelectModule, MatDialogModule, TranslatePipe],
+  imports: [ListeRechercheComponent, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatSelectModule, MatDialogModule, TranslatePipe],
   templateUrl: './conseillees.component.html',
   styleUrl: './conseillees.component.scss',
 })
 export class ConseilleesComponent implements OnInit {
+  readonly optionsCandidats = computed<OptionListe[]>(() =>
+    this.candidats().map((s) => ({ valeur: s.id, libelle: s.nom, detail: s.prefecture })));
+
   private admin  = inject(AdminService);
   private toastr = inject(ToastrService);
   private i18n   = inject(I18nService);

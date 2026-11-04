@@ -1,0 +1,61 @@
+// Meme allure qu'un champ de formulaire de l'application, en clair et en sombre.
+:host { display: block; width: 100%; min-width: 0; }
+
+.lr { position: relative; }
+
+.lr__champ {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 40px 0 14px;
+  border: 1px solid var(--bb-border);
+  border-radius: var(--bb-radius);
+  background: var(--bb-surface-card);
+  color: var(--bb-text-primary);
+  font: inherit;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: border-color var(--bb-transition), box-shadow var(--bb-transition);
+
+  &:hover:not(:disabled) { border-color: var(--bb-border-strong); }
+  &:focus {
+    outline: none;
+    cursor: text;
+    border-color: var(--bb-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--bb-primary) 18%, transparent);
+  }
+  &:disabled { cursor: not-allowed; color: var(--bb-text-muted); background: var(--bb-surface-1); }
+  &::placeholder { color: var(--bb-text-muted); }
+}
+
+.lr__fleche {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer; color: var(--bb-text-secondary);
+  i { font-size: 12px; transition: transform var(--bb-transition); }
+  &:disabled { cursor: not-allowed; opacity: .5; }
+}
+.lr--ouverte .lr__fleche i { transform: rotate(180deg); }
+
+.lr__liste {
+  position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px);
+  max-height: 280px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+  background: var(--bb-surface-card);
+  border: 1px solid var(--bb-border);
+  border-radius: var(--bb-radius);
+  box-shadow: var(--bb-shadow-hover);
+}
+
+.lr__option {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 9px 12px; border-radius: calc(var(--bb-radius) - 2px);
+  cursor: pointer; font-size: 14px; color: var(--bb-text-primary);
+
+  &--active { background: var(--bb-surface-1); }
+  &--choisie .lr__libelle { font-weight: 700; color: var(--bb-primary); }
+}
+
+.lr__libelle { min-width: 0; overflow-wrap: anywhere; }
+.lr__detail { flex-shrink: 0; font-size: 12.5px; color: var(--bb-text-muted); white-space: nowrap; }
+
+.lr__aucun { padding: 10px 12px; font-size: 13.5px; color: var(--bb-text-muted); }

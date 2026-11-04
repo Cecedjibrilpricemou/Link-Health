@@ -173,17 +173,9 @@
       <div class="bb-ph-stocks__form-grid">
         <div class="bb-ph-stocks__field bb-ph-stocks__field--full">
           <label id="reappro-med-label" for="reappro-med">{{ 'PHARMACIEN.STOCKS.FIELD_MEDICAMENT' | translate }}</label>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-  <mat-select
-    id="reappro-med"
-    [(ngModel)]="formReappro.idMedicament"
-    [placeholder]="'PHARMACIEN.STOCKS.FIELD_MEDICAMENT_PLACEHOLDER' | translate"
-  >
-    @for (opt of medicamentOptions; track opt.value) {
-      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-    }
-  </mat-select>
-</mat-form-field>
+          <app-liste-recherche inputId="reappro-med" [options]="optionsReappro()"
+                               [(ngModel)]="formReappro.idMedicament"
+                               [placeholder]="'PHARMACIEN.STOCKS.FIELD_MEDICAMENT_PLACEHOLDER' | translate" />
         </div>
         <div class="bb-ph-stocks__field">
           <label for="reappro-qty">{{ 'PHARMACIEN.STOCKS.FIELD_QTY' | translate }}</label>

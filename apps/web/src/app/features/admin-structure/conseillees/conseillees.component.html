@@ -17,14 +17,10 @@
 
 <section class="bb-card bb-conseil">
   <div class="bb-conseil__ajout">
-    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-      <mat-select [ngModel]="choix()" (ngModelChange)="choix.set($event)"
-                  [placeholder]="'ADMIN_STRUCTURE.CONSEILLEES.CHOISIR' | translate">
-        @for (s of candidats(); track s.id) {
-          <mat-option [value]="s.id">{{ s.nom }} · {{ s.prefecture }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+    <app-liste-recherche inputId="conseil-structure" [options]="optionsCandidats()"
+                         [ngModel]="choix()" (ngModelChange)="choix.set($event)"
+                         [placeholder]="'ADMIN_STRUCTURE.CONSEILLEES.CHOISIR' | translate"
+                         [ariaLabel]="'ADMIN_STRUCTURE.CONSEILLEES.CHOISIR' | translate" />
     <button matButton="filled" type="button" [disabled]="!choix() || isSaving()" (click)="ajouter()">
       <i [class]="isSaving() ? 'pi pi-spinner pi-spin' : 'pi pi-plus'" aria-hidden="true"></i>
       {{ 'ADMIN_STRUCTURE.CONSEILLEES.AJOUTER' | translate }}

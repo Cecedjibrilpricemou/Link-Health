@@ -14,7 +14,7 @@
 // avant le premier, et les melanger dans un seul formulaire les rendrait tous
 // deux illisibles.
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -33,6 +33,7 @@ import type {
 import { AdminService } from '../../../core/services/admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 /** Les categories de l'enum Prisma, dans l'ordre ou on les rencontre. */
 const CATEGORIES: CategorieProduit[] = [
@@ -43,7 +44,7 @@ const CATEGORIES: CategorieProduit[] = [
 @Component({
   selector: 'app-admin-assurance',
   standalone: true,
-  imports: [
+  imports: [ListeRechercheComponent, 
     CommonModule, FormsModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatCheckboxModule, TranslatePipe,
   ],
@@ -51,6 +52,12 @@ const CATEGORIES: CategorieProduit[] = [
   styleUrl: './assurance.component.scss',
 })
 export class AssuranceComponent implements OnInit {
+  /** Structures « assurance » : la compagnie porte l'agrement de la Banque Centrale. */
+  readonly optionsStructuresAssurance = computed<OptionListe[]>(() =>
+    this.structuresAssurance().map((s) => ({ valeur: s.id, libelle: s.nom, detail: s.prefecture })));
+  readonly optionsAssureurs = computed<OptionListe[]>(() =>
+    this.assureurs().map((a) => ({ valeur: a.id, libelle: `${a.code} — ${a.nom}` })));
+
   private admin = inject(AdminService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);

@@ -1,4 +1,5 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -23,7 +24,7 @@ import type {
   selector: 'app-ordonnances',
   standalone: true,
   imports: [
-    MatRadioModule,
+ListeRechercheComponent,     MatRadioModule,
     MatFormFieldModule, MatInputModule, CommonModule, FormsModule, TranslatePipe, QrScannerComponent],
   templateUrl: './ordonnances.component.html',
   styleUrl: './ordonnances.component.scss'
@@ -261,6 +262,16 @@ export class OrdonnancesComponent implements OnInit {
   geste = signal<'DELIVRER' | 'SUBSTITUER' | 'REFUSER'>('DELIVRER');
   motif = signal('');
   idSubstitut = signal('');
+
+  /** Les substituts possibles : tout le catalogue sauf le produit prescrit. */
+  readonly optionsSubstituts = computed<OptionListe[]>(() => {
+    const prescrit = this.selected()?.ligne.medicament.id;
+    return this.medicaments().filter((m) => m.id !== prescrit).map((m) => ({
+      valeur: m.id,
+      libelle: m.libelle,
+      recherche: [m.dci, m.nomCommercial].filter(Boolean).join(' '),
+    }));
+  });
 
   choisirGeste(g: 'DELIVRER' | 'SUBSTITUER' | 'REFUSER') {
     this.geste.set(g);

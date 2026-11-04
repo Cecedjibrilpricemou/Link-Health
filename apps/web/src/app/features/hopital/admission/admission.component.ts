@@ -1,6 +1,6 @@
 // features/hopital/admission — recherche obligatoire du patient (EF-03-01)
 // puis ouverture d'un episode de soins (EF-03-02).
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,14 +14,19 @@ import type { PatientRechercheView } from '@baobaoheath/shared-types';
 import { HopitalService, MedecinRefView } from '../../../core/services/hopital.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 @Component({
   selector: 'app-hopital-admission',
   standalone: true,
-  imports: [RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslatePipe],
+  imports: [ListeRechercheComponent, RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslatePipe],
   templateUrl: './admission.component.html',
 })
 export class AdmissionComponent implements OnInit {
+  /** Les medecins : on cherche par nom ou par specialite. */
+  readonly optionsMedecins = computed<OptionListe[]>(() =>
+    this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: m.specialite ?? undefined })));
+
   private hopital = inject(HopitalService);
   private router  = inject(Router);
   private toastr  = inject(ToastrService);

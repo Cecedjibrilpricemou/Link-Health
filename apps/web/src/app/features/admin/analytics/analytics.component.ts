@@ -22,6 +22,7 @@ import type {
   NiveauAlerte,
   TendanceView,
 } from '@baobaoheath/shared-types';
+import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 // Formes derivees cote client, sans equivalent dans une reponse d'API.
 interface StructureCount {
@@ -37,7 +38,7 @@ interface StatsStructures {
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [
+  imports: [ListeRechercheComponent, OptionsDePipe, 
     SeveriteVariantePipe,
     CommonModule, FormsModule, RouterLink, TranslatePipe,
     MatCardModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatSelectModule
