@@ -30,7 +30,7 @@ $rythme: clamp(64px, 9vw, 120px);
 // ✦ Refonte UI : cascade d'entree au chargement (hero)
 @mixin entree($delai: 0ms) {
   @media (prefers-reduced-motion: no-preference) {
-    animation: bb-land-rise .8s var(--bb-ease) $delai both;
+    animation: bb-land-rise .45s var(--bb-ease) $delai both;
   }
 }
 
@@ -530,9 +530,12 @@ $rythme: clamp(64px, 9vw, 120px);
 
 // ── Animations ───────────────────────────────────────────────────────
 // ✦ Refonte UI
+// Lisible des la premiere image : un leger glissement, jamais d'opacite
+// nulle ni de flou. Partir de `opacity: 0` cachait l'en-tete pres d'une
+// seconde apres le demarrage, et le flou coute cher sur un petit telephone.
 @keyframes bb-land-rise {
-  from { opacity: 0; transform: translateY(18px); filter: blur(4px); }
-  to   { opacity: 1; transform: none; filter: none; }
+  from { transform: translateY(10px); }
+  to   { transform: none; }
 }
 @keyframes bb-land-reveal {
   from { opacity: 0; transform: translateY(28px); }
