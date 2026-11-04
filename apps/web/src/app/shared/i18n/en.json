@@ -2240,7 +2240,10 @@
       "PERIODE_ANNEE": "Year",
       "EN_ATTENTE": "Pending",
       "ANNULEES": "Voided",
-      "SESSIONS": "Till sessions"
+      "SESSIONS": "Till sessions",
+      "CHIFFRE_AFFAIRES": "Revenue",
+      "AUCUN_ENCAISSEMENT_PERIODE": "No payment received in this period.",
+      "PERIODE_ARIA": "Report period"
     },
     "COMMANDES": {
       "TITRE": "Neighbourhood orders",

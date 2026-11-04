@@ -1682,7 +1682,10 @@
       "PERIODE_ANNEE": "Année",
       "EN_ATTENTE": "En attente",
       "ANNULEES": "Annulées",
-      "SESSIONS": "Sessions de caisse"
+      "SESSIONS": "Sessions de caisse",
+      "CHIFFRE_AFFAIRES": "Chiffre d’affaires",
+      "AUCUN_ENCAISSEMENT_PERIODE": "Aucun encaissement sur la période.",
+      "PERIODE_ARIA": "Période du rapport"
     },
     "COMMANDES": {
       "TITRE": "Commandes du quartier",
