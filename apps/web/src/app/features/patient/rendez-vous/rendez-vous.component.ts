@@ -15,15 +15,20 @@ import { PatientService } from '../../../core/services/patient.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 @Component({
   selector: 'app-patient-rendez-vous',
   standalone: true,
-  imports: [DatePipe, FormsModule, MatButtonModule, TranslatePipe, ExportListeComponent],
+  imports: [ListeRechercheComponent, DatePipe, FormsModule, MatButtonModule, TranslatePipe, ExportListeComponent],
   templateUrl: './rendez-vous.component.html',
   styleUrl: './rendez-vous.component.scss',
 })
 export class RendezVousComponent implements OnInit {
+  /** Les etablissements, avec recherche (nom ou prefecture). */
+  readonly optionsEtablissements = computed<OptionListe[]>(() =>
+    this.etablissements().map((e) => ({ valeur: e.id, libelle: e.nom, detail: e.prefecture })));
+
   private patient = inject(PatientService);
   private structures = inject(AdminService);
   private toastr = inject(ToastrService);

@@ -14,6 +14,7 @@
 // d'approvisionnement avait affiche un total faux et un bouton mort pour
 // cette raison le 2026-09-30.
 import { Component, OnDestroy, OnInit, WritableSignal, computed, inject, signal } from '@angular/core';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,7 +37,7 @@ import { QrScannerComponent } from '../../../shared/components/qr-scanner/qr-sca
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
-import { QuantiteUnitePipe } from '../../../shared/pipes/quantite-unite.pipe';
+import { formaterQuantite } from '../../../shared/pipes/quantite-unite.pipe';
 
 /** Une ligne du panier en cours de saisie. */
 type LignePanier = {
@@ -47,7 +48,7 @@ type LignePanier = {
 @Component({
   selector: 'app-pharmacien-caisse',
   standalone: true,
-  imports: [QuantiteUnitePipe, DatePipe, DecimalPipe, FormsModule, MatButtonModule, CategorieProduitPipe, TranslatePipe, ExportListeComponent, QrScannerComponent],
+  imports: [ListeRechercheComponent, DatePipe, DecimalPipe, FormsModule, MatButtonModule, CategorieProduitPipe, TranslatePipe, ExportListeComponent, QrScannerComponent],
   templateUrl: './caisse.component.html',
   styleUrl: './caisse.component.scss',
 })
@@ -285,6 +286,14 @@ export class CaisseComponent implements OnInit, OnDestroy {
     const s = this.stockDe(idMedicament);
     return s ? s.medicament.prixUnitaireGnf + (s.margeGnf ?? 0) : 0;
   }
+
+  /** Le choix du produit vendu : on peut taper pour filtrer (nom, DCI, nom commercial). */
+  readonly optionsProduits = computed<OptionListe[]>(() => this.stocks().map((s) => ({
+    valeur: s.medicament.id,
+    libelle: this.libelleProduit(s),
+    detail: formaterQuantite((c) => this.i18n.t(c), s.quantite, s.unite),
+    recherche: [s.medicament.dci, s.medicament.nomCommercial].filter(Boolean).join(' '),
+  })));
 
   libelleProduit(s: PharmacieStock): string {
     const m = s.medicament;

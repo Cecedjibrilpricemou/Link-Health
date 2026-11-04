@@ -1,5 +1,6 @@
 // features/pharmacien/stocks/stocks.component.ts
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { CategorieProduitPipe } from '../../../shared/pipes/categorie-produit.pipe';
 import { SeveriteVariantePipe } from '../../../shared/pipes/severite-variante.pipe';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -29,7 +30,7 @@ type ColonneTri = 'produit' | 'quantite' | 'etat' | 'prix' | 'peremption';
 @Component({
   selector: 'app-pharmacien-stocks',
   standalone: true,
-  imports: [QuantiteUnitePipe, 
+  imports: [ListeRechercheComponent, QuantiteUnitePipe, 
     CategorieProduitPipe, SeveriteVariantePipe,
     MatFormFieldModule, MatInputModule, MatSelectModule,CommonModule, FormsModule, TranslatePipe, ExportListeComponent],
   templateUrl: './stocks.component.html',
@@ -210,6 +211,13 @@ export class PharmacienStocksComponent implements OnInit {
       error: () => {}
     });
   }
+
+  /** Le produit a reapprovisionner : on peut taper pour filtrer. */
+  readonly optionsReappro = computed<OptionListe[]>(() => this.medicaments().map((m) => ({
+    valeur: m.id,
+    libelle: m.libelle,
+    recherche: [m.dci, m.nomCommercial].filter(Boolean).join(' '),
+  })));
 
   get medicamentOptions() {
     return this.medicaments().map(m => ({ label: m.libelle, value: m.id }));

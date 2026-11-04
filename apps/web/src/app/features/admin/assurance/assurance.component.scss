@@ -261,3 +261,8 @@
     box-shadow: var(--bb-focus-ring);
   }
 }
+
+// Listes avec recherche : libelle au-dessus, aide en dessous.
+.bb-assu__champ-liste { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bb-assu__label-liste { font-size: 13px; font-weight: 600; color: var(--bb-text-secondary); }
+.bb-assu__aide-liste { font-size: 12px; color: var(--bb-text-muted); }

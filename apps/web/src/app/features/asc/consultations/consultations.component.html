@@ -68,19 +68,9 @@
         <div class="form-grid-2">
           <div class="form-field-wrap">
             <label class="form-label" id="consult-patient-label" for="consult-patient">{{ 'ASC.CONSULTATIONS.FORM_PATIENT' | translate }}</label>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="form-field-full">
-              <mat-select
-                id="consult-patient"
-                [(ngModel)]="newConsultation.patientId"
-                [placeholder]="'ASC.CONSULTATIONS.FORM_SELECT_PH' | translate"
-              >
-                @for (p of patients(); track p.id) {
-                  <mat-option [value]="p.id">
-                    {{ p.utilisateur?.prenom }} {{ p.utilisateur?.nom }} — {{ p.utilisateur?.telephone }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+            <app-liste-recherche inputId="consult-patient" [options]="optionsPatients()"
+                                 [(ngModel)]="newConsultation.patientId"
+                                 [placeholder]="'ASC.CONSULTATIONS.FORM_SELECT_PH' | translate" />
           </div>
 
           <div class="form-field-wrap">

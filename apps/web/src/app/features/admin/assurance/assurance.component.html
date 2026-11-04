@@ -71,19 +71,16 @@
 
           <!-- La structure porte l'agrement de la Banque Centrale : sans
                elle, rien ne prouve que la compagnie est agreee. -->
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ 'ADMIN.ASSURANCE.STRUCTURE' | translate }} *</mat-label>
-            <mat-select [(ngModel)]="nouvelAssureur.idStructure" name="structure">
-              @for (s of structuresAssurance(); track s.id) {
-                <mat-option [value]="s.id">{{ s.nom }} · {{ s.prefecture }}</mat-option>
-              }
-            </mat-select>
-            <mat-hint>
+          <div class="bb-assu__champ-liste">
+            <label class="bb-assu__label-liste" for="assu-structure">{{ 'ADMIN.ASSURANCE.STRUCTURE' | translate }} *</label>
+            <app-liste-recherche inputId="assu-structure" name="structure" [options]="optionsStructuresAssurance()"
+                                 [(ngModel)]="nouvelAssureur.idStructure" />
+            <small class="bb-assu__aide-liste">
               {{ (structuresAssurance().length === 0
                     ? 'ADMIN.ASSURANCE.STRUCTURE_AUCUNE'
                     : 'ADMIN.ASSURANCE.STRUCTURE_AIDE') | translate }}
-            </mat-hint>
-          </mat-form-field>
+            </small>
+          </div>
 
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>{{ 'ADMIN.ASSURANCE.MODE_ECHANGE' | translate }}</mat-label>
@@ -387,14 +384,11 @@
       @if (formPolice()) {
         <div class="bb-assu__form">
           <div class="bb-assu__grille">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ 'ADMIN.ASSURANCE.ASSUREUR' | translate }}</mat-label>
-              <mat-select [(ngModel)]="nouvellePolice.idAssureur" name="assureur">
-                @for (a of assureurs(); track a.id) {
-                  <mat-option [value]="a.id">{{ a.code }} — {{ a.nom }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+            <div class="bb-assu__champ-liste">
+              <label class="bb-assu__label-liste" for="assu-police-assureur">{{ 'ADMIN.ASSURANCE.ASSUREUR' | translate }}</label>
+              <app-liste-recherche inputId="assu-police-assureur" name="assureur" [options]="optionsAssureurs()"
+                                   [(ngModel)]="nouvellePolice.idAssureur" />
+            </div>
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>{{ 'ADMIN.ASSURANCE.NUMERO_POLICE' | translate }}</mat-label>

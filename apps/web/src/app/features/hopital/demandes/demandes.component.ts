@@ -3,7 +3,7 @@
 //
 // L'accueil les oriente vers un médecin : c'est son métier, et le seul qu'il
 // garde sur ce circuit. Il ne fixe pas l'heure — cela appartient au médecin.
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,15 +16,20 @@ import { HopitalService, MedecinRefView } from '../../../core/services/hopital.s
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 @Component({
   selector: 'app-hopital-demandes',
   standalone: true,
-  imports: [DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatSelectModule, TranslatePipe, ExportListeComponent],
+  imports: [ListeRechercheComponent, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatSelectModule, TranslatePipe, ExportListeComponent],
   templateUrl: './demandes.component.html',
   styleUrl: './demandes.component.scss',
 })
 export class DemandesComponent implements OnInit {
+  /** Les medecins : on cherche par nom ou par specialite. */
+  readonly optionsMedecins = computed<OptionListe[]>(() =>
+    this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}` })));
+
   private hopital = inject(HopitalService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);

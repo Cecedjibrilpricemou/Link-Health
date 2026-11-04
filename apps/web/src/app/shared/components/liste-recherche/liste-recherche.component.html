@@ -1,0 +1,44 @@
+<div class="lr" [class.lr--ouverte]="ouverte()" [class.lr--desactive]="estDesactive()">
+  <input #champ
+         class="lr__champ"
+         type="text"
+         role="combobox"
+         autocomplete="off"
+         aria-autocomplete="list"
+         [id]="inputId()"
+         [attr.aria-expanded]="ouverte()"
+         [attr.aria-controls]="idListe()"
+         [attr.aria-label]="ariaLabel()"
+         [attr.aria-activedescendant]="idActif()"
+         [value]="texte()"
+         [placeholder]="placeholder()"
+         [disabled]="estDesactive()"
+         (click)="ouvrir()"
+         (focus)="ouvrir()"
+         (input)="saisir($event)"
+         (keydown)="clavier($event)"
+         (blur)="quitter()" />
+  <button type="button" class="lr__fleche" tabindex="-1" aria-hidden="true"
+          [disabled]="estDesactive()"
+          (mousedown)="$event.preventDefault(); basculer()">
+    <i class="pi pi-chevron-down"></i>
+  </button>
+
+  @if (ouverte()) {
+    <ul class="lr__liste" role="listbox" [id]="idListe()">
+      @for (o of filtrees(); track o.valeur; let i = $index) {
+        <li class="lr__option" role="option"
+            [id]="idListe() + '-' + i"
+            [attr.aria-selected]="o.valeur === (valeur() ?? '')"
+            [class.lr__option--active]="i === active()"
+            [class.lr__option--choisie]="o.valeur === (valeur() ?? '')"
+            (mousedown)="$event.preventDefault(); choisir(o)">
+          <span class="lr__libelle">{{ o.libelle }}</span>
+          @if (o.detail) { <span class="lr__detail">{{ o.detail }}</span> }
+        </li>
+      } @empty {
+        <li class="lr__aucun" aria-live="polite">{{ texteAucun() }}</li>
+      }
+    </ul>
+  }
+</div>

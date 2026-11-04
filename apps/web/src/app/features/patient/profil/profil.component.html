@@ -230,17 +230,9 @@
         <div class="structure-select">
           <label class="form-field__label" id="profil-structure-label" for="profil-structure">{{ 'PATIENT.PROFILE.STRUCTURE_SELECT_LABEL' | translate }}</label>
           <div class="structure-select__row">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-  <mat-select
-    id="profil-structure"
-    [(ngModel)]="idStructureSelectionnee"
-    [placeholder]="'PATIENT.PROFILE.STRUCTURE_SELECT_PLACEHOLDER' | translate"
-  >
-    @for (opt of structureOptions; track opt.value) {
-      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-    }
-  </mat-select>
-</mat-form-field>
+            <app-liste-recherche inputId="profil-structure" [options]="structureOptions | optionsDe"
+                                 [(ngModel)]="idStructureSelectionnee"
+                                 [placeholder]="'PATIENT.PROFILE.STRUCTURE_SELECT_PLACEHOLDER' | translate" />
             <button class="structure-select__btn" (click)="saveStructurePreferee()" [disabled]="isSavingStructure()">
               <i [class]="isSavingStructure() ? 'pi pi-spinner pi-spin' : 'pi pi-check'" aria-hidden="true"></i>
               {{ (isSavingStructure() ? 'PATIENT.PROFILE.STRUCTURE_SAVING' : 'PATIENT.PROFILE.STRUCTURE_SAVE') | translate }}

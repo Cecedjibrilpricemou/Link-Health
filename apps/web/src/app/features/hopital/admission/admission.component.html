@@ -85,12 +85,9 @@
         </div>
         <div class="form-field-wrap">
           <label class="form-label" for="adm-resp">{{ 'HOPITAL.ADMISSION.RESPONSABLE' | translate }}</label>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-            <mat-select id="adm-resp" [(ngModel)]="formulaire.idResponsable">
-              <mat-option value="">{{ 'HOPITAL.ADMISSION.RESPONSABLE_NONE' | translate }}</mat-option>
-              @for (m of medecins(); track m.id) { <mat-option [value]="m.id">Dr {{ m.prenom }} {{ m.nom }}@if (m.specialite) { · {{ m.specialite }} }</mat-option> }
-            </mat-select>
-          </mat-form-field>
+          <app-liste-recherche inputId="adm-resp" [options]="optionsMedecins()"
+                               [(ngModel)]="formulaire.idResponsable"
+                               [videLibelle]="'HOPITAL.ADMISSION.RESPONSABLE_NONE' | translate" />
         </div>
         <div class="form-field-wrap bb-hop-panel__full">
           <label class="form-label" for="adm-notes">{{ 'HOPITAL.ADMISSION.NOTES' | translate }}</label>

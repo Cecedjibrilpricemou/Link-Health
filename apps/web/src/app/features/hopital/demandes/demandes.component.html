@@ -40,13 +40,12 @@
 
         <!-- L'accueil désigne le médecin ; c'est lui qui fixera l'heure. -->
         <div class="bb-hdem__actions">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-hdem__select">
-            <mat-select [(ngModel)]="choix[d.id]" [placeholder]="'HOPITAL.DEMANDES.CHOISIR' | translate">
-              @for (m of medecins(); track m.id) {
-                <mat-option [value]="m.id">Dr {{ m.prenom }} {{ m.nom }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
+          <div class="bb-hdem__select">
+            <app-liste-recherche [inputId]="'hdem-medecin-' + d.id" [options]="optionsMedecins()"
+                                 [(ngModel)]="choix[d.id]"
+                                 [placeholder]="'HOPITAL.DEMANDES.CHOISIR' | translate"
+                                 [ariaLabel]="'HOPITAL.DEMANDES.CHOISIR' | translate" />
+          </div>
 
           <button matButton="filled" type="button"
                   [disabled]="enCours() === d.id || !choix[d.id]"

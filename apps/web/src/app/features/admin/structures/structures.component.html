@@ -100,19 +100,9 @@
         </div>
         <div class="bb-struct__field">
           <label id="struct-pref-label" for="struct-pref">{{ 'ADMIN.STRUCTURES.PREFECTURE_LABEL' | translate }}</label>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-  <mat-select
-    id="struct-pref"
-    [(ngModel)]="newStructure.prefecture"
-    [placeholder]="'PATIENT.PROFILE.GENDER_SELECT' | translate"
-    #structPref="ngModel"
-    required
-  >
-    @for (opt of prefectures; track opt.value) {
-      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-    }
-  </mat-select>
-</mat-form-field>
+          <app-liste-recherche inputId="struct-pref" [options]="prefectures | optionsDe"
+                               [(ngModel)]="newStructure.prefecture" #structPref="ngModel" required
+                               [placeholder]="'PATIENT.PROFILE.GENDER_SELECT' | translate" />
           @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
         </div>
         <div class="bb-struct__field"><label for="struct-adresse">{{ 'ADMIN.STRUCTURES.ADRESSE_LABEL' | translate }}</label><mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">

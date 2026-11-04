@@ -43,7 +43,8 @@
     "OPEN_PROFILE_ARIA": "Ouvrir le profil",
     "CHANGE_LANG_ARIA": "Changer de langue",
     "ERROR_GENERIC": "Une erreur est survenue. Veuillez réessayer.",
-    "REFRESH": "Actualiser"
+    "REFRESH": "Actualiser",
+    "AUCUN_RESULTAT": "Aucun résultat"
   },
   "PROFIL_MODAL": {
     "CLOSE_ARIA": "Fermer",
@@ -2064,7 +2065,8 @@
       "STRUCTURES_SOINS_TITLE": "Structures de soins actives",
       "DEF_STRUCTURES": "Postes, centres, hôpitaux, CHU et cliniques en activité. Hors pharmacies, laboratoires, assureurs et structures désactivées.",
       "DEF_JAUGE": "{{n}} patient(s) sur {{total}} ont reçu au moins une dose.",
-      "UN_SEUL_STATUT": "Toutes les consultations ({{n}}) ont le statut « {{statut}} »."
+      "UN_SEUL_STATUT": "Toutes les consultations ({{n}}) ont le statut « {{statut}} ».",
+      "PREFILTRE_ARIA": "Filtrer par préfecture"
     },
     "JOURNAL": {
       "ACTION_LABEL": {

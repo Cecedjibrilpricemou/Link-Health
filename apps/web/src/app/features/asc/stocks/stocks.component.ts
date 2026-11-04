@@ -1,5 +1,6 @@
 // features/asc/stocks/stocks.component.ts
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,7 +19,7 @@ import { QuantiteUnitePipe, formaterQuantite } from '../../../shared/pipes/quant
 @Component({
   selector: 'app-stocks',
   standalone: true,
-  imports: [QuantiteUnitePipe, 
+  imports: [ListeRechercheComponent, QuantiteUnitePipe, 
     CommonModule, FormsModule,
     MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     TranslatePipe,
@@ -70,6 +71,16 @@ export class StocksComponent implements OnInit {
   }
 
   /** Medicaments du catalogue qui n'ont pas encore de ligne chez cet ASC. */
+  /** Le catalogue pas encore en stock, pour la liste avec recherche. */
+  readonly optionsCatalogue = computed<OptionListe[]>(() => {
+    const dejaStockes = new Set(this.stocks().map((s) => s.medicament.id));
+    return this.catalogue().filter((m) => !dejaStockes.has(m.id)).map((m) => ({
+      valeur: m.id,
+      libelle: this.libelleMedicament(m),
+      recherche: [m.dci, m.nomCommercial].filter(Boolean).join(' '),
+    }));
+  });
+
   get catalogueDisponible(): MedicamentView[] {
     const dejaStockes = new Set(this.stocks().map(s => s.medicament.id));
     return this.catalogue().filter(m => !dejaStockes.has(m.id));
