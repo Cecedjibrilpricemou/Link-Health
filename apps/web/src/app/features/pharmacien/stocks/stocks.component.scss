@@ -357,89 +357,119 @@
     &:disabled { cursor: not-allowed; background: var(--bb-surface-2); color: var(--bb-text-muted); box-shadow: none; }
   }
 
-  // ── Liste ────────────────────────────────────────────────────
-  &__list {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;
-    @media (max-width: 400px) { grid-template-columns: 1fr; }
+  // ── Filtres d'état ───────────────────────────────────────────
+  &__filtres { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 16px; }
+
+  &__filtre {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 14px;
+    border-radius: var(--bb-radius-pill); border: 1px solid var(--bb-border); background: var(--bb-surface-card);
+    color: var(--bb-text-secondary); font-size: 13.5px; font-weight: 700; cursor: pointer;
+    transition: background var(--bb-transition), color var(--bb-transition), border-color var(--bb-transition);
+    &:hover { border-color: var(--bb-border-strong); color: var(--bb-text-primary); }
+    &:focus-visible { outline: 2px solid var(--bb-primary); outline-offset: 2px; }
+    &--actif { background: var(--bb-primary); border-color: var(--bb-primary); color: #fff;
+      &:hover { color: #fff; } }
   }
 
-  &__card {
+  &__filtre-compte {
+    min-width: 22px; padding: 1px 7px; border-radius: var(--bb-radius-pill); text-align: center;
+    background: color-mix(in srgb, currentColor 14%, transparent); font-variant-numeric: tabular-nums;
+  }
+
+  // ── Tableau ──────────────────────────────────────────────────
+  // Un catalogue reel compte des centaines de produits : une ligne par
+  // produit, nom complet (jamais coupe), colonnes triables.
+  &__table-wrap {
     background: var(--bb-surface-card); border: 1px solid var(--bb-border-light);
-    border-radius: var(--bb-radius-xl); padding: 1.25rem 1.375rem; box-shadow: var(--bb-shadow-xs);
-    position: relative; overflow: hidden;
-    transition: border-color var(--bb-transition), box-shadow var(--bb-transition-slow), transform var(--bb-transition-slow);
-    &:hover { border-color: var(--bb-success-border); box-shadow: var(--bb-shadow-hover); transform: translateY(-2px); }
+    border-radius: var(--bb-radius-xl); box-shadow: var(--bb-shadow-xs); overflow-x: auto;
+  }
 
-    // ✦ Refonte UI : stock critique signale par une barre laterale (meme
-    // langage que les alertes de l'ecran ordonnances) et une bordure rouge,
-    // plutot qu'un liseré superieur deforme par l'arrondi.
-    &--critique {
-      border-color: var(--bb-danger-border);
-      &::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--bb-danger); }
-      &:hover { border-color: var(--bb-danger); }
+  &__table {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+
+    th {
+      position: sticky; top: 0; z-index: 1; background: var(--bb-surface-1); text-align: left;
+      border-bottom: 1px solid var(--bb-border); padding: 0; white-space: nowrap;
     }
+
+    td {
+      padding: 10px 14px; border-bottom: 1px solid var(--bb-border-light); vertical-align: middle;
+      color: var(--bb-text-primary);
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bb-surface-1); }
   }
 
-  &__card-header {
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px;
+  &__tri {
+    display: inline-flex; align-items: center; gap: 6px; width: 100%; min-height: 44px; padding: 0 14px;
+    background: none; border: none; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--bb-text-secondary);
+    i { font-size: 12px; opacity: .55; }
+    &:hover { color: var(--bb-text-primary); i { opacity: 1; } }
+    &:focus-visible { outline: 2px solid var(--bb-primary); outline-offset: -2px; }
   }
 
-  &__card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-
-  &__card-nom {
-    font-family: var(--bb-font-display); font-size: 15.5px; font-weight: 800;
-    color: var(--bb-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  th[aria-sort='ascending'] .bb-ph-stocks__tri, th[aria-sort='descending'] .bb-ph-stocks__tri {
+    color: var(--bb-text-primary); i { opacity: 1; color: var(--stk-accent); }
   }
 
-  &__card-forme { font-size: 13px; color: var(--bb-text-secondary); font-weight: 500; }
+  &__num { text-align: right; font-variant-numeric: tabular-nums;
+    .bb-ph-stocks__tri { justify-content: flex-end; } }
 
-  &__card-cat {
-    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--bb-text-secondary);
-    display: inline-block; background: var(--bb-surface-2); border: 1px solid var(--bb-border-light);
-    padding: 2px 9px; border-radius: var(--bb-radius-pill); align-self: flex-start; margin-top: 4px;
+  // Stock critique : liseré rouge sur la premiere cellule de la ligne.
+  &__ligne--critique td:first-child { box-shadow: inset 4px 0 0 var(--bb-danger); }
+
+  &__produit-nom {
+    display: block; font-weight: 700; color: var(--bb-text-primary); line-height: 1.35;
+    overflow-wrap: anywhere;
   }
 
-  &__card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+  &__produit-detail { display: block; font-size: 12.5px; color: var(--bb-text-secondary); margin-top: 2px; }
 
-  &__card-prix {
-    font-family: var(--bb-font-display); font-size: 17px; font-weight: 800; color: var(--stk-accent);
-    font-variant-numeric: tabular-nums; white-space: nowrap;
+  &__seuil { display: block; font-size: 12px; color: var(--bb-text-muted); margin-top: 2px; white-space: nowrap; }
+
+  &__vide { color: var(--bb-text-muted); }
+
+  &__valeur { display: block; }
+
+  &__actions-cell { text-align: right; white-space: nowrap; }
+
+  &__inventaire-btn {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px;
+    border-radius: var(--bb-radius); border: 1px solid var(--bb-border); background: var(--bb-surface-card);
+    color: var(--bb-text-secondary); font-size: 13px; font-weight: 700; cursor: pointer;
+    &:hover:not(:disabled) { border-color: var(--bb-border-strong); color: var(--bb-text-primary); }
+    &:disabled { color: var(--bb-text-muted); cursor: not-allowed; }
   }
 
-  // ── Barre stock ───────────────────────────────────────────────
-  &__bar-wrap {
-    background: var(--bb-surface-1); padding: 12px 14px; border-radius: var(--bb-radius-lg); margin-bottom: 14px;
-    display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--bb-border-light);
-  }
+  td#{&}__expire { color: var(--bb-danger); font-weight: 700; }
 
-  &__bar-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; font-weight: 700; color: var(--bb-text-secondary); }
-
-  &__bar-track {
-    width: 100%; height: 8px; background: var(--bb-surface-2);
-    border-radius: var(--bb-radius-pill); overflow: hidden;
-    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--bb-deep) 10%, transparent);
-  }
-
-  // Couleur de remplissage posee par le composant (rouge / orange / vert)
-  &__bar-fill {
-    height: 100%; border-radius: var(--bb-radius-pill);
-    transition: width 0.8s var(--bb-ease);
-    animation: bb-stk-fill 0.9s var(--bb-ease) both;
-    transform-origin: left center;
-  }
-
-  &__bar-qty { font-family: var(--bb-font-display); font-size: 16px; font-weight: 800; color: var(--bb-text-primary); font-variant-numeric: tabular-nums; }
-
-  // ── Footer ────────────────────────────────────────────────────
-  &__card-footer {
-    display: flex; align-items: center; justify-content: space-between;
-    font-size: 12px; color: var(--bb-text-muted); flex-wrap: wrap; gap: 8px; font-weight: 500;
-    span { display: inline-flex; align-items: center; gap: 5px; }
-  }
-
-  &__expire {
-    color: var(--bb-danger); font-weight: 700; background: var(--bb-danger-bg);
-    border: 1px solid var(--bb-danger-border); padding: 3px 9px; border-radius: var(--bb-radius-pill);
+  // ── Telephone : chaque ligne devient une fiche lisible ─────────
+  @media (max-width: 720px) {
+    &__table-wrap { background: none; border: none; box-shadow: none; overflow: visible; }
+    &__table {
+      thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      tbody { display: grid; gap: 10px; }
+      tr {
+        display: grid; grid-template-columns: 1fr auto; column-gap: 12px;
+        background: var(--bb-surface-card); border: 1px solid var(--bb-border-light);
+        border-radius: var(--bb-radius-lg); padding: 10px 12px;
+      }
+      td {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+        padding: 6px 0; border-bottom: none; text-align: right; grid-column: 1 / -1;
+        &::before {
+          content: attr(data-label); font-size: 12px; font-weight: 700; color: var(--bb-text-secondary);
+          text-align: left;
+        }
+      }
+      td:first-child { display: block; text-align: left; &::before { content: none; } }
+      tbody tr:hover td { background: none; }
+    }
+    &__ligne--critique { border-left: 4px solid var(--bb-danger) !important; }
+    &__ligne--critique td:first-child { box-shadow: none; }
+    &__actions-cell { justify-content: flex-end !important; &::before { content: none !important; } }
   }
 
   // ── État vide ─────────────────────────────────────────────────
@@ -465,7 +495,3 @@
   to   { opacity: 1; transform: none; }
 }
 
-@keyframes bb-stk-fill {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
-}

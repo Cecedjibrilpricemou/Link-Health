@@ -245,18 +245,30 @@
     </div>
   </div>
 
-  <!-- Recherche -->
+  <!-- Recherche et filtres -->
   <div class="bb-ph-stocks__search">
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
         <input matInput [placeholder]="'PHARMACIEN.STOCKS.SEARCH_PLACEHOLDER' | translate" [attr.aria-label]="'PHARMACIEN.STOCKS.SEARCH_ARIA' | translate" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
       </mat-form-field>
   </div>
 
-  <!-- Liste -->
+  <div class="bb-ph-stocks__filtres" role="group" [attr.aria-label]="'PHARMACIEN.STOCKS.FILTRE_ARIA' | translate">
+    @for (f of filtresEtat; track f) {
+      <button type="button" class="bb-ph-stocks__filtre" [attr.data-filtre]="f"
+              [class.bb-ph-stocks__filtre--actif]="filtreEtat() === f"
+              [attr.aria-pressed]="filtreEtat() === f"
+              (click)="filtreEtat.set(f)">
+        {{ ('PHARMACIEN.STOCKS.FILTRE_' + f) | translate }}
+        <span class="bb-ph-stocks__filtre-compte">{{ compteParFiltre()[f] }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- Tableau -->
   @if (isLoading()) {
-    <div class="bb-ph-stocks__list">
+    <div class="bb-ph-stocks__table-wrap" aria-busy="true">
       @for (i of [1,2,3,4,5,6]; track i) {
-        <div class="bb-skeleton" style="height:160px;border-radius:16px"></div>
+        <div class="bb-skeleton" style="height:44px;border-radius:8px;margin:6px 0"></div>
       }
     </div>
   } @else if (stocksFiltres().length === 0) {
@@ -264,63 +276,78 @@
       <i class="pi pi-inbox"></i>
       <p>{{ 'PHARMACIEN.STOCKS.EMPTY_TITLE' | translate }}</p>
       <span>{{ 'PHARMACIEN.STOCKS.EMPTY_SUB' | translate }}</span>
-      @if (estTitulaire() && !searchQuery() && !showForm()) {
+      @if (estTitulaire() && !searchQuery() && filtreEtat() === 'TOUS' && !showForm()) {
       <button type="button" class="bb-ph-stocks__add-btn bb-ph-stocks__empty-action" (click)="showForm.set(true)">
         <i class="pi pi-plus" aria-hidden="true"></i> {{ 'PHARMACIEN.STOCKS.EMPTY_ACTION' | translate }}
       </button>
       }
     </div>
   } @else {
-    <div class="bb-ph-stocks__list">
-      @for (s of stocksFiltres(); track s.id) {
-        <div class="bb-ph-stocks__card" [class.bb-ph-stocks__card--critique]="s.quantite <= s.seuilAlerte">
-          
-          <div class="bb-ph-stocks__card-header">
-            <div class="bb-ph-stocks__card-info">
-              <span class="bb-ph-stocks__card-nom" [title]="getMedicamentLabel(s)">{{ getMedicamentLabel(s) }}</span>
-              @if (formeEtDosage(s)) {
-                <span class="bb-ph-stocks__card-forme">{{ formeEtDosage(s) }}</span>
-              }
-              <span class="bb-ph-stocks__card-cat">{{ s.medicament.categorie | categorieProduit }}</span>
-            </div>
-            <div class="bb-ph-stocks__card-right">
-              <span [class]="'bb-badge bb-badge--' + (getNiveauSeverity(s) | severiteVariante)">{{ getNiveauLabel(s) }}</span>
-              <span class="bb-ph-stocks__card-prix">{{ formatMontant(getPrixVente(s)) }}</span>
-            </div>
-          </div>
-
-          <div class="bb-ph-stocks__bar-wrap">
-            <div class="bb-ph-stocks__bar-top">
-              <span>{{ 'PHARMACIEN.STOCKS.STOCK_LEVEL' | translate }}</span>
-              <span class="bb-ph-stocks__bar-qty">{{ s.quantite | quantiteUnite: s.unite }}</span>
-            </div>
-            <div class="bb-ph-stocks__bar-track">
-              <div class="bb-ph-stocks__bar-fill"
-                [style.width.%]="getBarWidth(s)"
-                [style.background]="getBarColor(s)">
-              </div>
-            </div>
-          </div>
-
-          <div class="bb-ph-stocks__card-footer">
-            <span><i class="pi pi-bell"></i> {{ 'PHARMACIEN.STOCKS.ALERT_THRESHOLD' | translate: { value: (s.seuilAlerte | quantiteUnite: s.unite) } }}</span>
-            @if (s.peremptionLaPlusProche) {
-              <span [class.bb-ph-stocks__expire]="isExpireSoon(s)">
-                <i class="pi pi-calendar-times"></i> {{ 'PHARMACIEN.STOCKS.EXPIRY_LABEL' | translate: { date: formatDate(s.peremptionLaPlusProche) } }}
-              </span>
-            } @else {
-              <span><i class="pi pi-calendar-times"></i> {{ 'PHARMACIEN.STOCKS.NO_EXPIRY' | translate }}</span>
+    <div class="bb-ph-stocks__table-wrap">
+      <table class="bb-ph-stocks__table">
+        <caption class="sr-only">{{ 'PHARMACIEN.STOCKS.TABLE_CAPTION' | translate }}</caption>
+        <thead>
+          <tr>
+            @for (col of colonnesTableau; track col.id) {
+              <th scope="col" [attr.data-colonne]="col.id" [attr.aria-sort]="ariaSort(col.id)"
+                  [class.bb-ph-stocks__num]="col.num">
+                <button type="button" class="bb-ph-stocks__tri" (click)="trierPar(col.id)">
+                  {{ col.titre | translate }}
+                  <i aria-hidden="true" class="pi"
+                     [class.pi-sort-alt]="ariaSort(col.id) === 'none'"
+                     [class.pi-sort-amount-up-alt]="ariaSort(col.id) === 'ascending'"
+                     [class.pi-sort-amount-down]="ariaSort(col.id) === 'descending'"></i>
+                </button>
+              </th>
             }
-          </div>
-          @if (estTitulaire()) {
-            <button class="bb-ph-stocks__history-btn" type="button" [disabled]="isSaving()"
-                    (click)="ouvrirInventaire(s)">
-              <i class="pi pi-clipboard" aria-hidden="true"></i>
-              {{ 'PHARMACIEN.STOCKS.INVENTORY_OPEN' | translate }}
-            </button>
+            @if (estTitulaire()) {
+              <th scope="col"><span class="sr-only">{{ 'PHARMACIEN.STOCKS.COL_ACTIONS' | translate }}</span></th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of stocksFiltres(); track s.id) {
+            <tr [class.bb-ph-stocks__ligne--critique]="s.quantite <= s.seuilAlerte">
+              <td [attr.data-label]="'PHARMACIEN.STOCKS.COL_PRODUIT' | translate">
+                <span class="bb-ph-stocks__produit-nom">{{ getMedicamentLabel(s) }}</span>
+                <span class="bb-ph-stocks__produit-detail">
+                  {{ s.medicament.categorie | categorieProduit }}@if (formeEtDosage(s)) { · {{ formeEtDosage(s) }} }
+                </span>
+              </td>
+              <td class="bb-ph-stocks__num" [attr.data-label]="'PHARMACIEN.STOCKS.COL_QUANTITE' | translate">
+                <span class="bb-ph-stocks__valeur">
+                <strong>{{ s.quantite | quantiteUnite: s.unite }}</strong>
+                <span class="bb-ph-stocks__seuil">{{ 'PHARMACIEN.STOCKS.ALERT_THRESHOLD' | translate: { value: (s.seuilAlerte | quantiteUnite: s.unite) } }}</span>
+                </span>
+              </td>
+              <td [attr.data-label]="'PHARMACIEN.STOCKS.COL_ETAT' | translate">
+                <span [class]="'bb-badge bb-badge--' + (getNiveauSeverity(s) | severiteVariante)">{{ getNiveauLabel(s) }}</span>
+              </td>
+              <td class="bb-ph-stocks__num" [attr.data-label]="'PHARMACIEN.STOCKS.COL_PRIX' | translate">
+                {{ formatMontant(getPrixVente(s)) }}
+              </td>
+              <td [attr.data-label]="'PHARMACIEN.STOCKS.COL_PEREMPTION' | translate"
+                  [class.bb-ph-stocks__expire]="isExpireSoon(s)">
+                @if (s.peremptionLaPlusProche) {
+                  <time [attr.datetime]="s.peremptionLaPlusProche">{{ formatDate(s.peremptionLaPlusProche) }}</time>
+                } @else {
+                  <span class="bb-ph-stocks__vide">—</span>
+                }
+              </td>
+              @if (estTitulaire()) {
+                <td class="bb-ph-stocks__actions-cell">
+                  <button class="bb-ph-stocks__inventaire-btn" type="button" [disabled]="isSaving()"
+                          (click)="ouvrirInventaire(s)"
+                          [attr.aria-label]="('PHARMACIEN.STOCKS.INVENTORY_OPEN' | translate) + ' — ' + s.medicament.libelle">
+                    <i class="pi pi-clipboard" aria-hidden="true"></i>
+                    <span>{{ 'PHARMACIEN.STOCKS.INVENTORY_SHORT' | translate }}</span>
+                  </button>
+                </td>
+              }
+            </tr>
           }
-        </div>
-      }
+        </tbody>
+      </table>
     </div>
   }
 

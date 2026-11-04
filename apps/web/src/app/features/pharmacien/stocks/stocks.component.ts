@@ -23,6 +23,9 @@ import type {
 } from '@baobaoheath/shared-types';
 import { QuantiteUnitePipe } from '../../../shared/pipes/quantite-unite.pipe';
 
+type FiltreEtat = 'TOUS' | 'CRITIQUE' | 'FAIBLE' | 'NORMAL' | 'PEREMPTION';
+type ColonneTri = 'produit' | 'quantite' | 'etat' | 'prix' | 'peremption';
+
 @Component({
   selector: 'app-pharmacien-stocks',
   standalone: true,
@@ -213,13 +216,40 @@ export class PharmacienStocksComponent implements OnInit {
   }
 
   /**
-   * Le stock tel qu'il est affiche, recherche appliquee.
+   * Le stock tel qu'il est affiche : recherche, filtre d'etat et tri
+   * appliques. L'export reprend exactement ces lignes, dans cet ordre.
    *
    * `computed` et non un accesseur : l'accesseur refabriquait le tableau a
    * chaque cycle de detection, donc l'entree de `<app-export-liste>`
    * changeait d'identite sans arret.
    */
   readonly stocksFiltres = computed<StockPharmacieView[]>(() => {
+    const filtre = this.filtreEtat();
+    const { colonne, sens } = this.tri();
+    const facteur = sens === 'asc' ? 1 : -1;
+    return this.stocksRecherches()
+      .filter((s) => this.correspondAuFiltre(s, filtre))
+      .sort((a, b) => facteur * this.comparer(a, b, colonne)
+        // A egalite, ordre alphabetique stable quel que soit le sens.
+        || a.medicament.libelle.localeCompare(b.medicament.libelle, 'fr'));
+  });
+
+  readonly colonnesTableau: { id: ColonneTri; titre: string; num?: boolean }[] = [
+    { id: 'produit', titre: 'PHARMACIEN.STOCKS.COL_PRODUIT' },
+    { id: 'quantite', titre: 'PHARMACIEN.STOCKS.COL_QUANTITE', num: true },
+    { id: 'etat', titre: 'PHARMACIEN.STOCKS.COL_ETAT' },
+    { id: 'prix', titre: 'PHARMACIEN.STOCKS.COL_PRIX', num: true },
+    { id: 'peremption', titre: 'PHARMACIEN.STOCKS.COL_PEREMPTION' },
+  ];
+
+  /** Filtres d'etat : ce que le pharmacien vient chercher sur cet ecran. */
+  readonly filtresEtat: FiltreEtat[] = ['TOUS', 'CRITIQUE', 'FAIBLE', 'NORMAL', 'PEREMPTION'];
+  readonly filtreEtat = signal<FiltreEtat>('TOUS');
+  /** Par defaut : ce qu'il faut commander d'abord. */
+  readonly tri = signal<{ colonne: ColonneTri; sens: 'asc' | 'desc' }>({ colonne: 'etat', sens: 'asc' });
+
+  /** Recherche seule : sert aussi a compter les produits de chaque filtre. */
+  private readonly stocksRecherches = computed<StockPharmacieView[]>(() => {
     const q = this.searchQuery().toLowerCase();
     if (!q) return this.stocks();
     return this.stocks().filter(s =>
@@ -229,6 +259,61 @@ export class PharmacienStocksComponent implements OnInit {
       s.medicament.classeTherapeutique?.toLowerCase().includes(q)
     );
   });
+
+  readonly compteParFiltre = computed<Record<FiltreEtat, number>>(() => {
+    const liste = this.stocksRecherches();
+    const compte = { TOUS: 0, CRITIQUE: 0, FAIBLE: 0, NORMAL: 0, PEREMPTION: 0 } as Record<FiltreEtat, number>;
+    for (const f of this.filtresEtat) compte[f] = liste.filter((s) => this.correspondAuFiltre(s, f)).length;
+    return compte;
+  });
+
+  trierPar(colonne: ColonneTri): void {
+    const actuel = this.tri();
+    this.tri.set(actuel.colonne === colonne
+      ? { colonne, sens: actuel.sens === 'asc' ? 'desc' : 'asc' }
+      : { colonne, sens: 'asc' });
+  }
+
+  ariaSort(colonne: ColonneTri): 'ascending' | 'descending' | 'none' {
+    const { colonne: active, sens } = this.tri();
+    if (active !== colonne) return 'none';
+    return sens === 'asc' ? 'ascending' : 'descending';
+  }
+
+  private rangNiveau(s: StockPharmacieView): number {
+    if (s.quantite <= s.seuilAlerte) return 0;
+    if (s.quantite <= s.seuilAlerte * 2) return 1;
+    return 2;
+  }
+
+  private correspondAuFiltre(s: StockPharmacieView, filtre: FiltreEtat): boolean {
+    switch (filtre) {
+      case 'CRITIQUE': return this.rangNiveau(s) === 0;
+      case 'FAIBLE': return this.rangNiveau(s) === 1;
+      case 'NORMAL': return this.rangNiveau(s) === 2;
+      case 'PEREMPTION': return this.isExpireSoon(s);
+      default: return true;
+    }
+  }
+
+  private comparer(a: StockPharmacieView, b: StockPharmacieView, colonne: ColonneTri): number {
+    switch (colonne) {
+      case 'produit': return a.medicament.libelle.localeCompare(b.medicament.libelle, 'fr');
+      case 'quantite': return a.quantite - b.quantite;
+      case 'prix': return this.getPrixVente(a) - this.getPrixVente(b);
+      case 'peremption': {
+        // Sans date de peremption : toujours en dernier en tri croissant.
+        const ta = a.peremptionLaPlusProche ? new Date(a.peremptionLaPlusProche).getTime() : Infinity;
+        const tb = b.peremptionLaPlusProche ? new Date(b.peremptionLaPlusProche).getTime() : Infinity;
+        return ta === tb ? 0 : ta < tb ? -1 : 1;
+      }
+      case 'etat':
+      default:
+        // Meme niveau : le plus proche de la rupture d'abord.
+        return this.rangNiveau(a) - this.rangNiveau(b)
+          || a.quantite / Math.max(a.seuilAlerte, 1) - b.quantite / Math.max(b.seuilAlerte, 1);
+    }
+  }
 
   reapprovisionner() {
     if (!this.formReappro.idMedicament || !this.formReappro.quantiteAjoutee) {
@@ -380,13 +465,6 @@ export class PharmacienStocksComponent implements OnInit {
     if (s.quantite <= s.seuilAlerte) return this.i18n.t('PHARMACIEN.STOCKS.NIVEAU_CRITIQUE');
     if (s.quantite <= s.seuilAlerte * 2) return this.i18n.t('PHARMACIEN.STOCKS.NIVEAU_FAIBLE');
     return this.i18n.t('PHARMACIEN.STOCKS.NIVEAU_NORMAL');
-  }
-
-  getBarWidth(s: StockPharmacieView): number { return Math.min(Math.round((s.quantite / (s.seuilAlerte * 4)) * 100), 100); }
-  getBarColor(s: StockPharmacieView): string {
-    if (s.quantite <= s.seuilAlerte) return '#EF4444';
-    if (s.quantite <= s.seuilAlerte * 2) return '#F97316';
-    return '#3EBB70';
   }
 
   formatDate(d?: HorodatageApi | null): string {
