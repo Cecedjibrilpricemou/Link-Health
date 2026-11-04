@@ -168,6 +168,9 @@ test("3. Patiente — retrouve son ordonnance, devoile son code et l'imprime", a
 
 test('4. Pharmacien — voit l ordonnance en attente et la delivre', async ({ page }) => {
   await login(page, E2E.pharmacien.email);
+  // Le pharmacien arrive sur son tableau de bord, puis ouvre les ordonnances.
+  await expect(page).toHaveURL(/\/pharmacien\/tableau-de-bord/);
+  await page.goto('/pharmacien/ordonnances');
   await expect(page).toHaveURL(/\/pharmacien\/ordonnances/);
 
   // Le scanner camera s'ouvre et se referme proprement. Sans camera (CI,
