@@ -1,5 +1,5 @@
 // features/admin/structures/structures.component.ts
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, HostListener, inject, signal, OnInit } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -22,6 +22,25 @@ interface MotDePasseAffiche {
   adminTelephone: string;
   motDePasse: string;
   emailEnvoye?: string;
+}
+
+type FiltreEtatStructure = 'TOUS' | 'ACTIVES' | 'INACTIVES';
+
+const ICONES_TYPE: Record<string, string> = {
+  POSTE: 'pi-map-marker',
+  CENTRE: 'pi-home',
+  HOPITAL_PREF: 'pi-building',
+  HOPITAL_REG: 'pi-building',
+  CHU: 'pi-building-columns',
+  CLINIQUE: 'pi-heart',
+  LABORATOIRE: 'pi-search-plus',
+  PHARMACIE: 'pi-plus-circle',
+  ASSURANCE: 'pi-shield',
+};
+
+/** Recherche insensible a la casse et aux accents (« Labé » = « labe »). */
+function normaliser(v: string): string {
+  return v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 @Component({
@@ -125,6 +144,41 @@ export class StructuresComponent implements OnInit {
     { titre: 'EXPORT.COL.ETAT', valeur: (s) => (s.estActive ? 'Active' : 'Inactive') },
     { titre: 'EXPORT.COL.CREEE_LE', valeur: (s) => new Date(s.creeLe) },
   ];
+
+  // ── Recherche, filtres, menu d'actions ────────────────────────
+  // L'API renvoie toutes les structures d'un coup : filtrer ici est exact.
+  readonly recherche = signal('');
+  readonly filtreType = signal('');
+  readonly filtreEtat = signal<FiltreEtatStructure>('TOUS');
+  readonly etats: FiltreEtatStructure[] = ['TOUS', 'ACTIVES', 'INACTIVES'];
+
+  /** Ce que la liste affiche, et ce que l'export reprend. */
+  readonly structuresFiltrees = computed<StructureAdminView[]>(() => {
+    const q = normaliser(this.recherche().trim());
+    const type = this.filtreType();
+    const etat = this.filtreEtat();
+    return this.structures().filter((s) =>
+      (!type || s.type === type)
+      && (etat === 'TOUS' || (etat === 'ACTIVES') === s.estActive)
+      && (!q || [s.nom, s.prefecture, s.telephone ?? ''].some((v) => normaliser(v).includes(q))));
+  });
+
+  /** La ligne dont le menu d'actions est ouvert (une seule a la fois). */
+  readonly menuOuvert = signal<string | null>(null);
+
+  basculerMenu(id: string, event?: Event) {
+    event?.stopPropagation();
+    this.menuOuvert.update((v) => (v === id ? null : id));
+  }
+
+  @HostListener('document:keydown.escape')
+  @HostListener('document:click')
+  fermerMenu() { this.menuOuvert.set(null); }
+
+  /** Une icone par type : un poste de sante n'est pas un CHU. */
+  iconeType(type: string): string {
+    return ICONES_TYPE[type] ?? 'pi-building';
+  }
 
   ngOnInit() { this.loadStructures(); }
 
@@ -254,6 +308,7 @@ export class StructuresComponent implements OnInit {
 
   // ── Demander confirmation avant désactivation ─────────────────
   demanderDesactivation(s: StructureAdminView) {
+    this.menuOuvert.set(null);
     this.confirmDesactiver.set(s);
   }
 
@@ -282,6 +337,7 @@ export class StructuresComponent implements OnInit {
 
   // ── Réactiver une structure ───────────────────────────────────
   reactiver(s: StructureAdminView) {
+    this.menuOuvert.set(null);
     this.isToggling.set(s.id);
     this.adminService.updateStructure(s.id, { estActive: true }).subscribe({
       next: () => {
