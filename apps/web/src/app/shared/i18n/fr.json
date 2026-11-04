@@ -2027,7 +2027,16 @@
       "TYPE_GROUP_CENTRE": "Centres de Santé",
       "TYPE_GROUP_POSTE": "Postes de Santé",
       "TYPE_GROUP_CLINIQUE": "Cliniques Privées",
-      "TYPE_GROUP_PHARMACIE": "Pharmacies"
+      "TYPE_GROUP_PHARMACIE": "Pharmacies",
+      "DEF_PATIENTS": "Patients inscrits ; avec une préfecture choisie, ceux qui y résident.",
+      "DEF_CONSULTATIONS": "Consultations enregistrées, tous statuts confondus.",
+      "DEF_VACCINATIONS": "Doses administrées (un patient peut en avoir plusieurs).",
+      "DEF_REFERENCEMENTS": "Patients orientés vers une autre structure.",
+      "DEF_ASC": "Agents de santé communautaire inscrits.",
+      "STRUCTURES_SOINS_TITLE": "Structures de soins actives",
+      "DEF_STRUCTURES": "Postes, centres, hôpitaux, CHU et cliniques en activité. Hors pharmacies, laboratoires, assureurs et structures désactivées.",
+      "DEF_JAUGE": "{{n}} patient(s) sur {{total}} ont reçu au moins une dose.",
+      "UN_SEUL_STATUT": "Toutes les consultations ({{n}}) ont le statut « {{statut}} »."
     },
     "JOURNAL": {
       "ACTION_LABEL": {

@@ -747,3 +747,11 @@
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bb-danger) 40%, transparent); }
   50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bb-danger) 0%, transparent); }
 }
+
+// Definition de chaque indicateur : ce qu'il compte, en une ligne.
+.bb-kpi__def { margin-top: 4px; font-size: 12px; line-height: 1.35; color: var(--bb-text-muted); }
+.bb-kpi--featured .bb-kpi__def { color: color-mix(in srgb, #fff 78%, transparent); }
+.bb-panel__def { margin: -4px 0 12px; font-size: 12.5px; line-height: 1.4; color: var(--bb-text-muted); }
+
+// Un seul statut : une phrase plutot qu'un graphique a une barre.
+.bb-unique { margin: 8px 0 4px; font-size: 15px; line-height: 1.5; color: var(--bb-text-primary); }

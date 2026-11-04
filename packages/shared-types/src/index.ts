@@ -972,7 +972,10 @@ export interface ExportFilters {
 export interface AnalyticsKpisView {
   totalPatients: number;
   totalConsultations: number;
+  /** Doses administrees. */
   totalVaccinations: number;
+  /** Patients ayant recu au moins une dose : base de la jauge de couverture. */
+  patientsVaccines: number;
   totalReferencements: number;
   totalAsc: number;
 }

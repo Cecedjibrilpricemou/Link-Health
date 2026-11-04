@@ -18,11 +18,22 @@ export async function getDashboardGlobal(filters: AnalyticsFilters) {
 
 async function _getDashboardGlobal(filters: AnalyticsFilters) {
     const where = buildDateWhere(filters);
+    const periode = filters.debut || filters.fin ? buildPeriodFilter(filters) : undefined;
+    // La prefecture filtre **tous** les indicateurs, par le lieu de residence
+    // du patient (ASC : prefecture de leur structure). Elle ne filtrait que
+    // les patients et les consultations : choisir Kindia mettait un nombre de
+    // patients de Kindia a cote de vaccinations nationales.
+    const patientDeLaPrefecture = filters.prefecture ? { patient: { prefecture: filters.prefecture } } : {};
+    const whereVaccination: Prisma.VaccinationWhereInput = {
+        ...patientDeLaPrefecture,
+        ...(periode ? { administreLe: periode } : {}),
+    };
 
     const [
         totalPatients,
         totalConsultations,
         totalVaccinations,
+        patientsVaccines,
         totalReferencements,
         consultationsParStatut,
         topPathologies,
@@ -32,15 +43,15 @@ async function _getDashboardGlobal(filters: AnalyticsFilters) {
             where: filters.prefecture ? { prefecture: filters.prefecture } : {},
         }),
         prisma.consultation.count({ where }),
-        prisma.vaccination.count({
-            where: filters.debut || filters.fin
-                ? { administreLe: buildPeriodFilter(filters) }
-                : {},
-        }),
+        prisma.vaccination.count({ where: whereVaccination }),
+        // Patients vaccines au moins une fois : c'est ce que la jauge
+        // rapporte au nombre de patients. Le nombre de doses n'est pas un taux.
+        prisma.vaccination.groupBy({ by: ['idPatient'], where: whereVaccination }),
         prisma.referencement.count({
-            where: filters.debut || filters.fin
-                ? { creeLe: buildPeriodFilter(filters) }
-                : {},
+            where: {
+                ...(filters.prefecture ? { consultation: patientDeLaPrefecture } : {}),
+                ...(periode ? { creeLe: periode } : {}),
+            },
         }),
         prisma.consultation.groupBy({
             by: ['statut'],
@@ -50,10 +61,13 @@ async function _getDashboardGlobal(filters: AnalyticsFilters) {
         prisma.diagnostic.groupBy({
             by: ['libelle'],
             _count: { libelle: true },
+            where: Object.keys(where).length > 0 ? { consultation: where } : {},
             orderBy: { _count: { libelle: 'desc' } },
             take: 10,
         }),
-        prisma.ascProfile.count(),
+        prisma.ascProfile.count({
+            where: filters.prefecture ? { structure: { prefecture: filters.prefecture } } : {},
+        }),
     ]);
 
     return {
@@ -61,6 +75,7 @@ async function _getDashboardGlobal(filters: AnalyticsFilters) {
             totalPatients,
             totalConsultations,
             totalVaccinations,
+            patientsVaccines: patientsVaccines.length,
             totalReferencements,
             totalAsc,
         },
