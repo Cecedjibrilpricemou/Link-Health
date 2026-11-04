@@ -104,6 +104,9 @@ test('Pharmacie — catalogue, stock, vente, agents et cloisonnement entre offic
   await expect(page.getByRole('heading', { name: /Inventaire par lot/ })).toBeVisible();
 
   await page.goto('/pharmacien/caisse');
+  // Le produit cree est propose a la caisse, une seule fois.
+  await page.locator('#c-med-0').fill(libelleProduit);
+  await expect(page.locator('#c-med-0-liste [role="option"]', { hasText: libelleProduit })).toHaveCount(1);
   await choisirDansListe(page, 'c-med-0', libelleProduit);
   await page.locator('#c-qte-0').fill('1');
   const venteDepuisCaisse = page.waitForResponse((response) =>
@@ -206,8 +209,8 @@ test('Pharmacie — catalogue, stock, vente, agents et cloisonnement entre offic
 
   await page.goto('/pharmacien/caisse');
   await expect(page.locator('.bb-page-head__title')).toBeVisible();
-  await page.locator('#c-med-0').fill(libelleProduit);
-  await expect(page.locator('#c-med-0-liste [role="option"]', { hasText: libelleProduit })).toHaveCount(1);
+  // La caisse est cloturee a ce stade : le panier reste verrouille.
+  await expect(page.locator('#c-med-0')).toBeDisabled();
 
   await page.goto('/pharmacien/agents');
   await expect(page.locator('.bb-page-head__title')).toBeVisible();
