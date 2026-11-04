@@ -60,6 +60,7 @@
             </div>
             <div class="bb-kpi__value">{{ k.valeur }}</div>
             <div class="bb-kpi__label">{{ k.labelKey | translate }}</div>
+            <div class="bb-kpi__def">{{ k.defKey | translate }}</div>
           </mat-card>
         }
       }
@@ -80,6 +81,10 @@
             <mat-icon fontSet="pi" fontIcon="pi-chart-bar" aria-hidden="true"></mat-icon>
             <p>{{ 'ADMIN.ANALYTICS.NO_DATA' | translate }}</p>
           </div>
+        } @else if (dashboard()!.consultationsParStatut.length === 1) {
+          <p class="bb-unique">
+            {{ 'ADMIN.ANALYTICS.UN_SEUL_STATUT' | translate: { n: dashboard()!.consultationsParStatut[0].count, statut: getStatutLabel(dashboard()!.consultationsParStatut[0].statut) } }}
+          </p>
         } @else {
           <div class="bb-cols">
             @for (s of dashboard()!.consultationsParStatut; track s.statut) {
@@ -102,11 +107,12 @@
 
       <mat-card appearance="outlined" class="bb-panel">
         <div class="bb-panel__head">
-          <h2 class="bb-panel__title">{{ 'ADMIN.ANALYTICS.STRUCTURES_TITLE' | translate }}</h2>
+          <h2 class="bb-panel__title">{{ 'ADMIN.ANALYTICS.STRUCTURES_SOINS_TITLE' | translate }}</h2>
           @if (statsStructures()) {
             <span class="bb-chip">{{ statsStructures()!.total }}</span>
           }
         </div>
+        <p class="bb-panel__def">{{ 'ADMIN.ANALYTICS.DEF_STRUCTURES' | translate }}</p>
 
         @if (isLoadingStructures()) {
           <div class="bb-panel__skeleton"></div>
@@ -177,6 +183,7 @@
             <span class="bb-gauge__cap">{{ 'ADMIN.ANALYTICS.KPI_VACCINATIONS' | translate }}</span>
           </div>
         </div>
+        <p class="bb-panel__def">{{ 'ADMIN.ANALYTICS.DEF_JAUGE' | translate: { n: dashboard()?.kpis?.patientsVaccines ?? 0, total: dashboard()?.kpis?.totalPatients ?? 0 } }}</p>
       </mat-card>
 
     </section>

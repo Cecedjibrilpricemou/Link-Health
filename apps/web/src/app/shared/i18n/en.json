@@ -1536,7 +1536,16 @@
       "TYPE_GROUP_CENTRE": "Health Centers",
       "TYPE_GROUP_POSTE": "Health Posts",
       "TYPE_GROUP_CLINIQUE": "Private Clinics",
-      "TYPE_GROUP_PHARMACIE": "Pharmacies"
+      "TYPE_GROUP_PHARMACIE": "Pharmacies",
+      "DEF_PATIENTS": "Registered patients; with a prefecture selected, those living there.",
+      "DEF_CONSULTATIONS": "Recorded consultations, all statuses.",
+      "DEF_VACCINATIONS": "Doses given (a patient may have several).",
+      "DEF_REFERENCEMENTS": "Patients referred to another facility.",
+      "DEF_ASC": "Registered community health workers.",
+      "STRUCTURES_SOINS_TITLE": "Active care facilities",
+      "DEF_STRUCTURES": "Active health posts, centres, hospitals, teaching hospitals and clinics. Excludes pharmacies, laboratories, insurers and deactivated facilities.",
+      "DEF_JAUGE": "{{n}} of {{total}} patient(s) received at least one dose.",
+      "UN_SEUL_STATUT": "All consultations ({{n}}) have the status “{{statut}}”."
     },
     "JOURNAL": {
       "ACTION_LABEL": {

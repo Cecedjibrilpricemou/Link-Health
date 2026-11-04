@@ -87,19 +87,25 @@ export class AnalyticsComponent implements OnInit {
   readonly kpiCards = computed(() => {
     const k = this.dashboard()?.kpis;
     return [
-      { labelKey: 'ADMIN.ANALYTICS.KPI_PATIENTS',       valeur: k?.totalPatients ?? 0,       icon: 'pi-users',      couleur: '#3EBB70' },
-      { labelKey: 'ADMIN.ANALYTICS.KPI_CONSULTATIONS',  valeur: k?.totalConsultations ?? 0,  icon: 'pi-heart-fill', couleur: '#22C55E' },
-      { labelKey: 'ADMIN.ANALYTICS.KPI_VACCINATIONS',   valeur: k?.totalVaccinations ?? 0,   icon: 'pi-shield',     couleur: '#8B5CF6' },
-      { labelKey: 'ADMIN.ANALYTICS.KPI_REFERENCEMENTS', valeur: k?.totalReferencements ?? 0, icon: 'pi-send',       couleur: '#F97316' },
-      { labelKey: 'ADMIN.ANALYTICS.KPI_ASC',            valeur: k?.totalAsc ?? 0,            icon: 'pi-user',       couleur: '#14B8A6' }
+      { labelKey: 'ADMIN.ANALYTICS.KPI_PATIENTS', defKey: 'ADMIN.ANALYTICS.DEF_PATIENTS',       valeur: k?.totalPatients ?? 0,       icon: 'pi-users',      couleur: '#3EBB70' },
+      { labelKey: 'ADMIN.ANALYTICS.KPI_CONSULTATIONS', defKey: 'ADMIN.ANALYTICS.DEF_CONSULTATIONS',  valeur: k?.totalConsultations ?? 0,  icon: 'pi-heart-fill', couleur: '#22C55E' },
+      { labelKey: 'ADMIN.ANALYTICS.KPI_VACCINATIONS', defKey: 'ADMIN.ANALYTICS.DEF_VACCINATIONS',   valeur: k?.totalVaccinations ?? 0,   icon: 'pi-shield',     couleur: '#8B5CF6' },
+      { labelKey: 'ADMIN.ANALYTICS.KPI_REFERENCEMENTS', defKey: 'ADMIN.ANALYTICS.DEF_REFERENCEMENTS', valeur: k?.totalReferencements ?? 0, icon: 'pi-send',       couleur: '#F97316' },
+      { labelKey: 'ADMIN.ANALYTICS.KPI_ASC', defKey: 'ADMIN.ANALYTICS.DEF_ASC',            valeur: k?.totalAsc ?? 0,            icon: 'pi-user',       couleur: '#14B8A6' }
     ];
   });
 
-  /** Part des patients ayant au moins une vaccination enregistrée. */
+  /**
+   * Part des patients ayant recu au moins une dose.
+   *
+   * Le calcul divisait le nombre de **doses** par le nombre de patients :
+   * 25 doses pour 10 patients affichaient 100 %, quand 4 patients seulement
+   * etaient vaccines.
+   */
   readonly tauxVaccination = computed(() => {
     const k = this.dashboard()?.kpis;
     if (!k?.totalPatients) return 0;
-    return Math.min(100, Math.round((k.totalVaccinations / k.totalPatients) * 100));
+    return Math.min(100, Math.round(((k.patientsVaccines ?? 0) / k.totalPatients) * 100));
   });
 
   /** Arc de la jauge : rayon 52 -> circonférence ≈ 326.7. */

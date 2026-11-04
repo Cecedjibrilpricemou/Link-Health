@@ -409,6 +409,7 @@ export const swaggerDocument = {
               totalPatients: { type: 'integer' },
               totalConsultations: { type: 'integer' },
               totalVaccinations: { type: 'integer' },
+                patientsVaccines: { type: 'integer', description: 'Patients ayant recu au moins une dose' },
               totalReferencements: { type: 'integer' },
               totalAsc: { type: 'integer' },
             },
