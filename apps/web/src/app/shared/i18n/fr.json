@@ -1876,7 +1876,18 @@
       "ERR_DEACTIVATE": "Erreur lors de la désactivation.",
       "SUCCESS_REACTIVATED": "Structure « {{nom}} » réactivée.",
       "ERR_REACTIVATE": "Erreur lors de la réactivation.",
-      "TYPE_LABORATOIRE": "Laboratoire"
+      "TYPE_LABORATOIRE": "Laboratoire",
+      "RECHERCHE_PH": "Rechercher par nom, préfecture ou téléphone",
+      "RECHERCHE_ARIA": "Rechercher une structure",
+      "FILTRE_TYPE_ARIA": "Filtrer par type",
+      "TOUS_TYPES": "Tous les types",
+      "FILTRE_ETAT_ARIA": "Filtrer par état",
+      "ETAT_TOUS": "Toutes",
+      "ETAT_ACTIVES": "Actives",
+      "ETAT_INACTIVES": "Inactives",
+      "RESULTATS": "{{n}} structure(s) sur {{total}}",
+      "AUCUN_RESULTAT": "Aucune structure ne correspond à ces critères.",
+      "ACTIONS_ARIA": "Actions"
     },
     "SETTINGS": {
       "NOTICE_LINK": "Gérer les structures de santé",

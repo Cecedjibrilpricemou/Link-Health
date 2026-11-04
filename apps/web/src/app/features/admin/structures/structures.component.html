@@ -13,7 +13,7 @@
   <app-export-liste
     [titre]="'EXPORT.DOC.STRUCTURES'"
     [colonnes]="colonnes"
-    [lignes]="structures()"
+    [lignes]="structuresFiltrees()"
     [nomFichier]="'structures'" />
 
 
@@ -244,48 +244,67 @@
     </div>
   }
 
+  <!-- Recherche et filtres -->
+  <div class="bb-struct__outils">
+    <label class="bb-struct__recherche">
+      <i class="pi pi-search" aria-hidden="true"></i>
+      <span class="sr-only">{{ 'ADMIN.STRUCTURES.RECHERCHE_ARIA' | translate }}</span>
+      <input type="search" [value]="recherche()" (input)="recherche.set($any($event.target).value)"
+             [placeholder]="'ADMIN.STRUCTURES.RECHERCHE_PH' | translate" />
+    </label>
+    <label class="bb-struct__filtre">
+      <span class="sr-only">{{ 'ADMIN.STRUCTURES.FILTRE_TYPE_ARIA' | translate }}</span>
+      <select class="bb-struct__filtre-type" [value]="filtreType()" (change)="filtreType.set($any($event.target).value)">
+        <option value="">{{ 'ADMIN.STRUCTURES.TOUS_TYPES' | translate }}</option>
+        @for (opt of typeOptions; track opt.value) {
+          <option [value]="opt.value">{{ opt.label }}</option>
+        }
+      </select>
+    </label>
+    <div class="bb-struct__etats" role="group" [attr.aria-label]="'ADMIN.STRUCTURES.FILTRE_ETAT_ARIA' | translate">
+      @for (e of etats; track e) {
+        <button type="button" class="bb-struct__etat" [attr.data-etat]="e"
+                [class.bb-struct__etat--actif]="filtreEtat() === e"
+                [attr.aria-pressed]="filtreEtat() === e"
+                (click)="filtreEtat.set(e)">
+          {{ ('ADMIN.STRUCTURES.ETAT_' + e) | translate }}
+        </button>
+      }
+    </div>
+  </div>
+
   @if (isLoading()) {
     @for (i of [1,2,3,4]; track i) { <div class="bb-skeleton" style="height:90px;border-radius:8px"></div> }
   } @else {
+    <p class="bb-struct__resultats" role="status" aria-live="polite">
+      {{ 'ADMIN.STRUCTURES.RESULTATS' | translate: { n: structuresFiltrees().length, total: structures().length } }}
+    </p>
+    @if (structuresFiltrees().length === 0) {
+      <div class="bb-struct__aucun">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <p>{{ 'ADMIN.STRUCTURES.AUCUN_RESULTAT' | translate }}</p>
+      </div>
+    }
     <div class="bb-struct__list">
-      @for (s of structures(); track s.id) {
-        <div class="bb-struct__item" [class.bb-struct__item--inactive]="!s.estActive">
+      @for (s of structuresFiltrees(); track s.id) {
+        <div class="bb-struct__item" [attr.data-id]="s.id" [class.bb-struct__item--inactive]="!s.estActive">
           <div class="bb-struct__item-left">
-            <div class="bb-struct__icon">🏥</div>
+            <div class="bb-struct__icon" [attr.data-type]="s.type">
+              <i class="pi" [ngClass]="iconeType(s.type)" aria-hidden="true"></i>
+            </div>
             <div>
               <div class="bb-struct__name-row">
                 <p class="bb-struct__name">{{ s.nom }}</p>
                 @if (!s.estActive) {
-                  <span class="bb-struct__badge-inactive"><i class="pi pi-ban"></i> {{ 'ADMIN.STRUCTURES.INACTIVE_BADGE' | translate }}</span>
+                  <span class="bb-struct__badge-inactive"><i class="pi pi-ban" aria-hidden="true"></i> {{ 'ADMIN.STRUCTURES.INACTIVE_BADGE' | translate }}</span>
                 } @else {
-                  <span class="bb-struct__badge-active"><i class="pi pi-check-circle"></i> {{ 'ADMIN.STRUCTURES.ACTIVE_BADGE' | translate }}</span>
+                  <span class="bb-struct__badge-active"><i class="pi pi-check-circle" aria-hidden="true"></i> {{ 'ADMIN.STRUCTURES.ACTIVE_BADGE' | translate }}</span>
                 }
               </div>
-              <p class="bb-struct__meta">{{ s.prefecture }} · {{ getTypeLabel(s.type) }}</p>
+              <p class="bb-struct__meta">{{ getTypeLabel(s.type) }} · {{ s.prefecture }}</p>
             </div>
           </div>
           <div class="bb-struct__item-actions">
-            @if (s.estActive) {
-              <button
-                class="bb-struct__deactivate-btn"
-                (click)="demanderDesactivation(s)"
-                [disabled]="isToggling() === s.id"
-                [attr.title]="'ADMIN.STRUCTURES.DEACTIVATE_BTN' | translate"
-              >
-                <i [class]="isToggling() === s.id ? 'pi pi-spinner pi-spin' : 'pi pi-ban'"></i>
-                {{ 'ADMIN.STRUCTURES.DEACTIVATE_BTN' | translate }}
-              </button>
-            } @else {
-              <button
-                class="bb-struct__activate-btn"
-                (click)="reactiver(s)"
-                [disabled]="isToggling() === s.id"
-                [attr.title]="'ADMIN.STRUCTURES.REACTIVATE_BTN' | translate"
-              >
-                <i [class]="isToggling() === s.id ? 'pi pi-spinner pi-spin' : 'pi pi-check-circle'"></i>
-                {{ 'ADMIN.STRUCTURES.REACTIVATE_BTN' | translate }}
-              </button>
-            }
             <!-- Le dossier reglementaire : completer un dossier ancien, et
                  **remplacer un agrement renouvele**. Les structures entrees
                  avant cette regle n'ont aucune piece, et la migration ne
@@ -296,9 +315,39 @@
               [attr.aria-expanded]="dossierOuvert() === s.id"
               [attr.title]="'AGREMENT.DOSSIER.TITRE' | translate"
             >
-              <i [class]="dossierOuvert() === s.id ? 'pi pi-chevron-up' : 'pi pi-folder-open'"></i>
+              <i [class]="dossierOuvert() === s.id ? 'pi pi-chevron-up' : 'pi pi-folder-open'" aria-hidden="true"></i>
               {{ 'AGREMENT.DOSSIER.TITRE' | translate }}
             </button>
+            <!-- Couper une structure coupe tous ses comptes : l'action n'est
+                 plus un bouton rouge sur chaque ligne, elle passe par un menu
+                 puis par une confirmation. -->
+            <div class="bb-struct__menu-wrap">
+              <button type="button" class="bb-struct__menu-btn"
+                      aria-haspopup="menu"
+                      [attr.aria-expanded]="menuOuvert() === s.id"
+                      [attr.aria-label]="('ADMIN.STRUCTURES.ACTIONS_ARIA' | translate) + ' — ' + s.nom"
+                      [disabled]="isToggling() === s.id"
+                      (click)="basculerMenu(s.id, $event)">
+                <i [class]="isToggling() === s.id ? 'pi pi-spinner pi-spin' : 'pi pi-ellipsis-v'" aria-hidden="true"></i>
+              </button>
+              @if (menuOuvert() === s.id) {
+                <div class="bb-struct__menu" role="menu" (click)="$event.stopPropagation()">
+                  @if (s.estActive) {
+                    <button type="button" role="menuitem" data-action="desactiver"
+                            class="bb-struct__menu-item bb-struct__menu-item--danger"
+                            (click)="demanderDesactivation(s)">
+                      <i class="pi pi-ban" aria-hidden="true"></i> {{ 'ADMIN.STRUCTURES.DEACTIVATE_BTN' | translate }}
+                    </button>
+                  } @else {
+                    <button type="button" role="menuitem" data-action="reactiver"
+                            class="bb-struct__menu-item"
+                            (click)="reactiver(s)">
+                      <i class="pi pi-check-circle" aria-hidden="true"></i> {{ 'ADMIN.STRUCTURES.REACTIVATE_BTN' | translate }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
           </div>
         </div>
 

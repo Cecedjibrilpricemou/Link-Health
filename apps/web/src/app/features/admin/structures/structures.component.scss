@@ -128,6 +128,7 @@
     width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0;
     background: var(--str-accent-soft);
     display: flex; align-items: center; justify-content: center; font-size: 20px;
+    color: var(--str-accent);
   }
 
   &__name-row {
@@ -151,31 +152,73 @@
   &__badge-active   { color: var(--str-accent); background: var(--bb-success-bg); border-color: var(--bb-success-border); }
   &__badge-inactive { color: var(--bb-danger); background: var(--bb-danger-bg); border-color: var(--bb-danger-border); }
 
-  // ── Boutons action ────────────────────────────────────────────
-  &__deactivate-btn, &__activate-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 8px 14px; border-radius: var(--bb-radius);
-    font-family: var(--bb-font-display); font-size: 12.5px; font-weight: 700; cursor: pointer;
-    border: 1px solid transparent; background: transparent;
-    transition: background var(--bb-transition), color var(--bb-transition), border-color var(--bb-transition), transform var(--bb-transition);
-    &:active:not(:disabled) { transform: scale(0.97); }
-    &:disabled { opacity: 0.5; cursor: not-allowed; }
-    i { font-size: 12px; }
+  // ── Menu d'actions ────────────────────────────────────────────
+  // Desactiver coupe tous les comptes de la structure : l'action est rangee
+  // dans un menu, puis confirmee, au lieu d'un bouton rouge sur chaque ligne.
+  &__menu-wrap { position: relative; flex: 0 0 auto !important; }
+  // La ligne dont le menu est ouvert passe devant les suivantes.
+  &__item:has(.bb-struct__menu) { position: relative; z-index: 5; }
+
+  &__menu-btn {
+    width: 40px; height: 40px; border-radius: var(--bb-radius); display: inline-flex;
+    align-items: center; justify-content: center; cursor: pointer;
+    background: transparent; border: 1px solid var(--bb-border); color: var(--bb-text-secondary);
+    &:hover:not(:disabled), &[aria-expanded='true'] { background: var(--bb-surface-1); color: var(--bb-text-primary); }
+    &:focus-visible { outline: var(--bb-focus-ring); outline-offset: 2px; }
+    &:disabled { opacity: .5; cursor: not-allowed; }
   }
 
-  // Desactiver : contour discret au repos, rouge plein au survol (action
-  // destructive : elle ne doit pas attirer l'oeil avant d'etre visee).
-  &__deactivate-btn {
-    border-color: var(--bb-danger-border); color: var(--bb-danger);
-    &:hover:not(:disabled) { background: var(--bb-danger); border-color: var(--bb-danger); color: #fff;
-      :host-context([data-theme="dark"]) & { color: var(--bb-deep); } // ✦ Refonte UI
-    }
+  &__menu {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 190px; padding: 6px;
+    background: var(--bb-surface-card); border: 1px solid var(--bb-border);
+    border-radius: var(--bb-radius-lg); box-shadow: var(--bb-shadow-hover);
   }
 
-  &__activate-btn {
-    border-color: var(--bb-success-border); color: var(--str-accent); background: var(--bb-success-bg);
-    &:hover:not(:disabled) { background: var(--bb-primary); border-color: var(--bb-primary); color: #fff; }
+  &__menu-item {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; border: none;
+    background: none; border-radius: var(--bb-radius); cursor: pointer; text-align: left;
+    font-size: 13.5px; font-weight: 600; color: var(--bb-text-primary);
+    &:hover, &:focus-visible { background: var(--bb-surface-1); outline: none; }
+    &--danger { color: var(--bb-danger); &:hover, &:focus-visible { background: var(--bb-danger-bg); } }
   }
+
+  // ── Recherche et filtres ──────────────────────────────────────
+  &__outils { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+
+  &__recherche {
+    flex: 1 1 260px; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+    background: var(--bb-surface-card); border: 1px solid var(--bb-border); border-radius: var(--bb-radius-pill);
+    i { color: var(--bb-text-muted); }
+    input { flex: 1; min-width: 0; border: none; background: none; font: inherit; font-size: 14px;
+      color: var(--bb-text-primary); outline: none; }
+    &:focus-within { border-color: var(--bb-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bb-primary) 18%, transparent); }
+  }
+
+  &__filtre select {
+    min-height: 44px; padding: 0 12px; border-radius: var(--bb-radius-pill); border: 1px solid var(--bb-border);
+    background: var(--bb-surface-card); color: var(--bb-text-primary); font: inherit; font-size: 14px; cursor: pointer;
+    &:focus-visible { outline: var(--bb-focus-ring); outline-offset: 2px; }
+  }
+
+  &__etats { display: inline-flex; gap: 4px; padding: 4px; border-radius: var(--bb-radius-pill);
+    background: var(--bb-surface-1); border: 1px solid var(--bb-border-light); }
+
+  &__etat {
+    min-height: 36px; padding: 0 14px; border: none; border-radius: var(--bb-radius-pill); cursor: pointer;
+    background: none; color: var(--bb-text-secondary); font-size: 13px; font-weight: 700;
+    &:hover { color: var(--bb-text-primary); }
+    &--actif { background: var(--bb-surface-card); color: var(--bb-text-primary); box-shadow: var(--bb-shadow-xs); }
+    &:focus-visible { outline: var(--bb-focus-ring); outline-offset: 2px; }
+  }
+
+  &__resultats { font-size: 13px; color: var(--bb-text-muted); margin: 4px 0 10px; }
+
+  &__aucun {
+    display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; text-align: center;
+    border: 1.5px dashed var(--bb-border); border-radius: var(--bb-radius-xl); color: var(--bb-text-secondary);
+    i { font-size: 22px; } p { margin: 0; font-weight: 600; }
+  }
+
   // ✦ Refonte UI : l'accès au dossier réglementaire depuis la liste.
   //
   // Le dossier se déplie sous sa ligne plutôt que dans une modale : on garde

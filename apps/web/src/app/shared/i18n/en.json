@@ -1385,7 +1385,18 @@
       "ERR_DEACTIVATE": "Error while deactivating.",
       "SUCCESS_REACTIVATED": "Facility \"{{nom}}\" reactivated.",
       "ERR_REACTIVATE": "Error while reactivating.",
-      "TYPE_LABORATOIRE": "Laboratory"
+      "TYPE_LABORATOIRE": "Laboratory",
+      "RECHERCHE_PH": "Search by name, prefecture or phone",
+      "RECHERCHE_ARIA": "Search a facility",
+      "FILTRE_TYPE_ARIA": "Filter by type",
+      "TOUS_TYPES": "All types",
+      "FILTRE_ETAT_ARIA": "Filter by status",
+      "ETAT_TOUS": "All",
+      "ETAT_ACTIVES": "Active",
+      "ETAT_INACTIVES": "Inactive",
+      "RESULTATS": "{{n}} of {{total}} facilities",
+      "AUCUN_RESULTAT": "No facility matches these criteria.",
+      "ACTIONS_ARIA": "Actions"
     },
     "SETTINGS": {
       "NOTICE_LINK": "Manage health facilities",
