@@ -47,15 +47,31 @@ export class TableauDeBordComponent implements OnInit {
   ];
   isLoading = signal(true);
 
-  /** La part de chaque moyen de paiement, pour la barre de repartition. */
+  readonly periodes: ('JOUR' | 'MOIS' | 'ANNEE')[] = ['JOUR', 'MOIS', 'ANNEE'];
+
+  /**
+   * La part de chaque moyen de paiement sur la periode, pour la barre de
+   * repartition. Rapportee au total encaisse, pas au chiffre d'affaires :
+   * la part prise en charge par un assureur n'est pas encaissee au comptoir.
+   */
   readonly parts = computed(() => {
-    const t = this.tb();
-    if (!t || t.chiffreDuJourGnf === 0) return [];
-    return t.encaissementsParMode.map((m) => ({
-      ...m,
-      pourcent: Math.round((m.montantGnf / t.chiffreDuJourGnf) * 100),
-    }));
+    const modes = this.rapport()?.encaissementsParMode ?? [];
+    const total = modes.reduce((s, m) => s + m.montantGnf, 0);
+    if (total === 0) return [];
+    return modes.map((m) => ({ ...m, pourcent: Math.round((m.montantGnf / total) * 100) }));
   });
+
+  /** Panier moyen de la periode (ventes payees seulement, au franc pres). */
+  readonly panierMoyen = computed(() => {
+    const r = this.rapport();
+    return r && r.nombreVentesPayees > 0 ? Math.round(r.chiffreAffairesGnf / r.nombreVentesPayees) : 0;
+  });
+
+  choisirPeriode(p: 'JOUR' | 'MOIS' | 'ANNEE') {
+    if (this.periodeRapport() === p) return;
+    this.periodeRapport.set(p);
+    this.chargerRapport();
+  }
 
   /** La quantite du produit le plus vendu, qui sert d'echelle aux barres. */
   readonly maxQuantite = computed(() =>

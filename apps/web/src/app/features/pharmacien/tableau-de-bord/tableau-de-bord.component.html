@@ -27,43 +27,18 @@
     </div>
   } @else {
 
-    <!-- ── Les chiffres du jour ───────────────────────────────────── -->
-    <div class="bb-tdb__stats">
-      <article class="bb-tdb__stat bb-tdb__stat--primaire">
-        <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.CHIFFRE' | translate }}</span>
-        <span class="bb-tdb__stat-valeur">{{ tb()!.chiffreDuJourGnf | number }}</span>
-        <span class="bb-tdb__stat-unite">GNF</span>
-      </article>
-
-      <article class="bb-tdb__stat">
-        <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.VENTES' | translate }}</span>
-        <span class="bb-tdb__stat-valeur">{{ tb()!.nombreVentesDuJour }}</span>
-      </article>
-
-      <article class="bb-tdb__stat">
-        <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.PANIER' | translate }}</span>
-        <span class="bb-tdb__stat-valeur">{{ tb()!.panierMoyenGnf | number }}</span>
-        <span class="bb-tdb__stat-unite">GNF</span>
-      </article>
-
-      <article class="bb-tdb__stat" [class.bb-tdb__stat--alerte]="tb()!.ruptures.length > 0">
-        <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.RUPTURES' | translate }}</span>
-        <span class="bb-tdb__stat-valeur">{{ tb()!.ruptures.length }}</span>
-      </article>
-
-      <article class="bb-tdb__stat" [class.bb-tdb__stat--alerte]="tb()!.lotsAPerimer > 0">
-        <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.PEREMPTIONS' | translate }}</span>
-        <span class="bb-tdb__stat-valeur">{{ tb()!.lotsAPerimer }}</span>
-      </article>
-    </div>
-
+    <!-- ── Activité de l'officine ─────────────────────────────────────
+         Une seule source pour les chiffres de vente : le rapport financier,
+         sur la periode choisie. Le bandeau « du jour » repetait le rapport
+         regle sur « Jour », avec des encaissements calcules autrement. -->
     <section class="bb-tdb__rapport">
       <div class="bb-tdb__rapport-tete">
         <h2 class="bb-tdb__section">{{ 'PHARMACIEN.TDB.RAPPORT_CAISSE' | translate }}</h2>
-        <div class="bb-tdb__rapport-filtres">
-          @for (p of ['JOUR', 'MOIS', 'ANNEE']; track p) {
-            <button matButton type="button" [disabled]="periodeRapport() === p"
-                    (click)="periodeRapport.set($any(p)); chargerRapport()">
+        <div class="bb-tdb__rapport-filtres" role="group" [attr.aria-label]="'PHARMACIEN.TDB.PERIODE_ARIA' | translate">
+          @for (p of periodes; track p) {
+            <button matButton type="button" [attr.aria-pressed]="periodeRapport() === p"
+                    [class.bb-tdb__periode--active]="periodeRapport() === p"
+                    (click)="choisirPeriode(p)">
               {{ ('PHARMACIEN.TDB.PERIODE_' + p) | translate }}
             </button>
           }
@@ -72,24 +47,46 @@
       @if (rapport(); as r) {
         <p class="bb-tdb__muted">{{ r.dateDebut | date:'dd/MM/yyyy' }} – {{ r.dateFin | date:'dd/MM/yyyy' }}</p>
         <div class="bb-tdb__stats">
-          <article class="bb-tdb__stat bb-tdb__stat--primaire">
-            <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.CHIFFRE' | translate }}</span>
+          <article class="bb-tdb__stat bb-tdb__stat--primaire" data-stat="chiffre">
+            <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.CHIFFRE_AFFAIRES' | translate }}</span>
             <span class="bb-tdb__stat-valeur">{{ r.chiffreAffairesGnf | number }}</span>
             <span class="bb-tdb__stat-unite">GNF</span>
           </article>
-          <article class="bb-tdb__stat">
+          <article class="bb-tdb__stat" data-stat="ventes">
             <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.VENTES' | translate }}</span>
             <span class="bb-tdb__stat-valeur">{{ r.nombreVentesPayees }}</span>
           </article>
-          <article class="bb-tdb__stat">
+          <article class="bb-tdb__stat" data-stat="panier">
+            <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.PANIER' | translate }}</span>
+            <span class="bb-tdb__stat-valeur">{{ panierMoyen() | number }}</span>
+            <span class="bb-tdb__stat-unite">GNF</span>
+          </article>
+          <article class="bb-tdb__stat" data-stat="attente">
             <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.EN_ATTENTE' | translate }}</span>
             <span class="bb-tdb__stat-valeur">{{ r.nombreVentesEnAttente }}</span>
           </article>
-          <article class="bb-tdb__stat" [class.bb-tdb__stat--alerte]="r.nombreVentesAnnulees > 0">
+          <article class="bb-tdb__stat" data-stat="annulees" [class.bb-tdb__stat--alerte]="r.nombreVentesAnnulees > 0">
             <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.ANNULEES' | translate }}</span>
             <span class="bb-tdb__stat-valeur">{{ r.nombreVentesAnnulees }}</span>
           </article>
         </div>
+
+        <h3 class="bb-tdb__rapport-sous-titre">{{ 'PHARMACIEN.TDB.ENCAISSEMENTS' | translate }}</h3>
+        @if (parts().length === 0) {
+          <p class="bb-tdb__muted">{{ 'PHARMACIEN.TDB.AUCUN_ENCAISSEMENT_PERIODE' | translate }}</p>
+        } @else {
+          @for (m of parts(); track m.modePaiement) {
+            <div class="bb-tdb__mode">
+              <span class="bb-tdb__mode-nom">{{ 'PAIEMENT.MODE.' + m.modePaiement | translate }}</span>
+              <span class="bb-tdb__mode-nombre">{{ m.nombre }} {{ 'PHARMACIEN.TDB.VENTES_COURT' | translate }}</span>
+              <div class="bb-tdb__jauge">
+                <div class="bb-tdb__jauge-part" [style.width.%]="m.pourcent"></div>
+              </div>
+              <span class="bb-tdb__mode-montant">{{ m.montantGnf | number }} GNF</span>
+            </div>
+          }
+        }
+
         @if (r.sessions.length > 0) {
           <h3 class="bb-tdb__rapport-sous-titre">{{ 'PHARMACIEN.TDB.SESSIONS' | translate }}</h3>
           @for (s of r.sessions; track s.id) {
@@ -101,38 +98,22 @@
             </div>
           }
         }
-        @if (r.encaissementsParMode.length > 0) {
-          <h3 class="bb-tdb__rapport-sous-titre">{{ 'PHARMACIEN.TDB.ENCAISSEMENTS' | translate }}</h3>
-          @for (m of r.encaissementsParMode; track m.modePaiement) {
-            <div class="bb-tdb__rapport-session">
-              <span>{{ 'PAIEMENT.MODE.' + m.modePaiement | translate }}</span>
-              <span>{{ m.nombre }} {{ 'PHARMACIEN.TDB.VENTES_COURT' | translate }}</span>
-              <strong>{{ m.montantGnf | number }} GNF</strong>
-            </div>
-          }
-        }
       } @else {
         <p class="bb-tdb__muted">{{ 'COMMON.LOADING' | translate }}</p>
       }
     </section>
 
-    <!-- ── Encaissements par moyen de paiement ────────────────────── -->
-    <h2 class="bb-tdb__section">{{ 'PHARMACIEN.TDB.ENCAISSEMENTS' | translate }}</h2>
-
-    @if (tb()!.encaissementsParMode.length === 0) {
-      <p class="bb-tdb__muted">{{ 'PHARMACIEN.TDB.AUCUN_ENCAISSEMENT' | translate }}</p>
-    } @else {
-      @for (m of parts(); track m.modePaiement) {
-        <div class="bb-tdb__mode">
-          <span class="bb-tdb__mode-nom">{{ 'PAIEMENT.MODE.' + m.modePaiement | translate }}</span>
-          <span class="bb-tdb__mode-nombre">{{ m.nombre }} {{ 'PHARMACIEN.TDB.VENTES_COURT' | translate }}</span>
-          <div class="bb-tdb__jauge">
-            <div class="bb-tdb__jauge-part" [style.width.%]="m.pourcent"></div>
-          </div>
-          <span class="bb-tdb__mode-montant">{{ m.montantGnf | number }} GNF</span>
-        </div>
-      }
-    }
+    <!-- ── Alertes de stock : independantes de la periode ──────────── -->
+    <div class="bb-tdb__stats bb-tdb__stats--stock">
+      <article class="bb-tdb__stat" data-stat="ruptures" [class.bb-tdb__stat--alerte]="tb()!.ruptures.length > 0">
+        <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.RUPTURES' | translate }}</span>
+        <span class="bb-tdb__stat-valeur">{{ tb()!.ruptures.length }}</span>
+      </article>
+      <article class="bb-tdb__stat" data-stat="peremptions" [class.bb-tdb__stat--alerte]="tb()!.lotsAPerimer > 0">
+        <span class="bb-tdb__stat-label">{{ 'PHARMACIEN.TDB.PEREMPTIONS' | translate }}</span>
+        <span class="bb-tdb__stat-valeur">{{ tb()!.lotsAPerimer }}</span>
+      </article>
+    </div>
 
     <!-- ── Produits les plus vendus ───────────────────────────────── -->
     <h2 class="bb-tdb__section">{{ 'PHARMACIEN.TDB.TOP' | translate }}</h2>

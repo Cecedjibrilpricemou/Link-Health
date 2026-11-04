@@ -233,6 +233,14 @@
 }
 .bb-tdb__rapport-session strong { color: var(--bb-text-primary); }
 
+// Periode active du rapport : marquee sans desactiver le bouton (un bouton
+// desactive sort de l'ordre de tabulation et se lit mal).
+.bb-tdb__periode--active {
+  background: color-mix(in srgb, var(--bb-primary) 12%, transparent) !important;
+  color: var(--bb-primary) !important; font-weight: 800;
+}
+.bb-tdb__stats--stock { margin-top: 20px; }
+
 @keyframes bb-tdb-jauge {
   from { transform: scaleX(0); }
   to   { transform: scaleX(1); }
