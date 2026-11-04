@@ -29,86 +29,15 @@ const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * pas seulement qu'il gene.
  */
 const EXCEPTIONS = [
-  // ── Outils de developpement d'Angular 21 (22/10/2026) ──────────────
+  // Aucune exception en cours.
   //
-  // @angular/build 21.2.27 et @angular/cli 21.2.27, dernieres versions 21,
-  // epinglent exactement vite 7.3.6 et @modelcontextprotocol/sdk 1.31.0.
-  // Les correctifs (vite 7.3.7, sdk 1.32) ne s'appliquent qu'en regenerant
-  // tout le package-lock (217 versions changees, dont 5 majeures) ou en
-  // passant a Angular 22 : c'est ce passage qui fermera ces avis.
-  //
-  // Aucun ne touche l'application livree : vite ne sert qu'au serveur de
-  // developpement (`ng serve`, builder @angular/build:dev-server) — le build
-  // de production passe par esbuild — et le sdk MCP qu'a la commande
-  // `ng mcp`. Ni l'un ni l'autre n'est importe par le code, ni present dans
-  // le bundle de production. Le risque est sur les postes de developpement :
-  // ne pas exposer `ng serve` hors de la machine (pas de --host 0.0.0.0 sur
-  // un reseau non sur).
-  ...[
-    'GHSA-698v-4r3x-3vcv', // launch-editor : % non echappe sous Windows
-    'GHSA-r825-w8mm-5pxw', // launch-editor : drapeau d'editeur mal interprete
-    'GHSA-587h-7wmj-h5pm', // launch-editor : verification d'existence contournable
-    'GHSA-9jrq-w75r-8gcw', // vite : script cross-origin via un middleware
-    'GHSA-rq7h-c2jc-7f22', // vite : fichiers hors server.fs.allow
-  ].map((ghsa) => ({
-    ghsa,
-    paquet: 'vite (via @angular/build)',
-    reexamen: '2026-11-30',
-    motif: 'Serveur de developpement uniquement ; corrige avec Angular 22.',
-  })),
-  ...[
-    'GHSA-22jm-h49p-29qw', // taches experimentales non liees a la session
-    'GHSA-6prh-2h8m-c8cw', // redirections cross-origin du client HTTP
-    'GHSA-46jr-4wx8-v453', // epuisement memoire a la validation
-    'GHSA-rvq5-wwqv-78pq', // jeton porteur d'un autre service accepte
-  ].map((ghsa) => ({
-    ghsa,
-    paquet: '@modelcontextprotocol/sdk (via @angular/cli)',
-    reexamen: '2026-11-30',
-    motif: 'Commande `ng mcp` uniquement, jamais lancee ; corrige avec Angular 22.',
-  })),
-  // ── undici, embarque par @angular/build (24/10/2026) ───────────────
-  //
-  // `@angular/build@21.2.27` epingle undici a **7.29.1 exactement**, pas en
-  // plage : aucune montee n'est possible sans changer @angular/build, et la
-  // serie 8 demanderait Angular 22. C'est le meme verrou que vite ci-dessus.
-  //
-  // Rien n'atteint l'application livree : undici sert au telechargement des
-  // polices et au serveur de developpement, jamais au code execute. Les trois
-  // avis visent un client HTTP qui recoit des reponses hostiles -- ce n'est
-  // pas le role qu'il joue ici.
-  //
-  // **Les deux autres avis du meme jour ont ete corriges, eux** :
-  // body-parser 2.3.0 -> 2.4.0 et multer 2.4.0 -> 2.5.0 tournent en
-  // production, et multer garde l'envoi des photos d'assures.
-  ...[
-    'GHSA-4qv8-2p9j-2685', // memoire non bornee dans le parseur EventSource
-    'GHSA-f72v-6w45-q472', // integrite de sous-ressource contournable
-    'GHSA-xjj6-f33q-929c', // erreur non geree sur un exces de content-encodings
-    // Cinq avis de plus le 28/10/2026. L'un d'eux, GHSA-2m5v-pch6-74hx, n'est
-    // pas un deni de service : c'est un contournement de la validation du
-    // certificat TLS. Le raisonnement tient, mais il faut le dire en toutes
-    // lettres -- verifie ce jour : aucune ressource distante dans
-    // styles.scss ni index.html, polices servies depuis assets/fonts, et
-    // angular.json porte "fonts": { "inline": false }, donc la construction
-    // ne fait aucun appel sortant par undici. Ce qui reste expose est
-    // `ng serve` sur un poste de developpement, sur un reseau ou quelqu'un
-    // peut s'interposer -- meme perimetre que l'avertissement du README sur
-    // start:lan.
-    //
-    // @angular/build@21.2.28, la derniere 21.x, epingle toujours undici a
-    // 7.29.1 exactement : aucune montee n'existe dans Angular 21.
-    'GHSA-4w7w-5xrc-9h26', // empoisonnement de cache via redirection cross-origin
-    'GHSA-2m5v-pch6-74hx', // validation du certificat TLS contournee dans Agent
-    'GHSA-qrxm-fqhp-jwvm', // deni de service par renegociation TLS 1.2
-    'GHSA-9fm3-97px-rjf6', // client WebSocket : PONG automatiques non bornes
-    'GHSA-55wc-3pg8-jfw6', // exception non geree dans l intercepteur de decompression
-  ].map((ghsa) => ({
-    ghsa,
-    paquet: 'undici (via @angular/build)',
-    reexamen: '2026-11-30',
-    motif: 'Outillage de construction uniquement, epingle a 7.29.1 ; corrige avec Angular 22.',
-  })),
+  // Le 04/11/2026, @angular/build et @angular/cli 21.2.29 ont ferme les 17 avis
+  // toleres jusque-la, tous dans l'outillage de developpement et de
+  // construction : vite 7.3.6 -> 7.3.7 (5 avis), @modelcontextprotocol/sdk
+  // 1.31.0 -> 1.32.1 (4 avis), undici 7.29.1 -> 7.30.1 (8 avis, dont
+  // GHSA-2m5v-pch6-74hx, contournement de la validation TLS). Ils devaient
+  // etre reexamines le 30/11/2026 ; sans cette montee, la CI aurait echoue
+  // des le 01/12. Angular 22 n'a pas ete necessaire.
   //
   // Historique : du 13/09 au 17/10/2026, trois avis etaient toleres —
   // GHSA-ggr8-5vv4-36mx (deepmerge-ts, via @prisma/config) et
