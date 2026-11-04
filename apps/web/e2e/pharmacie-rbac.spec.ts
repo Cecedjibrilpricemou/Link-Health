@@ -202,7 +202,7 @@ test('Pharmacie — catalogue, stock, vente, agents et cloisonnement entre offic
 
   await page.goto('/pharmacien/stocks');
   await expect(page.locator('.bb-page-head__title')).toBeVisible();
-  await expect(page.locator('.bb-ph-stocks__card-nom', { hasText: libelleProduit })).toBeVisible();
+  await expect(page.locator('.bb-ph-stocks__produit-nom', { hasText: libelleProduit })).toBeVisible();
 
   await page.goto('/pharmacien/caisse');
   await expect(page.locator('.bb-page-head__title')).toBeVisible();
