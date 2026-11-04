@@ -32,7 +32,11 @@
 
     <div class="hero__visual">
       <div class="hero__photo">
-        <img src="assets/images/login-hero.png" [alt]="'LANDING.HERO_PHOTO_ALT' | translate" width="1024" height="1024" />
+        <img src="assets/images/login-hero-1024.webp"
+             srcset="assets/images/login-hero-640.webp 640w, assets/images/login-hero-1024.webp 1024w"
+             sizes="(max-width: 900px) 90vw, 520px"
+             [alt]="'LANDING.HERO_PHOTO_ALT' | translate" width="1024" height="1024"
+             fetchpriority="high" decoding="async" />
       </div>
       <div class="hero__chip hero__chip--top">
         <i class="pi pi-shield" aria-hidden="true"></i> {{ 'LANDING.TRUST_SECURE' | translate }}
