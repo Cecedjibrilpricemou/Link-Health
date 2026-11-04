@@ -1,5 +1,6 @@
 // app.config.ts — BaoBaoHealth v2
-import { ApplicationConfig, provideZonelessChangeDetection, APP_INITIALIZER, LOCALE_ID, inject } from '@angular/core';
+import { ApplicationConfig, provideZonelessChangeDetection, APP_INITIALIZER, LOCALE_ID, inject, isDevMode } from '@angular/core';
+import { provideServiceWorker } from '@angular/service-worker';
 import { registerLocaleData } from '@angular/common';
 import localeFr from '@angular/common/locales/fr';
 
@@ -45,6 +46,14 @@ export const appConfig: ApplicationConfig = {
     { provide: APP_INITIALIZER, useFactory: initializePlateforme, multi: true },
     { provide: APP_INITIALIZER, useFactory: initializeAuth, multi: true },
     provideAnimationsAsync(),
+    // Hors ligne (§4.3) : la coquille de l'application est mise en cache pour
+    // se charger sans reseau. Les reponses de l'API ne le sont jamais (voir
+    // ngsw-config.json). Enregistre une fois l'application stable, ou au bout
+    // de 30 s, pour ne pas ralentir le premier affichage en faible debit.
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
     provideToastr({
       positionClass: 'toast-top-right',
       preventDuplicates: true,
