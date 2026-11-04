@@ -358,6 +358,10 @@ export const createAgentPharmacieSchema = z.object({
   motDePasse: z.string().min(12, 'Le mot de passe doit contenir au moins 12 caractères.').max(128).optional(),
   prenom: z.string().trim().min(1).max(80),
   nom: z.string().trim().min(1).max(80),
+  // Le role choisi dans le formulaire. Absent du schema, il faisait refuser
+  // toute creation (schema strict). Jamais TITULAIRE : un titulaire ne cree
+  // pas un second titulaire.
+  roleOfficine: z.enum(['ADJOINT', 'PREPARATEUR', 'CAISSIER']).optional(),
 }).strict();
 
 export const permissionTemporaireAgentSchema = z.object({

@@ -102,9 +102,11 @@ export class AgentsComponent implements OnInit {
         this.charger();
         this.toastr.success(this.i18n.t('PHARMACIEN.AGENTS.CREATE_SUCCESS'));
       },
-      error: () => {
+      error: (err: { error?: { error?: string; message?: string } }) => {
         this.isSaving.set(false);
-        this.toastr.error(this.i18n.t('PHARMACIEN.AGENTS.CREATE_ERROR'));
+        // La raison donnee par l'API (numero deja pris, donnees invalides...)
+        // plutot qu'un « echec » generique qui ne dit pas quoi corriger.
+        this.toastr.error(err?.error?.error ?? err?.error?.message ?? this.i18n.t('PHARMACIEN.AGENTS.CREATE_ERROR'));
       },
     });
   }
