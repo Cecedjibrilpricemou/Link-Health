@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, ActivatedRouteSnapshot } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { Role } from '../models/user.model';
+import { accueilDuRole } from '../navigation/accueil-par-role';
 
 export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   const authService = inject(AuthService);
@@ -18,22 +19,7 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   if (userRole && allowedRoles.includes(userRole)) return true;
 
   // Rôle non autorisé → rediriger vers la bonne page selon le rôle
-  const redirectMap: Record<string, string> = {
-    PATIENT:         '/patient/dashboard',
-    ASC:             '/asc/consultations',
-    ASC_SUPERVISOR:  '/asc/consultations',
-    MEDECIN:         '/medecin/dashboard',
-    PHARMACIEN:      '/pharmacien/ordonnances',
-    AGENT_ACCUEIL:   '/hopital/tableau-de-bord',
-    TECHNICIEN_LABO: '/laboratoire/tableau-de-bord',
-    ASSUREUR:        '/assureur/tableau-de-bord',
-    ADMIN_STRUCTURE: '/admin-structure/dashboard',
-    ADMIN_REGIONAL:  '/admin/analytics',
-    ADMIN_NATIONAL:  '/admin/analytics',
-    SUPER_ADMIN:     '/admin/analytics'
-  };
-
-  const redirectUrl = userRole ? (redirectMap[userRole] ?? '/unauthorized') : '/unauthorized';
+  const redirectUrl = accueilDuRole(userRole) ?? '/unauthorized';
   router.navigate([redirectUrl]);
   return false;
 };

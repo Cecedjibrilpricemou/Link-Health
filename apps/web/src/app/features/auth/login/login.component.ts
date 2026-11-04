@@ -17,6 +17,7 @@ import { I18nService } from '../../../shared/services/i18n.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AuthShellComponent } from '../../../shared/components/auth-shell/auth-shell.component';
 import { ToastrService } from 'ngx-toastr';
+import { accueilDuRole } from '../../../core/navigation/accueil-par-role';
 
 
 /** Le message a afficher pour un echec de connexion ou de verification OTP. */
@@ -270,22 +271,7 @@ export class LoginComponent implements OnDestroy {
   }
 
   private redirectAfterLogin(role: string | null | undefined) {
-    const redirectMap: Record<string, string> = {
-      PATIENT:          '/patient/dashboard',
-      ASC:              '/asc/consultations',
-      ASC_SUPERVISOR:   '/asc/consultations',
-      MEDECIN:          '/medecin/dashboard',
-      PHARMACIEN:       '/pharmacien/ordonnances',
-      AGENT_ACCUEIL:    '/hopital/tableau-de-bord',
-      TECHNICIEN_LABO:  '/laboratoire/tableau-de-bord',
-      ASSUREUR:        '/assureur/tableau-de-bord',
-      LIVREUR:         '/livreur/courses',
-      ADMIN_STRUCTURE:  '/admin-structure/dashboard',
-      ADMIN_REGIONAL:   '/admin/analytics',
-      ADMIN_NATIONAL:   '/admin/analytics',
-      SUPER_ADMIN:      '/admin/analytics'
-    };
-    const destination = role ? redirectMap[role] : undefined;
+    const destination = accueilDuRole(role);
     if (!destination) {
       this.toastr.error(
         this.i18nService.t('AUTH.LOGIN.ERR_SPACE_NOT_ACCESSIBLE'),
