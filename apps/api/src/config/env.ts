@@ -8,7 +8,7 @@ import { z } from 'zod';
  * requise est manquante ou invalide, au lieu de crasher plus tard
  * de façon silencieuse.
  */
-const envSchema = z.object({
+export const envSchema = z.object({
   // ─── Base de données ─────────────────────────────────
   DATABASE_URL: z.string().min(1, 'DATABASE_URL est obligatoire'),
 
@@ -42,6 +42,13 @@ const envSchema = z.object({
   // ─── Email (optionnel en dev) ────────────────────────
   GMAIL_USER: z.string().optional(),
   GMAIL_APP_PASSWORD: z.string().optional(),
+
+  // ─── Limites de requetes (par fenetre de 15 minutes) ─
+  // Valeurs de production par defaut. Les relever est un choix
+  // d'exploitation : l'environnement E2E le fait, car un parcours de test
+  // complet depasse 300 requetes en un quart d'heure.
+  RATE_LIMIT_API_MAX: z.coerce.number().int().positive().default(300),
+  RATE_LIMIT_AUTH_MAX: z.coerce.number().int().positive().default(20),
 
   // ─── Redis (optionnel) ──────────────────────────────
   REDIS_URL: z.string().url().optional(),

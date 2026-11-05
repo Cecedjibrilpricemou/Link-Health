@@ -118,7 +118,11 @@ test('Pharmacie — catalogue, stock, vente, agents et cloisonnement entre offic
   expect(reponseVenteCaisse.status()).toBe(201);
   expect((await reponseVenteCaisse.json()).data.montantNetGnf).toBe(12345);
 
+  // Le montant theorique de la session vient de changer : on recharge la
+  // caisse pour le lire, au lieu de dependre d'un rafraichissement en cours.
+  await page.reload();
   await page.locator('#caisse-compte').fill('87035');
+  await expect(page.getByRole('button', { name: 'Clôturer la caisse' })).toBeEnabled({ timeout: 15_000 });
   const clotureCaisse = page.waitForResponse((response) =>
     response.url().includes('/pharmacien/caisse/sessions/') &&
     response.url().endsWith('/cloturer') &&

@@ -25,6 +25,10 @@ export const API_ENV: Record<string, string> = {
   DATABASE_URL: E2E_DATABASE_URL,
   DOTENV_CONFIG_PATH: resolve(__dirname, 'e2e/.env.absent'),
   JWT_SECRET: 'e2e-test-secret-at-least-32-chars-long',
+  // Un parcours complet depasse les 300 requetes / 15 min de la production :
+  // l'API repondait 429 au milieu d'un test, qui echouait au hasard.
+  RATE_LIMIT_API_MAX: '10000',
+  RATE_LIMIT_AUTH_MAX: '1000',
   JWT_REFRESH_SECRET: 'e2e-test-refresh-secret-at-least-32-chars',
   DB_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   ALLOWED_ORIGINS: `http://localhost:${WEB_PORT}`,

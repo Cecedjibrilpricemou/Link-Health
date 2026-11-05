@@ -79,7 +79,7 @@ const redisClient = getRedis();
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 300,
+  limit: env.RATE_LIMIT_API_MAX,
   standardHeaders: true,
   legacyHeaders: false,
   ...(redisClient && {
@@ -92,7 +92,7 @@ const apiLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  limit: env.RATE_LIMIT_AUTH_MAX,
   standardHeaders: true,
   legacyHeaders: false,
   ...(redisClient && {
