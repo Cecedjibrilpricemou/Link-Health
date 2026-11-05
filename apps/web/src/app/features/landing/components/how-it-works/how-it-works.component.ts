@@ -16,6 +16,7 @@ import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 type Etape = {
   num: string;
   icon: string;
+  /** Nom de base, sans extension : le gabarit sert `-480.webp` ou `-800.webp`. */
   image?: string;
   imageAltKey?: string;
   titleKey: string;
@@ -52,7 +53,7 @@ export class HowItWorksComponent {
       num: '03', icon: 'pi-building',
       // hero-pharma.jpeg est en realite un accueil de clinique — le nom du
       // fichier ment. Seule reserve : la signaletique y est en espagnol.
-      image: 'assets/images/hero-pharma.jpeg', imageAltKey: 'LANDING.HOW_STEP3_ALT',
+      image: 'assets/images/hero-pharma', imageAltKey: 'LANDING.HOW_STEP3_ALT',
       titleKey: 'LANDING.HOW_STEP3_TITLE', descKey: 'LANDING.HOW_STEP3_DESC',
     },
     {
@@ -62,13 +63,13 @@ export class HowItWorksComponent {
     {
       num: '05', icon: 'pi-file-edit',
       // hero-hospital.jpeg est un portrait de medecin, pas un hopital.
-      image: 'assets/images/hero-hospital.jpeg', imageAltKey: 'LANDING.HOW_STEP5_ALT',
+      image: 'assets/images/hero-hospital', imageAltKey: 'LANDING.HOW_STEP5_ALT',
       titleKey: 'LANDING.HOW_STEP5_TITLE', descKey: 'LANDING.HOW_STEP5_DESC',
     },
     {
       num: '06', icon: 'pi-shop',
       // hero-vaccine.jpeg montre des plaquettes de medicaments, pas un vaccin.
-      image: 'assets/images/hero-vaccine.jpeg', imageAltKey: 'LANDING.HOW_STEP6_ALT',
+      image: 'assets/images/hero-vaccine', imageAltKey: 'LANDING.HOW_STEP6_ALT',
       titleKey: 'LANDING.HOW_STEP6_TITLE', descKey: 'LANDING.HOW_STEP6_DESC',
     },
     {

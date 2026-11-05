@@ -28,7 +28,9 @@
           <div class="step__media">
             <img
               class="step__photo"
-              [src]="step.image"
+              [src]="step.image + '-800.webp'"
+              [attr.srcset]="step.image + '-480.webp 480w, ' + step.image + '-800.webp 800w'"
+              sizes="(max-width: 640px) 92vw, (max-width: 1100px) 46vw, 400px"
               [alt]="(step.imageAltKey ?? '') | translate"
               width="480"
               height="320"
