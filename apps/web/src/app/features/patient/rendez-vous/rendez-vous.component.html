@@ -54,9 +54,15 @@
       } @else {
         <section class="bb-rdvp__carte">
           <label class="bb-rdvp__label" for="rdv-structure">{{ 'PATIENT.RDV.ETABLISSEMENT' | translate }}</label>
-          <p class="bb-rdvp__aide">{{ 'PATIENT.RDV.ETABLISSEMENT_AIDE' | translate }}</p>
+          <p class="bb-rdvp__aide" id="rdv-structure-aide">
+            @if (etablissementDuDossier(); as mien) {
+              {{ 'PATIENT.RDV.ETABLISSEMENT_AIDE_DOSSIER' | translate: { nom: mien.nom } }}
+            } @else {
+              {{ 'PATIENT.RDV.ETABLISSEMENT_AIDE_CHOISIR' | translate }}
+            }
+          </p>
           <app-liste-recherche inputId="rdv-structure" [options]="optionsEtablissements()"
-                               [(ngModel)]="idStructure"
+                               [ngModel]="idStructure()" (ngModelChange)="idStructure.set($event ?? '')"
                                [placeholder]="'PATIENT.RDV.ETABLISSEMENT_CHOISIR' | translate" />
 
           <label class="bb-rdvp__label" for="rdv-motif">{{ 'PATIENT.RDV.MOTIF' | translate }}</label>
@@ -70,7 +76,7 @@
           <div class="bb-rdvp__actions">
             <button matButton type="button" (click)="formulaireOuvert.set(false)">{{ 'COMMON.CANCEL' | translate }}</button>
             <button matButton="filled" type="button"
-                    [disabled]="enCours() || motif.trim().length < 5"
+                    [disabled]="enCours() || motif.trim().length < 5 || !idStructure()"
                     (click)="envoyer()">
               {{ (enCours() ? 'COMMON.LOADING' : 'PATIENT.RDV.ENVOYER') | translate }}
             </button>

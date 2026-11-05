@@ -3,7 +3,7 @@
 // Addendum du 2026-09-28, point 6. Le patient n'ouvre pas un dossier : il
 // demande. C'est le médecin qui répond en fixant l'heure, et c'est à ce
 // moment-là seulement qu'une visite existe.
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,9 +26,19 @@ import { ListeRechercheComponent, OptionListe } from '../../../shared/components
   styleUrl: './rendez-vous.component.scss',
 })
 export class RendezVousComponent implements OnInit {
-  /** Les etablissements, avec recherche (nom ou prefecture). */
-  readonly optionsEtablissements = computed<OptionListe[]>(() =>
-    this.etablissements().map((e) => ({ valeur: e.id, libelle: e.nom, detail: e.prefecture })));
+  /**
+   * Les etablissements, avec recherche (nom ou prefecture). Celui du dossier
+   * vient en tete, marque « Mon etablissement ».
+   */
+  readonly optionsEtablissements = computed<OptionListe[]>(() => {
+    const monId = this.etablissementDuDossier()?.id;
+    const options = this.etablissements().map((e) => ({
+      valeur: e.id,
+      libelle: e.nom,
+      detail: e.id === monId ? `${this.i18n.t('PATIENT.RDV.MON_ETABLISSEMENT')} · ${e.prefecture}` : e.prefecture,
+    }));
+    return [...options.filter((o) => o.valeur === monId), ...options.filter((o) => o.valeur !== monId)];
+  });
 
   private patient = inject(PatientService);
   private structures = inject(AdminService);
@@ -60,7 +70,23 @@ export class RendezVousComponent implements OnInit {
    * l'ecran n'offrait aucun moyen de la completer.
    */
   etablissements = signal<StructurePubliqueView[]>([]);
-  idStructure = '';
+  /** L'etablissement choisi ; celui du dossier par defaut. */
+  readonly idStructure = signal('');
+
+  /** L'etablissement du dossier, s'il existe et recoit encore des consultations. */
+  private readonly idDuDossier = signal<string | null>(null);
+  readonly etablissementDuDossier = computed(() =>
+    this.etablissements().find((e) => e.id === this.idDuDossier()) ?? null);
+
+  constructor() {
+    // Le dossier et la liste arrivent chacun de leur cote : des que les deux
+    // sont la, l'etablissement du dossier est propose d'office (sans ecraser
+    // un choix deja fait).
+    effect(() => {
+      const defaut = this.etablissementDuDossier()?.id;
+      if (defaut && !untracked(this.idStructure)) this.idStructure.set(defaut);
+    });
+  }
 
   /**
    * Une seule demande en attente à la fois : l'API le refuse, autant ne pas
@@ -73,6 +99,9 @@ export class RendezVousComponent implements OnInit {
     this.charger();
     this.structures.getPublicStructures().subscribe({
       next: (r) => this.etablissements.set(r.data ?? []),
+    });
+    this.patient.getMe().subscribe({
+      next: (r) => this.idDuDossier.set(r.data?.idStructurePreferee ?? null),
     });
   }
 
@@ -102,18 +131,20 @@ export class RendezVousComponent implements OnInit {
 
   envoyer() {
     const motif = this.motif.trim();
-    if (this.enCours() || motif.length < 5) return;
+    const idStructure = this.idStructure();
+    // L'etablissement est toujours envoye : le patient voit ou part sa demande.
+    if (this.enCours() || motif.length < 5 || !idStructure) return;
     this.enCours.set(true);
 
     this.patient.creerDemandeRendezVous({
       motif,
-      idStructure: this.idStructure || undefined,
+      idStructure,
     }).subscribe({
       next: () => {
         this.enCours.set(false);
         this.formulaireOuvert.set(false);
         this.motif = '';
-        this.idStructure = '';
+        this.idStructure.set(this.etablissementDuDossier()?.id ?? '');
         this.toastr.success(this.i18n.t('PATIENT.RDV.OK'), this.i18n.t('COMMON.SUCCESS'));
         this.charger();
       },
