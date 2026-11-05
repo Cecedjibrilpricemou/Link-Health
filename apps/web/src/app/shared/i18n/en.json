@@ -646,7 +646,7 @@
       "APPEL": "You have no pending request.",
       "DEMANDER": "Request an appointment",
       "MOTIF": "Why do you want to be seen?",
-      "MOTIF_AIDE": "Write it in your own words: this is what the doctor reads to decide.",
+      "MOTIF_AIDE": "Type or dictate in your own words: this is the text the doctor will read to decide.",
       "MOTIF_EX": "E.g. I have had headaches for a week, mostly in the morning.",
       "ENVOYER": "Send the request",
       "ANNULER": "Withdraw my request",
@@ -3849,5 +3849,19 @@
       "UN": "blister pack",
       "PLUSIEURS": "blister packs"
     }
+  },
+  "DICTEE": {
+    "DICTER": "Dictate",
+    "ARRETER": "Stop dictation",
+    "ECOUTE": "Listening…",
+    "AVIS_TITRE": "Dictate instead of typing",
+    "AVIS_TEXTE": "Your voice is transcribed by your browser’s service (Google for Chrome, Microsoft for Edge). Nothing is recorded: only the text is added to the field, and you review it before sending. You can always type instead.",
+    "AVIS_OUI": "Start dictation",
+    "AVIS_NON": "Cancel",
+    "ERR_MICRO_REFUSE": "The microphone is blocked. Allow it in your browser, or type your text.",
+    "ERR_PAS_DE_MICRO": "No microphone was found on this device.",
+    "ERR_SILENCE": "I didn’t hear anything. Press “Dictate” again and speak close to the phone.",
+    "ERR_HORS_LIGNE": "Dictation needs an Internet connection. You can type your text.",
+    "ERR_GENERIQUE": "Dictation didn’t work. You can type your text."
   }
 }

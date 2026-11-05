@@ -64,6 +64,8 @@
           <textarea id="rdv-motif" class="bb-rdvp__textarea" rows="4" maxlength="1000"
                     [placeholder]="'PATIENT.RDV.MOTIF_EX' | translate"
                     [(ngModel)]="motif"></textarea>
+          <!-- Dicter plutot qu'ecrire : le texte s'ajoute au champ, le patient le relit. -->
+          <app-dictee [(texte)]="motif" [max]="1000" />
 
           <div class="bb-rdvp__actions">
             <button matButton type="button" (click)="formulaireOuvert.set(false)">{{ 'COMMON.CANCEL' | translate }}</button>
