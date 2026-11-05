@@ -1,0 +1,47 @@
+:host { display: block; }
+
+.bb-dictee { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+
+.bb-dictee__micro {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+  border-radius: var(--bb-radius-pill); border: 1px solid var(--bb-border);
+  background: var(--bb-surface-card); color: var(--bb-text-primary);
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: background var(--bb-transition), border-color var(--bb-transition), color var(--bb-transition);
+  i { color: var(--bb-primary); }
+  &:hover { border-color: var(--bb-primary); }
+  &:focus-visible { outline: 2px solid var(--bb-primary); outline-offset: 2px; }
+
+  // En ecoute : rouge franc, on voit tout de suite que le micro est ouvert.
+  &--ecoute {
+    background: var(--bb-danger-bg); border-color: var(--bb-danger); color: var(--bb-danger);
+    i { color: var(--bb-danger); }
+  }
+}
+
+.bb-dictee__etat { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--bb-danger); font-weight: 600; }
+.bb-dictee__point {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--bb-danger);
+  animation: bb-dictee-pouls 1.2s ease-in-out infinite;
+}
+@keyframes bb-dictee-pouls { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .bb-dictee__point { animation: none; } }
+
+.bb-dictee__provisoire { flex-basis: 100%; margin: 0; font-size: 14px; font-style: italic; color: var(--bb-text-muted); }
+
+.bb-dictee__avis {
+  flex-basis: 100%; padding: 12px 14px; border-radius: var(--bb-radius);
+  background: var(--bb-surface-1); border: 1px solid var(--bb-border);
+}
+.bb-dictee__avis-titre { margin: 0 0 4px; font-weight: 700; font-size: 14px; color: var(--bb-text-primary);
+  i { color: var(--bb-primary); } }
+.bb-dictee__avis-texte { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--bb-text-secondary); }
+.bb-dictee__avis-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.bb-dictee__refuser, .bb-dictee__accepter {
+  min-height: 40px; padding: 0 14px; border-radius: var(--bb-radius); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+  &:focus-visible { outline: 2px solid var(--bb-primary); outline-offset: 2px; }
+}
+.bb-dictee__refuser { background: none; border: 1px solid var(--bb-border); color: var(--bb-text-secondary); }
+.bb-dictee__accepter { display: inline-flex; align-items: center; gap: 6px; background: var(--bb-primary); border: none; color: #fff; }
+
+.bb-dictee__erreur { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--bb-danger); }

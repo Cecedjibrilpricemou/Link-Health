@@ -646,7 +646,7 @@
       "APPEL": "Vous n'avez aucune demande en cours.",
       "DEMANDER": "Demander un rendez-vous",
       "MOTIF": "Pourquoi souhaitez-vous consulter ?",
-      "MOTIF_AIDE": "Écrivez avec vos mots : c'est ce texte que le médecin lira pour décider.",
+      "MOTIF_AIDE": "Écrivez ou dictez avec vos mots : c’est ce texte que le médecin lira pour décider.",
       "MOTIF_EX": "Ex. : j'ai des maux de tête depuis une semaine, surtout le matin.",
       "ENVOYER": "Envoyer la demande",
       "ANNULER": "Retirer ma demande",
@@ -3849,5 +3849,19 @@
       "UN": "plaquette",
       "PLUSIEURS": "plaquettes"
     }
+  },
+  "DICTEE": {
+    "DICTER": "Dicter",
+    "ARRETER": "Arrêter la dictée",
+    "ECOUTE": "Je vous écoute…",
+    "AVIS_TITRE": "Dicter au lieu d’écrire",
+    "AVIS_TEXTE": "Votre voix est transcrite par le service de votre navigateur (Google pour Chrome, Microsoft pour Edge). Rien n’est enregistré : seul le texte s’ajoute au champ, et vous le relisez avant d’envoyer. Vous pouvez toujours écrire à la place.",
+    "AVIS_OUI": "Commencer la dictée",
+    "AVIS_NON": "Annuler",
+    "ERR_MICRO_REFUSE": "Le micro est bloqué. Autorisez-le dans votre navigateur, ou écrivez votre texte.",
+    "ERR_PAS_DE_MICRO": "Aucun micro n’a été trouvé sur cet appareil.",
+    "ERR_SILENCE": "Je n’ai rien entendu. Appuyez de nouveau sur « Dicter » et parlez près du téléphone.",
+    "ERR_HORS_LIGNE": "La dictée a besoin d’Internet. Vous pouvez écrire votre texte.",
+    "ERR_GENERIQUE": "La dictée n’a pas fonctionné. Vous pouvez écrire votre texte."
   }
 }

@@ -1,0 +1,41 @@
+@if (disponible) {
+  <div class="bb-dictee">
+    <button type="button" class="bb-dictee__micro"
+            [class.bb-dictee__micro--ecoute]="ecoute()"
+            [attr.aria-pressed]="ecoute()"
+            (click)="basculer()">
+      <i [class]="ecoute() ? 'pi pi-stop-circle' : 'pi pi-microphone'" aria-hidden="true"></i>
+      {{ (ecoute() ? 'DICTEE.ARRETER' : 'DICTEE.DICTER') | translate }}
+    </button>
+
+    @if (ecoute()) {
+      <span class="bb-dictee__etat" role="status">
+        <span class="bb-dictee__point" aria-hidden="true"></span>
+        {{ 'DICTEE.ECOUTE' | translate }}
+      </span>
+    }
+
+    @if (provisoire()) {
+      <p class="bb-dictee__provisoire" aria-live="polite">{{ provisoire() }}…</p>
+    }
+
+    @if (etat() === 'avis') {
+      <div class="bb-dictee__avis" role="dialog" aria-labelledby="bb-dictee-avis-titre">
+        <p id="bb-dictee-avis-titre" class="bb-dictee__avis-titre">
+          <i class="pi pi-info-circle" aria-hidden="true"></i> {{ 'DICTEE.AVIS_TITRE' | translate }}
+        </p>
+        <p class="bb-dictee__avis-texte">{{ 'DICTEE.AVIS_TEXTE' | translate }}</p>
+        <div class="bb-dictee__avis-actions">
+          <button type="button" class="bb-dictee__refuser" (click)="refuserAvis()">{{ 'DICTEE.AVIS_NON' | translate }}</button>
+          <button type="button" class="bb-dictee__accepter" (click)="accepterAvis()">
+            <i class="pi pi-microphone" aria-hidden="true"></i> {{ 'DICTEE.AVIS_OUI' | translate }}
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (erreur(); as message) {
+      <p class="bb-dictee__erreur" role="alert">{{ message }}</p>
+    }
+  </div>
+}
