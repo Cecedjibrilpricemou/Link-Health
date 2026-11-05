@@ -74,6 +74,23 @@ Depuis la décision du 2026-10-01, le catalogue en accepte. Ils n'ont **ni DCI, 
 - côté **pharmacien**, l'écran des stocks et la saisie de facture proposent les **9 produits** ;
 - côté **médecin ou ASC**, la liste de prescription n'en propose que **5** — on ne prescrit pas du lait. L'API le refuserait de toute façon, mais autant ne pas le proposer.
 
+## Ce qui est déjà là en arrivant
+
+Pour qu'aucun espace ne s'ouvre sur une liste vide, la semence prépare aussi la vie courante :
+
+| Espace | Ce qu'on y trouve |
+|---|---|
+| **Dr David Camara** | deux rendez-vous de Maomou : **demain à 10 h** (« Suivi de l'asthme ») et un **absent** il y a dix jours |
+| **Accueil** (Fatoumata Keïta) | une **demande de rendez-vous de Fanta Camara**, en attente d'orientation vers un médecin |
+| **Maomou** | l'Hôpital Donka comme **« Mon établissement »** : il est proposé d'office quand elle demande un rendez-vous |
+| **Caisse** (Ousmane Pricemou) | **3 ventes en espèces** (145 000 GNF) dans une session **close sans écart** — le tableau de bord a un chiffre, un panier moyen et des produits les plus vendus |
+| **Assureur** (Hadja Bangoura) | le contrat collectif **PFA-COL-2026-001** de *Kaloum Logistique SARL* (80 %), **Fanta Camara** y adhère. Ibrahima Sylla et Aïssatou Bah restent à rattacher |
+| **Livreur** (Ibrahima Keïta, `620100016`) | une **course en appel d'offres** à Donka : la commande de Fanta Camara, prête à livrer |
+
+Rejouer le script **remet les rendez-vous à demain et la course en appel d'offres**. Les ventes, elles, ne sont créées qu'une fois : elles restent dans l'historique, et une caisse ouverte à la main n'est jamais fermée par le script.
+
+> Un stock qui a déjà servi (une vente, une délivrance) **garde ses lots** quand on rejoue le script : le registre des mouvements est en ajout seul, et refaire les lots le modifierait. Les quantités baissent donc au fil des démonstrations ; c'est le comportement réel d'une officine.
+
 ---
 
 ## Le parcours, dans l'ordre
@@ -160,7 +177,7 @@ Puis encaisser. La vente rejoint la liste avec son numéro `VE-2026-NNNNNN`, ses
 
 ### 8. Assurance — « assuré à 100 % » ne veut pas dire « tout est pris »
 
-La semence crée l'assureur **Pricemou & Frère Assurances** (code `PFA`) et, pour Maomou Conde, la police `PFA-2026-00042` **à 100 %**, avec le **lait infantile et les cosmétiques exclus**. C'est l'exemple du chef de projet, rendu démontrable.
+La semence crée l'assureur **Pricemou & Frère Assurances** (code `PFA`) et, pour Maomou Condé, la police `PFA-2026-00042` **à 100 %**, avec le **lait infantile et les cosmétiques exclus**. C'est l'exemple du chef de projet, rendu démontrable.
 
 Sous **Ousmane Pricemou**, à la caisse : panier avec **2 paracétamol et 1 lait infantile**. Dans la section *Tiers payant*, saisissez le QR `DEMO-QR-MAOMOU-0001` et cliquez sur **Reconnaître**, puis sur **Vérifier l'éligibilité**. La couverture se chiffre aussitôt.
 
@@ -192,7 +209,6 @@ Ces points ont une **API mais pas d'écran**, ou pas de modèle du tout.
 | **Appel aux pharmacies du quartier** (P6) | API livrée, **aucun écran**. Testable via `POST /api/v1/commandes`. |
 | **Vue de l'assureur sur ses pharmacies** | L'assureur ne peut pas encore voir, par officine conventionnée, ce qui a été délivré, facturé, payé et reste dû. C'est le reliquat du bloc 8 (EF-09-06/07), avec le front. |
 | **Extraction automatique des factures** (OCR) | Non construite. La saisie assistée la remplace, la facture restant attachée en justificatif. |
-| **Assurance « Pricemou & Frère »** | **Impossible à créer** : ni modèle `Assureur`, ni type de structure « assurance ». C'est P10, non construit. |
-| Offres des motards, suivi sur carte | P8, non construit. |
+| Suivi du motard sur carte | Non construit. Les **offres des motards**, elles, existent : le livreur répond à la course préparée par la semence, et la patiente choisit l'offre dans *Mes commandes*. |
 | Paiement | P7, non construit. |
 | Interactions médicamenteuses | Le référentiel est **vide** — aucune donnée clinique n'a été inventée. Les alertes d'allergie et de contre-indication, elles, fonctionnent. |
