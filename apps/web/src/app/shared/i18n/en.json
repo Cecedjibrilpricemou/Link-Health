@@ -2888,7 +2888,9 @@
       "FILE_EMPTY": "No pending request.",
       "EXAMENS": "{{count}} test(s)",
       "PRELEVEMENTS_TITLE": "Scheduled collections",
-      "PRELEVEMENTS_EMPTY": "No scheduled collection."
+      "PRELEVEMENTS_EMPTY": "No scheduled collection.",
+      "GROUPE_CIRCUIT": "Request workflow",
+      "GROUPE_ATTENTION": "Needs attention"
     },
     "FILE": {
       "TITLE": "Request queue",

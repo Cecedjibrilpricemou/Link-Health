@@ -2888,7 +2888,9 @@
       "FILE_EMPTY": "Aucune demande en attente.",
       "EXAMENS": "{{count}} examen(s)",
       "PRELEVEMENTS_TITLE": "Prélèvements planifiés",
-      "PRELEVEMENTS_EMPTY": "Aucun prélèvement planifié."
+      "PRELEVEMENTS_EMPTY": "Aucun prélèvement planifié.",
+      "GROUPE_CIRCUIT": "Circuit des demandes",
+      "GROUPE_ATTENTION": "Points d’attention"
     },
     "FILE": {
       "TITLE": "File des demandes",
