@@ -12,6 +12,7 @@
 // bien : il respecte le code d'une `AppError` et masque les autres messages
 // en production. Ce fichier verifie que les routes le laissent faire.
 process.env['JWT_SECRET'] ??= 'test-secret-au-moins-seize-caracteres';
+process.env['JWT_REFRESH_SECRET'] ??= 'test-refresh-au-moins-seize-caracteres';
 process.env['DB_ENCRYPTION_KEY'] ??= '0'.repeat(64);
 process.env['DATABASE_URL'] ??= 'postgresql://test:test@127.0.0.1:5432/test';
 

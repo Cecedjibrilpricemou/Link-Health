@@ -5,6 +5,15 @@
 // `authenticate`, qui recharge le role depuis la base — tous les droits du
 // compte pendant sept jours. Et dans l'autre sens, rien ne verifiait qu'un
 // jeton soumis a /auth/refresh en etait bien un.
+
+// `jwt.utils` lit ses secrets au chargement : sans eux la suite ne demarrait
+// pas hors CI. `??=` garde les valeurs fournies par l'environnement. Les deux
+// secrets doivent differer, c'est precisement ce que ce fichier verifie.
+process.env['JWT_SECRET'] ??= 'test-secret-au-moins-seize-caracteres';
+process.env['JWT_REFRESH_SECRET'] ??= 'test-refresh-au-moins-seize-caracteres';
+process.env['DB_ENCRYPTION_KEY'] ??= '0'.repeat(64);
+process.env['DATABASE_URL'] ??= 'postgresql://127.0.0.1:5432/test';
+
 import jwt from 'jsonwebtoken';
 
 jest.mock('../src/config/prisma', () => ({
