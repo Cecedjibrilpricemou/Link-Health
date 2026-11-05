@@ -666,8 +666,10 @@
         "ANNULEE": "withdrawn"
       },
       "ETABLISSEMENT": "Where would you like to be seen?",
-      "ETABLISSEMENT_AIDE": "Leave empty to use the facility on your record, if there is one.",
-      "ETABLISSEMENT_CHOISIR": "— Facility on my record —"
+      "ETABLISSEMENT_CHOISIR": "Choose a facility",
+      "MON_ETABLISSEMENT": "My facility",
+      "ETABLISSEMENT_AIDE_DOSSIER": "Your request will go to your facility, {{nom}}. Choose another one if needed.",
+      "ETABLISSEMENT_AIDE_CHOISIR": "Your record has no facility: choose where you would like to be seen."
     },
     "PAIEMENTS": {
       "TITRE": "My payments",

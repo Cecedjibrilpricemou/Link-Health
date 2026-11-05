@@ -666,8 +666,10 @@
         "ANNULEE": "retirée"
       },
       "ETABLISSEMENT": "Où souhaitez-vous être vu(e) ?",
-      "ETABLISSEMENT_AIDE": "Laissez vide pour utiliser l'établissement de votre dossier, s'il y en a un.",
-      "ETABLISSEMENT_CHOISIR": "— Établissement de mon dossier —"
+      "ETABLISSEMENT_CHOISIR": "Choisissez un établissement",
+      "MON_ETABLISSEMENT": "Mon établissement",
+      "ETABLISSEMENT_AIDE_DOSSIER": "Votre demande ira à votre établissement, {{nom}}. Choisissez-en un autre si besoin.",
+      "ETABLISSEMENT_AIDE_CHOISIR": "Votre dossier n’indique pas d’établissement : choisissez où vous souhaitez être vu(e)."
     },
     "PAIEMENTS": {
       "TITRE": "Mes paiements",
