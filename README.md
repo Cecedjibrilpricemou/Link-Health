@@ -102,6 +102,7 @@ Web `:8080`, API `:3000`, Postgres `:5433`, Redis `:6379`.
 | `PORT`, `NODE_ENV`, `ALLOWED_ORIGINS` | — | — |
 | `GMAIL_USER` / `GMAIL_APP_PASSWORD` | compte Gmail + mot de passe d'application (16 caractères) | — |
 | `REDIS_URL`, `SENTRY_DSN` | — | — |
+| `RATE_LIMIT_API_MAX` / `RATE_LIMIT_AUTH_MAX` | requêtes / connexions par fenêtre de 15 min (défaut : 300 et 20) | — |
 
 `NODE_ENV` **doit rester `development`** pour tout usage local en HTTP : en `production`, les cookies d'authentification sont marqués `Secure` et le navigateur les rejette hors HTTPS.
 
@@ -122,8 +123,8 @@ La variable peut aussi vivre dans `apps/api/.env`, qui n'est pas suivi par git. 
 ## Tests
 
 ```bash
-npm test --workspace=apps/api              # près de 1 900 tests, 75 suites (Jest, Prisma mocké)
-npm test --workspace=apps/web              # environ 90 tests (Vitest)
+npm test --workspace=apps/api              # plus de 2 000 tests, près de 90 suites (Jest, Prisma mocké)
+npm test --workspace=apps/web              # environ 200 tests (Vitest)
 npm run build:web                          # seul le build vérifie les templates Angular
 ```
 
@@ -131,7 +132,7 @@ npm run build:web                          # seul le build vérifie les template
 
 ### Parcours de bout en bout (Playwright)
 
-Cinq parcours enchaînés dans un vrai navigateur, contre la vraie API et une base PostgreSQL **jetable** — jamais la base de développement. Playwright migre et sème la base, puis démarre l'API et le front lui-même.
+Six parcours enchaînés dans un vrai navigateur, contre la vraie API et une base PostgreSQL **jetable** — jamais la base de développement. Playwright migre et sème la base, puis démarre l'API et le front lui-même.
 
 ```bash
 docker exec baobao_db psql -U baobao_user -d postgres -c "CREATE DATABASE keneya_e2e;"
@@ -144,11 +145,13 @@ Deux pièges, tous deux déjà payés :
 - **Le port 3000 doit être libre.** Hors CI, Playwright réutilise un serveur déjà lancé (`reuseExistingServer`) : si votre API de développement tourne, les parcours s'exécutent contre **votre base de développement**.
 - **Sans `E2E_DATABASE_URL`**, la configuration pointe sur une base qui n'existe pas en local ; l'échec se présente comme « les comptes e2e n'existent pas ».
 
-En local, le Chrome installé est utilisé ; en CI, le Chromium de Playwright. Comptes et données : `apps/api/prisma/seed-e2e.ts`. Parcours : `apps/web/e2e/parcours.spec.ts`.
+En local, le Chrome installé est utilisé ; en CI, le Chromium de Playwright. Comptes et données : `apps/api/prisma/seed-e2e.ts`. Parcours : `apps/web/e2e/parcours.spec.ts` (ASC → médecin → pharmacien) et `apps/web/e2e/pharmacie-rbac.spec.ts` (catalogue, stock, caisse, agents, cloisonnement entre officines).
+
+L'API des parcours relève la limite de requêtes (`RATE_LIMIT_API_MAX`, dans `apps/web/playwright.config.ts`) : un parcours complet dépasse les 300 requêtes par quart d'heure de la production, et l'API répondait 429 au milieu d'un test.
 
 ## Intégration continue
 
-`.github/workflows/ci.yml` — cinq travaux sur chaque poussée : *API Build & Test*, *Dependencies Security Audit*, *Web Build*, *Semgrep Code Scan* et *E2E Parcours*. Semgrep rapporte les résultats sans bloquer la CI pendant la période initiale d'examen.
+`.github/workflows/ci.yml` — cinq travaux sur chaque poussée : *API Build & Test*, *Dependencies Security Audit*, *Web Build*, *Semgrep Code Scan* et *E2E Parcours*. Semgrep rapporte les résultats sans bloquer la CI pendant la période initiale d'examen. Un sixième, *Deploy — Migrate + Restart*, ne tourne que sur `main` et seulement si la variable de dépôt `DEPLOY_ENABLED` vaut `true`.
 
 L'audit passe par **`scripts/audit-gate.mjs`**, pas par `npm audit` brut : tout avis *high* ou *critical* non accepté fait échouer la CI, avec des **exceptions nommées par identifiant GHSA, justifiées et datées**. La CI échoue aussi si une exception dépasse sa date de réexamen.
 
