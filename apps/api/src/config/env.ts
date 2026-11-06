@@ -70,10 +70,14 @@ export const envSchema = z.object({
   SENTRY_DSN: z.string().url().optional(),
 
   // ─── OTP dev fallback ───────────────────────────────
+  // Lu comme le lit `utils/otp-developpement.ts`, qui decide : **seul
+  // « true » l'active**. Le schema disait l'inverse (« actif sauf false »), et
+  // `.env.example` le repetait : une ligne absente coupait l'OTP en clair
+  // alors que la documentation promettait le contraire.
   EMAIL_OTP_DEV_FALLBACK: z
     .string()
     .optional()
-    .transform((val) => val !== 'false'),
+    .transform((val) => val === 'true'),
 }).refine((e) => e.JWT_REFRESH_SECRET !== e.JWT_SECRET, {
   path: ['JWT_REFRESH_SECRET'],
   message: 'JWT_REFRESH_SECRET doit etre different de JWT_SECRET',
