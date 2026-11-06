@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lead Health</string>
+    <string name="title_activity_main">Lead Health</string>
+    <string name="package_name">gn.leadhealth.app</string>
+    <string name="custom_url_scheme">gn.leadhealth.app</string>
+</resources>
