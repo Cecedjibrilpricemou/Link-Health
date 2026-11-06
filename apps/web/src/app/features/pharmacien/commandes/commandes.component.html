@@ -163,6 +163,30 @@
               </p>
             }
 
+            <!-- Le motard choisi par le patient : on le reconnait au comptoir
+                 avant de scanner son QR. L'API ne le rend qu'a cette officine. -->
+            @if (c.livreur; as motard) {
+              <div class="bb-cmd__livreur" role="group"
+                   [attr.aria-label]="'PHARMACIEN.COMMANDES.LIVREUR_TITRE' | translate">
+                <app-avatar class="bb-cmd__livreur-photo" [photoUrl]="motard.photoUrl"
+                            [initiales]="initiales(motard.prenom, motard.nom)" />
+                <div class="bb-cmd__livreur-infos">
+                  <span class="bb-cmd__livreur-titre">
+                    {{ (c.statut === 'RETIREE' ? 'PHARMACIEN.COMMANDES.LIVREUR_PARTI' : 'PHARMACIEN.COMMANDES.LIVREUR_TITRE') | translate }}
+                  </span>
+                  <strong class="bb-cmd__livreur-nom">{{ motard.prenom }} {{ motard.nom }}</strong>
+                  <a class="bb-cmd__livreur-tel" [href]="'tel:' + motard.telephone">
+                    <i class="pi pi-phone" aria-hidden="true"></i> {{ motard.telephone }}
+                  </a>
+                  @if (c.statut === 'PRETE_POUR_LIVRAISON') {
+                    <span class="bb-cmd__livreur-aide">
+                      {{ (motard.photoUrl ? 'PHARMACIEN.COMMANDES.LIVREUR_VERIFIER' : 'PHARMACIEN.COMMANDES.LIVREUR_SANS_PHOTO') | translate }}
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
             <!-- **Une seule action proposee a la fois.** Le serveur refuse
                  tout le reste ; offrir des boutons qu'il refusera ferait
                  chercher la panne du mauvais cote. -->

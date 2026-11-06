@@ -440,6 +440,67 @@ describe('commandesDeLaPharmacie', () => {
   });
 });
 
+// ── Le motard au comptoir ────────────────────────────────────────────
+describe('le motard attribue, vu par la pharmacie', () => {
+  const MOTARD = { prenom: 'Ibrahima', nom: 'Keita', telephone: '620100016', photoUrl: '/uploads/avatars/motard.jpg' };
+
+  function commandeEnLivraison(statutCourse: string, idPharmacie = 'ph-nounie', utilisateur: unknown = MOTARD) {
+    return commandeRelue({
+      statut: 'PRETE_POUR_LIVRAISON', modeRemise: 'LIVRAISON', idPharmacie,
+      courses: [{ id: 'course-1', statut: statutCourse, livreur: utilisateur ? { utilisateur } : null }],
+    });
+  }
+
+  async function vuParLaPharmacie(commande: unknown) {
+    pharmacienDe();
+    prisma.commande.findMany.mockResolvedValue([commande]);
+    const [vue] = await commandesDeLaPharmacie(PHARMACIEN);
+    return vue;
+  }
+
+  it('montre photo, nom et telephone du motard choisi a la pharmacie qui remet le colis', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('ATTRIBUEE'));
+    expect(vue.livreur).toEqual(MOTARD);
+  });
+
+  it('le montre encore pendant la course', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('EN_COURS'));
+    expect(vue.livreur?.prenom).toBe('Ibrahima');
+  });
+
+  it('rend une photo absente comme null, sans casser la vue', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('ATTRIBUEE', 'ph-nounie', { ...MOTARD, photoUrl: null }));
+    expect(vue.livreur?.photoUrl).toBeNull();
+  });
+
+  it('ne montre personne tant que le patient n a pas choisi de motard', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('APPEL_OFFRES', 'ph-nounie', null));
+    expect(vue).not.toHaveProperty('livreur');
+  });
+
+  it('ne montre plus un motard dont l attribution a ete retiree', async () => {
+    // La course est revenue en appel d'offres : celui qui etait choisi ne
+    // viendra pas, meme si son profil est encore rattache.
+    const vue = await vuParLaPharmacie(commandeEnLivraison('APPEL_OFFRES'));
+    expect(vue).not.toHaveProperty('livreur');
+  });
+
+  it('ne montre pas le motard a une autre pharmacie', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('ATTRIBUEE', 'ph-autre'));
+    expect(vue).not.toHaveProperty('livreur');
+  });
+
+  it('demande les champs du motard a la base, et seulement ceux-la', async () => {
+    pharmacienDe();
+    prisma.commande.findMany.mockResolvedValue([]);
+    await commandesDeLaPharmacie(PHARMACIEN);
+    const { include } = prisma.commande.findMany.mock.calls[0][0];
+    expect(include.courses.select.livreur).toEqual({
+      select: { utilisateur: { select: { prenom: true, nom: true, telephone: true, photoUrl: true } } },
+    });
+  });
+});
+
 // ── Qui est prevenu d'un appel ───────────────────────────────────────
 //
 // **Ce bloc protege un defaut en service.** `idUtilisateur` recevait

@@ -3,3 +3,58 @@
   border-inline-start: .25rem solid currentColor;
   padding-inline-start: .75rem;
 }
+
+// Le motard attendu au comptoir : la photo d'abord, assez grande pour
+// reconnaitre un visage sur un telephone.
+.bb-cmd__livreur {
+  display: flex;
+  align-items: center;
+  gap: .875rem;
+  margin-block: .75rem;
+  padding: .75rem;
+  border: 1px solid var(--bb-border, #d9e2dc);
+  border-radius: .75rem;
+}
+
+.bb-cmd__livreur-photo {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  background: var(--bb-primary-soft, #e3efe6);
+  color: var(--bb-primary, #1b5e20);
+}
+
+.bb-cmd__livreur-infos {
+  display: flex;
+  flex-direction: column;
+  gap: .125rem;
+  min-width: 0;
+}
+
+.bb-cmd__livreur-titre {
+  font-size: .8125rem;
+  opacity: .75;
+}
+
+.bb-cmd__livreur-nom {
+  overflow-wrap: anywhere;
+}
+
+.bb-cmd__livreur-tel {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+}
+
+.bb-cmd__livreur-aide {
+  font-size: .8125rem;
+  margin-top: .25rem;
+}

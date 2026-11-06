@@ -20,7 +20,7 @@ import {
   StatutCourse,
   StatutOrdonnance,
 } from '../config/generated/client/client';
-import type { CommandeView } from '@baobaoheath/shared-types';
+import type { CommandeView, LivreurAttribueView } from '@baobaoheath/shared-types';
 import { prisma } from '../config/prisma';
 import { JwtPayload } from '../types/auth.types';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
@@ -103,6 +103,36 @@ export function versCommandeView(
     clotureeLe: c.clotureeLe?.toISOString() ?? null,
     motifAnnulation: c.motifAnnulation,
     ...(idPharmacieLectrice ? { estLaMienne: c.idPharmacie === idPharmacieLectrice } : {}),
+    ...livreurPourLaPharmacie(c, idPharmacieLectrice),
+  };
+}
+
+const STATUTS_LIVREUR_VISIBLE: StatutCourse[] = [StatutCourse.ATTRIBUEE, StatutCourse.EN_COURS];
+
+/**
+ * Le motard qui vient chercher le colis, montre a la pharmacie qui le lui
+ * remet : elle verifie que la personne au comptoir est bien celle que le
+ * patient a choisie, avant de scanner son QR.
+ *
+ * Seulement a **cette** pharmacie, et seulement une fois le motard choisi et
+ * jusqu'a la livraison. Une officine qui a simplement vu passer l'appel n'a
+ * pas a connaitre le visage ni le numero de quelqu'un qui ne viendra pas.
+ */
+function livreurPourLaPharmacie(
+  c: CommandeAvecInclude,
+  idPharmacieLectrice?: string,
+): { livreur?: LivreurAttribueView } {
+  const course = c.courses?.[0];
+  const utilisateur = course?.livreur?.utilisateur;
+  if (!idPharmacieLectrice || c.idPharmacie !== idPharmacieLectrice) return {};
+  if (!course || !STATUTS_LIVREUR_VISIBLE.includes(course.statut) || !utilisateur) return {};
+  return {
+    livreur: {
+      prenom: utilisateur.prenom,
+      nom: utilisateur.nom,
+      telephone: utilisateur.telephone,
+      photoUrl: utilisateur.photoUrl,
+    },
   };
 }
 
@@ -126,7 +156,13 @@ const COMMANDE_INCLUDE = {
   pharmacie: { select: { id: true, nom: true, prefecture: true, commune: true, quartier: true } },
   courses: {
     where: { statut: { notIn: STATUTS_COURSE_TERMINAUX } },
-    select: { id: true, statut: true },
+    select: {
+      id: true,
+      statut: true,
+      livreur: {
+        select: { utilisateur: { select: { prenom: true, nom: true, telephone: true, photoUrl: true } } },
+      },
+    },
     take: 1,
   },
   reponses: {

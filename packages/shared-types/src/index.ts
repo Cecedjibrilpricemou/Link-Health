@@ -183,6 +183,15 @@ export interface ReponsePharmacieView {
   repondueLe: HorodatageApi;
 }
 
+/** Ce que la pharmacie sait du motard qui vient chercher le colis. */
+export interface LivreurAttribueView {
+  prenom: string;
+  nom: string;
+  telephone: string;
+  /** Chemin `/uploads/avatars/…`, ou null si le motard n'a pas mis de photo. */
+  photoUrl: string | null;
+}
+
 export interface CommandeView {
   id: string;
   /** Identifiant de la course active, pour les gestes patient/pharmacie en livraison. */
@@ -212,6 +221,13 @@ export interface CommandeView {
 
   /** Vrai quand **cette** pharmacie l'a prise : l'API le calcule pour elle. */
   estLaMienne?: boolean;
+
+  /**
+   * Le motard choisi par le patient, rendu a la seule pharmacie qui lui remet
+   * le colis, de l'attribution a la livraison : elle le reconnait au comptoir
+   * avant de scanner son QR.
+   */
+  livreur?: LivreurAttribueView;
 
   /**
    * Le total du panier, nul tant qu'il n'est pas chiffre.
