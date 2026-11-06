@@ -26,6 +26,7 @@ import { JwtPayload } from '../types/auth.types';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { estStructureOfficinale, filtreStructuresOfficinales } from '../utils/officine.util';
 import { prochainNumero } from './numero.service';
+import { CHAMPS_RECHERCHE, filtreZone, memeZone, zoneDe, zoneDeLaCommande, type Lieu } from '../utils/zone';
 import { notifierSansBloquer } from './notification.service';
 import { assertTransition, transitionPermise } from './commande.transitions';
 export { assertTransition, transitionPermise } from './commande.transitions';
@@ -144,14 +145,19 @@ type CommandeAvecInclude = Prisma.CommandeGetPayload<{ include: typeof COMMANDE_
  * parcours), et deviner reviendrait à solliciter des pharmacies qui n'ont
  * aucune raison d'être concernées.
  */
-export async function pharmaciesDuQuartier(quartier: string | null) {
-  if (!quartier) return [];
+export async function pharmaciesDeLaZone(lieu: Lieu) {
+  // Commande anterieure a la prefecture de recherche : comparee par le seul
+  // quartier, comme elle l'a ete a sa creation.
+  const ancienne = !(lieu.prefecture ?? '').trim() && (lieu.quartier ?? '').trim();
+  if (!ancienne && !zoneDe(lieu)) return [];
   return prisma.structureSante.findMany({
     where: {
       ...filtreStructuresOfficinales(),
       estActive: true,
       estPartenaire: true,
-      quartier,
+      ...(ancienne
+        ? { quartier: { equals: String(lieu.quartier).trim(), mode: 'insensitive' as const } }
+        : filtreZone(lieu)),
     },
     select: { id: true, nom: true },
   });
@@ -172,7 +178,7 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
       consultation: {
         select: {
           patient: {
-            select: { quartier: true, utilisateur: { select: { id: true } } },
+            select: { prefecture: true, commune: true, quartier: true, utilisateur: { select: { id: true } } },
           },
           idMedecinValideur: true,
         },
@@ -186,14 +192,16 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
     throw new ValidationError('Ordonnance sans medicament');
   }
 
-  const quartier = ordonnance.consultation.patient.quartier;
-  const pharmacies = await pharmaciesDuQuartier(quartier);
+  const { prefecture, commune, quartier } = ordonnance.consultation.patient;
+  const pharmacies = await pharmaciesDeLaZone({ prefecture, commune, quartier });
 
   const commande = await prisma.commande.create({
     data: {
       numero: await prochainNumero('CM'),
       idOrdonnance,
       quartierRecherche: quartier,
+      prefectureRecherche: prefecture,
+      communeRecherche: commune,
       // Aucune pharmacie partenaire dans le quartier : il n'y a personne a
       // interroger. Le resultat est le meme que si nul n'avait repondu — le
       // patient repart avec son ordonnance.
@@ -255,13 +263,16 @@ export async function repondreDisponibilite(
 
   const commande = await prisma.commande.findUnique({
     where: { id: idCommande },
-    select: { id: true, statut: true, idPharmacie: true, quartierRecherche: true, numero: true },
+    select: {
+      id: true, statut: true, idPharmacie: true, numero: true,
+      prefectureRecherche: true, communeRecherche: true, quartierRecherche: true,
+    },
   });
   if (!commande) throw new NotFoundError('Commande non trouvee');
 
   // Une pharmacie d'un autre quartier n'a pas ete sollicitee.
-  if (commande.quartierRecherche && pharmacie.quartier !== commande.quartierRecherche) {
-    throw new ForbiddenError("Cette commande ne releve pas de votre quartier");
+  if ((commande.quartierRecherche || commande.communeRecherche) && !memeZone(pharmacie, zoneDeLaCommande(commande))) {
+    throw new ForbiddenError("Cette commande ne releve pas de votre zone");
   }
   if (commande.statut === StatutCommande.ANNULEE) {
     throw new ValidationError('Commande annulee');
@@ -383,7 +394,7 @@ export async function commandesDeLaPharmacie(user: JwtPayload): Promise<Commande
         // Les appels en cours de son quartier, qu'elle n'a pas encore refuses.
         {
           statut: StatutCommande.RECHERCHE_PHARMACIE,
-          quartierRecherche: pharmacie.quartier,
+          ...filtreZone(pharmacie, CHAMPS_RECHERCHE, { prefectureFacultative: true }),
           reponses: { none: { idStructure: pharmacie.id, aTousLesProduits: false } },
         },
         // Et celles qu'elle a prises.
@@ -422,11 +433,14 @@ async function pharmacieDuPharmacien(userId: string) {
 async function verifierEpuisementDesReponses(idCommande: string) {
   const commande = await prisma.commande.findUnique({
     where: { id: idCommande },
-    select: { quartierRecherche: true, statut: true, reponses: { select: { aTousLesProduits: true } } },
+    select: {
+      prefectureRecherche: true, communeRecherche: true, quartierRecherche: true,
+      statut: true, reponses: { select: { aTousLesProduits: true } },
+    },
   });
   if (!commande || commande.statut !== StatutCommande.RECHERCHE_PHARMACIE) return;
 
-  const sollicitees = await pharmaciesDuQuartier(commande.quartierRecherche);
+  const sollicitees = await pharmaciesDeLaZone(zoneDeLaCommande(commande));
   const refus = commande.reponses.filter((r) => !r.aTousLesProduits).length;
   if (sollicitees.length === 0 || refus < sollicitees.length) return;
 
@@ -448,7 +462,7 @@ async function avertirIndisponibilite(idCommande: string) {
       type: 'COMMANDE_SANS_PHARMACIE',
       titre: 'Aucune pharmacie ne dispose de tous les produits',
       contenu:
-        `Ordonnance ${destinataires.numeroOrdonnance} : aucune pharmacie partenaire du quartier ` +
+        `Ordonnance ${destinataires.numeroOrdonnance} : aucune pharmacie partenaire de la zone ` +
         `ne detient la totalite. L'ordonnance reste valable et peut etre presentee ailleurs.`,
       lienAction: '/patient/ordonnances',
       metadonnees: { idCommande },
@@ -561,6 +575,8 @@ export async function assertPeutLireCommande(user: JwtPayload, idCommande: strin
     where: { id: idCommande },
     select: {
       idPharmacie: true,
+      prefectureRecherche: true,
+      communeRecherche: true,
       quartierRecherche: true,
       statut: true,
       ordonnance: {
@@ -583,7 +599,7 @@ export async function assertPeutLireCommande(user: JwtPayload, idCommande: strin
     where: { id: user.userId },
     select: {
       idStructure: true,
-      structure: { select: { type: true, quartier: true, estPartenaire: true } },
+      structure: { select: { type: true, prefecture: true, commune: true, quartier: true, estPartenaire: true } },
     },
   });
   const structure = utilisateur?.structure;
@@ -594,7 +610,7 @@ export async function assertPeutLireCommande(user: JwtPayload, idCommande: strin
     if (
       structure.estPartenaire
       && commande.statut === StatutCommande.RECHERCHE_PHARMACIE
-      && structure.quartier === commande.quartierRecherche
+      && memeZone(structure, zoneDeLaCommande(commande))
     ) return;
   }
 

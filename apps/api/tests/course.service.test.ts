@@ -16,6 +16,7 @@ import { prochainNumero } from '../src/services/numero.service';
 import { notifierSansBloquer } from '../src/services/notification.service';
 import type { JwtPayload } from '../src/types/auth.types';
 import { ConflictError, ForbiddenError } from '../src/utils/app-error';
+import { filtreZone } from '../src/utils/zone';
 import { Role, StatutCommande, StatutCourse } from '../src/config/generated/client/client';
 
 jest.mock('../src/config/prisma', () => {
@@ -67,6 +68,7 @@ const profil = {
   qrCode: 'qr-livreur-test',
   quartier: 'Kipé',
   prefecture: 'Conakry',
+  commune: 'Ratoma',
   estActif: true,
   utilisateur: { role: Role.LIVREUR },
 };
@@ -76,6 +78,7 @@ const courseOuverte = {
   statut: StatutCourse.APPEL_OFFRES,
   quartier: 'Kipé',
   prefecture: 'Conakry',
+  commune: 'Ratoma',
   prixGnf: null,
   delaiAnnonceMinutes: null,
   creeeLe: new Date('2026-10-23T10:00:00.000Z'),
@@ -125,7 +128,8 @@ describe('ouverture et visibilité des courses', () => {
       statut: StatutCommande.PRETE_POUR_LIVRAISON,
       modeRemise: 'LIVRAISON',
       quartierRecherche: 'Kipé',
-      ordonnance: { consultation: { patient: { prefecture: 'Conakry' } } },
+      communeRecherche: 'Ratoma',
+      ordonnance: { consultation: { patient: { prefecture: 'Conakry', commune: 'Dixinn' } } },
     });
     prisma.course.findFirst.mockResolvedValue(null);
     prisma.course.create.mockResolvedValue({ id: 'course-1', statut: StatutCourse.APPEL_OFFRES });
@@ -140,9 +144,31 @@ describe('ouverture et visibilité des courses', () => {
         idCommande: 'commande-1',
         quartier: 'Kipé',
         prefecture: 'Conakry',
+        // La commune figee sur la commande prime sur l'adresse du patient.
+        commune: 'Ratoma',
       }),
     }));
     expect(result).toEqual({ id: 'course-1', statut: StatutCourse.APPEL_OFFRES });
+  });
+
+  it('prend la commune du patient pour une commande anterieure sans commune figee', async () => {
+    prisma.commande.findUnique.mockResolvedValue({
+      id: 'commande-1',
+      statut: StatutCommande.PRETE_POUR_LIVRAISON,
+      modeRemise: 'LIVRAISON',
+      quartierRecherche: 'Kipé',
+      communeRecherche: null,
+      ordonnance: { consultation: { patient: { prefecture: 'Conakry', commune: 'Ratoma' } } },
+    });
+    prisma.course.findFirst.mockResolvedValue(null);
+    prisma.course.create.mockResolvedValue({ id: 'course-1', statut: StatutCourse.APPEL_OFFRES });
+
+    await prisma.$transaction((tx: unknown) =>
+      ouvrirCourse('commande-1', tx as CourseTransactionClient));
+
+    expect(prisma.course.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ commune: 'Ratoma' }),
+    }));
   });
 
   it('retourne la course active existante sans en creer une autre', async () => {
@@ -162,7 +188,7 @@ describe('ouverture et visibilité des courses', () => {
     expect(prisma.course.create).not.toHaveBeenCalled();
   });
 
-  it('ne montre au livreur que les courses dans son quartier et sa prefecture', async () => {
+  it('ne montre au livreur que les courses de sa commune et de sa prefecture', async () => {
     prisma.course.findMany.mockResolvedValue([courseOuverte]);
 
     const result = await coursesOuvertesPour(livreur);
@@ -170,10 +196,11 @@ describe('ouverture et visibilité des courses', () => {
     expect(prisma.course.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: {
         statut: StatutCourse.APPEL_OFFRES,
-        quartier: profil.quartier,
-        prefecture: profil.prefecture,
+        ...filtreZone(profil),
       },
     }));
+    // Le filtre porte bien sur la commune du livreur, pas seulement son quartier.
+    expect(JSON.stringify(prisma.course.findMany.mock.calls[0][0].where)).toContain('Ratoma');
     expect(result).toEqual([expect.objectContaining({
       id: 'course-1',
       pharmacie: { id: 'pharmacie-1', nom: 'Pharmacie du quartier' },
@@ -181,11 +208,13 @@ describe('ouverture et visibilité des courses', () => {
   });
 
   it('notifie uniquement les livreurs actifs de la zone a l ouverture', async () => {
-    prisma.course.findUnique.mockResolvedValue({
+    const course = {
       numero: 'LV-2026-000001',
       quartier: profil.quartier,
       prefecture: profil.prefecture,
-    });
+      commune: profil.commune,
+    };
+    prisma.course.findUnique.mockResolvedValue(course);
     prisma.livreurProfile.findMany.mockResolvedValue([{ utilisateur: { id: 'livreur-user' } }]);
 
     await notifierLivreursCourse('course-1');
@@ -193,8 +222,7 @@ describe('ouverture et visibilité des courses', () => {
     expect(prisma.livreurProfile.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         estActif: true,
-        quartier: profil.quartier,
-        prefecture: profil.prefecture,
+        ...filtreZone(course),
         utilisateur: { role: Role.LIVREUR, estActif: true },
       }),
     }));
@@ -239,11 +267,45 @@ describe('offres de course', () => {
       statut: StatutCourse.APPEL_OFFRES,
       quartier: 'Matoto',
       prefecture: 'Conakry',
+      commune: 'Matoto',
     });
 
     await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }))
       .rejects.toBeInstanceOf(ForbiddenError);
     expect(prisma.offreCourse.upsert).not.toHaveBeenCalled();
+  });
+
+  it('refuse une course de meme commune mais d une autre prefecture', async () => {
+    prisma.course.findUnique.mockResolvedValue({
+      id: 'course-1',
+      statut: StatutCourse.APPEL_OFFRES,
+      quartier: 'Kipé',
+      prefecture: 'Coyah',
+      commune: 'Ratoma',
+    });
+
+    await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }))
+      .rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.offreCourse.upsert).not.toHaveBeenCalled();
+  });
+
+  it('accepte une course de la meme commune dans un autre quartier', async () => {
+    prisma.course.findUnique.mockResolvedValue({
+      id: 'course-1',
+      statut: StatutCourse.APPEL_OFFRES,
+      quartier: 'Lambanyi',
+      prefecture: 'Conakry',
+      commune: 'Ratoma',
+    });
+
+    prisma.offreCourse.upsert.mockResolvedValue({
+      id: 'offre-1', prixGnf: 10_000, delaiMinutes: 20, creeeLe: new Date('2026-11-06T10:00:00.000Z'),
+    });
+
+    await proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }).catch(() => undefined);
+
+    // La zone est acceptee : l'offre est bien enregistree.
+    expect(prisma.offreCourse.upsert).toHaveBeenCalled();
   });
 
   it('refuse une proposition si la course a ete attribuee entre-temps', async () => {

@@ -31,6 +31,7 @@ function versLivreurAdminView(livreur: {
   livreurProfile: {
     quartier: string;
     prefecture: string;
+    commune: string | null;
     estActif: boolean;
   } | null;
 }): LivreurAdminView {
@@ -44,6 +45,7 @@ function versLivreurAdminView(livreur: {
     telephone: livreur.telephone,
     quartier: livreur.livreurProfile.quartier,
     prefecture: livreur.livreurProfile.prefecture,
+    commune: livreur.livreurProfile.commune,
     estActif: livreur.livreurProfile.estActif,
     creeLe: livreur.creeLe.toISOString(),
   };
@@ -83,6 +85,7 @@ export async function creerLivreur(
           idUtilisateur: utilisateur.id,
           quartier: dto.quartier,
           prefecture: dto.prefecture,
+          commune: dto.commune?.trim() || null,
         },
       });
       return {
@@ -90,6 +93,7 @@ export async function creerLivreur(
         livreurProfile: {
           quartier: dto.quartier,
           prefecture: dto.prefecture,
+          commune: dto.commune?.trim() || null,
           estActif: true,
         },
       };
@@ -116,7 +120,7 @@ export async function listerLivreurs(auteur: JwtPayload): Promise<LivreurAdminVi
       nom: true,
       telephone: true,
       creeLe: true,
-      livreurProfile: { select: { quartier: true, prefecture: true, estActif: true } },
+      livreurProfile: { select: { quartier: true, prefecture: true, commune: true, estActif: true } },
     },
     orderBy: { creeLe: 'desc' },
   });
@@ -159,7 +163,7 @@ export async function definirActiviteLivreur(
       nom: true,
       telephone: true,
       creeLe: true,
-      livreurProfile: { select: { quartier: true, prefecture: true, estActif: true } },
+      livreurProfile: { select: { quartier: true, prefecture: true, commune: true, estActif: true } },
     },
   });
   if (!livreur) throw new NotFoundError('Livreur introuvable');

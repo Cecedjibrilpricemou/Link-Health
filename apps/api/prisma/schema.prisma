@@ -415,7 +415,7 @@ model Utilisateur {
   ussdSessions              UssdSession[]
   notifications             Notification[]
 
-  conseilsDeclares      StructureConseillee[]    @relation("ConseilsDeclares")
+  conseilsDeclares StructureConseillee[] @relation("ConseilsDeclares")
 
   @@map("utilisateurs")
 }
@@ -822,13 +822,13 @@ model StructureSante {
   medecinProfiles       MedecinProfile[]
   pharmacienProfiles    PharmacienProfile[]
   stocks                Stock[]
-  patientsPreferent     PatientProfile[]    @relation("StructurePreferee")
-  demandesRendezVous    DemandeRendezVous[] @relation("DemandesRendezVous")
-  approvisionnements    Approvisionnement[] @relation("ApprovisionnementsStructure")
-  referencementsSource  Referencement[]     @relation("StructureSource")
-  referencementsCible   Referencement[]     @relation("StructureCible")
+  patientsPreferent     PatientProfile[]      @relation("StructurePreferee")
+  demandesRendezVous    DemandeRendezVous[]   @relation("DemandesRendezVous")
+  approvisionnements    Approvisionnement[]   @relation("ApprovisionnementsStructure")
+  referencementsSource  Referencement[]       @relation("StructureSource")
+  referencementsCible   Referencement[]       @relation("StructureCible")
   episodes              EpisodeSoins[]
-  demandesAnalyseRecues DemandeAnalyse[]    @relation("Laboratoire")
+  demandesAnalyseRecues DemandeAnalyse[]      @relation("Laboratoire")
   plateauTechnique      PlateauTechnique[]
   conseille             StructureConseillee[] @relation("StructureQuiConseille")
   conseilleePar         StructureConseillee[] @relation("StructureConseillee")
@@ -897,8 +897,8 @@ enum TypePieceIdentite {
 }
 
 model PatientProfile {
-  id                 String   @id @default(cuid())
-  qrCode             String   @unique @default(cuid())
+  id     String @id @default(cuid())
+  qrCode String @unique @default(cuid())
 
   // ── Code PIN de la passerelle USSD ─────────────────────────────────────
   //
@@ -1099,6 +1099,9 @@ model LivreurProfile {
   qrCode     String   @unique @default(cuid())
   quartier   String
   prefecture String
+  /// Commune de travail. La zone d'une course est la commune (voir
+  /// utils/zone.ts) ; vide, le livreur garde l'ancienne maille du quartier.
+  commune    String?
   estActif   Boolean  @default(true)
   creeLe     DateTime @default(now())
 
@@ -1109,6 +1112,7 @@ model LivreurProfile {
   offres  OffreCourse[]
 
   @@index([prefecture, quartier, estActif])
+  @@index([prefecture, commune, estActif])
   @@map("profils_livreur")
 }
 
@@ -2153,9 +2157,9 @@ model StructureConseillee {
   idStructureConseillee String
   structureConseillee   StructureSante @relation("StructureConseillee", fields: [idStructureConseillee], references: [id], onDelete: Cascade)
 
-  declareLe   DateTime @default(now())
-  declarePar  String
-  auteur      Utilisateur @relation("ConseilsDeclares", fields: [declarePar], references: [id], onDelete: Restrict)
+  declareLe  DateTime    @default(now())
+  declarePar String
+  auteur     Utilisateur @relation("ConseilsDeclares", fields: [declarePar], references: [id], onDelete: Restrict)
 
   @@unique([idStructure, idStructureConseillee])
   @@index([idStructure])
@@ -2385,7 +2389,11 @@ model Commande {
 
   /// Quartier vise par l'appel, fige a la creation : le patient peut
   /// demenager, la commande doit rester lisible telle qu'elle a ete passee.
-  quartierRecherche String?
+  quartierRecherche   String?
+  /// Prefecture et commune du patient au moment de l'appel, figees comme le
+  /// quartier : la zone des pharmacies sollicitees (voir utils/zone.ts).
+  prefectureRecherche String?
+  communeRecherche    String?
 
   creeLe    DateTime @default(now())
   modifieLe DateTime @updatedAt
@@ -2430,6 +2438,8 @@ model Course {
   statut              StatutCourse @default(APPEL_OFFRES)
   quartier            String
   prefecture          String
+  /// La zone des motards prevenus (voir utils/zone.ts).
+  commune             String?
   prixGnf             Int?
   delaiAnnonceMinutes Int?
   creeeLe             DateTime     @default(now())
@@ -2448,6 +2458,7 @@ model Course {
   offres OffreCourse[]
 
   @@index([prefecture, quartier, statut])
+  @@index([prefecture, commune, statut])
   @@index([idLivreur, statut])
   @@map("courses")
 }

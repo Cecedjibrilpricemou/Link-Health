@@ -315,10 +315,11 @@ async function main() {
   const compteLivreur = await upsertUtilisateur(DEMO.livreur, Role.LIVREUR, motDePasseHash, null);
   await prisma.livreurProfile.upsert({
     where: { idUtilisateur: compteLivreur.id },
-    update: { quartier: QUARTIER, prefecture: PREFECTURE, estActif: true },
+    update: { quartier: QUARTIER, commune: COMMUNE, prefecture: PREFECTURE, estActif: true },
     create: {
       idUtilisateur: compteLivreur.id,
       quartier: QUARTIER,
+      commune: COMMUNE,
       prefecture: PREFECTURE,
     },
   });
@@ -929,6 +930,8 @@ async function seedVieCourante(ids: {
         statut: 'PRETE_POUR_LIVRAISON',
         modeRemise: 'LIVRAISON',
         quartierRecherche: QUARTIER,
+        communeRecherche: COMMUNE,
+        prefectureRecherche: PREFECTURE,
         priseEnChargeLe: maintenant,
         chiffreeLe: maintenant,
         preteLe: maintenant,
@@ -950,12 +953,16 @@ async function seedVieCourante(ids: {
   await prisma.course.deleteMany({ where: { idCommande } });
   await prisma.commande.update({
     where: { id: idCommande },
-    data: { statut: 'PRETE_POUR_LIVRAISON', remiseLe: null, clotureeLe: null },
+    // La zone est refixee : une commande creee avant la commune la recoit ici.
+    data: {
+      statut: 'PRETE_POUR_LIVRAISON', remiseLe: null, clotureeLe: null,
+      quartierRecherche: QUARTIER, communeRecherche: COMMUNE, prefectureRecherche: PREFECTURE,
+    },
   });
   // Le client de l'application, pas celui du script : c'est le type de
   // transaction qu'attend le service, avec le chiffrement des champs.
   const course = await prismaApplication.$transaction((tx) => ouvrirCourse(idCommande, tx));
-  console.log(`   Course ${course.id} en appel d offres a ${QUARTIER}, pour le livreur ${DEMO.livreur.telephone}`);
+  console.log(`   Course ${course.id} en appel d offres a ${COMMUNE}, pour le livreur ${DEMO.livreur.telephone}`);
 }
 
 /**

@@ -20,6 +20,7 @@ import { estStructureOfficinale } from '../utils/officine.util';
 import { assertTransition as assertCommandeTransition } from './commande.transitions';
 import { notifierSansBloquer } from './notification.service';
 import { prochainNumero } from './numero.service';
+import { filtreZone, memeZone } from '../utils/zone';
 
 export type CourseTransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -197,6 +198,7 @@ async function profilLivreur(userId: string, actifObligatoire: boolean) {
       qrCode: true,
       quartier: true,
       prefecture: true,
+      commune: true,
       estActif: true,
       utilisateur: { select: { role: true } },
     },
@@ -243,14 +245,15 @@ export async function notifierLivreursCourse(idCourse: string): Promise<void> {
   try {
     const course = await prisma.course.findUnique({
       where: { id: idCourse },
-      select: { numero: true, quartier: true, prefecture: true },
+      select: { numero: true, quartier: true, prefecture: true, commune: true },
     });
     if (!course) throw new NotFoundError('Course non trouvee pour la notification');
     const destinataires = await prisma.livreurProfile.findMany({
       where: {
         estActif: true,
-        quartier: course.quartier,
-        prefecture: course.prefecture,
+        // La commune de la course, pas tout le pays : un motard de Coyah ne
+        // vient pas livrer a Ratoma (voir utils/zone.ts).
+        ...filtreZone(course),
         utilisateur: { role: Role.LIVREUR, estActif: true },
       },
       select: { utilisateur: { select: { id: true } } },
@@ -259,7 +262,7 @@ export async function notifierLivreursCourse(idCourse: string): Promise<void> {
       idUtilisateur: utilisateur.id,
       type: 'COURSE_OUVERTE',
       titre: 'Nouvelle course dans votre zone',
-      contenu: `La course ${course.numero} est ouverte dans le quartier ${course.quartier}.`,
+      contenu: `La course ${course.numero} est ouverte a ${course.commune ?? course.quartier}.`,
       lienAction: '/livreur/courses',
       metadonnees: { idCourse, numero: course.numero, quartier: course.quartier },
     })));
@@ -365,10 +368,11 @@ export async function ouvrirCourse(
       statut: true,
       modeRemise: true,
       quartierRecherche: true,
+      communeRecherche: true,
       ordonnance: {
         select: {
           consultation: {
-            select: { patient: { select: { prefecture: true } } },
+            select: { patient: { select: { prefecture: true, commune: true } } },
           },
         },
       },
@@ -391,12 +395,16 @@ export async function ouvrirCourse(
     throw new ValidationError('Le quartier et la prefecture du patient sont requis pour ouvrir la course');
   }
 
+  // La commune figee sur la commande ; a defaut, celle du patient.
+  const commune = (commande.communeRecherche ?? commande.ordonnance.consultation?.patient.commune ?? '').trim() || null;
+
   const course = await tx.course.create({
     data: {
       numero: await prochainNumero('LV', tx),
       idCommande,
       quartier,
       prefecture,
+      commune,
     },
     select: { id: true, statut: true },
   });
@@ -410,8 +418,7 @@ export async function coursesOuvertesPour(user: JwtPayload): Promise<CourseLivre
   const courses = await prisma.course.findMany({
     where: {
       statut: StatutCourse.APPEL_OFFRES,
-      quartier: profile.quartier,
-      prefecture: profile.prefecture,
+      ...filtreZone(profile),
     },
     select: COURSE_LIVREUR_OPEN_SELECT,
     orderBy: { creeeLe: 'asc' },
@@ -473,10 +480,10 @@ export async function proposer(
 
     const course = await tx.course.findUnique({
       where: { id: idCourse },
-      select: { quartier: true, prefecture: true },
+      select: { quartier: true, prefecture: true, commune: true },
     });
     if (!course) throw new NotFoundError('Course non trouvee');
-    if (course.quartier !== profile.quartier || course.prefecture !== profile.prefecture) {
+    if (!memeZone(course, profile)) {
       throw new ForbiddenError('Cette course est hors de votre zone');
     }
 

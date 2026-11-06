@@ -1771,6 +1771,8 @@ export interface CreerLivreurDto {
   telephone: string;
   quartier: string;
   prefecture: string;
+  /** Commune de travail : la zone des courses qu'il recoit. */
+  commune?: string;
 }
 
 /** GET /comptes/livreurs. Ne contient ni QR ni mot de passe. */
@@ -1781,6 +1783,7 @@ export interface LivreurAdminView {
   telephone: string;
   quartier: string;
   prefecture: string;
+  commune: string | null;
   estActif: boolean;
   creeLe: HorodatageApi;
 }
