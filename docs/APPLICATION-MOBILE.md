@@ -96,7 +96,7 @@ EMAIL_OTP_DEV_FALLBACK=true
 ```
 
 - `10.0.2.2` est l'adresse par laquelle l'émulateur voit le PC.
-- `EMAIL_OTP_DEV_FALLBACK=true` affiche le code de connexion à l'écran quand l'e-mail n'est pas configuré. Sans lui, la connexion d'un professionnel échoue (« serveur injoignable »).
+- `EMAIL_OTP_DEV_FALLBACK=true` affiche le code de connexion à l'écran quand l'e-mail n'est pas configuré. Il faut l'écrire en toutes lettres : **sans cette ligne, l'option est coupée**, et la connexion d'un professionnel échoue (« l'envoi du code OTP a échoué »).
 
 ---
 
@@ -153,7 +153,7 @@ Puis, dans **Android Studio** : ouvrir `apps\web\android`, choisir l'appareil en
 | « Plugin … relies on org.gradle.api.problems… » | Android Studio utilise une autre version de Gradle | Paramètres (**Ctrl+Alt+S**) → Build Tools → Gradle : **Distribution = Wrapper**, **Gradle JDK = ms-21** |
 | « No emulator installed » alors que l'émulateur tourne | Bandeau en retard | L'ignorer ; vérifier le point vert à côté de l'appareil |
 | Application : « Webpage not available », `ERR_CONNECTION_REFUSED` ou `ERR_EMPTY_RESPONSE` | Le site tourne avec `npm start` | Le relancer avec **`npm run start:lan`** |
-| Site : « serveur injoignable » à la connexion | Code OTP impossible à envoyer (e-mail non configuré) | `EMAIL_OTP_DEV_FALLBACK=true` dans `apps/api/.env`, puis redémarrer l'API |
+| Site : « l'envoi du code OTP a échoué » à la connexion | Code OTP impossible à envoyer (e-mail non configuré) | `EMAIL_OTP_DEV_FALLBACK=true` dans `apps/api/.env`, puis redémarrer l'API |
 | La connexion est refusée depuis l'émulateur | Adresse absente de `ALLOWED_ORIGINS` | Ajouter `http://10.0.2.2:4200`, redémarrer l'API |
 | Logo ou photo invisible sur le téléphone | Ancienne adresse enregistrée avec `localhost` | `npx prisma migrate deploy` (migration `chemins_televersements`) |
 
