@@ -24,6 +24,28 @@ describe('message d\'erreur de connexion', () => {
     });
   }
 
+  // L'API elle-meme peut repondre 503, avec un message precis : le mot de
+  // passe est juste mais le code OTP n'a pas pu partir. Afficher « serveur
+  // injoignable » faisait chercher une panne de reseau qui n'existait pas
+  // (constate le 2026-11-06).
+  it('503 renvoyé par l’API avec son message : affiche ce message, pas « serveur injoignable »', () => {
+    const message = "Mot de passe correct, mais l'envoi du code OTP a echoue. Verifiez l'email du compte ou reessayez";
+    const err = { status: 503, error: { success: false, error: message } };
+    expect(messageErreurConnexion(t, err, 'AUTH.LOGIN.ERR_CREDENTIALS')).toBe(message);
+  });
+
+  it('500 renvoyé par l’API avec son message : affiche ce message', () => {
+    const err = { status: 500, error: { success: false, error: 'Erreur interne du serveur' } };
+    expect(messageErreurConnexion(t, err, 'AUTH.LOGIN.ERR_CREDENTIALS')).toBe('Erreur interne du serveur');
+  });
+
+  it('503 sans message exploitable : serveur injoignable', () => {
+    expect(messageErreurConnexion(t, { status: 503, error: { success: false } }, 'AUTH.LOGIN.ERR_CREDENTIALS'))
+      .toBe(INJOIGNABLE);
+    expect(messageErreurConnexion(t, { status: 503, error: { error: '   ' } }, 'AUTH.LOGIN.ERR_CREDENTIALS'))
+      .toBe(INJOIGNABLE);
+  });
+
   it('401 : garde le message du serveur', () => {
     const err = { status: 401, error: { error: 'Identifiants invalides' } };
     expect(messageErreurConnexion(t, err, 'AUTH.LOGIN.ERR_CREDENTIALS')).toBe('Identifiants invalides');
