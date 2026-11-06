@@ -5,6 +5,7 @@
 // Le super-admin la modifie depuis Parametres > Identite ; appliquer() met
 // l'interface a jour sans rechargement.
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import type { IdentitePlateformeView } from '@baobaoheath/shared-types';
@@ -35,6 +36,7 @@ export const IDENTITE_PAR_DEFAUT: IdentitePlateformeView = {
 export class PlateformeService {
   private api   = inject(ApiService);
   private title = inject(Title);
+  private document = inject(DOCUMENT);
 
   private identiteSignal = signal<IdentitePlateformeView>(IDENTITE_PAR_DEFAUT);
 
@@ -75,5 +77,42 @@ export class PlateformeService {
       copyright: identite.copyright.trim() || `© ${new Date().getFullYear()} ${nom} — Tous droits réservés`,
     });
     this.title.setTitle(nom);
+    this.appliquerIcones((identite.logoUrl ?? '').trim());
+  }
+
+  /**
+   * L'icone de l'onglet et celle de l'ecran d'accueil (« ajouter a l'ecran
+   * d'accueil ») suivent le logo televerse. Sans logo, l'onglet reprend le
+   * favicon.ico d'index.html et l'icone d'accueil disparait.
+   */
+  private appliquerIcones(logo: string): void {
+    const head = this.document.head;
+    let favicon = head.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!favicon) {
+      favicon = this.document.createElement('link');
+      favicon.rel = 'icon';
+      head.appendChild(favicon);
+    }
+    let accueil = head.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
+
+    if (!logo) {
+      favicon.setAttribute('href', FAVICON_PAR_DEFAUT);
+      favicon.type = 'image/x-icon';
+      accueil?.remove();
+      return;
+    }
+    // Le logo est un PNG (l'API reencode tout logo televerse) : le type
+    // « image/x-icon » d'index.html ne lui correspond plus.
+    favicon.removeAttribute('type');
+    favicon.setAttribute('href', logo);
+    if (!accueil) {
+      accueil = this.document.createElement('link');
+      accueil.rel = 'apple-touch-icon';
+      head.appendChild(accueil);
+    }
+    accueil.setAttribute('href', logo);
   }
 }
+
+/** Le favicon livre avec l'application, pose par index.html. */
+const FAVICON_PAR_DEFAUT = 'favicon.ico';
