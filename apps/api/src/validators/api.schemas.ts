@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   CategorieProduit, ConsentScope, MotifBrisDeGlace, NiveauIdentite, Role, StatutDemandeRgpd, TypeDemandeRgpd, TypePieceIdentite,
 } from '../config/generated/client/client';
+import { ADRESSE_HTTP, cheminTeleverse } from '../utils/chemin-media';
 
 const optionalEmail = z.string().email().optional().or(z.literal('').transform(() => undefined));
 const phone = z.string().trim().min(6).max(30);
@@ -10,6 +11,20 @@ const id = z.string().trim().min(1);
 const jetonCarte = z.string().trim().min(20).max(128).regex(/^[A-Za-z0-9_-]+$/, 'Carte d’assurance illisible');
 const positiveInt = z.coerce.number().int().positive();
 const nonNegativeInt = z.coerce.number().int().min(0);
+
+/**
+ * Photo de profil : le chemin d'un avatar televerse, ou une adresse http(s).
+ * Le chemin est ce que renvoie le televersement (voir utils/chemin-media).
+ */
+const photoProfil = z.string().trim().max(500).refine(
+  (v) => cheminTeleverse('avatars').test(v) || ADRESSE_HTTP.test(v),
+  'Photo invalide : téléversez une image',
+);
+/** Logo : vide, le chemin d'un logo televerse, ou une adresse http(s). */
+const logoOuVide = z.string().trim().max(300).refine(
+  (v) => v === '' || cheminTeleverse('logos').test(v) || ADRESSE_HTTP.test(v),
+  'Logo invalide : téléversez une image',
+);
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
@@ -58,7 +73,7 @@ export const updateProfileSchema = z.object({
   nom: z.string().trim().min(1).max(80).optional(),
   email: optionalEmail,
   telephone: phone.optional(),
-  photoUrl: z.string().trim().url().max(500).optional(),
+  photoUrl: photoProfil.optional(),
 }).strict();
 
 export const createPatientSchema = z.object({
@@ -82,7 +97,7 @@ export const updatePatientSchema = createPatientSchema
   .omit({ telephone: true, motDePasse: true, dateNaissance: true, sexe: true, prefecture: true })
   .extend({
     langue: z.string().trim().min(2).max(10).optional(),
-    photoUrl: z.string().url().optional(),
+    photoUrl: photoProfil.optional(),
   })
   .partial()
   .strict();
@@ -694,7 +709,7 @@ export const updateParametresSystemeSchema = z.object({
     nom: z.string().trim().min(2).max(60),
     nomCourt: z.string().trim().max(20).regex(/^[A-Za-z0-9 .-]*$/, 'Lettres non accentuées et chiffres uniquement (SMS)'),
     slogan: texteCourt,
-    logoUrl: urlOuVide,
+    logoUrl: logoOuVide,
     adresse: z.string().trim().max(200),
     ville: texteCourt,
     pays: texteCourt,

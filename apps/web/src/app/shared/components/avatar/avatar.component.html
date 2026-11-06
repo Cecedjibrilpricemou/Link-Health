@@ -1,5 +1,5 @@
-@if (photoUrl()) {
-  <img [src]="photoUrl()" [alt]="initiales()" class="bb-avatar__img" />
+@if (source()) {
+  <img [src]="source()" [alt]="initiales()" class="bb-avatar__img" />
 } @else {
   <span class="bb-avatar__fallback" aria-hidden="true">{{ initiales() }}</span>
 }

@@ -52,7 +52,7 @@
             </div>
             <div class="identity-logo__actions">
               @if (identite.logoUrl) {
-                <img class="identity-logo__preview" [src]="identite.logoUrl" [alt]="identite.nom" />
+                <img class="identity-logo__preview" [src]="urlMedia(identite.logoUrl)" [alt]="identite.nom" />
               } @else {
                 <span class="identity-logo__none">{{ 'ADMIN.SETTINGS.IDENTITY_LOGO_NONE' | translate }}</span>
               }

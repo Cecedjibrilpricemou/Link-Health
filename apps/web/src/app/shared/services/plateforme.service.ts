@@ -10,6 +10,7 @@ import { Title } from '@angular/platform-browser';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import type { IdentitePlateformeView } from '@baobaoheath/shared-types';
 import { ApiService } from '../../core/services/api.service';
+import { urlMedia } from '../utils/url-media';
 
 /** Valeurs affichees tant que l'API n'a pas repondu (ou si elle est injoignable). */
 export const IDENTITE_PAR_DEFAUT: IdentitePlateformeView = {
@@ -43,7 +44,8 @@ export class PlateformeService {
   readonly identite = this.identiteSignal.asReadonly();
   readonly nom      = computed(() => this.identiteSignal().nom);
   readonly slogan   = computed(() => this.identiteSignal().slogan);
-  readonly logoUrl  = computed(() => this.identiteSignal().logoUrl);
+  /** Le logo a afficher : son chemin (/uploads/logos/...) resolu chez l'API. */
+  readonly logoUrl  = computed(() => urlMedia(this.identiteSignal().logoUrl));
   readonly devise   = computed(() => this.identiteSignal().devise);
   readonly copyright = computed(() => this.identiteSignal().copyright);
   /** « Ville, Pays » ou l'adresse complete si elle est renseignee. */
@@ -77,7 +79,7 @@ export class PlateformeService {
       copyright: identite.copyright.trim() || `© ${new Date().getFullYear()} ${nom} — Tous droits réservés`,
     });
     this.title.setTitle(nom);
-    this.appliquerIcones((identite.logoUrl ?? '').trim());
+    this.appliquerIcones(urlMedia(identite.logoUrl));
   }
 
   /**
