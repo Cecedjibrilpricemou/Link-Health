@@ -822,6 +822,9 @@ export const swaggerDocument = {
     '/api/v1/paiements/historique': {
       get: { tags: ['Paiements'], summary: 'Historique des paiements', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'statut', in: 'query', schema: { type: 'string', enum: ['EN_ATTENTE', 'PAYEE', 'PARTIELLE', 'ANNULEE', 'REMBOURSEE'] } }, { name: 'modePaiement', in: 'query', schema: { type: 'string', enum: ['ORANGE_MONEY', 'MTN_MOMO', 'ESPECES'] } }], responses: { 200: { description: 'Historique récupéré' }, 404: { description: 'Profil patient non trouvé' } } },
     },
+    '/api/v1/paiements/factures/{id}/recu': {
+      get: { tags: ['Paiements'], summary: 'Reçu de paiement imprimable', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Document HTML', content: { 'text/html': { schema: { type: 'string' } } } }, 400: { description: 'Facture non payée' }, 404: { description: 'Facture non trouvée' } } },
+    },
     '/api/v1/paiements/{id}/statut': {
       get: { tags: ['Paiements'], summary: "Statut d'un paiement", security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { 200: { description: 'Statut récupéré', content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/ApiResponse' }, { properties: { data: { $ref: '#/components/schemas/Facture' } } }] } } } }, 404: { description: 'Facture non trouvée' } } },
     },

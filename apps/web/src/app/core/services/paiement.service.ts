@@ -9,6 +9,7 @@ import { Observable } from 'rxjs';
 import type { ADeReglerView, FactureView, ModePaiement } from '@baobaoheath/shared-types';
 import { ApiService } from './api.service';
 import { ApiResponse } from '../models/api.model';
+import { environment } from '../../../environments/environment';
 
 /** La réponse paginée de l'historique. */
 export interface PageFactures {
@@ -66,5 +67,9 @@ export class PaiementService {
 
   annulerPaiement(id: string): Observable<ApiResponse<FactureView>> {
     return this.api.post<ApiResponse<FactureView>>(`/paiements/${id}/annuler`, {});
+  }
+
+  urlRecu(idFacture: string): string {
+    return `${environment.apiUrl}/paiements/factures/${idFacture}/recu`;
   }
 }
