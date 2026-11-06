@@ -12,6 +12,7 @@
     "e2e:ui": "playwright test --ui",
     "mobile:emulateur": "node scripts/mobile.mjs emulateur",
     "mobile:telephone": "node scripts/mobile.mjs telephone",
+    "mobile:usb": "node scripts/mobile.mjs usb",
     "mobile:ouvrir": "npx cap open android"
   },
   "prettier": {
