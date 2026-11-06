@@ -116,6 +116,12 @@
                 <code>{{ f.referenceOperateur }}</code>
               </p>
             }
+            <div class="bb-pay__actions">
+              <button class="bb-pay__btn bb-pay__btn--plat" type="button" (click)="ouvrirRecu(f.id)">
+                <i class="pi pi-print" aria-hidden="true"></i>
+                {{ 'PATIENT.PAIEMENTS.RECU' | translate }}
+              </button>
+            </div>
           </article>
         }
       </section>
