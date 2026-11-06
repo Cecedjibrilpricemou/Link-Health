@@ -28,6 +28,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { AdminService } from '../../../core/services/admin.service';
 import { PlateformeService } from '../../../shared/services/plateforme.service';
+import { urlMedia } from '../../../shared/utils/url-media';
 
 type Onglet = keyof ParametresSystemeValeurs;
 
@@ -47,6 +48,8 @@ export class SettingsComponent implements OnInit {
   private adminService = inject(AdminService);
   private toastr = inject(ToastrService);
   private plateforme = inject(PlateformeService);
+  /** L'apercu du logo : son chemin (/uploads/logos/...) resolu chez l'API. */
+  readonly urlMedia = urlMedia;
 
   // Navigation
   activeTab = signal<Onglet>('identite');

@@ -60,6 +60,12 @@ describe('nginx : cache HTTP', () => {
     expect(bloc('location /media/')).toMatch(/immutable/);
   });
 
+  it('relaie /uploads/ vers l\'API : logos et photos de profil y vivent', () => {
+    // Sans ce relais, /uploads/... tombait sur le repli de `location /` et
+    // recevait index.html : aucun logo ni aucune photo ne s'affichait.
+    expect(bloc('location /uploads/')).toMatch(/proxy_pass http:\/\/api:3000\/uploads\//);
+  });
+
   it('continue de relayer l\'API sans la mettre en cache', () => {
     const api = bloc('location /api/');
     expect(api).toMatch(/proxy_pass http:\/\/api:3000\/api\//);
