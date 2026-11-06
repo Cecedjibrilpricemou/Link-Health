@@ -1277,6 +1277,8 @@ export const creerLivreurSchema = z.object({
   telephone: z.string().trim().min(6).max(30),
   quartier: z.string().trim().min(1).max(120),
   prefecture: z.string().trim().min(1).max(120),
+  /** Commune de travail : la zone des courses qu'il recoit (utils/zone.ts). */
+  commune: z.string().trim().min(1).max(120).optional(),
 }).strict();
 
 export const activiteLivreurSchema = z.object({

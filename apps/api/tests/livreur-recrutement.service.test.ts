@@ -6,6 +6,7 @@ import { Role } from '../src/config/generated/client/client';
 import { notifierSansBloquer } from '../src/services/notification.service';
 import { hashPassword } from '../src/utils/password.utils';
 import { genererMotDePasseTemp } from '../src/services/admin-structure.service';
+import { filtreZone } from '../src/utils/zone';
 
 jest.mock('../src/config/prisma', () => {
   const prisma: Record<string, unknown> = {
@@ -43,6 +44,7 @@ const dto = {
   telephone: '620100099',
   quartier: 'Donka',
   prefecture: 'Conakry',
+  commune: 'Dixinn',
 };
 
 beforeEach(() => {
@@ -69,6 +71,7 @@ beforeEach(() => {
     numero: 'LV-2026-000001',
     quartier: dto.quartier,
     prefecture: dto.prefecture,
+    commune: dto.commune,
   });
   prisma.livreurProfile.findMany.mockResolvedValue([]);
   (notifierSansBloquer as jest.Mock).mockResolvedValue(undefined);
@@ -99,16 +102,31 @@ describe('recrutement des livreurs', () => {
         idUtilisateur: 'user-1',
         quartier: dto.quartier,
         prefecture: dto.prefecture,
+        commune: dto.commune,
       },
     });
     expect(result.livreur).toEqual(expect.objectContaining({
       id: 'user-1',
       quartier: dto.quartier,
       prefecture: dto.prefecture,
+      commune: dto.commune,
       estActif: true,
     }));
     expect(result).not.toHaveProperty('livreur.qrCode');
     expect(result.motDePasseTemporaire).toBe('BaoBao@Demo123');
+  });
+
+  it('enregistre une commune vide comme absente', async () => {
+    prisma.utilisateur.create.mockResolvedValue({
+      id: 'user-1', prenom: dto.prenom, nom: dto.nom, telephone: dto.telephone,
+      creeLe: new Date('2026-10-24T00:00:00Z'),
+    });
+
+    await creerLivreur(admin, { ...dto, commune: '   ' });
+
+    expect(prisma.livreurProfile.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ commune: null }),
+    });
   });
 
   it('annule la creation du compte si la creation du profil echoue', async () => {
@@ -155,8 +173,7 @@ describe('recrutement des livreurs', () => {
     expect(prisma.livreurProfile.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         estActif: true,
-        quartier: dto.quartier,
-        prefecture: dto.prefecture,
+        ...filtreZone(dto),
         utilisateur: { role: Role.LIVREUR, estActif: true },
       }),
     }));
@@ -204,7 +221,7 @@ describe('recrutement des livreurs', () => {
     expect(JSON.stringify(result)).not.toContain('qrCode');
     expect(prisma.utilisateur.findMany).toHaveBeenCalledWith(expect.objectContaining({
       select: expect.objectContaining({
-        livreurProfile: { select: { quartier: true, prefecture: true, estActif: true } },
+        livreurProfile: { select: { quartier: true, prefecture: true, commune: true, estActif: true } },
       }),
     }));
   });

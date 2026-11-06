@@ -10,11 +10,12 @@ import {
   choisirModeRemise,
   commandesDeLaPharmacie,
   lancerRecherchePharmacie,
-  pharmaciesDuQuartier,
+  pharmaciesDeLaZone,
   repondreDisponibilite,
   retirerPriseEnCharge,
 } from '../src/services/commande.service';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../src/utils/app-error';
+import { CHAMPS_RECHERCHE, filtreZone } from '../src/utils/zone';
 
 jest.mock('../src/config/prisma', () => ({
   prisma: {
@@ -47,7 +48,8 @@ const PATIENT = { userId: 'u-pat', role: 'PATIENT' } as never;
 
 const NOUNIE = {
   id: 'ph-nounie', nom: 'Pharmacie Nounie',
-  type: 'PHARMACIE', estActive: true, estPartenaire: true, quartier: 'Kipé',
+  type: 'PHARMACIE', estActive: true, estPartenaire: true,
+  prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé',
 };
 
 function pharmacienDe(structure: Record<string, unknown> = NOUNIE) {
@@ -62,7 +64,7 @@ function ordonnanceSignee(etat: Record<string, unknown> = {}) {
     lignes: [{ id: 'l1' }],
     consultation: {
       idMedecinValideur: 'u-med',
-      patient: { quartier: 'Kipé', utilisateur: { id: 'u-pat' } },
+      patient: { prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé', utilisateur: { id: 'u-pat' } },
     },
     ...etat,
   });
@@ -81,7 +83,8 @@ function ordonnanceSignee(etat: Record<string, unknown> = {}) {
 function commandeRelue(etat: Record<string, unknown> = {}) {
   return {
     id: 'cmd-1', numero: 'CM-2026-000001', statut: 'RECHERCHE_PHARMACIE',
-    quartierRecherche: 'Kipé', idPharmacie: null, modeRemise: null,
+    quartierRecherche: 'Kipé', prefectureRecherche: 'Conakry', communeRecherche: 'Ratoma',
+    idPharmacie: null, modeRemise: null,
     creeLe: new Date('2026-10-09T08:00:00Z'),
     reponses: [],
     pharmacie: null,
@@ -120,26 +123,41 @@ beforeEach(() => {
 afterEach(() => jest.resetAllMocks());
 
 // ── Périmètre de l'appel ─────────────────────────────────────────────
-describe('pharmaciesDuQuartier', () => {
-  it('ne retient que les partenaires actives du quartier', async () => {
+describe('pharmaciesDeLaZone', () => {
+  // La commune, dans sa prefecture : la pharmacie du quartier voisin est
+  // sollicitee, celle d'une autre ville ne l'est jamais (utils/zone.ts).
+  it('ne retient que les partenaires actives de la commune du patient', async () => {
     prisma.structureSante.findMany.mockResolvedValue([NOUNIE]);
+    const lieu = { prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé' };
 
-    await pharmaciesDuQuartier('Kipé');
+    await pharmaciesDeLaZone(lieu);
 
     expect(prisma.structureSante.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: {
         type: 'PHARMACIE',
         estActive: true,
         estPartenaire: true,
-        quartier: 'Kipé',
+        ...filtreZone(lieu),
       },
     }));
   });
 
-  // Sans quartier, elargir serait deviner : on solliciterait des pharmacies
+  // Une commande creee avant la prefecture de recherche : comparee par le
+  // seul quartier, comme a sa creation, plutot que de ne plus rien trouver.
+  it('ancienne commande sans préfecture : cherche par le quartier, comme avant', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([NOUNIE]);
+
+    await pharmaciesDeLaZone({ quartier: 'Kipé' });
+
+    expect(prisma.structureSante.findMany.mock.calls[0][0].where.quartier)
+      .toEqual({ equals: 'Kipé', mode: 'insensitive' });
+  });
+
+  // Sans lieu, elargir serait deviner : on solliciterait des pharmacies
   // qui n'ont aucune raison d'etre concernees.
-  it('ne cherche nulle part quand le patient n a pas de quartier', async () => {
-    expect(await pharmaciesDuQuartier(null)).toEqual([]);
+  it('ne cherche nulle part quand le patient n a ni commune ni quartier', async () => {
+    expect(await pharmaciesDeLaZone({ prefecture: 'Conakry' })).toEqual([]);
+    expect(await pharmaciesDeLaZone({})).toEqual([]);
     expect(prisma.structureSante.findMany).not.toHaveBeenCalled();
   });
 
@@ -160,14 +178,17 @@ describe('pharmaciesDuQuartier', () => {
 
 // ── Lancement ────────────────────────────────────────────────────────
 describe('lancerRecherchePharmacie', () => {
-  it('ouvre l appel sur le quartier du patient', async () => {
+  it('ouvre l appel sur la commune du patient, et la fige sur la commande', async () => {
     ordonnanceSignee();
     prisma.structureSante.findMany.mockResolvedValue([NOUNIE, { id: 'ph-2', nom: 'Pharmacie 2' }]);
 
     await lancerRecherchePharmacie('ord-1');
 
     expect(prisma.commande.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ statut: 'RECHERCHE_PHARMACIE', quartierRecherche: 'Kipé' }),
+      data: expect.objectContaining({
+        statut: 'RECHERCHE_PHARMACIE',
+        quartierRecherche: 'Kipé', prefectureRecherche: 'Conakry', communeRecherche: 'Ratoma',
+      }),
     }));
   });
 
@@ -282,10 +303,25 @@ describe('repondreDisponibilite', () => {
 
   // ── Habilitation ──────────────────────────────────────────────────
 
-  it('refuse une pharmacie d un autre quartier', async () => {
-    pharmacienDe({ ...NOUNIE, quartier: 'Matoto' });
+  it('refuse une pharmacie d une autre commune', async () => {
+    pharmacienDe({ ...NOUNIE, commune: 'Matoto' });
 
     await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('refuse une pharmacie d une autre prefecture, meme avec une commune du meme nom', async () => {
+    pharmacienDe({ ...NOUNIE, prefecture: 'Kankan' });
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  // Le defaut d'avant : le quartier exact. La pharmacie d'a cote, dans la
+  // meme commune, n'etait jamais sollicitee.
+  it('accepte une pharmacie de la meme commune, dans un autre quartier', async () => {
+    pharmacienDe({ ...NOUNIE, quartier: 'Taouyah' });
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).resolves.toBeDefined();
   });
 
   // Seules les conventionnees sont sollicitees : repondre suppose l'etre.
@@ -385,7 +421,7 @@ describe('choisirModeRemise', () => {
 
 // ── File du comptoir ─────────────────────────────────────────────────
 describe('commandesDeLaPharmacie', () => {
-  it('montre les appels du quartier non refuses, et ce qu elle a pris', async () => {
+  it('montre les appels de sa commune non refuses, et ce qu elle a pris', async () => {
     pharmacienDe();
     prisma.commande.findMany.mockResolvedValue([]);
 
@@ -394,7 +430,9 @@ describe('commandesDeLaPharmacie', () => {
     const { where } = prisma.commande.findMany.mock.calls[0][0];
     expect(where.OR[0]).toEqual(expect.objectContaining({
       statut: 'RECHERCHE_PHARMACIE',
-      quartierRecherche: 'Kipé',
+      // La zone de la pharmacie, comparee a celle figee sur la commande ; les
+      // commandes anterieures, sans prefecture, restent visibles.
+      ...filtreZone(NOUNIE, CHAMPS_RECHERCHE, { prefectureFacultative: true }),
       // Une pharmacie qui a deja dit non ne doit pas revoir l'appel.
       reponses: { none: { idStructure: 'ph-nounie', aTousLesProduits: false } },
     }));

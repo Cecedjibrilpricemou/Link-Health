@@ -66,6 +66,11 @@
                  (ngModelChange)="modifier('quartier', $event)" name="quartier" />
         </mat-form-field>
         <mat-form-field appearance="outline">
+          <mat-label>{{ 'ADMIN.LIVREURS.COMMUNE' | translate }}</mat-label>
+          <input matInput required [ngModel]="formulaire().commune"
+                 (ngModelChange)="modifier('commune', $event)" name="commune" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
           <mat-label>{{ 'ADMIN.LIVREURS.PREFECTURE' | translate }}</mat-label>
           <input matInput required [ngModel]="formulaire().prefecture"
                  (ngModelChange)="modifier('prefecture', $event)" name="prefecture" />
@@ -106,6 +111,7 @@
             <tr>
               <th>{{ 'ADMIN.LIVREURS.PERSON' | translate }}</th>
               <th>{{ 'ADMIN.LIVREURS.NEIGHBORHOOD' | translate }}</th>
+              <th>{{ 'ADMIN.LIVREURS.COMMUNE' | translate }}</th>
               <th>{{ 'ADMIN.LIVREURS.PREFECTURE' | translate }}</th>
               <th>{{ 'ADMIN.LIVREURS.STATE' | translate }}</th>
               <th>{{ 'ADMIN.LIVREURS.ACTIVITY' | translate }}</th>
@@ -119,6 +125,7 @@
                   <span class="livreurs__phone">{{ livreur.telephone }}</span>
                 </td>
                 <td>{{ livreur.quartier }}</td>
+                <td>{{ livreur.commune ?? '—' }}</td>
                 <td>{{ livreur.prefecture }}</td>
                 <td>
                   <span class="livreurs__status"
