@@ -356,7 +356,8 @@
       "REMINDER": "Rappel",
       "EXPORTING": "Export en cours...",
       "DEFAULT_MOTIF": "Consultation générale",
-      "WITH_AGENT": "avec {{nom}}"
+      "WITH_AGENT": "avec {{nom}}",
+      "PRINT_REPORT": "Imprimer le compte rendu"
     },
     "PROFILE": {
       "TITLE": "Mon Profil",
@@ -903,6 +904,7 @@
       "LOADING": "Chargement du planning..."
     },
     "CONSULTATION_DETAIL": {
+      "PRINT_REPORT": "Compte rendu",
       "ERR_CATALOGUE": "Impossible de charger le catalogue. Certaines listes peuvent être vides.",
       "CLOSE_CONFIRM_TITLE": "Clôturer la consultation ?",
       "CLOSE_CONFIRM_TEXT": "Cette action est irréversible. La consultation passera en statut « Terminée ».",

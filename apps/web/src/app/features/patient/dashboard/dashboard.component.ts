@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { PatientService } from '../../../core/services/patient.service';
+import { ConsultationService } from '../../../core/services/consultation.service';
 import { VaccinationService } from '../../../core/services/vaccination.service';
 import { PaiementService } from '../../../core/services/paiement.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
@@ -46,6 +47,7 @@ export class DashboardComponent implements OnInit {
   private vaccinationService = inject(VaccinationService);
   private paiementService = inject(PaiementService);
   private i18n = inject(I18nService);
+  private consultationService = inject(ConsultationService);
 
   currentUser = this.authService.currentUser;
 
@@ -156,6 +158,19 @@ export class DashboardComponent implements OnInit {
   getStatutLabel(statut: string): string {
     const known = ['TERMINEE', 'EN_COURS', 'PLANIFIEE', 'ANNULEE', 'REFERENCEE'];
     return known.includes(statut) ? this.i18n.t(`STATUT.${statut}`) : statut;
+  }
+
+  /**
+   * Le compte rendu d'une consultation achevee. Une consultation en cours
+   * n'a pas encore de compte rendu a tendre au patient : il serait faux
+   * demain.
+   */
+  peutImprimer(c: Consultation): boolean {
+    return c.statut === 'TERMINEE' || c.statut === 'REFERENCEE';
+  }
+
+  imprimerCompteRendu(c: Consultation): void {
+    window.open(this.consultationService.urlCompteRendu(c.id), '_blank', 'noopener');
   }
 
   getStatutFactureSeverity(statut: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {

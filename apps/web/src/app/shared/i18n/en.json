@@ -356,7 +356,8 @@
       "REMINDER": "Reminder",
       "EXPORTING": "Exporting...",
       "DEFAULT_MOTIF": "General consultation",
-      "WITH_AGENT": "with {{nom}}"
+      "WITH_AGENT": "with {{nom}}",
+      "PRINT_REPORT": "Print the report"
     },
     "PROFILE": {
       "TITLE": "My Profile",
@@ -903,6 +904,7 @@
       "LOADING": "Loading schedule..."
     },
     "CONSULTATION_DETAIL": {
+      "PRINT_REPORT": "Report",
       "ERR_CATALOGUE": "Could not load the catalogue. Some lists may be empty.",
       "CLOSE_CONFIRM_TITLE": "Close the consultation?",
       "CLOSE_CONFIRM_TEXT": "This action is irreversible. The consultation will move to \"Completed\" status.",
