@@ -4,6 +4,7 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ThemeService } from './shared/services/theme.service';
 import { SocketService } from './core/services/socket.service';
+import { BoutonRetourService } from './core/services/bouton-retour.service';
 
 @Component({
   selector: 'app-root',
@@ -17,4 +18,9 @@ export class AppComponent {
   // via effect() dans leur propre constructeur.
   readonly theme = inject(ThemeService);
   readonly socket = inject(SocketService);
+  readonly boutonRetour = inject(BoutonRetourService);
+
+  constructor() {
+    this.boutonRetour.demarrer();
+  }
 }
