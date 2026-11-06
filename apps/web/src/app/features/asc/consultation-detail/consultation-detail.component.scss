@@ -274,6 +274,14 @@
     font-size: 11.5px; color: var(--bb-text-muted);
   }
 
+  // Le compte rendu, dans l'en-tete : pousse a droite, et le bouton de
+  // cloture qui le suit se colle a lui au lieu de partager l'espace.
+  &__cr-print {
+    margin-left: auto;
+    & + .bb-detail__close-btn { margin-left: 0; }
+    @media (max-width: 600px) { width: 100%; justify-content: center; margin-left: 0; }
+  }
+
   &__ordo-print {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 5px 11px; border-radius: var(--bb-radius);

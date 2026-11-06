@@ -164,6 +164,19 @@
   }
 
   &__sub { font-size: 12px; color: var(--bb-text-muted); }
+
+  // Le compte rendu de la consultation : une cible tactile suffisante
+  // sur telephone, discrete a cote du statut.
+  &__print {
+    flex-shrink: 0;
+    width: 36px; height: 36px; border-radius: 50%;
+    display: inline-grid; place-items: center;
+    border: 1px solid var(--bb-border-light); background: var(--bb-surface-1);
+    color: var(--bb-text-secondary); cursor: pointer;
+    transition: color var(--bb-transition), border-color var(--bb-transition);
+    &:hover { color: var(--bb-text-primary); border-color: var(--bb-border-strong); }
+    i { font-size: 14px; }
+  }
 }
 
 // Skeleton helper dans listes

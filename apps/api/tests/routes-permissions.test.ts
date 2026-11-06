@@ -83,6 +83,13 @@ const rgpd = require('../src/routes/rgpd.routes').default as { stack: Couche[] }
 const privacy = require('../src/routes/privacy.routes').default as { stack: Couche[] };
 const identites = require('../src/routes/identite.routes').default as { stack: Couche[] };
 const adminStructure = require('../src/routes/admin-structure.routes').default as { stack: Couche[] };
+const consultations = require('../src/routes/consultation.routes').default as { stack: Couche[] };
+
+describe('compte rendu de consultation (EF-05-03)', () => {
+  it('ouvert au patient et aux soignants, ferme a l administration et au comptoir', () => {
+    expect(rolesPour(consultations, 'get', '/:id/compte-rendu')).toEqual(['PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN']);
+  });
+});
 
 describe('creation des pharmacies hospitalieres', () => {
   it('est ouverte a l administrateur de structure et au super-admin', () => {
