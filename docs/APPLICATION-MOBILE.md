@@ -82,6 +82,8 @@ Essais réels : émulateur Pixel 10 Pro (Android 17) et Samsung Galaxy A07 (Andr
 | Android Studio | SDK Android, émulateur, compilation |
 | JDK 21 (dans Android Studio : *Gradle JDK* → **ms-21**) | Gradle 8.14 ne fonctionne pas avec un JDK plus récent |
 
+Le projet déclare lui-même le JDK attendu (`apps/web/android/gradle/gradle-daemon-jvm.properties`, `toolchainVersion=21`) : Gradle choisit automatiquement un JDK 21 installé, même si un JDK plus récent est le JDK par défaut de la machine. Dans Android Studio, il reste à vérifier une seule fois : Settings > Build Tools > Gradle > **Distribution = Wrapper**.
+
 Puis, à la racine du dépôt :
 
 ```powershell
@@ -151,6 +153,7 @@ Puis, dans **Android Studio** : ouvrir `apps\web\android`, choisir l'appareil en
 |---|---|---|
 | Android Studio : « does not contain a Gradle build » | Le dossier `android` est incomplet | Être sur une branche à jour (`git pull`), puis **File → Sync Project with Gradle Files** |
 | « Plugin … relies on org.gradle.api.problems… » | Android Studio utilise une autre version de Gradle | Paramètres (**Ctrl+Alt+S**) → Build Tools → Gradle : **Distribution = Wrapper**, **Gradle JDK = ms-21** |
+| Gradle : « Cannot find a Java installation matching languageVersion=21 » | Aucun JDK 21 installé sur la machine | Installer un JDK 21 (Android Studio : Settings > Build Tools > Gradle > Gradle JDK > Download JDK > version 21), puis relancer |
 | « No emulator installed » alors que l'émulateur tourne | Bandeau en retard | L'ignorer ; vérifier le point vert à côté de l'appareil |
 | Application : « Webpage not available », `ERR_CONNECTION_REFUSED` ou `ERR_EMPTY_RESPONSE` | Le site tourne avec `npm start` | Le relancer avec **`npm run start:lan`** |
 | Site : « l'envoi du code OTP a échoué » à la connexion | Code OTP impossible à envoyer (e-mail non configuré) | `EMAIL_OTP_DEV_FALLBACK=true` dans `apps/api/.env`, puis redémarrer l'API |
