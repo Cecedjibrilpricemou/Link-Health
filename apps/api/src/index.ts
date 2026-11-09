@@ -52,6 +52,7 @@ import { auditRequest } from './services/audit.service';
 import { startBackgroundJobs } from './services/job.service';
 import { globalErrorHandler } from './middlewares/error.middleware';
 import { requestContextMiddleware } from './middlewares/request-context.middleware';
+import { entetesFichiersPublics, OPTIONS_FICHIERS_PUBLICS } from './middlewares/fichiers-publics.middleware';
 import { createServer } from 'http';
 import { initSocketServer } from './realtime/socket.server';
 
@@ -132,13 +133,12 @@ app.use('/api/v1/webhooks', webhookChapChapRoutes);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Fichiers uploadés (photos de profil) — servis sur une origine différente du
-// front (localhost:4200 vs localhost:3000), donc CORP explicite requis sinon
-// helmet() bloque le chargement de l'image côté navigateur.
-app.use('/uploads', (_req: Request, res: Response, next) => {
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-}, express.static(path.join(process.cwd(), 'uploads')));
+// Fichiers uploadés : en-têtes de sécurité dans middlewares/fichiers-publics.
+app.use(
+  '/uploads',
+  entetesFichiersPublics,
+  express.static(path.join(process.cwd(), 'uploads'), OPTIONS_FICHIERS_PUBLICS),
+);
 
 app.use('/api/v1', apiLimiter);
 
