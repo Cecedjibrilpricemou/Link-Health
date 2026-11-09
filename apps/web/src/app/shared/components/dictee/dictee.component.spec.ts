@@ -4,8 +4,24 @@
 // on verifie ce que l'ecran en fait, pas la reconnaissance elle-meme.
 import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
-import { DicteeComponent, CLE_AVIS_DICTEE } from './dictee.component';
+const mocks = vi.hoisted(() => ({
+  speechRecognition: {
+    available: vi.fn(() => Promise.resolve({ available: true })),
+    requestPermissions: vi.fn(() => Promise.resolve({ speechRecognition: 'granted' })),
+    start: vi.fn(() => Promise.resolve({})),
+    stop: vi.fn(() => Promise.resolve()),
+    addListener: vi.fn(() => Promise.resolve({ remove: vi.fn(() => Promise.resolve()) })),
+  },
+}));
+
+vi.mock('@capacitor-community/speech-recognition', () => ({
+  SpeechRecognition: mocks.speechRecognition,
+}));
+
+import { DicteeComponent, CLE_AVIS_DICTEE, choisirMoteur } from './dictee.component';
+import { MoteurNatif } from './moteur-natif';
 
 /** Faux moteur : garde la derniere instance pour la piloter depuis le test. */
 class FauxMoteur {
@@ -134,5 +150,21 @@ describe('dictée vocale', () => {
     await rendre();
     expect(el.querySelector('.bb-dictee__erreur')!.textContent).toMatch(/micro/i);
     expect(bouton()!.getAttribute('aria-pressed')).toBe('false');
+  });
+});
+
+describe('choix du moteur', () => {
+  it('choisit le moteur natif sur la plateforme native', () => {
+    expect(choisirMoteur(true)).toBe(MoteurNatif);
+  });
+
+  it('choisit le moteur du navigateur quand Web Speech API existe', () => {
+    w['webkitSpeechRecognition'] = FauxMoteur;
+    expect(choisirMoteur(false)).toBe(FauxMoteur);
+  });
+
+  it('ne choisit aucun moteur du navigateur si Web Speech API est absente', () => {
+    delete w['webkitSpeechRecognition'];
+    expect(choisirMoteur(false)).toBeNull();
   });
 });
