@@ -67,6 +67,28 @@ function ancetre(l: Lieu, niveau: string, parId: Map<string, Lieu>): Lieu | null
   return null;
 }
 
+/**
+ * M1-C : les voisins d'un lieu de base saisi en texte (`commune`), dans sa
+ * zone d'elargissement (`prefecture`). Les noms sont ceux du referentiel ;
+ * un lieu absent du referentiel n'a pas de voisins connus.
+ *
+ * Les voisins **restent dans la zone d'elargissement** : l'etape suivante
+ * l'ouvre de toute facon, et un appel ne doit pas passer d'une prefecture a
+ * l'autre avant d'avoir epuise la sienne.
+ */
+export async function voisinsDe(zone: string | null | undefined, lieu: string | null | undefined): Promise<string[]> {
+  if (!cle(zone) || !cle(lieu)) return [];
+  const p = await pays();
+  const { lieux, parId } = await arbre();
+  const dansZone = (l: Lieu) => cle(ancetre(l, p.niveauElargissement, parId)?.nom) === cle(zone);
+  const trouve = lieux.find((l) => l.niveau === p.niveauBase && cle(l.nom) === cle(lieu) && dansZone(l));
+  if (!trouve) return [];
+  return trouve.voisins
+    .map((id) => parId.get(id))
+    .filter((v): v is Lieu => !!v && dansZone(v))
+    .map((v) => v.nom);
+}
+
 export async function configuration(): Promise<ConfigurationGeoView> {
   const p = await pays();
   return { ...p, jeuDeDepartDisponible: jeuPour(p) !== null };

@@ -31,6 +31,7 @@ import {
 } from '../utils/zone';
 import { notifierSansBloquer } from './notification.service';
 import { assertTransition, transitionPermise } from './commande.transitions';
+import { voisinsDe } from './geographie.service';
 export { assertTransition, transitionPermise } from './commande.transitions';
 import { notifierLivreursCourse, ouvrirCourse } from './course.service';
 
@@ -232,14 +233,25 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
 
   const { prefecture, commune, quartier } = ordonnance.consultation.patient;
   let pharmacies = await pharmaciesDeLaZone({ prefecture, commune, quartier });
-  // M5 : aucune partenaire dans la commune, l'appel part d'emblee dans toute
-  // la prefecture plutot que de renvoyer le patient les mains vides.
+  // M1-C puis M5 : aucune partenaire dans la commune, l'appel part d'emblee
+  // vers les communes voisines, a defaut vers toute la prefecture, plutot
+  // que de renvoyer le patient les mains vides.
+  let voisinesLe: Date | null = null;
+  let communesVoisines: string[] = [];
   let elargieLe: Date | null = null;
   if (pharmacies.length === 0) {
-    const dansLaPrefecture = await pharmaciesDeLaPrefecture(prefecture);
-    if (dansLaPrefecture.length > 0) {
-      pharmacies = dansLaPrefecture;
-      elargieLe = new Date();
+    const voisines = await voisinsDe(prefecture, commune);
+    const chezLesVoisines = await pharmaciesDesCommunes(prefecture, voisines);
+    if (chezLesVoisines.length > 0) {
+      pharmacies = chezLesVoisines;
+      voisinesLe = new Date();
+      communesVoisines = voisines.map(cleLieu);
+    } else {
+      const dansLaPrefecture = await pharmaciesDeLaPrefecture(prefecture);
+      if (dansLaPrefecture.length > 0) {
+        pharmacies = dansLaPrefecture;
+        elargieLe = new Date();
+      }
     }
   }
 
@@ -250,6 +262,8 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
       quartierRecherche: quartier,
       prefectureRecherche: prefecture,
       communeRecherche: commune,
+      voisinesLe,
+      communesVoisines,
       elargieLe,
       // Aucune pharmacie partenaire dans le quartier : il n'y a personne a
       // interroger. Le resultat est le meme que si nul n'avait repondu — le
@@ -263,7 +277,7 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
     return getCommande(commande.id);
   }
 
-  await appelerPharmacies(pharmacies.map((p) => p.id), ordonnance.numero, commande, elargieLe !== null);
+  await appelerPharmacies(pharmacies.map((p) => p.id), ordonnance.numero, commande, voisinesLe !== null || elargieLe !== null);
   return getCommande(commande.id);
 }
 
@@ -323,35 +337,75 @@ export async function pharmaciesDeLaPrefecture(prefecture: string | null | undef
   });
 }
 
+/**
+ * M1-C : les partenaires actives de communes nommees, dans une prefecture.
+ * La comparaison ignore la casse : les communes des pharmacies sont du texte
+ * saisi, les voisines viennent du referentiel.
+ */
+export async function pharmaciesDesCommunes(prefecture: string | null | undefined, communes: string[]) {
+  if (!(prefecture ?? '').trim() || communes.length === 0) return [];
+  return prisma.structureSante.findMany({
+    where: {
+      ...filtreStructuresOfficinales(),
+      estActive: true,
+      estPartenaire: true,
+      ...filtrePrefecture(prefecture),
+      commune: { in: communes, mode: 'insensitive' },
+    },
+    select: { id: true, nom: true },
+  });
+}
+
+/** Le nom d'un lieu tel qu'on le compare : sans casse ni espaces autour. */
+const cleLieu = (s: string | null | undefined) => (s ?? '').trim().toLocaleLowerCase('fr');
+
 type ZoneDeCommande = {
   prefectureRecherche?: string | null; communeRecherche?: string | null;
   quartierRecherche?: string | null; elargieLe?: Date | null;
+  voisinesLe?: Date | null; communesVoisines?: string[];
 };
 
-/** Les pharmacies a qui l'appel s'adresse : sa zone, ou toute la prefecture une fois elargi. */
+/**
+ * Les pharmacies a qui l'appel s'adresse : sa zone ; plus les communes
+ * voisines une fois la premiere etape franchie (M1-C) ; toute la prefecture
+ * une fois elargi (M5).
+ */
 async function pharmaciesSollicitees(c: ZoneDeCommande) {
-  return c.elargieLe ? pharmaciesDeLaPrefecture(c.prefectureRecherche) : pharmaciesDeLaZone(zoneDeLaCommande(c));
+  if (c.elargieLe) return pharmaciesDeLaPrefecture(c.prefectureRecherche);
+  const zone = await pharmaciesDeLaZone(zoneDeLaCommande(c));
+  if (!c.voisinesLe) return zone;
+  const voisines = await pharmaciesDesCommunes(c.prefectureRecherche, c.communesVoisines ?? []);
+  return [...new Map([...zone, ...voisines].map((p) => [p.id, p])).values()];
 }
 
-/** Une officine est-elle appelee pour cette commande ? Sa zone, ou sa prefecture si l'appel est elargi. */
+/** Une officine est-elle appelee pour cette commande ? Meme regle que ci-dessus. */
 function pharmacieAppelee(structure: Lieu, c: ZoneDeCommande): boolean {
   const lieu = zoneDeLaCommande(c);
-  return memeZone(structure, lieu) || (!!c.elargieLe && memePrefecture(structure, lieu));
+  if (memeZone(structure, lieu)) return true;
+  if (!memePrefecture(structure, lieu)) return false;
+  if (c.elargieLe) return true;
+  return !!c.voisinesLe && (c.communesVoisines ?? []).includes(cleLieu(structure.commune));
 }
 
 /**
- * M5 : l'appel s'etend a toute la prefecture, et seules les pharmacies qui
- * n'avaient pas ete appelees sont prevenues. Renvoie leur nombre (0 si la
- * commande n'est plus a elargir, ou si la prefecture n'a personne de plus).
+ * L'appel passe a l'etape suivante, et seules les pharmacies qui n'avaient
+ * pas ete appelees sont prevenues. Renvoie leur nombre (0 si la commande
+ * n'est plus a elargir, ou si l'etape n'apporte personne de plus).
  *
- * L'ecriture est conditionnelle (`elargieLe: null`) : deux passages
- * simultanes du job n'envoient pas deux fois les memes notifications.
+ * 1. **Les communes voisines** (M1-C), declarees au referentiel. Etape
+ *    sautee si la commune n'a pas de voisine connue, ou si elles n'ont
+ *    aucune partenaire de plus : attendre n'y servirait a rien.
+ * 2. **Toute la prefecture** (M5).
+ *
+ * Chaque ecriture est conditionnelle (`voisinesLe: null`, `elargieLe: null`) :
+ * deux passages simultanes du job n'envoient pas deux fois les memes
+ * notifications.
  */
 export async function elargirCommande(idCommande: string): Promise<number> {
   const commande = await prisma.commande.findUnique({
     where: { id: idCommande },
     select: {
-      id: true, numero: true, statut: true, elargieLe: true,
+      id: true, numero: true, statut: true, elargieLe: true, voisinesLe: true, communesVoisines: true,
       prefectureRecherche: true, communeRecherche: true, quartierRecherche: true,
       ordonnance: { select: { numero: true } },
     },
@@ -359,13 +413,29 @@ export async function elargirCommande(idCommande: string): Promise<number> {
   if (!commande || commande.statut !== StatutCommande.RECHERCHE_PHARMACIE) return 0;
   if (commande.elargieLe || !(commande.prefectureRecherche ?? '').trim()) return 0;
 
+  const dejaAppelees = new Set((await pharmaciesSollicitees(commande)).map((p) => p.id));
+
+  if (!commande.voisinesLe) {
+    const voisines = await voisinsDe(commande.prefectureRecherche, commande.communeRecherche);
+    const nouvelles = (await pharmaciesDesCommunes(commande.prefectureRecherche, voisines))
+      .filter((p) => !dejaAppelees.has(p.id));
+    if (nouvelles.length > 0) {
+      const marque = await prisma.commande.updateMany({
+        where: { id: idCommande, statut: StatutCommande.RECHERCHE_PHARMACIE, voisinesLe: null, elargieLe: null },
+        data: { voisinesLe: new Date(), communesVoisines: voisines.map(cleLieu) },
+      });
+      if (marque.count !== 1) return 0;
+      await appelerPharmacies(nouvelles.map((p) => p.id), commande.ordonnance.numero, commande, true);
+      return nouvelles.length;
+    }
+  }
+
   const marque = await prisma.commande.updateMany({
     where: { id: idCommande, statut: StatutCommande.RECHERCHE_PHARMACIE, elargieLe: null },
     data: { elargieLe: new Date() },
   });
   if (marque.count !== 1) return 0;
 
-  const dejaAppelees = new Set((await pharmaciesDeLaZone(zoneDeLaCommande(commande))).map((p) => p.id));
   const nouvelles = (await pharmaciesDeLaPrefecture(commande.prefectureRecherche))
     .filter((p) => !dejaAppelees.has(p.id));
   await appelerPharmacies(nouvelles.map((p) => p.id), commande.ordonnance.numero, commande, true);
@@ -383,7 +453,12 @@ export async function elargirCommandesEnAttente(
       statut: StatutCommande.RECHERCHE_PHARMACIE,
       elargieLe: null,
       prefectureRecherche: { not: null },
-      creeLe: { lte: limite },
+      // Chaque etape a son propre delai : depuis la creation tant que l'appel
+      // est dans sa commune, depuis l'ouverture aux voisines ensuite.
+      OR: [
+        { voisinesLe: null, creeLe: { lte: limite } },
+        { voisinesLe: { lte: limite } },
+      ],
     },
     select: { id: true },
     orderBy: { creeLe: 'asc' },
@@ -417,6 +492,7 @@ export async function repondreDisponibilite(
     select: {
       id: true, statut: true, idPharmacie: true, numero: true,
       prefectureRecherche: true, communeRecherche: true, quartierRecherche: true, elargieLe: true,
+      voisinesLe: true, communesVoisines: true,
     },
   });
   if (!commande) throw new NotFoundError('Commande non trouvee');
@@ -556,6 +632,14 @@ export async function commandesDeLaPharmacie(user: JwtPayload): Promise<Commande
           ...filtrePrefecture(pharmacie.prefecture, 'prefectureRecherche'),
           reponses: { none: { idStructure: pharmacie.id, aTousLesProduits: false } },
         },
+        // Les appels ouverts a sa commune en tant que voisine (M1-C).
+        {
+          statut: StatutCommande.RECHERCHE_PHARMACIE,
+          voisinesLe: { not: null },
+          communesVoisines: { has: cleLieu(pharmacie.commune) || '__aucune_commune__' },
+          ...filtrePrefecture(pharmacie.prefecture, 'prefectureRecherche'),
+          reponses: { none: { idStructure: pharmacie.id, aTousLesProduits: false } },
+        },
         // Et celles qu'elle a prises.
         { idPharmacie: pharmacie.id },
       ],
@@ -594,6 +678,7 @@ async function verifierEpuisementDesReponses(idCommande: string) {
     where: { id: idCommande },
     select: {
       prefectureRecherche: true, communeRecherche: true, quartierRecherche: true, elargieLe: true,
+      voisinesLe: true, communesVoisines: true,
       statut: true, reponses: { select: { aTousLesProduits: true } },
     },
   });
@@ -742,6 +827,8 @@ export async function assertPeutLireCommande(user: JwtPayload, idCommande: strin
       communeRecherche: true,
       quartierRecherche: true,
       elargieLe: true,
+      voisinesLe: true,
+      communesVoisines: true,
       statut: true,
       ordonnance: {
         select: {

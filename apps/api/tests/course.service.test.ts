@@ -45,6 +45,9 @@ jest.mock('../src/services/numero.service', () => ({
 jest.mock('../src/services/notification.service', () => ({
   notifierSansBloquer: jest.fn(),
 }));
+// M1-C : les voisines viennent du referentiel ; aucune par defaut, chaque test precise.
+jest.mock('../src/services/geographie.service', () => ({ voisinsDe: jest.fn() }));
+const { voisinsDe } = jest.requireMock('../src/services/geographie.service') as { voisinsDe: jest.Mock };
 
 type M = jest.Mock;
 const { prisma } = jest.requireMock('../src/config/prisma') as {
@@ -99,6 +102,7 @@ const courseView = {
 
 beforeEach(() => {
   jest.resetAllMocks();
+  voisinsDe.mockResolvedValue([]);
   prisma.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
   prisma.livreurProfile.findUnique.mockResolvedValue(profil);
   prisma.course.updateMany.mockResolvedValue({ count: 1 });
@@ -204,6 +208,12 @@ describe('ouverture et visibilité des courses', () => {
           ...(filtreZones(zonesDuLivreur(profil)).OR as unknown[]),
           // M5 : une course elargie se voit dans toute sa prefecture.
           { elargieLe: { not: null }, prefecture: { equals: 'Conakry', mode: 'insensitive' } },
+          // M1-C : et celles ouvertes a sa commune comme voisine.
+          {
+            voisinesLe: { not: null },
+            communesVoisines: { hasSome: ['ratoma'] },
+            prefecture: { equals: 'Conakry', mode: 'insensitive' },
+          },
         ],
       },
     }));
@@ -222,9 +232,11 @@ describe('ouverture et visibilité des courses', () => {
     await coursesOuvertesPour(livreur);
 
     const { where } = prisma.course.findMany.mock.calls[0][0];
-    // Une branche pour Ratoma, une pour Dixinn, une pour les courses elargies.
-    expect(where.OR).toHaveLength(3);
+    // Ratoma, Dixinn, les courses elargies, et celles ouvertes a ses communes comme voisines.
+    expect(where.OR).toHaveLength(4);
     expect(JSON.stringify(where.OR[1])).toContain('Dixinn');
+    // Une commune desservie compte aussi comme voisine possible.
+    expect(where.OR[3].communesVoisines).toEqual({ hasSome: ['ratoma', 'dixinn'] });
   });
 
   it('notifie uniquement les livreurs actifs de la zone a l ouverture', async () => {
@@ -334,6 +346,108 @@ describe('ouverture et visibilité des courses', () => {
   });
 });
 
+describe('elargissement aux communes voisines (M1-C)', () => {
+  const dansRatoma = {
+    id: 'course-1', numero: 'LV-2026-000001', statut: StatutCourse.APPEL_OFFRES, elargieLe: null,
+    voisinesLe: null, communesVoisines: [] as string[], prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé',
+  };
+  const motardsDesVoisines = [
+    { prefecture: { equals: 'Conakry', mode: 'insensitive' }, commune: { in: ['Dixinn'], mode: 'insensitive' } },
+    { prefecture: { equals: 'Conakry', mode: 'insensitive' }, communesDesservies: { hasSome: ['Dixinn', 'dixinn'] } },
+  ];
+
+  it('premiere etape : previent les motards des voisines, et fige leur liste', async () => {
+    voisinsDe.mockResolvedValue(['Dixinn']);
+    prisma.course.findUnique.mockResolvedValue(dansRatoma);
+    prisma.livreurProfile.findMany.mockResolvedValue([{ utilisateur: { id: 'motard-dixinn' } }]);
+
+    expect(await elargirCourse('course-1')).toBe(1);
+
+    expect(voisinsDe).toHaveBeenCalledWith('Conakry', 'Ratoma');
+    expect(prisma.livreurProfile.findMany.mock.calls[0][0].where).toMatchObject({
+      estActif: true, enService: true, OR: motardsDesVoisines,
+    });
+    expect(prisma.course.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.course.updateMany).toHaveBeenCalledWith({
+      where: { id: 'course-1', statut: StatutCourse.APPEL_OFFRES, voisinesLe: null, elargieLe: null },
+      data: { voisinesLe: expect.any(Date), communesVoisines: ['dixinn'] },
+    });
+    expect(notifierSansBloquer).toHaveBeenCalledWith(expect.objectContaining({
+      idUtilisateur: 'motard-dixinn',
+      contenu: expect.stringContaining('communes voisines'),
+    }));
+  });
+
+  it('personne en service chez les voisines : l etape est sautee, la prefecture est ouverte', async () => {
+    voisinsDe.mockResolvedValue(['Dixinn']);
+    prisma.course.findUnique.mockResolvedValue(dansRatoma);
+    prisma.livreurProfile.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ utilisateur: { id: 'motard-matoto' } }]);
+
+    await elargirCourse('course-1');
+
+    expect(prisma.course.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.course.updateMany.mock.calls[0][0].data).toEqual({ elargieLe: expect.any(Date) });
+  });
+
+  it('seconde etape : la prefecture, sans reprevenir la commune ni les voisines', async () => {
+    prisma.course.findUnique.mockResolvedValue({ ...dansRatoma, voisinesLe: new Date(), communesVoisines: ['dixinn'] });
+    prisma.livreurProfile.findMany.mockResolvedValue([{ utilisateur: { id: 'motard-matoto' } }]);
+
+    await elargirCourse('course-1');
+
+    expect(voisinsDe).not.toHaveBeenCalled();
+    const { NOT } = prisma.livreurProfile.findMany.mock.calls[0][0].where;
+    expect(NOT.OR).toEqual(expect.arrayContaining([
+      { prefecture: { equals: 'Conakry', mode: 'insensitive' }, commune: { in: ['dixinn'], mode: 'insensitive' } },
+      { prefecture: { equals: 'Conakry', mode: 'insensitive' }, communesDesservies: { hasSome: ['dixinn'] } },
+    ]));
+    expect(prisma.course.updateMany.mock.calls[0][0].data).toEqual({ elargieLe: expect.any(Date) });
+  });
+
+  it('un passage simultane a la premiere etape ne previent personne', async () => {
+    voisinsDe.mockResolvedValue(['Dixinn']);
+    prisma.course.findUnique.mockResolvedValue(dansRatoma);
+    prisma.livreurProfile.findMany.mockResolvedValue([{ utilisateur: { id: 'motard-dixinn' } }]);
+    prisma.course.updateMany.mockResolvedValue({ count: 0 });
+
+    expect(await elargirCourse('course-1')).toBe(0);
+    expect(notifierSansBloquer).not.toHaveBeenCalled();
+  });
+
+  it('un motard d une voisine peut proposer une fois la course ouverte aux voisines, pas avant', async () => {
+    prisma.livreurProfile.findUnique.mockResolvedValue({ ...profil, commune: 'Dixinn', quartier: 'Donka' });
+    prisma.offreCourse.upsert.mockResolvedValue({ id: 'offre-1', prixGnf: 10_000, delaiMinutes: 20, creeeLe: new Date() });
+
+    prisma.course.findUnique.mockResolvedValue({ ...dansRatoma });
+    await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 })).rejects.toBeInstanceOf(ForbiddenError);
+
+    prisma.course.findUnique.mockResolvedValue({ ...dansRatoma, voisinesLe: new Date(), communesVoisines: ['dixinn'] });
+    await proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }).catch(() => undefined);
+    expect(prisma.offreCourse.upsert).toHaveBeenCalled();
+  });
+
+  it('une commune desservie compte comme voisine', async () => {
+    prisma.livreurProfile.findUnique.mockResolvedValue({ ...profil, commune: 'Matoto', quartier: 'Gbessia', communesDesservies: ['Dixinn'] });
+    prisma.offreCourse.upsert.mockResolvedValue({ id: 'offre-1', prixGnf: 10_000, delaiMinutes: 20, creeeLe: new Date() });
+    prisma.course.findUnique.mockResolvedValue({ ...dansRatoma, voisinesLe: new Date(), communesVoisines: ['dixinn'] });
+
+    await proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }).catch(() => undefined);
+
+    expect(prisma.offreCourse.upsert).toHaveBeenCalled();
+  });
+
+  it('une commune non voisine, ou d une autre prefecture, reste refusee', async () => {
+    prisma.course.findUnique.mockResolvedValue({ ...dansRatoma, voisinesLe: new Date(), communesVoisines: ['dixinn'] });
+
+    prisma.livreurProfile.findUnique.mockResolvedValue({ ...profil, commune: 'Matoto', quartier: 'Gbessia' });
+    await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 })).rejects.toBeInstanceOf(ForbiddenError);
+
+    prisma.livreurProfile.findUnique.mockResolvedValue({ ...profil, commune: 'Dixinn', quartier: 'Donka', prefecture: 'Kindia' });
+    await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.offreCourse.upsert).not.toHaveBeenCalled();
+  });
+});
+
 describe('elargissement a la prefecture (M5)', () => {
   const sansOffre = {
     id: 'course-1', numero: 'LV-2026-000001', statut: StatutCourse.APPEL_OFFRES, elargieLe: null,
@@ -401,7 +515,11 @@ describe('elargissement a la prefecture (M5)', () => {
       where: {
         statut: StatutCourse.APPEL_OFFRES,
         elargieLe: null,
-        creeeLe: { lte: new Date('2026-11-11T11:50:00Z') },
+        // Depuis l'ouverture dans la commune, depuis l'ouverture aux voisines ensuite (M1-C).
+        OR: [
+          { voisinesLe: null, creeeLe: { lte: new Date('2026-11-11T11:50:00Z') } },
+          { voisinesLe: { lte: new Date('2026-11-11T11:50:00Z') } },
+        ],
         // Des offres attendent deja le choix du patient : rien a elargir.
         offres: { none: {} },
       },
