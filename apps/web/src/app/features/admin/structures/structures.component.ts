@@ -80,8 +80,11 @@ export class StructuresComponent implements OnInit {
     this.dossierOuvert.update((v) => (v === id ? null : id));
   }
 
+  gpsEnCours = signal(false);
+  erreurGps = signal<string | null>(null);
+
   newStructure = {
-    nom: '', type: 'CENTRE', prefecture: '', adresse: '',
+    nom: '', type: 'CENTRE', prefecture: '', commune: '', quartier: '', adresse: '',
     latitude: null as number | null, longitude: null as number | null, telephone: '',
     rccm: '', numeroAgrementCreation: '', numeroAgrementExploitation: '', lieuAutorise: '',
     admin: { prenom: '', nom: '', telephone: '', email: '' }
@@ -113,8 +116,9 @@ export class StructuresComponent implements OnInit {
    * Lu par le gabarit pour desactiver le bouton : un envoi parti sans ses
    * pieces reviendrait en 400, apres le temps de montee des fichiers.
    */
-  readonly peutEnvoyer = computed(() =>
-    !this.isSaving() && (!this.exigeUnDossier() || this.piecesCompletes()));
+  peutEnvoyer(): boolean {
+    return !this.isSaving() && !!this.newStructure.commune.trim() && (!this.exigeUnDossier() || this.piecesCompletes());
+  }
 
   get typeOptions() {
     return [
@@ -198,9 +202,32 @@ export class StructuresComponent implements OnInit {
     });
   }
 
+  positionActuelle() {
+    if (!navigator.geolocation) {
+      this.erreurGps.set(this.i18n.t('ADMIN.STRUCTURES.GPS_ERR'));
+      return;
+    }
+
+    this.gpsEnCours.set(true);
+    this.erreurGps.set(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.newStructure.latitude = Number(pos.coords.latitude.toFixed(6));
+        this.newStructure.longitude = Number(pos.coords.longitude.toFixed(6));
+        this.gpsEnCours.set(false);
+      },
+      () => {
+        this.gpsEnCours.set(false);
+        this.erreurGps.set(this.i18n.t('ADMIN.STRUCTURES.GPS_ERR'));
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }
+
   creerStructure() {
     const validationTitle = this.i18n.t('ADMIN.STRUCTURES.VALIDATION_TITLE');
-    if (!this.newStructure.nom || !this.newStructure.prefecture) {
+    if (!this.newStructure.nom || !this.newStructure.prefecture || !this.newStructure.commune.trim()) {
       this.toastr.error(this.i18n.t('ADMIN.STRUCTURES.ERR_VALIDATION_STRUCT'), validationTitle); return;
     }
     if (!this.newStructure.admin.prenom || !this.newStructure.admin.nom || !this.newStructure.admin.telephone || !this.newStructure.admin.email) {
@@ -233,10 +260,12 @@ export class StructuresComponent implements OnInit {
       const payload = {
         nom: this.newStructure.nom,
         prefecture: this.newStructure.prefecture,
+        commune: this.newStructure.commune.trim(),
+        quartier: this.newStructure.quartier.trim() || undefined,
         adresse: this.newStructure.adresse || undefined,
         telephone: this.newStructure.telephone || undefined,
-        latitude: this.newStructure.latitude || undefined,
-        longitude: this.newStructure.longitude || undefined,
+        latitude: this.newStructure.latitude ?? undefined,
+        longitude: this.newStructure.longitude ?? undefined,
         ...this.identifiants(),
         pharmacien: {
           prenom: this.newStructure.admin.prenom,
@@ -251,10 +280,12 @@ export class StructuresComponent implements OnInit {
         nom: this.newStructure.nom,
         type: this.newStructure.type,
         prefecture: this.newStructure.prefecture,
+        commune: this.newStructure.commune.trim(),
+        quartier: this.newStructure.quartier.trim() || undefined,
         adresse: this.newStructure.adresse || undefined,
         telephone: this.newStructure.telephone || undefined,
-        latitude: this.newStructure.latitude || undefined,
-        longitude: this.newStructure.longitude || undefined,
+        latitude: this.newStructure.latitude ?? undefined,
+        longitude: this.newStructure.longitude ?? undefined,
         ...this.identifiants(),
         admin: {
           prenom: this.newStructure.admin.prenom,
@@ -272,7 +303,7 @@ export class StructuresComponent implements OnInit {
         this.isSaving.set(false);
         this.showForm.set(false);
         this.newStructure = {
-          nom: '', type: 'CENTRE', prefecture: '', adresse: '',
+          nom: '', type: 'CENTRE', prefecture: '', commune: '', quartier: '', adresse: '',
           latitude: null, longitude: null, telephone: '',
           rccm: '', numeroAgrementCreation: '', numeroAgrementExploitation: '', lieuAutorise: '',
           admin: { prenom: '', nom: '', telephone: '', email: '' }

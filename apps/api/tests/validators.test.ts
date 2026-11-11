@@ -2,6 +2,7 @@ import { syncPushSchema, ussdSessionSchema, verifyLoginOtpSchema,
   choisirOffreCourseSchema, confirmerReceptionCourseSchema, filtreJournalSchema,
   proposerOffreCourseSchema, remettreAuMotardSchema, renoncerLivraisonSchema,
   createAgentStructureSchema, creerAgentAssureurSchema, creerLivreurSchema,
+  createStructureSchema, createPharmacieSchema,
 } from '../src/validators/api.schemas';
 
 describe('api.schemas', () => {
@@ -54,6 +55,32 @@ describe('api.schemas', () => {
       prenom: 'Awa', nom: 'Bah', telephone: '+224620000001',
       quartier: 'Donka', prefecture: 'Conakry',
     })).not.toHaveProperty('email');
+  });
+
+  it('refuse la structure sans commune et une latitude hors bornes', () => {
+    expect(() => createStructureSchema.parse({
+      nom: 'Centre',
+      type: 'CENTRE',
+      prefecture: 'Conakry',
+      commune: '',
+      admin: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000001', email: 'awa@example.com' },
+    })).toThrow();
+    expect(() => createStructureSchema.parse({
+      nom: 'Centre',
+      type: 'CENTRE',
+      prefecture: 'Conakry',
+      commune: 'Ratoma',
+      latitude: 95,
+      admin: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000001', email: 'awa@example.com' },
+    })).toThrow();
+  });
+
+  it('accepte une pharmacie sans commune', () => {
+    expect(createPharmacieSchema.parse({
+      nom: 'Pharmacie Test',
+      prefecture: 'Conakry',
+      pharmacien: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000001', email: 'awa@example.com' },
+    })).toMatchObject({ prefecture: 'Conakry' });
   });
 });
 

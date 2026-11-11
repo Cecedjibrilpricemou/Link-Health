@@ -131,3 +131,72 @@ describe('admin : page Structures', () => {
     expect(c.structuresFiltrees().map((s) => s.id)).toEqual(['pharma']);
   });
 });
+
+describe('commune et position', () => {
+  beforeEach(() => TestBed.resetTestingModule());
+
+  it('envoie la commune et le quartier saisis, et désactive le bouton sans commune', () => {
+    const { c, el, rendre } = monter();
+    el.querySelector<HTMLButtonElement>('.bb-struct__add-btn')!.click();
+    rendre();
+
+    const btn = el.querySelector<HTMLButtonElement>('.bb-struct__save-btn')!;
+    expect(btn.disabled).toBe(true);
+
+    const nom = el.querySelector<HTMLInputElement>('#struct-nom')!;
+    const prefecture = el.querySelector<HTMLInputElement>('#struct-pref')!;
+    const commune = el.querySelector<HTMLInputElement>('#struct-commune')!;
+    const quartier = el.querySelector<HTMLInputElement>('#struct-quartier')!;
+    const adminPrenom = el.querySelector<HTMLInputElement>('#struct-admin-prenom')!;
+    const adminNom = el.querySelector<HTMLInputElement>('#struct-admin-nom')!;
+    const adminTel = el.querySelector<HTMLInputElement>('#struct-admin-tel')!;
+    const adminEmail = el.querySelector<HTMLInputElement>('#struct-admin-email')!;
+
+    saisir(nom, 'Centre de santé');
+    saisir(prefecture, 'Conakry');
+    saisir(commune, 'Ratoma');
+    saisir(quartier, 'Kipé');
+    saisir(adminPrenom, 'Awa');
+    saisir(adminNom, 'Bah');
+    saisir(adminTel, '+224620000001');
+    saisir(adminEmail, 'awa@example.com');
+    rendre();
+
+    expect(c.newStructure.commune).toBe('Ratoma');
+    expect(c.newStructure.quartier).toBe('Kipé');
+    expect(el.querySelector<HTMLButtonElement>('.bb-struct__save-btn')!.disabled).toBe(false);
+  });
+
+  it('remplit les coordonnées depuis la géolocalisation et affiche l’erreur si elle échoue', () => {
+    const { c, el, rendre } = monter();
+    el.querySelector<HTMLButtonElement>('.bb-struct__add-btn')!.click();
+    rendre();
+
+    const originalGeo = navigator.geolocation;
+    Object.defineProperty(navigator, 'geolocation', {
+      value: {
+        getCurrentPosition: (success: PositionCallback) => {
+          success({ coords: { latitude: 9.6170123456, longitude: -13.6380987654 } } as GeolocationPosition);
+        },
+      },
+      configurable: true,
+    });
+
+    c.positionActuelle();
+    expect(c.newStructure.latitude).toBe(9.617012);
+    expect(c.newStructure.longitude).toBe(-13.638099);
+
+    Object.defineProperty(navigator, 'geolocation', {
+      value: {
+        getCurrentPosition: (_success: PositionCallback, failure: PositionErrorCallback) => {
+          failure({ code: 1, message: 'denied', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError);
+        },
+      },
+      configurable: true,
+    });
+    c.positionActuelle();
+    expect(c.erreurGps()).toContain('Position');
+
+    Object.defineProperty(navigator, 'geolocation', { value: originalGeo, configurable: true });
+  });
+});
