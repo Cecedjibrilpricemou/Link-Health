@@ -7,12 +7,15 @@
 
 <form class="adresse__form" (ngSubmit)="enregistrer()" autocomplete="off">
   @if (adresse()) {
-    <p class="adresse__prefecture">{{ 'PATIENT.ADRESSE.PREFECTURE' | translate }} : <strong>{{ adresse()!.prefecture }}</strong></p>
+    <p class="adresse__prefecture">{{ geo.libelle('elargissement') }} : <strong>{{ adresse()!.prefecture }}</strong></p>
   }
+  <!-- M1 : les noms du referentiel sont proposes ; le texte libre reste accepte. -->
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>{{ 'PATIENT.ADRESSE.COMMUNE' | translate }}</mat-label>
-    <input matInput id="adresse-commune" name="commune" maxlength="80" required [(ngModel)]="form.commune" />
+    <mat-label>{{ geo.libelle('base') }}</mat-label>
+    <input matInput id="adresse-commune" name="commune" maxlength="80" required autocomplete="off"
+           list="adresse-liste-communes" [(ngModel)]="form.commune" />
   </mat-form-field>
+  <app-suggestions-lieux idListe="adresse-liste-communes" role="base" [dans]="adresse()?.prefecture" />
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
     <mat-label>{{ 'PATIENT.ADRESSE.QUARTIER' | translate }}</mat-label>
     <input matInput id="adresse-quartier" name="quartier" maxlength="80" required [(ngModel)]="form.quartier" />

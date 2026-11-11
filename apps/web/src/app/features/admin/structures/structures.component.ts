@@ -14,6 +14,8 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import type { CreationPharmacieView, CreationStructureView, StructureAdminView, TypePieceAgrement } from '@baobaoheath/shared-types';
 import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
+import { GeographieService } from '../../../core/services/geographie.service';
+import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
 
 // Contenu de la modale de confirmation : assemble cote client a partir de la
 // reponse de creation, il n'a pas d'equivalent dans une reponse d'API.
@@ -39,6 +41,9 @@ const ICONES_TYPE: Record<string, string> = {
   ASSURANCE: 'pi-shield',
 };
 
+/** Repli guineen tant que le referentiel est vide (voir `prefectures`). */
+const PREFECTURES_GUINEE_REPLI = ['Conakry','Kindia','Boké','Mamou','Labé','Faranah','Kankan','Nzérékoré','Coyah','Dubréka','Forécariah','Fria','Télimélé','Pita','Dalaba','Tougué','Dinguiraye','Kouroussa','Siguiri','Mandiana','Kérouané','Macenta','Guékédou','Kissidougou','Beyla','Lola','Yomou'];
+
 /** Recherche insensible a la casse et aux accents (« Labé » = « labe »). */
 function normaliser(v: string): string {
   return v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -49,7 +54,7 @@ function normaliser(v: string): string {
   standalone: true,
   imports: [ListeRechercheComponent, OptionsDePipe, 
     MatFormFieldModule, MatInputModule, MatSelectModule,CommonModule, FormsModule, TranslatePipe,
-    ExportListeComponent, PiecesAgrementComponent, DossierAgrementComponent],
+    ExportListeComponent, PiecesAgrementComponent, DossierAgrementComponent, SuggestionsLieuxComponent],
   templateUrl: './structures.component.html',
   styleUrl: './structures.component.scss'
 })
@@ -137,7 +142,23 @@ export class StructuresComponent implements OnInit {
     ];
   }
 
-  prefectures = ['Conakry','Kindia','Boké','Mamou','Labé','Faranah','Kankan','Nzérékoré','Coyah','Dubréka','Forécariah','Fria','Télimélé','Pita','Dalaba','Tougué','Dinguiraye','Kouroussa','Siguiri','Mandiana','Kérouané','Macenta','Guékédou','Kissidougou','Beyla','Lola','Yomou'].map(p => ({ label: p, value: p }));
+  /** M1 : les noms des niveaux et les lieux viennent du pays installe. */
+  readonly geo = inject(GeographieService);
+  private readonly zonesReferentiel = signal<string[]>([]);
+
+  /**
+   * Les zones d'elargissement proposees (les prefectures en Guinee), tirees du
+   * referentiel. Tant qu'il est vide **et que le pays est la Guinee**, l'ancienne
+   * liste sert de repli : sans elle, aucune structure ne pourrait etre creee
+   * avant le chargement du jeu de depart. Un autre pays n'herite jamais de
+   * noms guineens.
+   */
+  readonly prefectures = computed(() => {
+    const noms = this.zonesReferentiel();
+    const guinee = (this.geo.configuration()?.code ?? 'GN') === 'GN';
+    const liste = noms.length > 0 ? noms : guinee ? PREFECTURES_GUINEE_REPLI : [];
+    return liste.map((p) => ({ label: p, value: p }));
+  });
 
   /** Les colonnes du document imprime **et** du fichier : les memes.
    * C'est ce qui empeche la feuille et le tableur de se contredire. */
@@ -185,7 +206,12 @@ export class StructuresComponent implements OnInit {
     return ICONES_TYPE[type] ?? 'pi-building';
   }
 
-  ngOnInit() { this.loadStructures(); }
+  ngOnInit() {
+    this.loadStructures();
+    // M1 : les zones d'elargissement du referentiel, quand il est rempli.
+    this.geo.chargerConfiguration().subscribe(() =>
+      this.geo.nomsSuggeres('elargissement').subscribe((noms) => this.zonesReferentiel.set(noms)));
+  }
 
   loadStructures() {
     this.isLoading.set(true);

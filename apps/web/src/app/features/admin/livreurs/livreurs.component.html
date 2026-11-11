@@ -65,16 +65,20 @@
           <input matInput required [ngModel]="formulaire().quartier"
                  (ngModelChange)="modifier('quartier', $event)" name="quartier" />
         </mat-form-field>
+        <!-- M1 : les noms des niveaux et les lieux viennent du pays installe ;
+             le texte libre reste accepte. -->
         <mat-form-field appearance="outline">
-          <mat-label>{{ 'ADMIN.LIVREURS.COMMUNE' | translate }}</mat-label>
-          <input matInput required [ngModel]="formulaire().commune"
+          <mat-label>{{ geo.libelle('base') }}</mat-label>
+          <input matInput required [ngModel]="formulaire().commune" list="livreur-liste-communes" autocomplete="off"
                  (ngModelChange)="modifier('commune', $event)" name="commune" />
         </mat-form-field>
+        <app-suggestions-lieux idListe="livreur-liste-communes" role="base" [dans]="formulaire().prefecture" />
         <mat-form-field appearance="outline">
-          <mat-label>{{ 'ADMIN.LIVREURS.PREFECTURE' | translate }}</mat-label>
-          <input matInput required [ngModel]="formulaire().prefecture"
+          <mat-label>{{ geo.libelle('elargissement') }}</mat-label>
+          <input matInput required [ngModel]="formulaire().prefecture" list="livreur-liste-zones" autocomplete="off"
                  (ngModelChange)="modifier('prefecture', $event)" name="prefecture" />
         </mat-form-field>
+        <app-suggestions-lieux idListe="livreur-liste-zones" role="elargissement" />
       </div>
       <button mat-flat-button color="primary" type="submit"
               [disabled]="!peutCreer()">
@@ -111,8 +115,8 @@
             <tr>
               <th>{{ 'ADMIN.LIVREURS.PERSON' | translate }}</th>
               <th>{{ 'ADMIN.LIVREURS.NEIGHBORHOOD' | translate }}</th>
-              <th>{{ 'ADMIN.LIVREURS.COMMUNE' | translate }}</th>
-              <th>{{ 'ADMIN.LIVREURS.PREFECTURE' | translate }}</th>
+              <th>{{ geo.libelle('base') }}</th>
+              <th>{{ geo.libelle('elargissement') }}</th>
               <th>{{ 'ADMIN.LIVREURS.STATE' | translate }}</th>
               <th>{{ 'ADMIN.LIVREURS.ACTIVITY' | translate }}</th>
             </tr>

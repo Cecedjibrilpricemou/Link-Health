@@ -99,17 +99,20 @@
 </mat-form-field>
         </div>
         <div class="bb-struct__field">
-          <label id="struct-pref-label" for="struct-pref">{{ 'ADMIN.STRUCTURES.PREFECTURE_LABEL' | translate }}</label>
-          <app-liste-recherche inputId="struct-pref" [options]="prefectures | optionsDe"
+          <label id="struct-pref-label" for="struct-pref">{{ geo.libelle('elargissement') }} *</label>
+          <app-liste-recherche inputId="struct-pref" [options]="prefectures() | optionsDe"
                                [(ngModel)]="newStructure.prefecture" #structPref="ngModel" required
                                [placeholder]="'PATIENT.PROFILE.GENDER_SELECT' | translate" />
           @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
         </div>
         <div class="bb-struct__field">
-          <label for="struct-commune">{{ 'ADMIN.STRUCTURES.COMMUNE_LABEL' | translate }} *</label>
+          <label for="struct-commune">{{ geo.libelle('base') }} *</label>
+          <!-- M1 : les lieux du referentiel sont proposes ; le texte libre reste accepte. -->
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-            <input matInput id="struct-commune" [(ngModel)]="newStructure.commune" [placeholder]="'ADMIN.STRUCTURES.COMMUNE_PH' | translate" #structCommune="ngModel" required aria-describedby="struct-commune-msg" />
+            <input matInput id="struct-commune" [(ngModel)]="newStructure.commune" [placeholder]="'ADMIN.STRUCTURES.COMMUNE_PH' | translate" #structCommune="ngModel" required aria-describedby="struct-commune-msg"
+                   list="struct-liste-communes" autocomplete="off" />
           </mat-form-field>
+          <app-suggestions-lieux idListe="struct-liste-communes" role="base" [dans]="newStructure.prefecture" />
           @if (structCommune.invalid && (structCommune.dirty || structCommune.touched)) { <small id="struct-commune-msg" class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
         </div>
         <div class="bb-struct__field">

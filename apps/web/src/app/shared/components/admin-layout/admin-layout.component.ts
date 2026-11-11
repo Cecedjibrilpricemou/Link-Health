@@ -112,6 +112,8 @@ export class AdminLayoutComponent {
       roles: ['ADMIN_NATIONAL', 'SUPER_ADMIN'] },
     { labelKey: 'ADMIN.NAV_JOURNAL',   icon: 'pi-shield',    route: '/admin/journal',
       roles: ['ADMIN_NATIONAL', 'SUPER_ADMIN'] },
+    { labelKey: 'ADMIN.NAV_GEO',       icon: 'pi-map',       route: '/admin/geographie',
+      roles: ['ADMIN_NATIONAL', 'SUPER_ADMIN'] },
     { labelKey: 'ADMIN.NAV_BRIS',      icon: 'pi-unlock',    route: '/admin/bris-de-glace',
       roles: ['ADMIN_STRUCTURE', 'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'] },
     { labelKey: 'ADMIN.NAV_SETTINGS',  icon: 'pi-cog',       route: '/admin/settings',

@@ -1,0 +1,216 @@
+<section class="geo">
+  <header class="bb-page-head">
+    <div class="bb-page-head__text">
+      <span class="bb-page-head__tag"><i class="pi pi-map" aria-hidden="true"></i> {{ 'ADMIN.ROLE' | translate }}</span>
+      <h1 class="bb-page-head__title">{{ 'ADMIN.GEO.TITLE' | translate }}</h1>
+      <p class="bb-page-head__sub">
+        @if (geo.configuration(); as c) {
+          {{ c.nom }} · <span class="geo__decoupage">{{ decoupage() }}</span>
+        } @else {
+          {{ 'ADMIN.GEO.SUBTITLE' | translate }}
+        }
+      </p>
+    </div>
+    <div class="bb-page-head__actions">
+      @if (geo.configuration()?.jeuDeDepartDisponible) {
+        <button mat-stroked-button type="button" id="geo-jeu" (click)="chargerJeu()" [disabled]="!!action()">
+          @if (action() === 'jeu') { <mat-spinner diameter="18" /> }
+          @else { <mat-icon fontSet="pi" fontIcon="pi-download" aria-hidden="true"></mat-icon> }
+          {{ 'ADMIN.GEO.STARTER' | translate }}
+        </button>
+      }
+      <button mat-stroked-button type="button" (click)="actualiser()" [disabled]="chargement()">
+        <mat-icon fontSet="pi" fontIcon="pi-refresh" aria-hidden="true"></mat-icon>
+        {{ 'ADMIN.GEO.REFRESH' | translate }}
+      </button>
+    </div>
+  </header>
+
+  @if (succes()) {
+    <div class="geo__success" role="status">
+      <mat-icon fontSet="pi" fontIcon="pi-check-circle" aria-hidden="true"></mat-icon>
+      <span>{{ succes() }}</span>
+    </div>
+  }
+  @if (erreur()) {
+    <div class="geo__error" role="alert">
+      <mat-icon fontSet="pi" fontIcon="pi-exclamation-triangle" aria-hidden="true"></mat-icon>
+      <span>{{ erreur() }}</span>
+    </div>
+  }
+
+  <!-- ── L'arbre, un niveau a la fois ─────────────────────────────── -->
+  <mat-card class="geo__card">
+    <nav class="geo__chemin" [attr.aria-label]="'ADMIN.GEO.BREADCRUMB' | translate">
+      <button type="button" class="geo__miette" [class.geo__miette--courante]="chemin().length === 0"
+              (click)="remonterA(0)" [attr.aria-current]="chemin().length === 0 ? 'page' : null">
+        <i class="pi pi-globe" aria-hidden="true"></i> {{ geo.configuration()?.nom || ('ADMIN.GEO.ROOT' | translate) }}
+      </button>
+      @for (l of chemin(); track l.id; let i = $index; let dernier = $last) {
+        <i class="pi pi-angle-right geo__separateur" aria-hidden="true"></i>
+        <button type="button" class="geo__miette" [class.geo__miette--courante]="dernier"
+                (click)="remonterA(i + 1)" [attr.aria-current]="dernier ? 'page' : null">{{ l.nom }}</button>
+      }
+    </nav>
+
+    @if (niveauCourant(); as niveau) {
+      <div class="geo__list-head">
+        <h2>{{ geo.libelleNiveau(niveau, 'GEO.DEFAUT_LIEU') }}</h2>
+        @if (!chargement()) { <span>{{ lieux().length }}</span> }
+        @if (aValider() > 0) {
+          <button mat-stroked-button type="button" class="geo__confirmer-tout" (click)="confirmerTout()" [disabled]="!!action()">
+            <mat-icon fontSet="pi" fontIcon="pi-check" aria-hidden="true"></mat-icon>
+            {{ 'ADMIN.GEO.CONFIRM_ALL' | translate: { n: aValider() } }}
+          </button>
+        }
+      </div>
+
+      @if (chargement()) {
+        <div class="bb-empty" role="status">
+          <mat-spinner diameter="28"></mat-spinner>
+          <p>{{ 'COMMON.LOADING' | translate }}</p>
+        </div>
+      } @else if (lieux().length === 0) {
+        <div class="bb-empty">
+          <mat-icon fontSet="pi" fontIcon="pi-map-marker" aria-hidden="true"></mat-icon>
+          <p>{{ 'ADMIN.GEO.EMPTY' | translate }}</p>
+        </div>
+      } @else {
+        <ul class="geo__lieux">
+          @for (l of lieux(); track l.id) {
+            <li class="geo__lieu">
+              @if (peutDescendre()) {
+                <button type="button" class="geo__lieu-nom geo__lieu-nom--lien" (click)="ouvrir(l)">
+                  {{ l.nom }} <i class="pi pi-angle-right" aria-hidden="true"></i>
+                </button>
+              } @else {
+                <span class="geo__lieu-nom">{{ l.nom }}</span>
+              }
+              @if (l.aValider) {
+                <span class="geo__badge geo__badge--a-valider">{{ 'ADMIN.GEO.TO_VALIDATE' | translate }}</span>
+              }
+              @if (l.voisins.length > 0) {
+                <span class="geo__voisins-resume">
+                  <i class="pi pi-share-alt" aria-hidden="true"></i>
+                  {{ l.voisins.length }} · {{ 'ADMIN.GEO.NEIGHBOURS' | translate }}
+                </span>
+              }
+              <span class="geo__actions">
+                @if (l.aValider) {
+                  <button mat-button type="button" (click)="confirmer(l)" [disabled]="!!action()">
+                    {{ 'ADMIN.GEO.CONFIRM' | translate }}
+                  </button>
+                }
+                <button mat-button type="button" (click)="editerVoisins(l)" [disabled]="!!action()"
+                        [attr.aria-label]="'ADMIN.GEO.EDIT_NEIGHBOURS_OF' | translate: { nom: l.nom }">
+                  {{ 'ADMIN.GEO.EDIT_NEIGHBOURS' | translate }}
+                </button>
+              </span>
+            </li>
+          }
+        </ul>
+      }
+
+      <!-- Edition du voisinage d'un lieu -->
+      @if (voisins(); as e) {
+        <div class="geo__voisins" role="group" [attr.aria-label]="'ADMIN.GEO.EDIT_NEIGHBOURS_OF' | translate: { nom: e.lieu.nom }">
+          <h3>{{ 'ADMIN.GEO.EDIT_NEIGHBOURS_OF' | translate: { nom: e.lieu.nom } }}</h3>
+          <p class="geo__hint">{{ 'ADMIN.GEO.NEIGHBOURS_HELP' | translate }}</p>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="geo__filtre">
+            <mat-label>{{ 'ADMIN.GEO.FILTER' | translate }}</mat-label>
+            <input matInput [ngModel]="e.filtre" (ngModelChange)="filtrerVoisins($event)" name="filtreVoisins" />
+          </mat-form-field>
+          <div class="geo__puces">
+            @for (c of candidatsFiltres(); track c.id) {
+              <button type="button" class="geo__puce" [class.geo__puce--active]="e.selection.has(c.id)"
+                      [attr.aria-pressed]="e.selection.has(c.id)" (click)="basculerVoisin(c.id)">
+                @if (e.selection.has(c.id)) { <i class="pi pi-check" aria-hidden="true"></i> }
+                {{ c.nom }}
+                @if (c.parent && c.idParent !== e.lieu.idParent) { <small>· {{ c.parent }}</small> }
+              </button>
+            }
+          </div>
+          <div class="geo__voisins-actions">
+            <button mat-flat-button color="primary" type="button" (click)="enregistrerVoisins()" [disabled]="!!action()">
+              @if (action() === 'voisins') { <mat-spinner diameter="18" /> }
+              @else { <mat-icon fontSet="pi" fontIcon="pi-check" aria-hidden="true"></mat-icon> }
+              {{ 'ADMIN.GEO.SAVE_NEIGHBOURS' | translate: { n: e.selection.size } }}
+            </button>
+            <button mat-stroked-button type="button" (click)="voisins.set(null)">{{ 'COMMON.CANCEL' | translate }}</button>
+          </div>
+        </div>
+      }
+
+      <!-- Ajout au niveau affiche -->
+      <form class="geo__ajout" (ngSubmit)="ajouter()">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ 'ADMIN.GEO.ADD_LABEL' | translate: { niveau: geo.libelleNiveau(niveau, 'GEO.DEFAUT_LIEU') } }}</mat-label>
+          <input matInput id="geo-nouveau" name="nouveauNom" maxlength="80"
+                 [ngModel]="nouveauNom()" (ngModelChange)="nouveauNom.set($event)" />
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="submit" [disabled]="!nouveauNom().trim() || !!action()">
+          @if (action() === 'ajout') { <mat-spinner diameter="18" /> }
+          @else { <mat-icon fontSet="pi" fontIcon="pi-plus" aria-hidden="true"></mat-icon> }
+          {{ 'ADMIN.GEO.ADD' | translate }}
+        </button>
+      </form>
+    } @else {
+      <div class="bb-empty">
+        <mat-icon fontSet="pi" fontIcon="pi-cog" aria-hidden="true"></mat-icon>
+        <p>{{ 'ADMIN.GEO.NO_LEVELS' | translate }}</p>
+      </div>
+    }
+  </mat-card>
+
+  <!-- ── Les lieux saisis hors liste ───────────────────────────────── -->
+  <mat-card class="geo__card">
+    <div class="geo__list-head">
+      <h2>{{ 'ADMIN.GEO.OUTSIDE_TITLE' | translate }}</h2>
+      <span>{{ hors().length }}</span>
+    </div>
+    <p class="geo__hint">{{ 'ADMIN.GEO.OUTSIDE_HELP' | translate: { base: geo.libelle('base'), zone: geo.libelle('elargissement') } }}</p>
+
+    @if (hors().length === 0) {
+      <div class="bb-empty">
+        <mat-icon fontSet="pi" fontIcon="pi-check-circle" aria-hidden="true"></mat-icon>
+        <p>{{ 'ADMIN.GEO.OUTSIDE_EMPTY' | translate }}</p>
+      </div>
+    } @else {
+      <div class="geo__table-wrap">
+        <table class="geo__table">
+          <thead>
+            <tr>
+              <th>{{ geo.libelle('base') }}</th>
+              <th>{{ geo.libelle('elargissement') }}</th>
+              <th>{{ 'ADMIN.GEO.COL_PATIENTS' | translate }}</th>
+              <th>{{ 'ADMIN.GEO.COL_STRUCTURES' | translate }}</th>
+              <th>{{ 'ADMIN.GEO.COL_COURIERS' | translate }}</th>
+              <th><span class="cdk-visually-hidden">{{ 'ADMIN.GEO.COL_ACTION' | translate }}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (h of hors(); track h.zone + '|' + h.lieu) {
+              <tr>
+                <td><strong>{{ h.lieu }}</strong></td>
+                <td>{{ h.zone || '—' }}</td>
+                <td>{{ h.patients }}</td>
+                <td>{{ h.structures }}</td>
+                <td>{{ h.livreurs }}</td>
+                <td>
+                  @if (ajoutDirect() && zoneDe(h)) {
+                    <button mat-button type="button" (click)="ajouterHors(h)" [disabled]="!!action()">
+                      <mat-icon fontSet="pi" fontIcon="pi-plus" aria-hidden="true"></mat-icon>
+                      {{ 'ADMIN.GEO.ADD' | translate }}
+                    </button>
+                  } @else {
+                    <span class="geo__muted">{{ 'ADMIN.GEO.ADD_FROM_TREE' | translate }}</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </mat-card>
+</section>

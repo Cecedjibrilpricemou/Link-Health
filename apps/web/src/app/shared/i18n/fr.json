@@ -2075,7 +2075,31 @@
       "PHARMACIE_REMISE_LABEL": "Remise maximale accordable (%)",
       "PHARMACIE_REMISE_HINT": "Plafond en pourcentage du total. Sans plafond, une erreur de frappe ramène une vente à zéro sans que rien ne s'y oppose.",
       "PHARMACIE_CATEGORIES_TITLE": "Catégories soumises à ordonnance",
-      "PHARMACIE_CATEGORIES_DESC": "En plus des produits réglementés, qui exigent toujours une ordonnance (EF-05-12). Décision encore en attente du chef de projet : laisser tout désactivé revient à n'exiger une ordonnance que pour les produits réglementés."
+      "PHARMACIE_CATEGORIES_DESC": "En plus des produits réglementés, qui exigent toujours une ordonnance (EF-05-12). Décision encore en attente du chef de projet : laisser tout désactivé revient à n'exiger une ordonnance que pour les produits réglementés.",
+      "TAB_PAYS": "Pays",
+      "PAYS_TITLE": "Pays de l'installation",
+      "PAYS_DESC": "Une installation sert un seul pays : ses données de santé y restent. Le découpage administratif déclaré ici décide des noms affichés partout (Préfecture, Département, LGA, Distrito…) et de la façon dont un appel s'élargit.",
+      "PAYS_NOM": "Nom du pays",
+      "PAYS_CODE": "Code pays",
+      "PAYS_CODE_HINT": "Deux lettres, norme ISO 3166 : GN, SN, CI, NG, MZ…",
+      "PAYS_INDICATIF": "Indicatif téléphonique",
+      "PAYS_NIVEAUX_TITLE": "Niveaux administratifs",
+      "PAYS_NIVEAUX_DESC": "Du plus large au plus fin, deux à six niveaux. Le code est un identifiant stable en minuscules ; les noms s’affichent selon la langue de chacun.",
+      "PAYS_NIVEAU_CODE": "Code",
+      "PAYS_LIBELLE_FR": "Nom en français",
+      "PAYS_LIBELLE_EN": "Nom en anglais",
+      "PAYS_LIBELLE_PT": "Nom en portugais",
+      "PAYS_MONTER": "Monter ce niveau",
+      "PAYS_DESCENDRE": "Descendre ce niveau",
+      "PAYS_RETIRER": "Retirer ce niveau",
+      "PAYS_AJOUTER": "Ajouter un niveau",
+      "PAYS_ROLES_TITLE": "Recherche et élargissement",
+      "PAYS_ROLES_DESC": "Une ordonnance ou une course part d'abord vers le niveau de base, puis s'étend au niveau d'élargissement si personne ne répond. Le niveau d'élargissement doit être plus large que le niveau de base.",
+      "PAYS_BASE": "Niveau de base",
+      "PAYS_BASE_HINT": "Là où l’on cherche d’abord une pharmacie ou un motard (la commune en Guinée).",
+      "PAYS_ELARGISSEMENT": "Niveau d'élargissement",
+      "PAYS_ELARGISSEMENT_HINT": "Là où l'appel s'étend ensuite (la préfecture en Guinée).",
+      "PAYS_REFERENTIEL": "Ouvrir le référentiel des lieux"
     },
     "ANALYTICS": {
       "SUBTITLE": "Tableau de bord épidémiologique — {{nom}} Guinée 🇬🇳",
@@ -2453,7 +2477,42 @@
       "ERR_CHARGEMENT": "Impossible de charger les administrateurs.",
       "ERR_CREATION": "La création du compte a échoué."
     },
-    "NAV_ADMINISTRATEURS": "Encadrement"
+    "NAV_ADMINISTRATEURS": "Encadrement",
+    "NAV_GEO": "Référentiel géographique",
+    "GEO": {
+      "TITLE": "Référentiel géographique",
+      "SUBTITLE": "Le découpage administratif du pays et ses lieux.",
+      "REFRESH": "Actualiser",
+      "STARTER": "Charger le jeu de départ",
+      "BREADCRUMB": "Position dans le découpage",
+      "ROOT": "Pays",
+      "EMPTY": "Aucun lieu à ce niveau pour le moment.",
+      "NO_LEVELS": "Aucun niveau administratif n'est déclaré : renseignez-les dans Paramètres › Pays.",
+      "TO_VALIDATE": "À valider",
+      "CONFIRM": "Confirmer",
+      "CONFIRM_ALL": "Tout confirmer ({{n}})",
+      "NEIGHBOURS": "voisins",
+      "EDIT_NEIGHBOURS": "Voisins",
+      "EDIT_NEIGHBOURS_OF": "Voisins de {{nom}}",
+      "NEIGHBOURS_HELP": "Cochez les lieux limitrophes. Le lien vaut dans les deux sens : ils serviront à élargir un appel resté sans réponse.",
+      "FILTER": "Filtrer",
+      "SAVE_NEIGHBOURS": "Enregistrer ({{n}})",
+      "ADD": "Ajouter",
+      "ADD_LABEL": "Nouveau lieu : {{niveau}}",
+      "OUTSIDE_TITLE": "Saisis hors référentiel",
+      "OUTSIDE_HELP": "Ces noms de {{base}} ont été saisis sur des patients, des structures ou des motards mais ne figurent pas au référentiel. Ajoutez ceux qui existent ; une faute de frappe se corrige sur la fiche concernée. La colonne {{zone}} indique où ils ont été saisis.",
+      "OUTSIDE_EMPTY": "Toutes les saisies correspondent au référentiel.",
+      "COL_PATIENTS": "Patients",
+      "COL_STRUCTURES": "Structures",
+      "COL_COURIERS": "Motards",
+      "COL_ACTION": "Action",
+      "ADD_FROM_TREE": "À ajouter depuis l'arbre",
+      "SUCCESS_ADD": "« {{nom}} » ajouté au référentiel.",
+      "SUCCESS_NEIGHBOURS": "Voisinage de {{nom}} enregistré.",
+      "SUCCESS_STARTER": "Jeu de départ chargé : {{crees}} lieu(x) ajouté(s), {{presents}} déjà présent(s).",
+      "ERR_LOAD": "Le référentiel n’a pas pu être chargé.",
+      "ERR_SAVE": "La modification n’a pas pu être enregistrée."
+    }
   },
   "ADMIN_STRUCTURE": {
     "ROLE": "Admin Structure",
@@ -3933,5 +3992,10 @@
     "ERR_SILENCE": "Je n’ai rien entendu. Appuyez de nouveau sur « Dicter » et parlez près du téléphone.",
     "ERR_HORS_LIGNE": "La dictée a besoin d’Internet. Vous pouvez écrire votre texte.",
     "ERR_GENERIQUE": "La dictée n’a pas fonctionné. Vous pouvez écrire votre texte."
+  },
+  "GEO": {
+    "DEFAUT_BASE": "Commune",
+    "DEFAUT_ELARGISSEMENT": "Préfecture",
+    "DEFAUT_LIEU": "Lieu"
   }
 }

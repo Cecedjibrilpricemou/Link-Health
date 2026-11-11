@@ -70,7 +70,8 @@ export class SettingsComponent implements OnInit {
       { id: 'sync',        label: this.i18n.t('ADMIN.SETTINGS.TAB_SYNC'),     icon: 'pi pi-sync' },
       { id: 'prescription', label: this.i18n.t('ADMIN.SETTINGS.TAB_PRESCRIPTION'), icon: 'pi pi-file-edit' },
       { id: 'pharmacie',   label: this.i18n.t('ADMIN.SETTINGS.TAB_PHARMACIE'),    icon: 'pi pi-shopping-cart' },
-      { id: 'zones',       label: this.i18n.t('ADMIN.SETTINGS.TAB_ZONES'),        icon: 'pi pi-map-marker' }
+      { id: 'zones',       label: this.i18n.t('ADMIN.SETTINGS.TAB_ZONES'),        icon: 'pi pi-map-marker' },
+      { id: 'pays',        label: this.i18n.t('ADMIN.SETTINGS.TAB_PAYS'),         icon: 'pi pi-globe' }
     ];
   }
 
@@ -129,11 +130,52 @@ export class SettingsComponent implements OnInit {
     delaiElargissementCourseMinutes: 10
   };
 
-  // M1 : le pays de l'installation. Rempli par l'API ; son onglet arrive
-  // avec l'ecran du referentiel (M1-B).
+  // M1 : le pays de l'installation et son decoupage administratif. Une
+  // installation sert un pays ; ses niveaux (Prefecture, LGA, Distrito...)
+  // et leurs noms se declarent ici, pas dans le code.
   pays: ParametresPaysView = {
     code: '', nom: '', indicatifTelephone: '', niveaux: [], niveauBase: '', niveauElargissement: ''
   };
+
+  readonly maxNiveaux = 6;
+
+  ajouterNiveau() {
+    if (this.pays.niveaux.length >= this.maxNiveaux) return;
+    this.pays.niveaux = [...this.pays.niveaux, { code: '', libelles: { fr: '', en: '', pt: '' } }];
+  }
+
+  retirerNiveau(index: number) {
+    this.pays.niveaux = this.pays.niveaux.filter((_, i) => i !== index);
+  }
+
+  /** Les niveaux vont du plus large au plus fin : l'ordre a un sens. */
+  deplacerNiveau(index: number, sens: -1 | 1) {
+    const cible = index + sens;
+    if (cible < 0 || cible >= this.pays.niveaux.length) return;
+    const niveaux = [...this.pays.niveaux];
+    [niveaux[index], niveaux[cible]] = [niveaux[cible]!, niveaux[index]!];
+    this.pays.niveaux = niveaux;
+  }
+
+  /** Ce qui part a l'API : libelles vides retires, codes et textes nettoyes. */
+  private paysPourEnvoi(): ParametresPaysView {
+    const p = this.pays;
+    return {
+      code: p.code.trim().toUpperCase(),
+      nom: p.nom.trim(),
+      indicatifTelephone: p.indicatifTelephone.trim(),
+      niveaux: p.niveaux.map((n) => ({
+        code: n.code.trim().toLowerCase(),
+        libelles: {
+          fr: n.libelles.fr.trim(),
+          ...(n.libelles.en?.trim() ? { en: n.libelles.en.trim() } : {}),
+          ...(n.libelles.pt?.trim() ? { pt: n.libelles.pt.trim() } : {}),
+        },
+      })),
+      niveauBase: p.niveauBase,
+      niveauElargissement: p.niveauElargissement,
+    };
+  }
 
   /**
    * Les categories que l'on peut soumettre a ordonnance. `MEDICAMENT` n'y
@@ -179,7 +221,9 @@ export class SettingsComponent implements OnInit {
   /** Enregistre uniquement la section de l'onglet actif. */
   enregistrer(section: Onglet) {
     if (this.isSaving()) return;
-    const payload: UpdateParametresSystemeDto = { [section]: { ...this[section] } };
+    const payload: UpdateParametresSystemeDto = section === 'pays'
+      ? { pays: this.paysPourEnvoi() }
+      : { [section]: { ...this[section] } };
 
     this.isSaving.set(true);
     this.adminService.updateParametres(payload).subscribe({
