@@ -1306,3 +1306,8 @@ export const importerReferentielSchema = z.object({
   contenu: z.string().min(1).max(2_000_000),
   simulation: z.boolean().optional(),
 }).strict();
+
+// M4 : disponibilite et zone du motard. La limite de 5 communes est appliquee
+// par le service, apres retrait des doublons et de la commune du motard.
+export const definirEnServiceSchema = z.object({ enService: z.boolean() }).strict();
+export const definirCommunesDesserviesSchema = z.object({ communes: z.array(z.string().trim().min(1).max(80)).max(20) }).strict();

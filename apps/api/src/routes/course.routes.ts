@@ -3,9 +3,12 @@ import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/rbac.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import * as course from '../services/course.service';
+import * as zone from '../services/livreur-zone.service';
 import {
   choisirOffreCourseSchema,
   confirmerReceptionCourseSchema,
+  definirCommunesDesserviesSchema,
+  definirEnServiceSchema,
   proposerOffreCourseSchema,
   remettreAuMotardSchema,
   renoncerLivraisonSchema,
@@ -23,6 +26,20 @@ router.get('/ouvertes', requireRole('LIVREUR'), async (req: AuthRequest, res: Re
 router.get('/mes-courses', requireRole('LIVREUR'), async (req: AuthRequest, res: Response) => {
   const data = await course.coursesDuLivreur(req.user!);
   res.json({ success: true, data });
+});
+
+// M4 : le motard regle lui-meme sa disponibilite et ses communes desservies.
+// Declarees avant les routes `/:id/...`.
+router.get('/livreur/profil', requireRole('LIVREUR'), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await zone.monProfilLivreur(req.user!) });
+});
+
+router.put('/livreur/service', requireRole('LIVREUR'), validateBody(definirEnServiceSchema), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await zone.definirEnService(req.user!, req.body.enService) });
+});
+
+router.put('/livreur/communes', requireRole('LIVREUR'), validateBody(definirCommunesDesserviesSchema), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await zone.definirCommunesDesservies(req.user!, req.body.communes) });
 });
 
 router.get(

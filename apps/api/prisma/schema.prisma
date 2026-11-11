@@ -1103,7 +1103,12 @@ model LivreurProfile {
   /// utils/zone.ts) ; vide, le livreur garde l'ancienne maille du quartier.
   commune    String?
   estActif   Boolean  @default(true)
-  creeLe     DateTime @default(now())
+  /// Communes desservies en plus de la sienne, dans la meme prefecture (5 au plus).
+  communesDesservies String[]  @default([])
+  /// Le motard se declare disponible : seul un motard en service est prevenu des courses.
+  enService          Boolean   @default(false)
+  enServiceDepuis    DateTime?
+  creeLe             DateTime  @default(now())
 
   idUtilisateur String      @unique
   utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Restrict)

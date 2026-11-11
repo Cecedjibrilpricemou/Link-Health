@@ -16,7 +16,7 @@ import { prochainNumero } from '../src/services/numero.service';
 import { notifierSansBloquer } from '../src/services/notification.service';
 import type { JwtPayload } from '../src/types/auth.types';
 import { ConflictError, ForbiddenError } from '../src/utils/app-error';
-import { filtreZone } from '../src/utils/zone';
+import { filtreZone, filtreZones, zonesDuLivreur } from '../src/utils/zone';
 import { Role, StatutCommande, StatutCourse } from '../src/config/generated/client/client';
 
 jest.mock('../src/config/prisma', () => {
@@ -69,7 +69,9 @@ const profil = {
   quartier: 'Kipé',
   prefecture: 'Conakry',
   commune: 'Ratoma',
+  communesDesservies: [] as string[],
   estActif: true,
+  enService: true,
   utilisateur: { role: Role.LIVREUR },
 };
 const courseOuverte = {
@@ -196,7 +198,7 @@ describe('ouverture et visibilité des courses', () => {
     expect(prisma.course.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: {
         statut: StatutCourse.APPEL_OFFRES,
-        ...filtreZone(profil),
+        ...filtreZones(zonesDuLivreur(profil)),
       },
     }));
     // Le filtre porte bien sur la commune du livreur, pas seulement son quartier.
@@ -205,6 +207,18 @@ describe('ouverture et visibilité des courses', () => {
       id: 'course-1',
       pharmacie: { id: 'pharmacie-1', nom: 'Pharmacie du quartier' },
     })]);
+  });
+
+  it('montre aussi les courses des communes qu il dessert', async () => {
+    prisma.livreurProfile.findUnique.mockResolvedValue({ ...profil, communesDesservies: ['Dixinn'] });
+    prisma.course.findMany.mockResolvedValue([]);
+
+    await coursesOuvertesPour(livreur);
+
+    const { where } = prisma.course.findMany.mock.calls[0][0];
+    // Une branche pour Ratoma, une pour Dixinn.
+    expect(where.OR).toHaveLength(2);
+    expect(JSON.stringify(where.OR[1])).toContain('Dixinn');
   });
 
   it('notifie uniquement les livreurs actifs de la zone a l ouverture', async () => {
@@ -222,7 +236,15 @@ describe('ouverture et visibilité des courses', () => {
     expect(prisma.livreurProfile.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         estActif: true,
-        ...filtreZone(course),
+        // Seuls les motards en service, de la commune ou qui la desservent.
+        enService: true,
+        OR: [
+          filtreZone(course),
+          { AND: [
+            { prefecture: { equals: 'Conakry', mode: 'insensitive' } },
+            { communesDesservies: { has: 'Ratoma' } },
+          ] },
+        ],
         utilisateur: { role: Role.LIVREUR, estActif: true },
       }),
     }));
@@ -306,6 +328,42 @@ describe('offres de course', () => {
 
     // La zone est acceptee : l'offre est bien enregistree.
     expect(prisma.offreCourse.upsert).toHaveBeenCalled();
+  });
+
+  it('refuse toute offre d un motard hors service, avant de toucher a la course', async () => {
+    prisma.livreurProfile.findUnique.mockResolvedValue({ ...profil, enService: false });
+
+    await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }))
+      .rejects.toThrow('Passez en service');
+    expect(prisma.course.updateMany).not.toHaveBeenCalled();
+    expect(prisma.offreCourse.upsert).not.toHaveBeenCalled();
+  });
+
+  it('accepte une course dans une commune qu il dessert', async () => {
+    prisma.livreurProfile.findUnique.mockResolvedValue({ ...profil, communesDesservies: ['Dixinn'] });
+    prisma.course.findUnique.mockResolvedValue({
+      id: 'course-1', statut: StatutCourse.APPEL_OFFRES,
+      quartier: 'Donka', prefecture: 'Conakry', commune: 'Dixinn',
+    });
+    prisma.offreCourse.upsert.mockResolvedValue({
+      id: 'offre-1', prixGnf: 10_000, delaiMinutes: 20, creeeLe: new Date('2026-11-11T10:00:00.000Z'),
+    });
+
+    await proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }).catch(() => undefined);
+
+    expect(prisma.offreCourse.upsert).toHaveBeenCalled();
+  });
+
+  it('refuse une commune desservie si elle est dans une autre prefecture', async () => {
+    prisma.livreurProfile.findUnique.mockResolvedValue({ ...profil, communesDesservies: ['Dixinn'] });
+    prisma.course.findUnique.mockResolvedValue({
+      id: 'course-1', statut: StatutCourse.APPEL_OFFRES,
+      quartier: 'Centre', prefecture: 'Kindia', commune: 'Dixinn',
+    });
+
+    await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }))
+      .rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.offreCourse.upsert).not.toHaveBeenCalled();
   });
 
   it('refuse une proposition si la course a ete attribuee entre-temps', async () => {

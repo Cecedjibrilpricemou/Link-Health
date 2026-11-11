@@ -1,5 +1,7 @@
 // La zone d'une ordonnance ou d'une course : la commune, dans sa prefecture.
-import { CHAMPS_RECHERCHE, filtreZone, memeZone, zoneDe, zoneDeLaCommande } from '../src/utils/zone';
+import {
+  CHAMPS_RECHERCHE, dansLesZones, filtreZone, filtreZones, memeZone, zoneDe, zoneDeLaCommande, zonesDuLivreur,
+} from '../src/utils/zone';
 
 const RATOMA_KIPE = { prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé' };
 
@@ -84,5 +86,39 @@ describe('filtreZone (Prisma)', () => {
 
   it('zone inconnue : un filtre qui ne retient rien, plutôt que tout', () => {
     expect(filtreZone({ prefecture: 'Conakry' })).toEqual({ id: '__aucune_zone__' });
+  });
+});
+
+// M4 : un motard dessert sa commune et, au plus, cinq autres de sa prefecture.
+describe('zones du livreur', () => {
+  const motard = { prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipe', communesDesservies: [' Dixinn ', '', 'Matam'] };
+
+  it('sa commune, puis ses communes desservies, sans les vides', () => {
+    expect(zonesDuLivreur(motard)).toEqual([
+      motard,
+      { prefecture: 'Conakry', commune: 'Dixinn', quartier: null },
+      { prefecture: 'Conakry', commune: 'Matam', quartier: null },
+    ]);
+  });
+
+  it('un compte sans communes desservies garde sa seule zone', () => {
+    expect(zonesDuLivreur({ prefecture: 'Conakry', commune: 'Ratoma', communesDesservies: null })).toHaveLength(1);
+  });
+
+  it('une commune desservie de la meme prefecture est dans ses zones', () => {
+    expect(dansLesZones({ prefecture: 'conakry', commune: 'DIXINN', quartier: 'Donka' }, zonesDuLivreur(motard))).toBe(true);
+  });
+
+  it('la meme commune dans une autre prefecture n y est pas', () => {
+    expect(dansLesZones({ prefecture: 'Kindia', commune: 'Dixinn', quartier: 'Centre' }, zonesDuLivreur(motard))).toBe(false);
+  });
+
+  it('une commune ni la sienne ni desservie n y est pas', () => {
+    expect(dansLesZones({ prefecture: 'Conakry', commune: 'Kaloum', quartier: 'Boulbinet' }, zonesDuLivreur(motard))).toBe(false);
+  });
+
+  it('le filtre Prisma propose une branche par zone', () => {
+    const zones = zonesDuLivreur(motard);
+    expect(filtreZones(zones)).toEqual({ OR: zones.map((z) => filtreZone(z)) });
   });
 });
