@@ -8,11 +8,14 @@ import {
   modifierLogo,
   modifierParametres,
   nomSms,
+  verifierPays,
 } from '../src/services/parametres.service';
+import { ValidationError } from '../src/utils/app-error';
 
 jest.mock('../src/config/prisma', () => ({
   prisma: {
     parametresSysteme: { findUnique: jest.fn(), upsert: jest.fn() },
+    lieuGeo: { count: jest.fn() },
   },
 }));
 
@@ -20,7 +23,7 @@ jest.mock('../src/config/prisma', () => ({
 jest.mock('../src/config/redis', () => ({ getRedis: () => null }));
 
 const { prisma } = jest.requireMock('../src/config/prisma') as {
-  prisma: { parametresSysteme: { findUnique: jest.Mock; upsert: jest.Mock } };
+  prisma: { parametresSysteme: { findUnique: jest.Mock; upsert: jest.Mock }; lieuGeo: { count: jest.Mock } };
 };
 
 afterEach(() => jest.resetAllMocks());
@@ -108,6 +111,51 @@ describe('modifierParametres', () => {
       update: { valeurs: attendu, idModifiePar: 'admin-1' },
     });
     expect(vue).toEqual({ ...attendu, modifieLe, idModifiePar: 'admin-1' });
+  });
+
+  // M1 : passer au decoupage d'un autre pays, verifie avant d'ecrire.
+  describe('pays', () => {
+    const NIGERIA = {
+      code: 'NG', nom: 'Nigeria', indicatifTelephone: '+234',
+      niveaux: [
+        { code: 'state', libelles: { fr: 'État', en: 'State' } },
+        { code: 'lga', libelles: { fr: 'Zone de gouvernement local', en: 'LGA' } },
+        { code: 'ward', libelles: { fr: 'Quartier', en: 'Ward' } },
+      ],
+      niveauBase: 'ward', niveauElargissement: 'lga',
+    };
+
+    beforeEach(() => {
+      prisma.parametresSysteme.findUnique.mockResolvedValue(null);
+      prisma.parametresSysteme.upsert.mockResolvedValue({ id: 'global', modifieLe: new Date(), idModifiePar: 'admin-1' });
+    });
+
+    it('enregistre un decoupage coherent quand aucun lieu ne porte un niveau retire', async () => {
+      prisma.lieuGeo.count.mockResolvedValue(0);
+
+      const vue = await modifierParametres('admin-1', { pays: NIGERIA });
+
+      expect(prisma.lieuGeo.count).toHaveBeenCalledWith({ where: { niveau: { notIn: ['state', 'lga', 'ward'] } } });
+      expect(vue.pays).toEqual(NIGERIA);
+    });
+
+    it('refuse de retirer un niveau encore porte par des lieux, sans rien ecrire', async () => {
+      prisma.lieuGeo.count.mockResolvedValue(55);
+
+      await expect(modifierParametres('admin-1', { pays: NIGERIA })).rejects.toThrow('55');
+      expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+    });
+
+    // Un changement partiel est verifie contre le decoupage complet, apres fusion.
+    it('refuse un niveau de base inconnu du decoupage actuel, sans rien ecrire', async () => {
+      await expect(modifierParametres('admin-1', { pays: { niveauBase: 'ward' } })).rejects.toBeInstanceOf(ValidationError);
+      expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+    });
+
+    it('les autres sections ne declenchent aucune verification du pays', async () => {
+      await modifierParametres('admin-1', { zones: { delaiElargissementCourseMinutes: 15 } });
+      expect(prisma.lieuGeo.count).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -234,6 +282,35 @@ describe('sections de parametres', () => {
     expect([ok(1), ok(1440), ok('15')]).toEqual([true, true, true]);
     expect([ok(0), ok(1441), ok(2.5)]).toEqual([false, false, false]);
     expect(updateParametresSystemeSchema.safeParse({ zones: { rayonKm: 5 } }).success).toBe(false);
+  });
+
+  // M1 : une installation par pays ; la Guinee est la configuration fournie.
+  it('le pays par defaut est la Guinee, commune de base et prefecture d elargissement', () => {
+    expect(PARAMETRES_PAR_DEFAUT.pays).toMatchObject({
+      code: 'GN', indicatifTelephone: '+224', niveauBase: 'commune', niveauElargissement: 'prefecture',
+    });
+    expect(() => verifierPays(PARAMETRES_PAR_DEFAUT.pays)).not.toThrow();
+  });
+
+  it('refuse un decoupage incoherent', () => {
+    const p = PARAMETRES_PAR_DEFAUT.pays;
+    // Elargir vers plus etroit retrecirait l'appel.
+    expect(() => verifierPays({ ...p, niveauBase: 'prefecture', niveauElargissement: 'commune' })).toThrow(ValidationError);
+    expect(() => verifierPays({ ...p, niveauElargissement: 'commune' })).toThrow(ValidationError);
+    expect(() => verifierPays({ ...p, niveauBase: 'ward' })).toThrow('Niveau de base « ward » absent');
+    expect(() => verifierPays({ ...p, niveauElargissement: 'lga' })).toThrow("Niveau d'elargissement « lga » absent");
+    expect(() => verifierPays({ ...p, niveaux: [...p.niveaux, p.niveaux[0]!] })).toThrow(ValidationError);
+  });
+
+  it('valide la forme du pays dans le schema', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { updateParametresSystemeSchema } = require('../src/validators/api.schemas');
+    const ok = (pays: unknown) => updateParametresSystemeSchema.safeParse({ pays }).success;
+    expect(ok({ code: 'SN', indicatifTelephone: '+221' })).toBe(true);
+    expect([ok({ code: 'sn' }), ok({ code: 'SEN' }), ok({ indicatifTelephone: '221' })]).toEqual([false, false, false]);
+    expect(ok({ niveaux: [{ code: 'state', libelles: { fr: 'État', en: 'State' } }, { code: 'lga', libelles: { fr: 'LGA' } }] })).toBe(true);
+    expect(ok({ niveaux: [{ code: 'Mauvais Code', libelles: { fr: 'x' } }, { code: 'lga', libelles: { fr: 'LGA' } }] })).toBe(false);
+    expect(ok({ niveaux: [{ code: 'state', libelles: { fr: 'État' } }] })).toBe(false);
   });
 
   it('refuse toute configuration de remise', () => {

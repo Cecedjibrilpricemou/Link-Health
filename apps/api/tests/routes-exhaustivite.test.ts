@@ -42,7 +42,7 @@ type Couche = {
  */
 const FICHIERS = [
   'admin-structure', 'analytics', 'asc', 'assurance', 'auth', 'bris-de-glace',
-  'commande', 'compte', 'consentement', 'consultation', 'course', 'fhir', 'hopital',
+  'commande', 'compte', 'consentement', 'consultation', 'course', 'fhir', 'geographie', 'hopital',
   'identite', 'journal', 'laboratoire', 'medecin', 'medicament', 'notification',
   'ordonnance', 'paiement', 'parametres', 'patient', 'pharmacien', 'privacy',
   'referentiel', 'resultats', 'rgpd', 'stats', 'sync', 'triage', 'upload',
@@ -74,6 +74,8 @@ const PUBLIQUES: Record<string, string> = {
   'stats GET /public': 'compteurs agrégés, aucune donnée nominative',
   'admin-structure GET /structures/publiques':
     "annuaire des établissements, pour choisir où prendre rendez-vous ; déclarée **avant** le router.use(authenticate) du fichier",
+  'geographie GET /configuration': "découpage administratif du pays installé (M1) ; aucune donnée personnelle",
+  'geographie GET /lieux': "noms des lieux et de leurs voisins (M1), proposés dès l'inscription ; aucune donnée personnelle",
 
   // ── Deux entrées machine, authentifiées autrement qu'au cookie.
   'ussd POST /session':

@@ -21,6 +21,7 @@ import type {
   ParametresSyncView,
   ParametresSystemeValeurs,
   ParametresSystemeView,
+  ParametresPaysView,
   ParametresZonesView,
   UpdateParametresSystemeDto,
 } from '@baobaoheath/shared-types';
@@ -126,6 +127,12 @@ export class SettingsComponent implements OnInit {
   zones: ParametresZonesView = {
     delaiElargissementCommandeMinutes: 10,
     delaiElargissementCourseMinutes: 10
+  };
+
+  // M1 : le pays de l'installation. Rempli par l'API ; son onglet arrive
+  // avec l'ecran du referentiel (M1-B).
+  pays: ParametresPaysView = {
+    code: '', nom: '', indicatifTelephone: '', niveaux: [], niveauBase: '', niveauElargissement: ''
   };
 
   /**
@@ -236,6 +243,7 @@ export class SettingsComponent implements OnInit {
     // La liste est copiee, pas partagee : ngModel mute les tableaux.
     this.pharmacie = { ...vue.pharmacie, categoriesExigeantOrdonnance: [...vue.pharmacie.categoriesExigeantOrdonnance] };
     this.zones = { ...vue.zones };
+    this.pays = { ...vue.pays, niveaux: vue.pays.niveaux.map((n) => ({ ...n, libelles: { ...n.libelles } })) };
     this.modifieLe.set(vue.modifieLe);
   }
 }

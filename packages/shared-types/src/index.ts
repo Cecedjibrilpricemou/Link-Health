@@ -326,6 +326,70 @@ export interface CourseLivreurView {
   adresseLivraison?: AdresseLivraisonView;
 }
 
+// ── M1 : referentiel geographique generique ──────────────────────────
+// Un arbre de lieux, aux niveaux declares par le pays (ParametresPaysView).
+// Il propose des noms ; les saisies restent du texte libre.
+
+/** GET /geographie/configuration — public : le decoupage du pays installe. */
+export interface ConfigurationGeoView {
+  code: string;
+  nom: string;
+  indicatifTelephone: string;
+  niveaux: NiveauAdministratifView[];
+  niveauBase: string;
+  niveauElargissement: string;
+  /** Un jeu de depart existe-t-il pour ce pays et ce decoupage ? */
+  jeuDeDepartDisponible: boolean;
+}
+
+/** GET /geographie/lieux */
+export interface LieuGeoView {
+  id: string;
+  niveau: string;
+  nom: string;
+  idParent: string | null;
+  /** Nom du parent, pour l'affichage (« Ratoma — Conakry »). */
+  parent: string | null;
+  /** Lieux limitrophes du meme niveau. */
+  voisins: { id: string; nom: string }[];
+  /** Donnee de depart pas encore confirmee par un administrateur. */
+  aValider: boolean;
+}
+
+/** POST /geographie/lieux (administration). */
+export interface CreerLieuGeoDto {
+  niveau: string;
+  nom: string;
+  /** Obligatoire, sauf pour le niveau le plus large. */
+  idParent?: string;
+}
+
+/** PUT /geographie/lieux/:id (administration). */
+export interface ModifierLieuGeoDto {
+  voisins?: string[];
+  aValider?: boolean;
+}
+
+/** POST /geographie/jeu-de-depart (administration). */
+export interface JeuDeDepartGeoView {
+  crees: number;
+  dejaPresents: number;
+}
+
+/**
+ * GET /geographie/hors-referentiel : les lieux du niveau de base saisis sur
+ * des patients, structures ou motards et absents du referentiel, a ajouter.
+ * `zone` est le lieu du niveau d'elargissement saisi avec (champ `prefecture`).
+ */
+export interface LieuHorsReferentielView {
+  zone: string;
+  lieu: string;
+  patients: number;
+  structures: number;
+  livreurs: number;
+  total: number;
+}
+
 /** Ce que le motard voit de l'adresse du patient (M3). */
 export interface AdresseLivraisonView {
   commune: string | null;
@@ -2127,6 +2191,42 @@ export interface ParametresZonesView {
   delaiElargissementCourseMinutes: number;
 }
 
+/** Langues dans lesquelles un niveau administratif peut etre nomme. */
+export type LangueLibelle = 'fr' | 'en' | 'pt';
+
+/**
+ * Un niveau administratif du pays (M1) : « Prefecture » en Guinee, « LGA » au
+ * Nigeria, « Distrito » au Mozambique. Du plus large au plus fin.
+ */
+export interface NiveauAdministratifView {
+  /** Identifiant stable, en minuscules : `prefecture`, `lga`, `distrito`... */
+  code: string;
+  libelles: { fr: string; en?: string; pt?: string };
+}
+
+/**
+ * Le pays de l'installation (M1). Une installation sert un seul pays : ses
+ * donnees de sante y restent, et son decoupage administratif y est declare.
+ *
+ * Les champs `commune` et `prefecture` des patients, structures et motards
+ * portent respectivement le lieu du **niveau de base** (ou l'on cherche
+ * d'abord une pharmacie ou un motard) et celui du **niveau d'elargissement**
+ * (ou l'appel s'etend ensuite). Leurs noms techniques datent de la Guinee ;
+ * leur sens vient d'ici.
+ */
+export interface ParametresPaysView {
+  /** ISO 3166-1 alpha-2 : GN, SN, NG, MZ... */
+  code: string;
+  nom: string;
+  /** Indicatif international : +224, +221, +234... */
+  indicatifTelephone: string;
+  niveaux: NiveauAdministratifView[];
+  /** Code du niveau ou l'on cherche d'abord (la commune en Guinee). */
+  niveauBase: string;
+  /** Code du niveau ou l'appel s'etend ensuite (la prefecture en Guinee). */
+  niveauElargissement: string;
+}
+
 export interface ParametresSystemeValeurs {
   identite: ParametresIdentiteView;
   facturation: ParametresFacturationView;
@@ -2136,6 +2236,7 @@ export interface ParametresSystemeValeurs {
   prescription: ParametresPrescriptionView;
   pharmacie: ParametresPharmacieView;
   zones: ParametresZonesView;
+  pays: ParametresPaysView;
 }
 
 /** GET/PUT /admin-structure/parametres */
@@ -2153,6 +2254,8 @@ export interface UpdateParametresSystemeDto {
   sync?: Partial<ParametresSyncView>;
   prescription?: Partial<ParametresPrescriptionView>;
   pharmacie?: Partial<ParametresPharmacieView>;
+  zones?: Partial<ParametresZonesView>;
+  pays?: Partial<ParametresPaysView>;
 }
 
 /** POST /admin-structure/parametres/logo — reponse. */

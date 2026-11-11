@@ -116,6 +116,21 @@ export const definirAdresseSchema = z.object({
   { message: 'Donner et effacer sa position en meme temps n a pas de sens', path: ['effacerPosition'] },
 );
 
+// M1 : referentiel geographique generique (administration).
+export const creerLieuGeoSchema = z.object({
+  niveau: z.string().trim().min(1).max(30),
+  nom: z.string().trim().min(1).max(80),
+  idParent: id.optional(),
+}).strict();
+
+export const modifierLieuGeoSchema = z.object({
+  /** Identifiants des lieux limitrophes, du meme niveau. */
+  voisins: z.array(id).max(30).optional(),
+  aValider: z.boolean().optional(),
+}).strict().refine((d) => d.voisins !== undefined || d.aValider !== undefined, {
+  message: 'Rien a modifier',
+});
+
 export const updateStructurePrefereeSchema = z.object({
   idStructure: id.nullable().optional(),
 }).strict();
@@ -785,6 +800,25 @@ export const updateParametresSystemeSchema = z.object({
   zones: z.object({
     delaiElargissementCommandeMinutes: z.coerce.number().int().min(1).max(1440),
     delaiElargissementCourseMinutes: z.coerce.number().int().min(1).max(1440),
+  }).partial().strict().optional(),
+
+  // M1 : le pays de l'installation et son decoupage administratif. La
+  // coherence d'ensemble (niveau d'elargissement plus large que le niveau de
+  // base) se verifie apres fusion, dans le service.
+  pays: z.object({
+    code: z.string().trim().regex(/^[A-Z]{2}$/, 'Code pays ISO a deux lettres majuscules'),
+    nom: z.string().trim().min(1).max(80),
+    indicatifTelephone: z.string().trim().regex(/^\+\d{1,4}$/, 'Indicatif de la forme +224'),
+    niveaux: z.array(z.object({
+      code: z.string().trim().regex(/^[a-z][a-z0-9_]{1,29}$/, 'Code en minuscules, sans espace'),
+      libelles: z.object({
+        fr: z.string().trim().min(1).max(40),
+        en: z.string().trim().min(1).max(40).optional(),
+        pt: z.string().trim().min(1).max(40).optional(),
+      }).strict(),
+    }).strict()).min(2).max(6),
+    niveauBase: z.string().trim().min(1).max(30),
+    niveauElargissement: z.string().trim().min(1).max(30),
   }).partial().strict().optional(),
 }).strict();
 

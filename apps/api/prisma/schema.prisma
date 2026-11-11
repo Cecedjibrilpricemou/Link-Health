@@ -1102,14 +1102,14 @@ model PharmacienProfile {
 }
 
 model LivreurProfile {
-  id         String   @id @default(cuid())
-  qrCode     String   @unique @default(cuid())
-  quartier   String
-  prefecture String
+  id                 String    @id @default(cuid())
+  qrCode             String    @unique @default(cuid())
+  quartier           String
+  prefecture         String
   /// Commune de travail. La zone d'une course est la commune (voir
   /// utils/zone.ts) ; vide, le livreur garde l'ancienne maille du quartier.
-  commune    String?
-  estActif   Boolean  @default(true)
+  commune            String?
+  estActif           Boolean   @default(true)
   /// Communes desservies en plus de la sienne, dans la meme prefecture (5 au plus).
   communesDesservies String[]  @default([])
   /// Le motard se declare disponible : seul un motard en service est prevenu des courses.
@@ -2038,6 +2038,40 @@ model ParametresSysteme {
   idModifiePar String?
 
   @@map("parametres_systeme")
+}
+
+// M1 : referentiel geographique, **generique**.
+//
+// Une installation par pays : chacun declare ses niveaux administratifs dans
+// les parametres (section `pays`) — Region > Prefecture > Commune en Guinee,
+// State > LGA > Ward au Nigeria, Provincia > Distrito > Posto au Mozambique.
+// Ici, un lieu n'est qu'un noeud de l'arbre : un niveau (code du parametre),
+// un nom, un parent.
+//
+// **Il propose, il ne contraint pas.** Les saisies de lieu restent du texte
+// sur les patients, structures et motards ; celles absentes du referentiel
+// remontent a l'administrateur, qui les ajoute.
+//
+// **`aValider`** : un jeu de depart tire de sources publiques reste marque tant
+// qu'un administrateur ne l'a pas confirme.
+model LieuGeo {
+  id        String    @id @default(cuid())
+  /// Code du niveau, tel que declare dans les parametres du pays.
+  niveau    String
+  nom       String
+  idParent  String?
+  parent    LieuGeo?  @relation("ArbreGeo", fields: [idParent], references: [id], onDelete: Restrict)
+  enfants   LieuGeo[] @relation("ArbreGeo")
+  /// Lieux limitrophes du meme niveau, tenus dans les deux sens par le service.
+  /// Ils serviront a elargir un appel par etapes (M1-C).
+  voisins   String[]  @default([])
+  aValider  Boolean   @default(true)
+  creeLe    DateTime  @default(now())
+  modifieLe DateTime  @updatedAt
+
+  @@index([niveau])
+  @@index([idParent])
+  @@map("geo_lieux")
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
