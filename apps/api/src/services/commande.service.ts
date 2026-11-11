@@ -389,8 +389,10 @@ function pharmacieAppelee(structure: Lieu, c: ZoneDeCommande): boolean {
 
 /**
  * L'appel passe a l'etape suivante, et seules les pharmacies qui n'avaient
- * pas ete appelees sont prevenues. Renvoie leur nombre (0 si la commande
- * n'est plus a elargir, ou si l'etape n'apporte personne de plus).
+ * pas ete appelees sont prevenues. Renvoie leur nombre : 0 si la commande
+ * n'est plus a elargir ou si l'etape n'apporte personne de plus ; **-1 si un
+ * autre passage vient d'elargir au meme moment** (R3) — l'appel continue
+ * alors, et l'appelant ne doit pas le conclure.
  *
  * 1. **Les communes voisines** (M1-C), declarees au referentiel. Etape
  *    sautee si la commune n'a pas de voisine connue, ou si elles n'ont
@@ -424,7 +426,7 @@ export async function elargirCommande(idCommande: string): Promise<number> {
         where: { id: idCommande, statut: StatutCommande.RECHERCHE_PHARMACIE, voisinesLe: null, elargieLe: null },
         data: { voisinesLe: new Date(), communesVoisines: voisines.map(cleLieu) },
       });
-      if (marque.count !== 1) return 0;
+      if (marque.count !== 1) return -1;
       await appelerPharmacies(nouvelles.map((p) => p.id), commande.ordonnance.numero, commande, true);
       return nouvelles.length;
     }
@@ -434,7 +436,7 @@ export async function elargirCommande(idCommande: string): Promise<number> {
     where: { id: idCommande, statut: StatutCommande.RECHERCHE_PHARMACIE, elargieLe: null },
     data: { elargieLe: new Date() },
   });
-  if (marque.count !== 1) return 0;
+  if (marque.count !== 1) return -1;
 
   const nouvelles = (await pharmaciesDeLaPrefecture(commande.prefectureRecherche))
     .filter((p) => !dejaAppelees.has(p.id));
@@ -688,14 +690,19 @@ async function verifierEpuisementDesReponses(idCommande: string) {
   const refus = commande.reponses.filter((r) => !r.aTousLesProduits).length;
   if (sollicitees.length === 0 || refus < sollicitees.length) return;
 
-  // M5 : toute la commune a dit non. Avant de renvoyer le patient, on tente
-  // le reste de la prefecture, sans attendre le delai du job.
-  if (!commande.elargieLe && (await elargirCommande(idCommande)) > 0) return;
+  // M5 : toute la zone a dit non. Avant de renvoyer le patient, on tente
+  // l'etape suivante, sans attendre le delai du job.
+  // R3 : -1 signifie qu'un autre passage (le job) vient d'elargir au meme
+  // moment et a prevenu de nouvelles pharmacies : l'appel n'est pas epuise.
+  if (!commande.elargieLe && (await elargirCommande(idCommande)) !== 0) return;
 
-  await prisma.commande.update({
-    where: { id: idCommande },
+  // R2 : conditionnel, comme l'attribution. Une pharmacie qui prend la
+  // commande a la meme seconde ne doit pas voir sa prise en charge effacee.
+  const conclue = await prisma.commande.updateMany({
+    where: { id: idCommande, statut: StatutCommande.RECHERCHE_PHARMACIE },
     data: { statut: StatutCommande.SANS_PHARMACIE },
   });
+  if (conclue.count !== 1) return;
   await avertirIndisponibilite(idCommande);
 }
 
