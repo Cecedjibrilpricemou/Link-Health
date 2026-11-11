@@ -23,11 +23,14 @@ import { requireRole } from '../middlewares/rbac.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import {
   createPatientSchema,
+  definirAdresseSchema,
   definirPinUssdSchema,
   updatePatientSchema,
   updateStructurePrefereeSchema,
 } from '../validators/api.schemas';
 import * as ussd from '../services/ussd.service';
+import * as adresse from '../services/patient-adresse.service';
+import type { AdressePatientView } from '@baobaoheath/shared-types';
 
 const router = Router();
 
@@ -37,6 +40,18 @@ router.get('/me', authenticate, requireRole('PATIENT'), getMyProfileController);
 router.put('/me', authenticate, requireRole('PATIENT'), validateBody(updatePatientSchema), updateMyProfileController);
 router.put('/me/structure', authenticate, requireRole('PATIENT'), validateBody(updateStructurePrefereeSchema), updateStructurePrefereeController);
 router.get('/me/export', authenticate, requireRole('PATIENT'), exportDossierController);
+
+// M3 : l'adresse qui decide a quelles pharmacies part son ordonnance, et ou
+// le motard livre. La position GPS n'y entre qu'avec son accord.
+router.get('/me/adresse', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  const data: AdressePatientView = await adresse.monAdresse(req.user!.userId);
+  res.json({ success: true, data });
+});
+
+router.put('/me/adresse', authenticate, requireRole('PATIENT'), validateBody(definirAdresseSchema), async (req: AuthRequest, res: Response) => {
+  const data: AdressePatientView = await adresse.definirAdresse(req.user!.userId, req.body);
+  res.json({ success: true, data, message: 'Adresse enregistree' });
+});
 
 // Le code PIN qui ouvre le dossier par USSD. Le mot de passe du compte est
 // exige : une session laissee ouverte ne doit pas suffire a le poser.

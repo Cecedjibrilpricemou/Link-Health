@@ -14,6 +14,7 @@ import { I18nService } from '../../../shared/services/i18n.service';
 import { Patient } from '../../../core/models/patient.model';
 import type { StructureView } from '@baobaoheath/shared-types';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import { AdressePatientComponent } from './adresse/adresse.component';
 import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 const TAILLE_MAX_PHOTO = 3 * 1024 * 1024;
@@ -25,7 +26,7 @@ const TYPES_PHOTO_ACCEPTES = ['image/jpeg', 'image/png', 'image/webp'];
   imports: [ListeRechercheComponent, OptionsDePipe, 
     MatFormFieldModule, MatInputModule, MatSelectModule,
     CommonModule, FormsModule, RouterLink,
-    TranslatePipe, AvatarComponent
+    TranslatePipe, AvatarComponent, AdressePatientComponent
   ],
   templateUrl: './profil.component.html',
   styleUrl: './profil.component.scss'

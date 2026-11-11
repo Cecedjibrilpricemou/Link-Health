@@ -60,6 +60,26 @@
                 <a [href]="'tel:' + patient.telephone">{{ patient.telephone }}</a>
               </address>
             }
+            <!-- M3 : ou livrer, le temps de la course seulement. -->
+            @if (course.adresseLivraison; as a) {
+              <div class="bb-livreur__adresse">
+                <p class="bb-livreur__meta">
+                  {{ 'LIVREUR.MES_COURSES.ADRESSE' | translate }} :
+                  <strong>{{ lieuDe(a) || course.quartier }}</strong>
+                </p>
+                @if (a.pointRepere) {
+                  <p class="bb-livreur__meta bb-livreur__repere">
+                    {{ 'LIVREUR.MES_COURSES.REPERE' | translate }} : <strong>{{ a.pointRepere }}</strong>
+                  </p>
+                }
+                @if (lienItineraire(a); as lien) {
+                  <a class="bb-livreur__itineraire" [href]="lien" target="_blank" rel="noopener noreferrer">
+                    <i class="pi pi-directions" aria-hidden="true"></i>
+                    {{ 'LIVREUR.MES_COURSES.ITINERAIRE' | translate }}
+                  </a>
+                }
+              </div>
+            }
             @if (course.pharmacie) {
               <p class="bb-livreur__meta">{{ 'LIVREUR.COURSES.PHARMACIE' | translate }} : <strong>{{ course.pharmacie.nom }}</strong></p>
             }

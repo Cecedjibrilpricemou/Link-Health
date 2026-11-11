@@ -359,6 +359,26 @@
       "WITH_AGENT": "avec {{nom}}",
       "PRINT_REPORT": "Imprimer le compte rendu"
     },
+    "ADRESSE": {
+      "TITLE": "Mon adresse",
+      "A_COMPLETER": "Indiquez votre commune et votre quartier : c'est là que nous cherchons une pharmacie pour vos ordonnances.",
+      "PREFECTURE": "Préfecture",
+      "COMMUNE": "Commune",
+      "QUARTIER": "Quartier",
+      "REPERE": "Point de repère",
+      "REPERE_EXEMPLE": "Ex. : derrière la mosquée de Kipé, portail bleu",
+      "POSITION_UTILISER": "Utiliser ma position",
+      "POSITION_PROPOSEE": "Position trouvée :",
+      "POSITION_OUBLIER": "Ne pas la garder",
+      "POSITION_ENREGISTREE": "Votre position est enregistrée.",
+      "POSITION_EFFACER": "Effacer ma position",
+      "POSITION_EFFACEE": "Votre position a été effacée.",
+      "POSITION_AIDE": "Facultatif. Votre position n'est montrée qu'au motard qui vous livre, pendant la livraison. Vous pouvez l'effacer à tout moment.",
+      "GPS_ERR": "Position introuvable. Vérifiez que la localisation est activée et autorisée.",
+      "SAVE": "Enregistrer mon adresse",
+      "SUCCESS": "Adresse enregistrée.",
+      "ERR_SAVE": "L'adresse n'a pas pu être enregistrée."
+    },
     "PROFILE": {
       "TITLE": "Mon Profil",
       "BADGE": "Profil Patient",
@@ -1820,6 +1840,9 @@
       "OFFRE_ENREGISTREE": "Votre offre est enregistrée. Vous pouvez encore la corriger tant que la course est ouverte."
     },
     "MES_COURSES": {
+      "ADRESSE": "Adresse",
+      "REPERE": "Repère",
+      "ITINERAIRE": "Itinéraire",
       "TITRE": "Mes courses",
       "SOUS_TITRE": "Retrouvez les courses qui vous ont été attribuées et votre QR code de livreur.",
       "MON_QR": "Mon QR code de livreur",

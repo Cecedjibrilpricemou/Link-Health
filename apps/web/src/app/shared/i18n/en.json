@@ -359,6 +359,26 @@
       "WITH_AGENT": "with {{nom}}",
       "PRINT_REPORT": "Print the report"
     },
+    "ADRESSE": {
+      "TITLE": "My address",
+      "A_COMPLETER": "Enter your commune and neighbourhood: that is where we look for a pharmacy for your prescriptions.",
+      "PREFECTURE": "Prefecture",
+      "COMMUNE": "Commune",
+      "QUARTIER": "Neighbourhood",
+      "REPERE": "Landmark",
+      "REPERE_EXEMPLE": "E.g. behind the Kipé mosque, blue gate",
+      "POSITION_UTILISER": "Use my location",
+      "POSITION_PROPOSEE": "Location found:",
+      "POSITION_OUBLIER": "Don't keep it",
+      "POSITION_ENREGISTREE": "Your location is saved.",
+      "POSITION_EFFACER": "Delete my location",
+      "POSITION_EFFACEE": "Your location has been deleted.",
+      "POSITION_AIDE": "Optional. Your location is only shown to the courier delivering to you, during the delivery. You can delete it at any time.",
+      "GPS_ERR": "Location not found. Check that location is turned on and allowed.",
+      "SAVE": "Save my address",
+      "SUCCESS": "Address saved.",
+      "ERR_SAVE": "The address could not be saved."
+    },
     "PROFILE": {
       "TITLE": "My Profile",
       "BADGE": "Patient Profile",
@@ -2415,6 +2435,9 @@
       "OFFRE_ENREGISTREE": "Your offer is saved. You can still update it while the course is open."
     },
     "MES_COURSES": {
+      "ADRESSE": "Address",
+      "REPERE": "Landmark",
+      "ITINERAIRE": "Directions",
       "TITRE": "My deliveries",
       "SOUS_TITRE": "Review deliveries assigned to you and your courier QR code.",
       "MON_QR": "My courier QR code",

@@ -102,6 +102,20 @@ export const updatePatientSchema = createPatientSchema
   .partial()
   .strict();
 
+// M3 : l'adresse du patient. La position et son effacement s'excluent : on
+// ne peut pas a la fois donner et retirer sa position.
+export const definirAdresseSchema = z.object({
+  commune: z.string().trim().min(1).max(80),
+  quartier: z.string().trim().min(1).max(80),
+  pointRepere: z.string().trim().max(200).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  effacerPosition: z.boolean().optional(),
+}).strict().refine(
+  (d) => !(d.effacerPosition && (d.latitude !== undefined || d.longitude !== undefined)),
+  { message: 'Donner et effacer sa position en meme temps n a pas de sens', path: ['effacerPosition'] },
+);
+
 export const updateStructurePrefereeSchema = z.object({
   idStructure: id.nullable().optional(),
 }).strict();

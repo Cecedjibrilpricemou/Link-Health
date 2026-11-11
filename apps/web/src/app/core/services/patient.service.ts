@@ -2,6 +2,8 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
+  AdressePatientView,
+  DefinirAdresseDto,
   CommandeView,
   FactureView,
   ModeRemise,
@@ -54,6 +56,15 @@ export class PatientService {
 
   updateMe(payload: PatientUpdatePayload): Observable<ApiResponse<Patient>> {
     return this.api.put<ApiResponse<Patient>>('/patients/me', payload);
+  }
+
+  /** M3 : l'adresse qui decide a quelles pharmacies part son ordonnance, et ou livrer. */
+  monAdresse(): Observable<ApiResponse<AdressePatientView>> {
+    return this.api.get<ApiResponse<AdressePatientView>>('/patients/me/adresse');
+  }
+
+  definirAdresse(dto: DefinirAdresseDto): Observable<ApiResponse<AdressePatientView>> {
+    return this.api.put<ApiResponse<AdressePatientView>>('/patients/me/adresse', dto);
   }
 
   /** Le code PIN qui ouvre le dossier par USSD ; le mot de passe du compte est exige. */
