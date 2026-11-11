@@ -286,6 +286,52 @@ describe('ouverture et visibilité des courses', () => {
     expect(course.patient).toEqual({ prenom: 'Awa', nom: 'Diallo', telephone: '+224600000000' });
     expect(serialise).not.toMatch(/produit|ordonnance|diagnostic|medicament|posologie|lignes/i);
   });
+
+  // M3 : ou livrer, le temps de la course seulement.
+  function courseDuMotard(statut: StatutCourse) {
+    return {
+      ...courseOuverte, statut, idLivreur: profil.id,
+      commande: {
+        pharmacie: { id: 'pharmacie-1', nom: 'Pharmacie du quartier' },
+        ordonnance: { consultation: { patient: {
+          utilisateur: { prenom: 'Awa', nom: 'Diallo', telephone: '+224600000000' },
+          commune: 'Ratoma', quartier: 'Kipé', pointRepere: 'Derriere la mosquee', latitude: 9.64, longitude: -13.58,
+        } } },
+      },
+    };
+  }
+
+  it.each([StatutCourse.ATTRIBUEE, StatutCourse.EN_COURS])(
+    'donne au motard l adresse et la position du patient pendant la course (%s)',
+    async (statut) => {
+      prisma.course.findMany.mockResolvedValue([courseDuMotard(statut)]);
+
+      const { courses } = await coursesDuLivreur(livreur);
+
+      expect(courses[0]!.adresseLivraison).toEqual({
+        commune: 'Ratoma', quartier: 'Kipé', pointRepere: 'Derriere la mosquee', latitude: 9.64, longitude: -13.58,
+      });
+    },
+  );
+
+  it.each([StatutCourse.LIVREE, StatutCourse.ANNULEE])(
+    'ne montre plus ou habite le patient une fois la course finie (%s)',
+    async (statut) => {
+      prisma.course.findMany.mockResolvedValue([courseDuMotard(statut)]);
+
+      const { courses } = await coursesDuLivreur(livreur);
+
+      expect(courses[0]).not.toHaveProperty('adresseLivraison');
+      expect(JSON.stringify(courses)).not.toMatch(/mosquee|9\.64/);
+    },
+  );
+
+  it('demande l adresse du patient a la base', async () => {
+    prisma.course.findMany.mockResolvedValue([]);
+    await coursesDuLivreur(livreur);
+    const patient = prisma.course.findMany.mock.calls[0][0].select.commande.select.ordonnance.select.consultation.select.patient;
+    expect(patient.select).toMatchObject({ commune: true, quartier: true, pointRepere: true, latitude: true, longitude: true });
+  });
 });
 
 describe('elargissement a la prefecture (M5)', () => {

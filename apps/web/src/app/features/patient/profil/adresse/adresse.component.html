@@ -1,0 +1,62 @@
+@if (adresse() && !adresse()!.commune) {
+  <p class="adresse__alerte" role="status">
+    <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+    {{ 'PATIENT.ADRESSE.A_COMPLETER' | translate }}
+  </p>
+}
+
+<form class="adresse__form" (ngSubmit)="enregistrer()" autocomplete="off">
+  @if (adresse()) {
+    <p class="adresse__prefecture">{{ 'PATIENT.ADRESSE.PREFECTURE' | translate }} : <strong>{{ adresse()!.prefecture }}</strong></p>
+  }
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>{{ 'PATIENT.ADRESSE.COMMUNE' | translate }}</mat-label>
+    <input matInput id="adresse-commune" name="commune" maxlength="80" required [(ngModel)]="form.commune" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>{{ 'PATIENT.ADRESSE.QUARTIER' | translate }}</mat-label>
+    <input matInput id="adresse-quartier" name="quartier" maxlength="80" required [(ngModel)]="form.quartier" />
+  </mat-form-field>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="adresse__large">
+    <mat-label>{{ 'PATIENT.ADRESSE.REPERE' | translate }}</mat-label>
+    <input matInput id="adresse-repere" name="pointRepere" maxlength="200"
+           [placeholder]="'PATIENT.ADRESSE.REPERE_EXEMPLE' | translate" [(ngModel)]="form.pointRepere" />
+  </mat-form-field>
+
+  <!-- La position : prise d'un geste, montree avant d'etre enregistree. -->
+  <div class="adresse__position adresse__large">
+    @if (positionProposee(); as p) {
+      <p class="adresse__position-texte" id="adresse-position-proposee">
+        <i class="pi pi-map-marker" aria-hidden="true"></i>
+        {{ 'PATIENT.ADRESSE.POSITION_PROPOSEE' | translate }} {{ p.latitude }}, {{ p.longitude }}
+      </p>
+      <button type="button" class="adresse__bouton" (click)="oublierPositionProposee()">
+        {{ 'PATIENT.ADRESSE.POSITION_OUBLIER' | translate }}
+      </button>
+    } @else if (positionEnregistree) {
+      <p class="adresse__position-texte">
+        <i class="pi pi-check-circle" aria-hidden="true"></i>
+        {{ 'PATIENT.ADRESSE.POSITION_ENREGISTREE' | translate }}
+      </p>
+      <button type="button" class="adresse__bouton adresse__bouton--danger" id="adresse-effacer-position"
+              (click)="effacerPosition()" [disabled]="enregistrement()">
+        {{ 'PATIENT.ADRESSE.POSITION_EFFACER' | translate }}
+      </button>
+    } @else {
+      <button type="button" class="adresse__bouton" id="adresse-gps" (click)="utiliserMaPosition()" [disabled]="gpsEnCours()">
+        <i [class]="gpsEnCours() ? 'pi pi-spinner pi-spin' : 'pi pi-compass'" aria-hidden="true"></i>
+        {{ 'PATIENT.ADRESSE.POSITION_UTILISER' | translate }}
+      </button>
+    }
+    @if (erreurGps()) { <small class="adresse__erreur" role="alert">{{ erreurGps() }}</small> }
+    <small class="adresse__aide">{{ 'PATIENT.ADRESSE.POSITION_AIDE' | translate }}</small>
+  </div>
+
+  <div class="adresse__large">
+    <button type="submit" class="adresse__bouton adresse__bouton--principal" id="adresse-enregistrer"
+            [disabled]="!complete || enregistrement()">
+      <i [class]="enregistrement() ? 'pi pi-spinner pi-spin' : 'pi pi-check'" aria-hidden="true"></i>
+      {{ 'PATIENT.ADRESSE.SAVE' | translate }}
+    </button>
+  </div>
+</form>

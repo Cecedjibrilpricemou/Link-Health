@@ -129,6 +129,8 @@ const COURSE_LIVREUR_ASSIGNED_SELECT = {
               patient: {
                 select: {
                   utilisateur: { select: { prenom: true, nom: true, telephone: true } },
+                  // M3 : ou livrer. Rendu seulement pendant la course (voir plus bas).
+                  commune: true, quartier: true, pointRepere: true, latitude: true, longitude: true,
                 },
               },
             },
@@ -141,8 +143,17 @@ const COURSE_LIVREUR_ASSIGNED_SELECT = {
 
 type CourseLivreurAssignedPayload = Prisma.CourseGetPayload<{ select: typeof COURSE_LIVREUR_ASSIGNED_SELECT }>;
 
+/**
+ * M3 : l'adresse du patient n'est utile au motard que le temps de livrer. Avant
+ * l'attribution, il n'a pas la course ; apres la livraison ou l'annulation, il
+ * n'a plus a savoir ou habite le patient.
+ */
+const STATUTS_ADRESSE_VISIBLE: StatutCourse[] = [StatutCourse.ATTRIBUEE, StatutCourse.EN_COURS];
+
 function versCourseLivreurView(course: CourseLivreurAssignedPayload): CourseLivreurView {
-  const patient = course.commande.ordonnance.consultation?.patient.utilisateur;
+  const dossier = course.commande.ordonnance.consultation?.patient;
+  const patient = dossier?.utilisateur;
+  const adresseVisible = !!course.idLivreur && !!dossier && STATUTS_ADRESSE_VISIBLE.includes(course.statut);
   return {
     id: course.id,
     numero: course.numero,
@@ -158,6 +169,17 @@ function versCourseLivreurView(course: CourseLivreurAssignedPayload): CourseLivr
     pharmacie: course.commande.pharmacie,
     ...(course.idLivreur && patient
       ? { patient: { prenom: patient.prenom, nom: patient.nom, telephone: patient.telephone } }
+      : {}),
+    ...(adresseVisible && dossier
+      ? {
+          adresseLivraison: {
+            commune: dossier.commune ?? null,
+            quartier: dossier.quartier ?? null,
+            pointRepere: dossier.pointRepere ?? null,
+            latitude: dossier.latitude ?? null,
+            longitude: dossier.longitude ?? null,
+          },
+        }
       : {}),
   };
 }

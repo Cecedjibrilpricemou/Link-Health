@@ -974,8 +974,15 @@ model PatientProfile {
   commune          String?
   quartier         String?
   village          String?
+  /// M3 : ce qui guide le motard quand la rue n'a pas de nom
+  /// (« derriere la mosquee de Kipe »).
+  pointRepere      String?
+  /// Position donnee par le patient, avec son accord, et qu'il peut effacer.
+  /// Montree au seul motard qui a sa course en main.
   latitude         Float?
   longitude        Float?
+  /// Quand la position a ete donnee : une position ancienne se reverifie.
+  positionLe       DateTime?
   photoUrl         String?
   urgenceNom       String?
   urgenceTelephone String?

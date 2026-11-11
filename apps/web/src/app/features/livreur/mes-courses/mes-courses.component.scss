@@ -138,8 +138,28 @@
   }
 }
 
+// M3 : ou livrer.
+.bb-livreur__adresse {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.bb-livreur__itineraire {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 2.5rem;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.5rem;
+  background: var(--bb-info);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 // ✦ Refonte UI : focus commun sur les actions et liens, et mouvement seulement si autorise.
 .bb-livreur__button:focus-visible,
+.bb-livreur__itineraire:focus-visible,
 .bb-livreur__patient a:focus-visible {
   outline: none;
   box-shadow: var(--bb-focus-ring);

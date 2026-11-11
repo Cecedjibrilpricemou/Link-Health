@@ -319,6 +319,39 @@ export interface CourseLivreurView {
   livreeLe: HorodatageApi | null;
   pharmacie: { id: string; nom: string } | null;
   patient?: { prenom: string; nom: string; telephone: string };
+  /**
+   * M3 : ou livrer. Seulement pendant que la course est en main (attribuee ou
+   * en cours) : une fois livree, le motard n'a plus a savoir ou habite le patient.
+   */
+  adresseLivraison?: AdresseLivraisonView;
+}
+
+/** Ce que le motard voit de l'adresse du patient (M3). */
+export interface AdresseLivraisonView {
+  commune: string | null;
+  quartier: string | null;
+  pointRepere: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/** GET/PUT /patients/me/adresse — l'adresse du patient, vue par lui-meme (M3). */
+export interface AdressePatientView extends AdresseLivraisonView {
+  prefecture: string;
+  positionLe: HorodatageApi | null;
+}
+
+/**
+ * PUT /patients/me/adresse. La position est facultative et ne s'envoie
+ * qu'avec l'accord du patient ; `effacerPosition` la retire.
+ */
+export interface DefinirAdresseDto {
+  commune: string;
+  quartier: string;
+  pointRepere?: string;
+  latitude?: number;
+  longitude?: number;
+  effacerPosition?: boolean;
 }
 
 /** Courses attribuees au livreur et QR de son profil, y compris sans course active. */

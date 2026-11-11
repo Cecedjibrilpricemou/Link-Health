@@ -1,0 +1,71 @@
+:host { display: block; }
+
+.adresse__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.adresse__large { grid-column: 1 / -1; }
+
+.adresse__prefecture {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-secondary, #555);
+}
+
+.adresse__alerte {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--warning-bg, #fff4e5);
+  color: var(--warning-text, #8a4b00);
+}
+
+.adresse__position {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.adresse__position-texte {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+}
+
+.adresse__bouton {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.adresse__bouton--principal {
+  border-color: var(--primary, #1b7f4b);
+  background: var(--primary, #1b7f4b);
+  color: #fff;
+}
+
+.adresse__bouton--danger {
+  border-color: currentColor;
+  color: var(--danger, #c62828);
+}
+
+.adresse__bouton:disabled { opacity: .6; cursor: default; }
+
+.adresse__erreur { width: 100%; color: var(--danger, #c62828); }
+.adresse__aide { width: 100%; color: var(--text-secondary, #666); }
