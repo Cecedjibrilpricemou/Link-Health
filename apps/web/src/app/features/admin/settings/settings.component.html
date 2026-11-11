@@ -427,6 +427,34 @@
         </div>
       }
 
+      <!-- ONGLET : ZONES (M5) - delai avant d'ouvrir un appel a la prefecture -->
+      @if (activeTab() === 'zones') {
+        <div class="settings-panel">
+          <h2>{{ 'ADMIN.SETTINGS.ZONES_TITLE' | translate }}</h2>
+          <p class="panel-desc">{{ 'ADMIN.SETTINGS.ZONES_DESC' | translate }}</p>
+
+          <div class="field">
+            <label for="zones-commande">{{ 'ADMIN.SETTINGS.ZONES_COMMANDE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="zones-commande" type="number" min="1" max="1440"
+                     [(ngModel)]="zones.delaiElargissementCommandeMinutes" />
+            </mat-form-field>
+            <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_COMMANDE_HINT' | translate }}</small>
+          </div>
+
+          <div class="field mt-4">
+            <label for="zones-course">{{ 'ADMIN.SETTINGS.ZONES_COURSE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="zones-course" type="number" min="1" max="1440"
+                     [(ngModel)]="zones.delaiElargissementCourseMinutes" />
+            </mat-form-field>
+            <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_COURSE_HINT' | translate }}</small>
+          </div>
+
+          <ng-container *ngTemplateOutlet="footer; context: { section: 'zones' }"></ng-container>
+        </div>
+      }
+
       }
     </div>
   </div>

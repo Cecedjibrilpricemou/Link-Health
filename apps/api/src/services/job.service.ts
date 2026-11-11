@@ -3,6 +3,9 @@ import { detecterEtPersisterAlertesEpidemiques } from './analytics.service';
 import { verifierRappelsAEnvoyer } from './notification.service';
 import { expirerSessionsUssd } from './ussd.service';
 import { traiterAlertesCritiques } from './laboratoire.service';
+import { elargirCommandesEnAttente } from './commande.service';
+import { elargirCoursesEnAttente } from './course.service';
+import { getValeursParametres } from './parametres.service';
 import { logger } from '../config/logger';
 
 let started = false;
@@ -78,10 +81,25 @@ export function startBackgroundJobs() {
     }).catch((error: unknown) => logger.error('[JOB] resultats critiques failed', { error }));
   };
 
+  // M5 : les appels restes sans preneur dans leur commune s'ouvrent a toute
+  // la prefecture, au-dela du delai administrable (Parametres > Zones).
+  const runElargissement = () => {
+    void withOptionalRedisLock('elargissement', async () => {
+      const { zones } = await getValeursParametres();
+      const commandes = await elargirCommandesEnAttente(zones.delaiElargissementCommandeMinutes);
+      const courses = await elargirCoursesEnAttente(zones.delaiElargissementCourseMinutes);
+      if (commandes.elargies > 0 || courses.elargies > 0 || isVerboseJobsEnabled()) {
+        logger.info('[JOB] appels elargis a la prefecture', { commandes: commandes.elargies, courses: courses.elargies });
+      }
+    }).catch((error: unknown) => logger.error('[JOB] elargissement failed', { error }));
+  };
+
   runRappels();
   runAlertes();
   runUssdCleanup();
   runCritiques();
+  runElargissement();
+  setInterval(runElargissement, 2 * 60 * 1000).unref();
   setInterval(runCritiques, 5 * 60 * 1000).unref();
   setInterval(runRappels, 60 * 60 * 1000).unref();
   setInterval(runAlertes, 6 * 60 * 60 * 1000).unref();

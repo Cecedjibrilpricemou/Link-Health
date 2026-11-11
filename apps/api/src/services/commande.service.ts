@@ -26,7 +26,9 @@ import { JwtPayload } from '../types/auth.types';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { estStructureOfficinale, filtreStructuresOfficinales } from '../utils/officine.util';
 import { prochainNumero } from './numero.service';
-import { CHAMPS_RECHERCHE, filtreZone, memeZone, zoneDe, zoneDeLaCommande, type Lieu } from '../utils/zone';
+import {
+  CHAMPS_RECHERCHE, filtrePrefecture, filtreZone, memePrefecture, memeZone, zoneDe, zoneDeLaCommande, type Lieu,
+} from '../utils/zone';
 import { notifierSansBloquer } from './notification.service';
 import { assertTransition, transitionPermise } from './commande.transitions';
 export { assertTransition, transitionPermise } from './commande.transitions';
@@ -229,7 +231,17 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
   }
 
   const { prefecture, commune, quartier } = ordonnance.consultation.patient;
-  const pharmacies = await pharmaciesDeLaZone({ prefecture, commune, quartier });
+  let pharmacies = await pharmaciesDeLaZone({ prefecture, commune, quartier });
+  // M5 : aucune partenaire dans la commune, l'appel part d'emblee dans toute
+  // la prefecture plutot que de renvoyer le patient les mains vides.
+  let elargieLe: Date | null = null;
+  if (pharmacies.length === 0) {
+    const dansLaPrefecture = await pharmaciesDeLaPrefecture(prefecture);
+    if (dansLaPrefecture.length > 0) {
+      pharmacies = dansLaPrefecture;
+      elargieLe = new Date();
+    }
+  }
 
   const commande = await prisma.commande.create({
     data: {
@@ -238,6 +250,7 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
       quartierRecherche: quartier,
       prefectureRecherche: prefecture,
       communeRecherche: commune,
+      elargieLe,
       // Aucune pharmacie partenaire dans le quartier : il n'y a personne a
       // interroger. Le resultat est le meme que si nul n'avait repondu — le
       // patient repart avec son ordonnance.
@@ -250,18 +263,32 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
     return getCommande(commande.id);
   }
 
-  // **On notifie les pharmaciens, pas les pharmacies.**
-  //
-  // `idUtilisateur` recevait jusqu'ici l'identifiant de la **structure** : la
-  // cle etrangere refusait, `notifierSansBloquer` avalait l'erreur, et aucune
-  // officine n'a jamais ete prevenue d'un appel. Le defaut ne se voyait pas
-  // parce que l'ecran du comptoir finit par montrer l'appel de toute facon —
-  // encore faut-il que quelqu'un pense a le regarder.
+  await appelerPharmacies(pharmacies.map((p) => p.id), ordonnance.numero, commande, elargieLe !== null);
+  return getCommande(commande.id);
+}
+
+/**
+ * Previent les pharmaciens des structures appelees.
+ *
+ * **On notifie les pharmaciens, pas les pharmacies.** `idUtilisateur`
+ * recevait jusqu'ici l'identifiant de la **structure** : la cle etrangere
+ * refusait, `notifierSansBloquer` avalait l'erreur, et aucune officine n'a
+ * jamais ete prevenue d'un appel. Le defaut ne se voyait pas parce que
+ * l'ecran du comptoir finit par montrer l'appel de toute facon — encore
+ * faut-il que quelqu'un pense a le regarder.
+ */
+async function appelerPharmacies(
+  idsStructures: string[],
+  numeroOrdonnance: string,
+  commande: { id: string; numero: string },
+  elargi: boolean,
+) {
+  if (idsStructures.length === 0) return;
   const pharmaciens = await prisma.utilisateur.findMany({
     where: {
       role: Role.PHARMACIEN,
       estActif: true,
-      idStructure: { in: pharmacies.map((p) => p.id) },
+      idStructure: { in: idsStructures },
     },
     select: { id: true },
   });
@@ -272,14 +299,102 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
         idUtilisateur: u.id,
         type: 'COMMANDE_A_SERVIR',
         titre: 'Nouvelle ordonnance a servir',
-        contenu: `Ordonnance ${ordonnance.numero} — disposez-vous de tous les produits ?`,
+        contenu: elargi
+          ? `Ordonnance ${numeroOrdonnance} — aucune pharmacie de sa commune ne l'a servie : disposez-vous de tous les produits ?`
+          : `Ordonnance ${numeroOrdonnance} — disposez-vous de tous les produits ?`,
         lienAction: '/pharmacien/commandes',
         metadonnees: { idCommande: commande.id, numero: commande.numero },
       })
     )
   );
+}
 
-  return getCommande(commande.id);
+/** Les partenaires actives de toute une prefecture (appel elargi, M5). */
+export async function pharmaciesDeLaPrefecture(prefecture: string | null | undefined) {
+  if (!(prefecture ?? '').trim()) return [];
+  return prisma.structureSante.findMany({
+    where: {
+      ...filtreStructuresOfficinales(),
+      estActive: true,
+      estPartenaire: true,
+      ...filtrePrefecture(prefecture),
+    },
+    select: { id: true, nom: true },
+  });
+}
+
+type ZoneDeCommande = {
+  prefectureRecherche?: string | null; communeRecherche?: string | null;
+  quartierRecherche?: string | null; elargieLe?: Date | null;
+};
+
+/** Les pharmacies a qui l'appel s'adresse : sa zone, ou toute la prefecture une fois elargi. */
+async function pharmaciesSollicitees(c: ZoneDeCommande) {
+  return c.elargieLe ? pharmaciesDeLaPrefecture(c.prefectureRecherche) : pharmaciesDeLaZone(zoneDeLaCommande(c));
+}
+
+/** Une officine est-elle appelee pour cette commande ? Sa zone, ou sa prefecture si l'appel est elargi. */
+function pharmacieAppelee(structure: Lieu, c: ZoneDeCommande): boolean {
+  const lieu = zoneDeLaCommande(c);
+  return memeZone(structure, lieu) || (!!c.elargieLe && memePrefecture(structure, lieu));
+}
+
+/**
+ * M5 : l'appel s'etend a toute la prefecture, et seules les pharmacies qui
+ * n'avaient pas ete appelees sont prevenues. Renvoie leur nombre (0 si la
+ * commande n'est plus a elargir, ou si la prefecture n'a personne de plus).
+ *
+ * L'ecriture est conditionnelle (`elargieLe: null`) : deux passages
+ * simultanes du job n'envoient pas deux fois les memes notifications.
+ */
+export async function elargirCommande(idCommande: string): Promise<number> {
+  const commande = await prisma.commande.findUnique({
+    where: { id: idCommande },
+    select: {
+      id: true, numero: true, statut: true, elargieLe: true,
+      prefectureRecherche: true, communeRecherche: true, quartierRecherche: true,
+      ordonnance: { select: { numero: true } },
+    },
+  });
+  if (!commande || commande.statut !== StatutCommande.RECHERCHE_PHARMACIE) return 0;
+  if (commande.elargieLe || !(commande.prefectureRecherche ?? '').trim()) return 0;
+
+  const marque = await prisma.commande.updateMany({
+    where: { id: idCommande, statut: StatutCommande.RECHERCHE_PHARMACIE, elargieLe: null },
+    data: { elargieLe: new Date() },
+  });
+  if (marque.count !== 1) return 0;
+
+  const dejaAppelees = new Set((await pharmaciesDeLaZone(zoneDeLaCommande(commande))).map((p) => p.id));
+  const nouvelles = (await pharmaciesDeLaPrefecture(commande.prefectureRecherche))
+    .filter((p) => !dejaAppelees.has(p.id));
+  await appelerPharmacies(nouvelles.map((p) => p.id), commande.ordonnance.numero, commande, true);
+  return nouvelles.length;
+}
+
+/** Le job : les appels restes sans preneur au-dela du delai s'elargissent. */
+export async function elargirCommandesEnAttente(
+  delaiMinutes: number,
+  maintenant = new Date(),
+): Promise<{ elargies: number }> {
+  const limite = new Date(maintenant.getTime() - delaiMinutes * 60_000);
+  const enAttente = await prisma.commande.findMany({
+    where: {
+      statut: StatutCommande.RECHERCHE_PHARMACIE,
+      elargieLe: null,
+      prefectureRecherche: { not: null },
+      creeLe: { lte: limite },
+    },
+    select: { id: true },
+    orderBy: { creeLe: 'asc' },
+    take: 100,
+  });
+  // Ne compte que les appels effectivement portes a de nouvelles pharmacies.
+  let elargies = 0;
+  for (const { id } of enAttente) {
+    if ((await elargirCommande(id)) > 0) elargies++;
+  }
+  return { elargies };
 }
 
 /**
@@ -301,13 +416,14 @@ export async function repondreDisponibilite(
     where: { id: idCommande },
     select: {
       id: true, statut: true, idPharmacie: true, numero: true,
-      prefectureRecherche: true, communeRecherche: true, quartierRecherche: true,
+      prefectureRecherche: true, communeRecherche: true, quartierRecherche: true, elargieLe: true,
     },
   });
   if (!commande) throw new NotFoundError('Commande non trouvee');
 
-  // Une pharmacie d'un autre quartier n'a pas ete sollicitee.
-  if ((commande.quartierRecherche || commande.communeRecherche) && !memeZone(pharmacie, zoneDeLaCommande(commande))) {
+  // Une pharmacie hors de la zone n'a pas ete sollicitee — sauf si l'appel
+  // s'est elargi a toute sa prefecture (M5).
+  if ((commande.quartierRecherche || commande.communeRecherche) && !pharmacieAppelee(pharmacie, commande)) {
     throw new ForbiddenError("Cette commande ne releve pas de votre zone");
   }
   if (commande.statut === StatutCommande.ANNULEE) {
@@ -433,6 +549,13 @@ export async function commandesDeLaPharmacie(user: JwtPayload): Promise<Commande
           ...filtreZone(pharmacie, CHAMPS_RECHERCHE, { prefectureFacultative: true }),
           reponses: { none: { idStructure: pharmacie.id, aTousLesProduits: false } },
         },
+        // Les appels elargis a toute sa prefecture (M5).
+        {
+          statut: StatutCommande.RECHERCHE_PHARMACIE,
+          elargieLe: { not: null },
+          ...filtrePrefecture(pharmacie.prefecture, 'prefectureRecherche'),
+          reponses: { none: { idStructure: pharmacie.id, aTousLesProduits: false } },
+        },
         // Et celles qu'elle a prises.
         { idPharmacie: pharmacie.id },
       ],
@@ -470,15 +593,19 @@ async function verifierEpuisementDesReponses(idCommande: string) {
   const commande = await prisma.commande.findUnique({
     where: { id: idCommande },
     select: {
-      prefectureRecherche: true, communeRecherche: true, quartierRecherche: true,
+      prefectureRecherche: true, communeRecherche: true, quartierRecherche: true, elargieLe: true,
       statut: true, reponses: { select: { aTousLesProduits: true } },
     },
   });
   if (!commande || commande.statut !== StatutCommande.RECHERCHE_PHARMACIE) return;
 
-  const sollicitees = await pharmaciesDeLaZone(zoneDeLaCommande(commande));
+  const sollicitees = await pharmaciesSollicitees(commande);
   const refus = commande.reponses.filter((r) => !r.aTousLesProduits).length;
   if (sollicitees.length === 0 || refus < sollicitees.length) return;
+
+  // M5 : toute la commune a dit non. Avant de renvoyer le patient, on tente
+  // le reste de la prefecture, sans attendre le delai du job.
+  if (!commande.elargieLe && (await elargirCommande(idCommande)) > 0) return;
 
   await prisma.commande.update({
     where: { id: idCommande },
@@ -614,6 +741,7 @@ export async function assertPeutLireCommande(user: JwtPayload, idCommande: strin
       prefectureRecherche: true,
       communeRecherche: true,
       quartierRecherche: true,
+      elargieLe: true,
       statut: true,
       ordonnance: {
         select: {
@@ -646,7 +774,7 @@ export async function assertPeutLireCommande(user: JwtPayload, idCommande: strin
     if (
       structure.estPartenaire
       && commande.statut === StatutCommande.RECHERCHE_PHARMACIE
-      && memeZone(structure, zoneDeLaCommande(commande))
+      && pharmacieAppelee(structure, commande)
     ) return;
   }
 

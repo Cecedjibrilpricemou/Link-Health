@@ -21,6 +21,7 @@ import type {
   ParametresSyncView,
   ParametresSystemeValeurs,
   ParametresSystemeView,
+  ParametresZonesView,
   UpdateParametresSystemeDto,
 } from '@baobaoheath/shared-types';
 import { CategorieProduitPipe } from '../../../shared/pipes/categorie-produit.pipe';
@@ -67,7 +68,8 @@ export class SettingsComponent implements OnInit {
       { id: 'alertes',     label: this.i18n.t('ADMIN.SETTINGS.TAB_ALERTS'),   icon: 'pi pi-bolt' },
       { id: 'sync',        label: this.i18n.t('ADMIN.SETTINGS.TAB_SYNC'),     icon: 'pi pi-sync' },
       { id: 'prescription', label: this.i18n.t('ADMIN.SETTINGS.TAB_PRESCRIPTION'), icon: 'pi pi-file-edit' },
-      { id: 'pharmacie',   label: this.i18n.t('ADMIN.SETTINGS.TAB_PHARMACIE'),    icon: 'pi pi-shopping-cart' }
+      { id: 'pharmacie',   label: this.i18n.t('ADMIN.SETTINGS.TAB_PHARMACIE'),    icon: 'pi pi-shopping-cart' },
+      { id: 'zones',       label: this.i18n.t('ADMIN.SETTINGS.TAB_ZONES'),        icon: 'pi pi-map-marker' }
     ];
   }
 
@@ -117,6 +119,13 @@ export class SettingsComponent implements OnInit {
   // des produits reglementes, ne se vendent pas sans ordonnance.
   pharmacie: ParametresPharmacieView = {
     categoriesExigeantOrdonnance: []
+  };
+
+  // M5 : delai avant qu'un appel sans preneur dans sa commune s'ouvre a
+  // toute la prefecture (ordonnances pour les pharmacies, courses pour les motards).
+  zones: ParametresZonesView = {
+    delaiElargissementCommandeMinutes: 10,
+    delaiElargissementCourseMinutes: 10
   };
 
   /**
@@ -226,6 +235,7 @@ export class SettingsComponent implements OnInit {
     this.prescription = { ...vue.prescription };
     // La liste est copiee, pas partagee : ngModel mute les tableaux.
     this.pharmacie = { ...vue.pharmacie, categoriesExigeantOrdonnance: [...vue.pharmacie.categoriesExigeantOrdonnance] };
+    this.zones = { ...vue.zones };
     this.modifieLe.set(vue.modifieLe);
   }
 }

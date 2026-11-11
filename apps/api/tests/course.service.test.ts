@@ -4,6 +4,8 @@ import {
   coursesDuLivreur,
   coursesOuvertesPour,
   declarerRecu,
+  elargirCourse,
+  elargirCoursesEnAttente,
   ouvrirCourse,
   proposer,
   remettreAuMotard,
@@ -198,7 +200,11 @@ describe('ouverture et visibilité des courses', () => {
     expect(prisma.course.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: {
         statut: StatutCourse.APPEL_OFFRES,
-        ...filtreZones(zonesDuLivreur(profil)),
+        OR: [
+          ...(filtreZones(zonesDuLivreur(profil)).OR as unknown[]),
+          // M5 : une course elargie se voit dans toute sa prefecture.
+          { elargieLe: { not: null }, prefecture: { equals: 'Conakry', mode: 'insensitive' } },
+        ],
       },
     }));
     // Le filtre porte bien sur la commune du livreur, pas seulement son quartier.
@@ -216,8 +222,8 @@ describe('ouverture et visibilité des courses', () => {
     await coursesOuvertesPour(livreur);
 
     const { where } = prisma.course.findMany.mock.calls[0][0];
-    // Une branche pour Ratoma, une pour Dixinn.
-    expect(where.OR).toHaveLength(2);
+    // Une branche pour Ratoma, une pour Dixinn, une pour les courses elargies.
+    expect(where.OR).toHaveLength(3);
     expect(JSON.stringify(where.OR[1])).toContain('Dixinn');
   });
 
@@ -279,6 +285,89 @@ describe('ouverture et visibilité des courses', () => {
     expect(result.qrCode).toBe('qr-livreur-test');
     expect(course.patient).toEqual({ prenom: 'Awa', nom: 'Diallo', telephone: '+224600000000' });
     expect(serialise).not.toMatch(/produit|ordonnance|diagnostic|medicament|posologie|lignes/i);
+  });
+});
+
+describe('elargissement a la prefecture (M5)', () => {
+  const sansOffre = {
+    id: 'course-1', numero: 'LV-2026-000001', statut: StatutCourse.APPEL_OFFRES, elargieLe: null,
+    prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé',
+  };
+
+  it('previent les motards en service de la prefecture qui ne l avaient pas ete', async () => {
+    prisma.course.findUnique.mockResolvedValue(sansOffre);
+    prisma.livreurProfile.findMany.mockResolvedValue([{ utilisateur: { id: 'motard-matoto' } }]);
+
+    expect(await elargirCourse('course-1')).toBe(1);
+
+    expect(prisma.course.updateMany).toHaveBeenCalledWith({
+      where: { id: 'course-1', statut: StatutCourse.APPEL_OFFRES, elargieLe: null },
+      data: { elargieLe: expect.any(Date) },
+    });
+    expect(prisma.livreurProfile.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        estActif: true,
+        enService: true,
+        prefecture: { equals: 'Conakry', mode: 'insensitive' },
+        // Ceux de la zone ont deja ete prevenus a l'ouverture.
+        NOT: { OR: [
+          filtreZone(sansOffre),
+          { AND: [
+            { prefecture: { equals: 'Conakry', mode: 'insensitive' } },
+            { communesDesservies: { has: 'Ratoma' } },
+          ] },
+        ] },
+        utilisateur: { role: Role.LIVREUR, estActif: true },
+      },
+    }));
+    expect(notifierSansBloquer).toHaveBeenCalledWith(expect.objectContaining({
+      idUtilisateur: 'motard-matoto',
+      type: 'COURSE_OUVERTE',
+      metadonnees: expect.objectContaining({ idCourse: 'course-1', elargie: true }),
+    }));
+  });
+
+  it('un second passage simultane ne previent personne une seconde fois', async () => {
+    prisma.course.findUnique.mockResolvedValue(sansOffre);
+    prisma.course.updateMany.mockResolvedValue({ count: 0 });
+
+    expect(await elargirCourse('course-1')).toBe(0);
+    expect(prisma.livreurProfile.findMany).not.toHaveBeenCalled();
+    expect(notifierSansBloquer).not.toHaveBeenCalled();
+  });
+
+  it('n elargit pas une course deja elargie ou deja attribuee', async () => {
+    prisma.course.findUnique.mockResolvedValue({ ...sansOffre, elargieLe: new Date() });
+    expect(await elargirCourse('course-1')).toBe(0);
+    prisma.course.findUnique.mockResolvedValue({ ...sansOffre, statut: StatutCourse.ATTRIBUEE });
+    expect(await elargirCourse('course-1')).toBe(0);
+    expect(prisma.course.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('le job ne prend que les courses sans offre plus vieilles que le delai', async () => {
+    prisma.course.findMany.mockResolvedValue([{ id: 'course-1' }]);
+    prisma.course.findUnique.mockResolvedValue(sansOffre);
+    prisma.livreurProfile.findMany.mockResolvedValue([{ utilisateur: { id: 'motard-matoto' } }]);
+
+    const res = await elargirCoursesEnAttente(10, new Date('2026-11-11T12:00:00Z'));
+
+    expect(prisma.course.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        statut: StatutCourse.APPEL_OFFRES,
+        elargieLe: null,
+        creeeLe: { lte: new Date('2026-11-11T11:50:00Z') },
+        // Des offres attendent deja le choix du patient : rien a elargir.
+        offres: { none: {} },
+      },
+    }));
+    expect(res).toEqual({ elargies: 1 });
+  });
+
+  it('le job ne compte pas une course sans motard de plus dans la prefecture', async () => {
+    prisma.course.findMany.mockResolvedValue([{ id: 'course-1' }]);
+    prisma.course.findUnique.mockResolvedValue(sansOffre);
+
+    expect(await elargirCoursesEnAttente(10)).toEqual({ elargies: 0 });
   });
 });
 
@@ -359,6 +448,33 @@ describe('offres de course', () => {
     prisma.course.findUnique.mockResolvedValue({
       id: 'course-1', statut: StatutCourse.APPEL_OFFRES,
       quartier: 'Centre', prefecture: 'Kindia', commune: 'Dixinn',
+    });
+
+    await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }))
+      .rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.offreCourse.upsert).not.toHaveBeenCalled();
+  });
+
+  // M5 : une course elargie accepte les motards de toute sa prefecture...
+  it('accepte une course elargie d une autre commune de sa prefecture', async () => {
+    prisma.course.findUnique.mockResolvedValue({
+      id: 'course-1', statut: StatutCourse.APPEL_OFFRES, elargieLe: new Date(),
+      quartier: 'Centre', prefecture: 'Conakry', commune: 'Matoto',
+    });
+    prisma.offreCourse.upsert.mockResolvedValue({
+      id: 'offre-1', prixGnf: 10_000, delaiMinutes: 20, creeeLe: new Date('2026-11-11T10:00:00.000Z'),
+    });
+
+    await proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }).catch(() => undefined);
+
+    expect(prisma.offreCourse.upsert).toHaveBeenCalled();
+  });
+
+  // ... mais jamais au-dela.
+  it('refuse une course elargie d une autre prefecture', async () => {
+    prisma.course.findUnique.mockResolvedValue({
+      id: 'course-1', statut: StatutCourse.APPEL_OFFRES, elargieLe: new Date(),
+      quartier: 'Centre', prefecture: 'Kindia', commune: 'Matoto',
     });
 
     await expect(proposer(livreur, 'course-1', { prixGnf: 10_000, delaiMinutes: 20 }))

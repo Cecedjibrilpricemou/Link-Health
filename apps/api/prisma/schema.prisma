@@ -2399,6 +2399,9 @@ model Commande {
   /// quartier : la zone des pharmacies sollicitees (voir utils/zone.ts).
   prefectureRecherche String?
   communeRecherche    String?
+  /// M5 : personne n'a repondu dans la commune, l'appel s'est etendu a toute
+  /// la prefecture a cette date. Null tant qu'il reste dans la commune.
+  elargieLe           DateTime?
 
   creeLe    DateTime @default(now())
   modifieLe DateTime @updatedAt
@@ -2447,6 +2450,9 @@ model Course {
   commune             String?
   prixGnf             Int?
   delaiAnnonceMinutes Int?
+  /// M5 : aucun motard de la commune n'a fait d'offre a temps, l'appel s'est
+  /// etendu a toute la prefecture a cette date.
+  elargieLe           DateTime?
   creeeLe             DateTime     @default(now())
   attribueeLe         DateTime?
   remiseLe            DateTime?
