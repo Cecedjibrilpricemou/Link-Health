@@ -292,9 +292,45 @@ describe('repondreDisponibilite', () => {
 
     await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
 
-    expect(prisma.commande.update).toHaveBeenCalledWith(expect.objectContaining({
+    // R2 : conditionnel au statut, comme l'attribution.
+    expect(prisma.commande.updateMany).toHaveBeenCalledWith({
+      where: { id: 'cmd-1', statut: 'RECHERCHE_PHARMACIE' },
       data: { statut: 'SANS_PHARMACIE' },
-    }));
+    });
+    expect(notifierSansBloquer.mock.calls.map((c) => c[0].type)).toContain('COMMANDE_SANS_PHARMACIE');
+  });
+
+  // R2 : une pharmacie a pris la commande a la meme seconde. La conclusion ne
+  // touche rien, et personne n'est averti d'une indisponibilite fausse.
+  it('ne conclut pas une commande prise entre-temps', async () => {
+    prisma.commande.updateMany
+      .mockResolvedValueOnce({ count: 1 })   // elargissement (prefecture, personne de plus)
+      .mockResolvedValueOnce({ count: 0 });  // conclusion : le statut a change
+    prisma.commande.findUnique.mockResolvedValue(
+      commandeRelue({ reponses: [{ idStructure: 'ph-1', aTousLesProduits: false,
+        repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
+    );
+
+    await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
+
+    expect(notifierSansBloquer.mock.calls.map((c) => c[0].type)).not.toContain('COMMANDE_SANS_PHARMACIE');
+  });
+
+  // R3 : le job elargit au meme moment que le dernier refus. Ce refus ne doit
+  // pas conclure : de nouvelles pharmacies viennent d'etre prevenues.
+  it('ne conclut pas quand un autre passage vient d elargir', async () => {
+    prisma.commande.updateMany.mockResolvedValue({ count: 0 });
+    prisma.commande.findUnique.mockResolvedValue(
+      commandeRelue({ reponses: [{ idStructure: 'ph-1', aTousLesProduits: false,
+        repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
+    );
+
+    await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
+
+    // Une seule ecriture tentee : l'elargissement, perdu au profit du job.
+    expect(prisma.commande.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.commande.updateMany.mock.calls[0][0].data).toEqual({ elargieLe: expect.any(Date) });
+    expect(notifierSansBloquer.mock.calls.map((c) => c[0].type)).not.toContain('COMMANDE_SANS_PHARMACIE');
   });
 
   it('attend encore si une sollicitee n a pas repondu', async () => {
@@ -668,7 +704,8 @@ describe('elargissement a la prefecture', () => {
     prisma.commande.updateMany.mockResolvedValue({ count: 0 });
     prisma.structureSante.findMany.mockImplementation(communeOuPrefecture);
 
-    expect(await elargirCommande('cmd-1')).toBe(0);
+    // -1 : un autre passage a elargi ; l'appel continue (R3).
+    expect(await elargirCommande('cmd-1')).toBe(-1);
     expect(notifierSansBloquer).not.toHaveBeenCalled();
     // Personne n'est meme recherche a prevenir : le verrou a ete perdu avant.
     expect(prisma.utilisateur.findMany).not.toHaveBeenCalled();
