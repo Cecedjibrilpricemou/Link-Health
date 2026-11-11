@@ -162,3 +162,148 @@
     &:active:not(:disabled) { transform: scale(0.98); }
   }
 }
+
+// ── Disponibilite (M4) ───────────────────────────────────────────────
+// En service : un bandeau vert, impossible a manquer. Hors service : neutre,
+// avec le bouton principal pour s'y mettre.
+.bb-service {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.875rem 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--bb-border);
+  border-radius: var(--bb-radius-lg);
+  background: var(--bb-surface-card);
+  box-shadow: var(--bb-shadow-sm);
+
+  h2 {
+    margin: 0;
+    font-family: var(--bb-font-display);
+    font-size: 1.05rem;
+    color: var(--bb-text-primary);
+  }
+
+  p { margin: 0.25rem 0 0; color: var(--bb-text-secondary); }
+
+  &--actif {
+    border-color: color-mix(in srgb, var(--bb-success, #2e7d32) 45%, var(--bb-border));
+    background: color-mix(in srgb, var(--bb-success, #2e7d32) 8%, var(--bb-surface-card));
+  }
+}
+
+.bb-service__etat {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.bb-service__pastille {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  background: var(--bb-text-muted);
+
+  .bb-service--actif & {
+    background: var(--bb-success, #2e7d32);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--bb-success, #2e7d32) 20%, transparent);
+  }
+}
+
+.bb-service__bouton { flex: none; }
+
+.bb-service__alerte {
+  flex-basis: 100%;
+  color: var(--bb-danger, #991b1b) !important;
+  font-weight: 600;
+}
+
+// ── Zone de travail ─────────────────────────────────────────────────
+.bb-zone {
+  padding: 0.875rem 1.25rem;
+  border: 1px solid var(--bb-border);
+  border-radius: var(--bb-radius-lg);
+  background: var(--bb-surface-card);
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--bb-text-primary);
+    font-weight: 600;
+
+    i { color: var(--livreur-accent); }
+    span { color: var(--bb-text-secondary); font-weight: 500; }
+  }
+
+  &[open] summary { margin-bottom: 0.75rem; }
+}
+
+.bb-zone__aide { margin: 0.5rem 0; color: var(--bb-text-secondary); font-size: 0.9rem; }
+
+.bb-zone__liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bb-zone__commune {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.35rem 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--bb-surface-2);
+  color: var(--bb-text-primary);
+  font-weight: 600;
+
+  button {
+    display: inline-grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--bb-text-secondary);
+    cursor: pointer;
+
+    &:hover { background: var(--bb-surface-1); color: var(--bb-text-primary); }
+    &:focus-visible { outline: 2px solid var(--livreur-accent); outline-offset: 1px; }
+  }
+}
+
+.bb-zone__ajout {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--bb-border);
+    border-radius: var(--bb-radius);
+    background: var(--bb-surface-1);
+    color: var(--bb-text-primary);
+    font: inherit;
+
+    &:focus-visible { outline: 2px solid var(--livreur-accent); outline-offset: 1px; }
+  }
+}
+
+.bb-zone__enregistrer { margin-top: 0.25rem; }
+
+@media (max-width: 480px) {
+  .bb-service__bouton,
+  .bb-zone__enregistrer { width: 100%; justify-content: center; }
+}
