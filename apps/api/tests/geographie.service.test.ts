@@ -13,6 +13,7 @@ import {
   listerLieux,
   MAX_VOISINS,
   modifierLieu,
+  voisinsDe,
 } from '../src/services/geographie.service';
 import { ConflictError, NotFoundError, ValidationError } from '../src/utils/app-error';
 
@@ -83,6 +84,45 @@ afterEach(() => jest.resetAllMocks());
 /** Les voisins ecrits sur un lieu donne. */
 const ecrituresChez = (id: string) => prisma.lieuGeo.update.mock.calls
   .filter(([a]) => a.where.id === id).map(([a]) => a.data.voisins);
+
+describe('voisinsDe (M1-C)', () => {
+  // Une autre prefecture, avec une commune du meme nom et une voisine hors zone.
+  const P_COYAH = lieu('p-coyah', 'prefecture', 'Coyah', 'r-kindia');
+  const RATOMA_COYAH = lieu('c-ratoma-coyah', 'commune', 'Ratoma', 'p-coyah', ['c-manea']);
+  const MANEA = lieu('c-manea', 'commune', 'Manéah', 'p-coyah', ['c-ratoma-coyah', 'c-ratoma']);
+  const RATOMA_LIE = { ...RATOMA, voisins: ['c-dixinn', 'c-manea'] };
+
+  it('rend les voisins du referentiel, sans tenir compte de la casse', async () => {
+    expect(await voisinsDe(' conakry ', 'RATOMA')).toEqual(['Dixinn']);
+  });
+
+  it('ne sort pas de la zone d elargissement, meme si un voisin la deborde', async () => {
+    installer(GUINEE, [REG, PREF, RATOMA_LIE, DIXINN, MATAM, P_COYAH, RATOMA_COYAH, MANEA]);
+    expect(await voisinsDe('Conakry', 'Ratoma')).toEqual(['Dixinn']);
+  });
+
+  it('distingue deux communes du meme nom dans deux prefectures', async () => {
+    installer(GUINEE, [REG, PREF, RATOMA, DIXINN, MATAM, P_COYAH, RATOMA_COYAH, MANEA]);
+    expect(await voisinsDe('Coyah', 'Ratoma')).toEqual(['Manéah']);
+  });
+
+  it('un lieu absent du referentiel, ou une saisie vide, n a pas de voisins connus', async () => {
+    expect(await voisinsDe('Conakry', 'Kassa')).toEqual([]);
+    expect(await voisinsDe('', 'Ratoma')).toEqual([]);
+    expect(await voisinsDe('Conakry', null)).toEqual([]);
+  });
+
+  it('suit les niveaux du pays installe', async () => {
+    installer(NIGERIA, [
+      lieu('s-lagos', 'state', 'Lagos', null),
+      lieu('l-ikeja', 'lga', 'Ikeja', 's-lagos'),
+      lieu('w-1', 'ward', 'Alausa', 'l-ikeja', ['w-2']),
+      lieu('w-2', 'ward', 'Oregun', 'l-ikeja', ['w-1']),
+    ]);
+    // Au Nigeria, la zone d'elargissement est la LGA et la base le ward.
+    expect(await voisinsDe('Ikeja', 'Alausa')).toEqual(['Oregun']);
+  });
+});
 
 describe('configuration', () => {
   it('rend le decoupage du pays installe et dit si un jeu de depart existe', async () => {

@@ -20,6 +20,7 @@ import { estStructureOfficinale } from '../utils/officine.util';
 import { assertTransition as assertCommandeTransition } from './commande.transitions';
 import { notifierSansBloquer } from './notification.service';
 import { prochainNumero } from './numero.service';
+import { voisinsDe } from './geographie.service';
 import { dansLesZones, filtrePrefecture, filtreZone, filtreZones, memePrefecture, zonesDuLivreur } from '../utils/zone';
 
 export type CourseTransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -281,21 +282,90 @@ function livreursDeLaZone(course: { prefecture: string; commune: string | null; 
   ];
 }
 
+/** Le nom d'un lieu tel qu'on le compare : sans casse ni espaces autour. */
+const cleLieu = (s: string | null | undefined) => (s ?? '').trim().toLocaleLowerCase('fr');
+
 /**
- * M5 : aucun motard de la zone n'a fait d'offre a temps, la course s'ouvre a
- * toute la prefecture. Seuls les motards en service qui n'avaient pas ete
- * prevenus le sont. Renvoie leur nombre.
+ * M1-C : les motards des communes voisines, dans la prefecture de la course —
+ * qu'ils y habitent ou qu'ils les desservent. Les noms comparent sans casse.
+ */
+function livreursDesVoisines(prefecture: string, voisines: string[]) {
+  const dansPrefecture = { prefecture: { equals: prefecture.trim(), mode: 'insensitive' as const } };
+  const variantes = [...new Set([...voisines, ...voisines.map(cleLieu)])];
+  return [
+    { ...dansPrefecture, commune: { in: voisines, mode: 'insensitive' as const } },
+    { ...dansPrefecture, communesDesservies: { hasSome: variantes } },
+  ];
+}
+
+/** Les communes d'un motard, telles que comparees aux voisines figees sur une course. */
+function communesDuLivreur(profile: { commune: string | null; communesDesservies: string[] }): string[] {
+  return [profile.commune, ...profile.communesDesservies].map(cleLieu).filter((c) => !!c);
+}
+
+async function notifierElargissement(
+  destinataires: { utilisateur: { id: string } }[],
+  course: { numero: string; commune: string | null; quartier: string },
+  idCourse: string,
+  aQui: string,
+) {
+  await Promise.all(destinataires.map(({ utilisateur }) => notifierSansBloquer({
+    idUtilisateur: utilisateur.id,
+    type: 'COURSE_OUVERTE',
+    titre: 'Course sans motard dans sa commune',
+    contenu: `La course ${course.numero} a ${course.commune ?? course.quartier} n'a recu aucune offre : elle est ouverte ${aQui}.`,
+    lienAction: '/livreur/courses',
+    metadonnees: { idCourse, numero: course.numero, quartier: course.quartier, elargie: true },
+  })));
+}
+
+/**
+ * La course passe a l'etape suivante, et seuls les motards en service qui
+ * n'avaient pas ete prevenus le sont. Renvoie leur nombre.
  *
- * L'ecriture est conditionnelle (`elargieLe: null`) : deux passages du job ne
- * previennent pas deux fois les memes motards.
+ * 1. **Les communes voisines** (M1-C), sautee si la commune n'a pas de
+ *    voisine connue ou si personne de plus n'y est en service.
+ * 2. **Toute la prefecture** (M5).
+ *
+ * Chaque ecriture est conditionnelle (`voisinesLe: null`, `elargieLe: null`) :
+ * deux passages du job ne previennent pas deux fois les memes motards.
  */
 export async function elargirCourse(idCourse: string): Promise<number> {
   const course = await prisma.course.findUnique({
     where: { id: idCourse },
-    select: { id: true, numero: true, statut: true, elargieLe: true, prefecture: true, commune: true, quartier: true },
+    select: {
+      id: true, numero: true, statut: true, elargieLe: true, voisinesLe: true, communesVoisines: true,
+      prefecture: true, commune: true, quartier: true,
+    },
   });
   if (!course || course.statut !== StatutCourse.APPEL_OFFRES || course.elargieLe) return 0;
   if (!course.prefecture.trim()) return 0;
+
+  const enService = { estActif: true, enService: true, utilisateur: { role: Role.LIVREUR, estActif: true } };
+  // Ceux de la zone ont ete prevenus a l'ouverture ; ceux des voisines, a la premiere etape.
+  const dejaPrevenus = [
+    ...livreursDeLaZone(course),
+    ...(course.voisinesLe ? livreursDesVoisines(course.prefecture, course.communesVoisines) : []),
+  ];
+
+  if (!course.voisinesLe) {
+    const voisines = await voisinsDe(course.prefecture, course.commune);
+    if (voisines.length > 0) {
+      const nouveaux = await prisma.livreurProfile.findMany({
+        where: { ...enService, OR: livreursDesVoisines(course.prefecture, voisines), NOT: { OR: dejaPrevenus } },
+        select: { utilisateur: { select: { id: true } } },
+      });
+      if (nouveaux.length > 0) {
+        const marque = await prisma.course.updateMany({
+          where: { id: idCourse, statut: StatutCourse.APPEL_OFFRES, voisinesLe: null, elargieLe: null },
+          data: { voisinesLe: new Date(), communesVoisines: voisines.map(cleLieu) },
+        });
+        if (marque.count !== 1) return 0;
+        await notifierElargissement(nouveaux, course, idCourse, 'aux communes voisines');
+        return nouveaux.length;
+      }
+    }
+  }
 
   const marque = await prisma.course.updateMany({
     where: { id: idCourse, statut: StatutCourse.APPEL_OFFRES, elargieLe: null },
@@ -305,23 +375,13 @@ export async function elargirCourse(idCourse: string): Promise<number> {
 
   const nouveaux = await prisma.livreurProfile.findMany({
     where: {
-      estActif: true,
-      enService: true,
+      ...enService,
       ...filtrePrefecture(course.prefecture),
-      // Ceux de la zone ont deja ete prevenus a l'ouverture.
-      NOT: { OR: livreursDeLaZone(course) },
-      utilisateur: { role: Role.LIVREUR, estActif: true },
+      NOT: { OR: dejaPrevenus },
     },
     select: { utilisateur: { select: { id: true } } },
   });
-  await Promise.all(nouveaux.map(({ utilisateur }) => notifierSansBloquer({
-    idUtilisateur: utilisateur.id,
-    type: 'COURSE_OUVERTE',
-    titre: 'Course sans motard dans sa commune',
-    contenu: `La course ${course.numero} a ${course.commune ?? course.quartier} n'a recu aucune offre : elle est ouverte a toute la prefecture.`,
-    lienAction: '/livreur/courses',
-    metadonnees: { idCourse, numero: course.numero, quartier: course.quartier, elargie: true },
-  })));
+  await notifierElargissement(nouveaux, course, idCourse, 'a toute la prefecture');
   return nouveaux.length;
 }
 
@@ -335,7 +395,12 @@ export async function elargirCoursesEnAttente(
     where: {
       statut: StatutCourse.APPEL_OFFRES,
       elargieLe: null,
-      creeeLe: { lte: limite },
+      // Chaque etape a son propre delai : depuis l'ouverture tant que la
+      // course est dans sa commune, depuis l'ouverture aux voisines ensuite.
+      OR: [
+        { voisinesLe: null, creeeLe: { lte: limite } },
+        { voisinesLe: { lte: limite } },
+      ],
       // Des offres attendent le choix du patient : elargir n'apporterait rien.
       offres: { none: {} },
     },
@@ -538,6 +603,12 @@ export async function coursesOuvertesPour(user: JwtPayload): Promise<CourseLivre
         ...(filtreZones(zonesDuLivreur(profile)).OR as Record<string, unknown>[]),
         // Et les courses elargies a toute sa prefecture (M5).
         { elargieLe: { not: null }, ...filtrePrefecture(profile.prefecture) },
+        // Et celles ouvertes a ses communes en tant que voisines (M1-C).
+        {
+          voisinesLe: { not: null },
+          communesVoisines: { hasSome: communesDuLivreur(profile) },
+          ...filtrePrefecture(profile.prefecture),
+        },
       ],
     },
     select: COURSE_LIVREUR_OPEN_SELECT,
@@ -604,11 +675,13 @@ export async function proposer(
 
     const course = await tx.course.findUnique({
       where: { id: idCourse },
-      select: { quartier: true, prefecture: true, commune: true, elargieLe: true },
+      select: { quartier: true, prefecture: true, commune: true, elargieLe: true, voisinesLe: true, communesVoisines: true },
     });
     if (!course) throw new NotFoundError('Course non trouvee');
+    const ouverteAuxVoisines = !!course.voisinesLe
+      && communesDuLivreur(profile).some((c) => course.communesVoisines.includes(c));
     const dansSaZone = dansLesZones(course, zonesDuLivreur(profile))
-      || (!!course.elargieLe && memePrefecture(course, profile));
+      || (memePrefecture(course, profile) && (!!course.elargieLe || ouverteAuxVoisines));
     if (!dansSaZone) {
       throw new ForbiddenError('Cette course est hors de votre zone');
     }
