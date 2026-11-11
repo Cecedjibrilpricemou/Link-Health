@@ -80,6 +80,28 @@
     &:active { transform: scale(0.98); }
   }
 
+  // La position de la structure : un geste fait sur place, sous les champs
+  // latitude/longitude.
+  &__gps {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    margin: -4px 0 16px;
+  }
+
+  &__secondary-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: var(--bb-radius);
+    border: 1px solid var(--bb-border); background: var(--bb-surface-1);
+    color: var(--bb-text-primary); font-family: var(--bb-font-display);
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: background var(--bb-transition), border-color var(--bb-transition);
+    &:hover:not(:disabled) { background: var(--bb-surface-2); border-color: var(--bb-border-strong); }
+    &:disabled { opacity: .6; cursor: progress; }
+    i { color: var(--bb-primary); }
+    @media (max-width: 420px) { width: 100%; justify-content: center; }
+  }
+
+  &__gps-aide { font-size: 12px; color: var(--bb-text-muted); }
+
   &__save-btn {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 10px 18px; border-radius: var(--bb-radius);

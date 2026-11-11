@@ -683,6 +683,8 @@ export interface CreateStructureDto {
   nom: string;
   type: TypeStructure;
   prefecture: string;
+  commune?: string;
+  quartier?: string;
   adresse?: string;
   telephone?: string;
   latitude?: number;
@@ -698,6 +700,8 @@ export interface CreateStructureDto {
 export interface CreatePharmacieDto {
   nom: string;
   prefecture: string;
+  commune?: string;
+  quartier?: string;
   adresse?: string;
   telephone?: string;
   latitude?: number;

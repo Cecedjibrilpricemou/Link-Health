@@ -105,6 +105,19 @@
                                [placeholder]="'PATIENT.PROFILE.GENDER_SELECT' | translate" />
           @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
         </div>
+        <div class="bb-struct__field">
+          <label for="struct-commune">{{ 'ADMIN.STRUCTURES.COMMUNE_LABEL' | translate }} *</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+            <input matInput id="struct-commune" [(ngModel)]="newStructure.commune" [placeholder]="'ADMIN.STRUCTURES.COMMUNE_PH' | translate" #structCommune="ngModel" required aria-describedby="struct-commune-msg" />
+          </mat-form-field>
+          @if (structCommune.invalid && (structCommune.dirty || structCommune.touched)) { <small id="struct-commune-msg" class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
+        </div>
+        <div class="bb-struct__field">
+          <label for="struct-quartier">{{ 'ADMIN.STRUCTURES.QUARTIER_LABEL' | translate }}</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+            <input matInput id="struct-quartier" [(ngModel)]="newStructure.quartier" [placeholder]="'ADMIN.STRUCTURES.QUARTIER_PH' | translate" />
+          </mat-form-field>
+        </div>
         <div class="bb-struct__field"><label for="struct-adresse">{{ 'ADMIN.STRUCTURES.ADRESSE_LABEL' | translate }}</label><mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
   <input matInput id="struct-adresse" [(ngModel)]="newStructure.adresse" [placeholder]="'ADMIN.STRUCTURES.ADRESSE_PH' | translate" />
 </mat-form-field></div>
@@ -127,6 +140,15 @@
     [placeholder]="'ADMIN.STRUCTURES.LNG_PH' | translate"
   />
 </mat-form-field></div>
+      </div>
+      <div class="bb-struct__gps">
+        <button type="button" class="bb-struct__secondary-btn" (click)="positionActuelle()" [disabled]="gpsEnCours()">
+          <i class="pi pi-map-marker" aria-hidden="true"></i> {{ (gpsEnCours() ? 'ADMIN.STRUCTURES.GPS_EN_COURS' : 'ADMIN.STRUCTURES.GPS_BTN') | translate }}
+        </button>
+        @if (erreurGps()) {
+          <small class="bb-error-text" role="alert">{{ erreurGps() }}</small>
+        }
+        <small class="bb-struct__gps-aide">{{ 'ADMIN.STRUCTURES.GPS_AIDE' | translate }}</small>
       </div>
 
       <!-- Le dossier reglementaire. **Il bloque** : une pharmacie
