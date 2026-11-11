@@ -1,6 +1,7 @@
 // La zone d'une ordonnance ou d'une course : la commune, dans sa prefecture.
 import {
-  CHAMPS_RECHERCHE, dansLesZones, filtreZone, filtreZones, memeZone, zoneDe, zoneDeLaCommande, zonesDuLivreur,
+  CHAMPS_RECHERCHE, dansLesZones, filtrePrefecture, filtreZone, filtreZones, memePrefecture, memeZone, zoneDe,
+  zoneDeLaCommande, zonesDuLivreur,
 } from '../src/utils/zone';
 
 const RATOMA_KIPE = { prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé' };
@@ -120,5 +121,25 @@ describe('zones du livreur', () => {
   it('le filtre Prisma propose une branche par zone', () => {
     const zones = zonesDuLivreur(motard);
     expect(filtreZones(zones)).toEqual({ OR: zones.map((z) => filtreZone(z)) });
+  });
+});
+
+// M5 : l'appel elargi couvre la prefecture, jamais au-dela.
+describe('prefecture (appel elargi)', () => {
+  it('meme prefecture, autre commune : appelee une fois l appel elargi', () => {
+    expect(memePrefecture(RATOMA_KIPE, { prefecture: 'conakry ', commune: 'Matoto' })).toBe(true);
+  });
+
+  it('autre prefecture, ou prefecture inconnue : jamais', () => {
+    expect(memePrefecture(RATOMA_KIPE, { prefecture: 'Kindia', commune: 'Ratoma' })).toBe(false);
+    expect(memePrefecture({ commune: 'Ratoma' }, { commune: 'Ratoma' })).toBe(false);
+  });
+
+  it('filtre sur la prefecture, sans casse ; sans prefecture, ne trouve rien', () => {
+    expect(filtrePrefecture(' Conakry ')).toEqual({ prefecture: { equals: 'Conakry', mode: 'insensitive' } });
+    expect(filtrePrefecture('Conakry', 'prefectureRecherche'))
+      .toEqual({ prefectureRecherche: { equals: 'Conakry', mode: 'insensitive' } });
+    expect(filtrePrefecture(null)).toEqual({ id: '__aucune_zone__' });
+    expect(filtrePrefecture('  ')).toEqual({ id: '__aucune_zone__' });
   });
 });

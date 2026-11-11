@@ -93,6 +93,13 @@ export const PARAMETRES_PAR_DEFAUT: ParametresSystemeValeurs = {
     // posera ici sans toucher au code.
     categoriesExigeantOrdonnance: [],
   },
+  // M5 : un appel sans preneur dans sa commune s'ouvre a toute la prefecture
+  // au bout de ce delai. 10 minutes : assez pour qu'un pharmacien ou un
+  // motard occupe reponde, pas assez pour qu'un patient se decourage.
+  zones: {
+    delaiElargissementCommandeMinutes: 10,
+    delaiElargissementCourseMinutes: 10,
+  },
 };
 
 type Section = keyof ParametresSystemeValeurs;

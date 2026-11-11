@@ -222,6 +222,20 @@ describe('sections de parametres', () => {
     expect(r.success).toBe(false);
   });
 
+  // M5 : 10 minutes par defaut, entre 1 minute et une journee.
+  it('le delai d elargissement vaut 10 minutes et se borne', () => {
+    expect(PARAMETRES_PAR_DEFAUT.zones).toEqual({
+      delaiElargissementCommandeMinutes: 10,
+      delaiElargissementCourseMinutes: 10,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { updateParametresSystemeSchema } = require('../src/validators/api.schemas');
+    const ok = (v: unknown) => updateParametresSystemeSchema.safeParse({ zones: { delaiElargissementCourseMinutes: v } }).success;
+    expect([ok(1), ok(1440), ok('15')]).toEqual([true, true, true]);
+    expect([ok(0), ok(1441), ok(2.5)]).toEqual([false, false, false]);
+    expect(updateParametresSystemeSchema.safeParse({ zones: { rayonKm: 5 } }).success).toBe(false);
+  });
+
   it('refuse toute configuration de remise', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { updateParametresSystemeSchema } = require('../src/validators/api.schemas');

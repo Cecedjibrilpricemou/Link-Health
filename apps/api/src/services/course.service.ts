@@ -20,7 +20,7 @@ import { estStructureOfficinale } from '../utils/officine.util';
 import { assertTransition as assertCommandeTransition } from './commande.transitions';
 import { notifierSansBloquer } from './notification.service';
 import { prochainNumero } from './numero.service';
-import { dansLesZones, filtreZone, filtreZones, zonesDuLivreur } from '../utils/zone';
+import { dansLesZones, filtrePrefecture, filtreZone, filtreZones, memePrefecture, zonesDuLivreur } from '../utils/zone';
 
 export type CourseTransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -242,6 +242,93 @@ async function obtenirCourseView(
   return versCourseView(course);
 }
 
+/**
+ * Les motards de la zone d'une course, en filtre Prisma : sa propre commune
+ * (ou son quartier pour un compte ancien), ou une commune qu'il dessert dans
+ * la meme prefecture.
+ */
+function livreursDeLaZone(course: { prefecture: string; commune: string | null; quartier: string }) {
+  return [
+    filtreZone(course),
+    ...(course.commune?.trim()
+      ? [{ AND: [
+          { prefecture: { equals: course.prefecture.trim(), mode: 'insensitive' as const } },
+          { communesDesservies: { has: course.commune.trim() } },
+        ] }]
+      : []),
+  ];
+}
+
+/**
+ * M5 : aucun motard de la zone n'a fait d'offre a temps, la course s'ouvre a
+ * toute la prefecture. Seuls les motards en service qui n'avaient pas ete
+ * prevenus le sont. Renvoie leur nombre.
+ *
+ * L'ecriture est conditionnelle (`elargieLe: null`) : deux passages du job ne
+ * previennent pas deux fois les memes motards.
+ */
+export async function elargirCourse(idCourse: string): Promise<number> {
+  const course = await prisma.course.findUnique({
+    where: { id: idCourse },
+    select: { id: true, numero: true, statut: true, elargieLe: true, prefecture: true, commune: true, quartier: true },
+  });
+  if (!course || course.statut !== StatutCourse.APPEL_OFFRES || course.elargieLe) return 0;
+  if (!course.prefecture.trim()) return 0;
+
+  const marque = await prisma.course.updateMany({
+    where: { id: idCourse, statut: StatutCourse.APPEL_OFFRES, elargieLe: null },
+    data: { elargieLe: new Date() },
+  });
+  if (marque.count !== 1) return 0;
+
+  const nouveaux = await prisma.livreurProfile.findMany({
+    where: {
+      estActif: true,
+      enService: true,
+      ...filtrePrefecture(course.prefecture),
+      // Ceux de la zone ont deja ete prevenus a l'ouverture.
+      NOT: { OR: livreursDeLaZone(course) },
+      utilisateur: { role: Role.LIVREUR, estActif: true },
+    },
+    select: { utilisateur: { select: { id: true } } },
+  });
+  await Promise.all(nouveaux.map(({ utilisateur }) => notifierSansBloquer({
+    idUtilisateur: utilisateur.id,
+    type: 'COURSE_OUVERTE',
+    titre: 'Course sans motard dans sa commune',
+    contenu: `La course ${course.numero} a ${course.commune ?? course.quartier} n'a recu aucune offre : elle est ouverte a toute la prefecture.`,
+    lienAction: '/livreur/courses',
+    metadonnees: { idCourse, numero: course.numero, quartier: course.quartier, elargie: true },
+  })));
+  return nouveaux.length;
+}
+
+/** Le job : les courses restees sans aucune offre au-dela du delai s'elargissent. */
+export async function elargirCoursesEnAttente(
+  delaiMinutes: number,
+  maintenant = new Date(),
+): Promise<{ elargies: number }> {
+  const limite = new Date(maintenant.getTime() - delaiMinutes * 60_000);
+  const enAttente = await prisma.course.findMany({
+    where: {
+      statut: StatutCourse.APPEL_OFFRES,
+      elargieLe: null,
+      creeeLe: { lte: limite },
+      // Des offres attendent le choix du patient : elargir n'apporterait rien.
+      offres: { none: {} },
+    },
+    select: { id: true },
+    orderBy: { creeeLe: 'asc' },
+    take: 100,
+  });
+  // Ne compte que les courses effectivement portees a de nouveaux motards.
+  let elargies = 0;
+  for (const { id } of enAttente) {
+    if ((await elargirCourse(id)) > 0) elargies++;
+  }
+  return { elargies };
+}
+
 /** Notifie les destinataires sans faire echouer l'action metier. */
 export async function notifierLivreursCourse(idCourse: string): Promise<void> {
   try {
@@ -259,15 +346,7 @@ export async function notifierLivreursCourse(idCourse: string): Promise<void> {
         // La commune de la course, pas tout le pays : un motard de Coyah ne
         // vient pas livrer a Ratoma (voir utils/zone.ts). Sa propre commune,
         // ou une commune qu'il dessert dans la meme prefecture.
-        OR: [
-          filtreZone(course),
-          ...(course.commune?.trim()
-            ? [{ AND: [
-                { prefecture: { equals: course.prefecture.trim(), mode: 'insensitive' as const } },
-                { communesDesservies: { has: course.commune.trim() } },
-              ] }]
-            : []),
-        ],
+        OR: livreursDeLaZone(course),
         utilisateur: { role: Role.LIVREUR, estActif: true },
       },
       select: { utilisateur: { select: { id: true } } },
@@ -432,8 +511,12 @@ export async function coursesOuvertesPour(user: JwtPayload): Promise<CourseLivre
   const courses = await prisma.course.findMany({
     where: {
       statut: StatutCourse.APPEL_OFFRES,
-      // Sa commune et celles qu'il dessert.
-      ...filtreZones(zonesDuLivreur(profile)),
+      OR: [
+        // Sa commune et celles qu'il dessert.
+        ...(filtreZones(zonesDuLivreur(profile)).OR as Record<string, unknown>[]),
+        // Et les courses elargies a toute sa prefecture (M5).
+        { elargieLe: { not: null }, ...filtrePrefecture(profile.prefecture) },
+      ],
     },
     select: COURSE_LIVREUR_OPEN_SELECT,
     orderBy: { creeeLe: 'asc' },
@@ -499,10 +582,12 @@ export async function proposer(
 
     const course = await tx.course.findUnique({
       where: { id: idCourse },
-      select: { quartier: true, prefecture: true, commune: true },
+      select: { quartier: true, prefecture: true, commune: true, elargieLe: true },
     });
     if (!course) throw new NotFoundError('Course non trouvee');
-    if (!dansLesZones(course, zonesDuLivreur(profile))) {
+    const dansSaZone = dansLesZones(course, zonesDuLivreur(profile))
+      || (!!course.elargieLe && memePrefecture(course, profile));
+    if (!dansSaZone) {
       throw new ForbiddenError('Cette course est hors de votre zone');
     }
 

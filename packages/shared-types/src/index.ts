@@ -2085,6 +2085,15 @@ export interface ParametresPharmacieView {
   categoriesExigeantOrdonnance: CategorieProduit[];
 }
 
+/**
+ * Elargissement des appels (M5) : sans preneur dans sa commune au bout de ce
+ * delai, une ordonnance ou une course s'ouvre a toute la prefecture.
+ */
+export interface ParametresZonesView {
+  delaiElargissementCommandeMinutes: number;
+  delaiElargissementCourseMinutes: number;
+}
+
 export interface ParametresSystemeValeurs {
   identite: ParametresIdentiteView;
   facturation: ParametresFacturationView;
@@ -2093,6 +2102,7 @@ export interface ParametresSystemeValeurs {
   sync: ParametresSyncView;
   prescription: ParametresPrescriptionView;
   pharmacie: ParametresPharmacieView;
+  zones: ParametresZonesView;
 }
 
 /** GET/PUT /admin-structure/parametres */

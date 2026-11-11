@@ -766,6 +766,12 @@ export const updateParametresSystemeSchema = z.object({
       'HYGIENE', 'PARAPHARMACIE', 'DISPOSITIF_MEDICAL', 'AUTRE',
     ])).max(8),
   }).partial().strict().optional(),
+
+  // M5 : delai avant d'ouvrir un appel sans preneur a toute la prefecture.
+  zones: z.object({
+    delaiElargissementCommandeMinutes: z.coerce.number().int().min(1).max(1440),
+    delaiElargissementCourseMinutes: z.coerce.number().int().min(1).max(1440),
+  }).partial().strict().optional(),
 }).strict();
 
 // ─── P1 Hopital : episodes de soins et demandes d'analyse (EF-03) ────────────

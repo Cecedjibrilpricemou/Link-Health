@@ -129,3 +129,22 @@ export function filtreZones(
 ): Record<string, unknown> {
   return { OR: zones.map((z) => filtreZone(z, champs)) };
 }
+
+// ── Elargissement (M5) ──────────────────────────────────────────────
+//
+// Un appel sans reponse dans sa commune s'etend a toute la prefecture : une
+// ordonnance ou une course ne doit jamais rester sans personne pour y
+// repondre. L'etape « communes voisines » viendra avec le referentiel
+// geographique (M1), qui sait lesquelles se touchent.
+
+/** Meme prefecture, la commune ne compte plus : la zone d'un appel elargi. */
+export function memePrefecture(a: Lieu, b: Lieu): boolean {
+  const pa = propre(a.prefecture);
+  return !!pa && pa === propre(b.prefecture);
+}
+
+/** Le filtre Prisma d'une prefecture entiere ; aucune si elle est inconnue. */
+export function filtrePrefecture(prefecture: string | null | undefined, champ = 'prefecture'): Record<string, unknown> {
+  const p = (prefecture ?? '').trim();
+  return p ? { [champ]: egal(p) } : AUCUNE_ZONE;
+}
