@@ -84,6 +84,15 @@ const privacy = require('../src/routes/privacy.routes').default as { stack: Couc
 const identites = require('../src/routes/identite.routes').default as { stack: Couche[] };
 const adminStructure = require('../src/routes/admin-structure.routes').default as { stack: Couche[] };
 const consultations = require('../src/routes/consultation.routes').default as { stack: Couche[] };
+const courses = require('../src/routes/course.routes').default as { stack: Couche[] };
+
+describe('disponibilite et zone du motard (M4)', () => {
+  it('les trois routes ne sont ouvertes qu au livreur', () => {
+    expect(rolesPour(courses, 'get', '/livreur/profil')).toEqual(['LIVREUR']);
+    expect(rolesPour(courses, 'put', '/livreur/service')).toEqual(['LIVREUR']);
+    expect(rolesPour(courses, 'put', '/livreur/communes')).toEqual(['LIVREUR']);
+  });
+});
 const paiements = require('../src/routes/paiement.routes').default as { stack: Couche[] };
 
 describe('compte rendu de consultation (EF-05-03)', () => {

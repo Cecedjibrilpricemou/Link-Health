@@ -20,7 +20,7 @@ import { estStructureOfficinale } from '../utils/officine.util';
 import { assertTransition as assertCommandeTransition } from './commande.transitions';
 import { notifierSansBloquer } from './notification.service';
 import { prochainNumero } from './numero.service';
-import { filtreZone, memeZone } from '../utils/zone';
+import { dansLesZones, filtreZone, filtreZones, zonesDuLivreur } from '../utils/zone';
 
 export type CourseTransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -199,6 +199,8 @@ async function profilLivreur(userId: string, actifObligatoire: boolean) {
       quartier: true,
       prefecture: true,
       commune: true,
+      communesDesservies: true,
+      enService: true,
       estActif: true,
       utilisateur: { select: { role: true } },
     },
@@ -251,9 +253,21 @@ export async function notifierLivreursCourse(idCourse: string): Promise<void> {
     const destinataires = await prisma.livreurProfile.findMany({
       where: {
         estActif: true,
+        // Seul un motard en service est prevenu : celui qui ne travaille pas
+        // aujourd'hui laisserait l'appel sans reponse (voir livreur-zone).
+        enService: true,
         // La commune de la course, pas tout le pays : un motard de Coyah ne
-        // vient pas livrer a Ratoma (voir utils/zone.ts).
-        ...filtreZone(course),
+        // vient pas livrer a Ratoma (voir utils/zone.ts). Sa propre commune,
+        // ou une commune qu'il dessert dans la meme prefecture.
+        OR: [
+          filtreZone(course),
+          ...(course.commune?.trim()
+            ? [{ AND: [
+                { prefecture: { equals: course.prefecture.trim(), mode: 'insensitive' as const } },
+                { communesDesservies: { has: course.commune.trim() } },
+              ] }]
+            : []),
+        ],
         utilisateur: { role: Role.LIVREUR, estActif: true },
       },
       select: { utilisateur: { select: { id: true } } },
@@ -418,7 +432,8 @@ export async function coursesOuvertesPour(user: JwtPayload): Promise<CourseLivre
   const courses = await prisma.course.findMany({
     where: {
       statut: StatutCourse.APPEL_OFFRES,
-      ...filtreZone(profile),
+      // Sa commune et celles qu'il dessert.
+      ...filtreZones(zonesDuLivreur(profile)),
     },
     select: COURSE_LIVREUR_OPEN_SELECT,
     orderBy: { creeeLe: 'asc' },
@@ -459,6 +474,10 @@ export async function proposer(
 ): Promise<OffreCourseView> {
   exigerRole(user, Role.LIVREUR);
   const profile = await profilLivreur(user.userId, true);
+  // Une offre engage a venir : hors service, on ne s'engage a rien.
+  if (!profile.enService) {
+    throw new ForbiddenError('Passez en service pour proposer une offre');
+  }
   if (!Number.isInteger(offre.prixGnf) || offre.prixGnf <= 0) {
     throw new ValidationError('Le prix doit etre un entier positif');
   }
@@ -483,7 +502,7 @@ export async function proposer(
       select: { quartier: true, prefecture: true, commune: true },
     });
     if (!course) throw new NotFoundError('Course non trouvee');
-    if (!memeZone(course, profile)) {
+    if (!dansLesZones(course, zonesDuLivreur(profile))) {
       throw new ForbiddenError('Cette course est hors de votre zone');
     }
 

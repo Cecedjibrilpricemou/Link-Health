@@ -327,6 +327,21 @@ export interface MesCoursesLivreurView {
   courses: CourseLivreurView[];
 }
 
+/** Disponibilite et zone de travail du motard, vues par lui-meme. */
+export interface LivreurZoneView {
+  prefecture: string;
+  commune: string | null;
+  quartier: string;
+  /** Communes desservies en plus de la sienne, dans la meme prefecture (5 au plus). */
+  communesDesservies: string[];
+  /** Seul un motard en service est prevenu des courses et peut proposer une offre. */
+  enService: boolean;
+  enServiceDepuis: HorodatageApi | null;
+  estActif: boolean;
+}
+export interface DefinirEnServiceDto { enService: boolean; }
+export interface DefinirCommunesDesserviesDto { communes: string[]; }
+
 /** Offre d'un livreur, ordonnee par prix puis par delai pour le patient. */
 export interface OffreCourseView {
   id: string;

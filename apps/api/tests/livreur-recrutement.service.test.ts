@@ -173,7 +173,14 @@ describe('recrutement des livreurs', () => {
     expect(prisma.livreurProfile.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         estActif: true,
-        ...filtreZone(dto),
+        enService: true,
+        OR: [
+          filtreZone(dto),
+          { AND: [
+            { prefecture: { equals: dto.prefecture, mode: 'insensitive' } },
+            { communesDesservies: { has: dto.commune } },
+          ] },
+        ],
         utilisateur: { role: Role.LIVREUR, estActif: true },
       }),
     }));

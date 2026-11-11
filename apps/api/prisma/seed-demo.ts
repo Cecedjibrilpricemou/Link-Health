@@ -315,12 +315,15 @@ async function main() {
   const compteLivreur = await upsertUtilisateur(DEMO.livreur, Role.LIVREUR, motDePasseHash, null);
   await prisma.livreurProfile.upsert({
     where: { idUtilisateur: compteLivreur.id },
-    update: { quartier: QUARTIER, commune: COMMUNE, prefecture: PREFECTURE, estActif: true },
+    // En service : c'est lui que la course de demonstration doit prevenir.
+    update: { quartier: QUARTIER, commune: COMMUNE, prefecture: PREFECTURE, estActif: true, enService: true, enServiceDepuis: new Date() },
     create: {
       idUtilisateur: compteLivreur.id,
       quartier: QUARTIER,
       commune: COMMUNE,
       prefecture: PREFECTURE,
+      enService: true,
+      enServiceDepuis: new Date(),
     },
   });
 

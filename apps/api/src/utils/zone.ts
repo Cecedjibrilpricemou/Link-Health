@@ -104,3 +104,28 @@ export function zoneDeLaCommande(c: {
 }): Lieu {
   return { prefecture: c.prefectureRecherche, commune: c.communeRecherche, quartier: c.quartierRecherche };
 }
+
+/**
+ * Les zones d'un motard : sa propre commune (ou son quartier, pour un compte
+ * ancien), plus les communes qu'il dessert dans la meme prefecture.
+ */
+export function zonesDuLivreur(p: Lieu & { communesDesservies?: string[] | null }): Lieu[] {
+  const autres = (p.communesDesservies ?? [])
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .map((commune) => ({ prefecture: p.prefecture, commune, quartier: null }));
+  return [p, ...autres];
+}
+
+/** Le lieu est-il dans l'une des zones ? */
+export function dansLesZones(lieu: Lieu, zones: Lieu[]): boolean {
+  return zones.some((z) => memeZone(lieu, z));
+}
+
+/** Le filtre Prisma d'une liste de zones : l'une OU l'autre. */
+export function filtreZones(
+  zones: Lieu[],
+  champs: { prefecture: string; commune: string; quartier: string } = CHAMPS_LIEU,
+): Record<string, unknown> {
+  return { OR: zones.map((z) => filtreZone(z, champs)) };
+}
