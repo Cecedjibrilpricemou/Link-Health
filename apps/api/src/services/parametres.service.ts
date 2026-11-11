@@ -10,9 +10,11 @@
 import { Prisma } from '../config/generated/client/client';
 import { prisma } from '../config/prisma';
 import { cacheDel, withCache } from '../utils/cache';
+import { ValidationError } from '../utils/app-error';
 import type {
   IdentitePlateformeView,
   ParametresIdentiteView,
+  ParametresPaysView,
   ParametresSystemeValeurs,
   ParametresSystemeView,
   UpdateParametresSystemeDto,
@@ -100,7 +102,42 @@ export const PARAMETRES_PAR_DEFAUT: ParametresSystemeValeurs = {
     delaiElargissementCommandeMinutes: 10,
     delaiElargissementCourseMinutes: 10,
   },
+  // M1 : une installation par pays. La Guinee est la configuration fournie,
+  // pas une hypothese du code : un autre pays declare ici ses propres niveaux.
+  pays: {
+    code: 'GN',
+    nom: 'Guinée',
+    indicatifTelephone: '+224',
+    niveaux: [
+      { code: 'region', libelles: { fr: 'Région', en: 'Region', pt: 'Região' } },
+      { code: 'prefecture', libelles: { fr: 'Préfecture', en: 'Prefecture', pt: 'Prefeitura' } },
+      { code: 'commune', libelles: { fr: 'Commune', en: 'Commune', pt: 'Comuna' } },
+    ],
+    niveauBase: 'commune',
+    niveauElargissement: 'prefecture',
+  },
 };
+
+/**
+ * Le decoupage declare doit tenir debout : des codes uniques, et un niveau
+ * d'elargissement **plus large** que le niveau de base — sinon un appel
+ * « elargi » se retrecirait.
+ */
+export function verifierPays(pays: ParametresPaysView): void {
+  const codes = pays.niveaux.map((n) => n.code);
+  if (new Set(codes).size !== codes.length) {
+    throw new ValidationError('Deux niveaux administratifs portent le meme code');
+  }
+  const base = codes.indexOf(pays.niveauBase);
+  const elargissement = codes.indexOf(pays.niveauElargissement);
+  if (base < 0) throw new ValidationError(`Niveau de base « ${pays.niveauBase} » absent des niveaux declares`);
+  if (elargissement < 0) {
+    throw new ValidationError(`Niveau d'elargissement « ${pays.niveauElargissement} » absent des niveaux declares`);
+  }
+  if (elargissement >= base) {
+    throw new ValidationError("Le niveau d'elargissement doit etre plus large que le niveau de base");
+  }
+}
 
 type Section = keyof ParametresSystemeValeurs;
 const SECTIONS = Object.keys(PARAMETRES_PAR_DEFAUT) as Section[];
@@ -206,6 +243,19 @@ export async function modifierParametres(
   const ligne = await lireLigne();
   const actuelles = fusionnerParametres(PARAMETRES_PAR_DEFAUT, ligne?.valeurs);
   const valeurs = fusionnerParametres(actuelles, dto);
+
+  if (dto.pays) {
+    verifierPays(valeurs.pays);
+    // Un niveau retire alors que des lieux le portent laisserait le
+    // referentiel incoherent : on le refuse plutot que de les orpheliner.
+    const codes = valeurs.pays.niveaux.map((n) => n.code);
+    const orphelins = await prisma.lieuGeo.count({ where: { niveau: { notIn: codes } } });
+    if (orphelins > 0) {
+      throw new ValidationError(
+        `${orphelins} lieu(x) du referentiel portent un niveau retire : retirez-les ou gardez ce niveau`,
+      );
+    }
+  }
 
   const valeursJson = valeurs as unknown as Prisma.InputJsonValue;
   const sauvegarde = await prisma.parametresSysteme.upsert({
