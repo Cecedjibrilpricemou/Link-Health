@@ -1,0 +1,318 @@
+// Referentiel geographique (M1). Memes surfaces, rayons et accents que les
+// autres ecrans d'administration (voir admin/livreurs) ; aucune couleur en
+// dur : le theme clair et le theme sombre passent par les variables --bb-*.
+:host {
+  display: block;
+  --geo-accent: var(--bb-primary);
+}
+
+:host-context([data-theme="dark"]) {
+  --geo-accent: var(--bb-bright);
+}
+
+.geo {
+  &__decoupage { color: var(--bb-text-secondary); }
+
+  &__success,
+  &__error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    padding: 0.75rem 0.9rem;
+    border-radius: var(--bb-radius-sm);
+    font-size: 0.875rem;
+
+    mat-icon { width: 18px; height: 18px; font-size: 18px; flex: 0 0 auto; }
+  }
+
+  &__success {
+    background: var(--bb-success-bg);
+    border: 1px solid var(--bb-success-border);
+    color: var(--geo-accent);
+  }
+
+  &__error {
+    background: var(--bb-danger-bg);
+    border: 1px solid var(--bb-danger-border);
+    color: var(--bb-danger);
+  }
+
+  &__card {
+    margin-top: 1rem;
+    padding: 1rem 1.15rem;
+  }
+
+  // ── Fil d'Ariane ────────────────────────────────────────────────
+  &__chemin {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__miette {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--bb-text-secondary);
+    font: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+
+    &:hover { background: var(--bb-surface-1); color: var(--bb-text-primary); }
+
+    &--courante {
+      border-color: var(--bb-border-light);
+      background: var(--bb-surface-1);
+      color: var(--bb-text-primary);
+      font-weight: 700;
+    }
+  }
+
+  &__separateur { color: var(--bb-text-muted); font-size: 0.75rem; }
+
+  // ── Titre de liste (meme accent que les autres ecrans) ──────────
+  &__list-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
+
+    h2 {
+      margin: 0;
+      font-family: var(--bb-font-display);
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--bb-text-primary);
+
+      &::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 18px;
+        margin-right: 0.55rem;
+        border-radius: 4px;
+        background: var(--geo-accent);
+        vertical-align: -3px;
+      }
+    }
+
+    > span {
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: var(--bb-surface-1);
+      color: var(--bb-text-secondary);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+  }
+
+  &__confirmer-tout { margin-left: auto; }
+
+  &__hint {
+    margin: 0.35rem 0 1rem;
+    color: var(--bb-text-secondary);
+    font-size: 0.8125rem;
+  }
+
+  &__muted { color: var(--bb-text-muted); font-size: 0.75rem; }
+
+  // ── Liste des lieux ─────────────────────────────────────────────
+  &__lieux {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__lieu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    padding: 0.45rem 0.25rem;
+    border-bottom: 1px solid var(--bb-border-light);
+
+    &:last-child { border-bottom: 0; }
+  }
+
+  &__lieu-nom {
+    color: var(--bb-text-primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+
+    &--lien {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+
+      i { color: var(--bb-text-muted); font-size: 0.75rem; }
+      &:hover { color: var(--geo-accent); }
+    }
+  }
+
+  &__badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+
+    &--a-valider {
+      background: var(--bb-warning-bg);
+      border: 1px solid var(--bb-warning-border);
+      color: var(--bb-warning);
+    }
+  }
+
+  &__voisins-resume {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--bb-text-muted);
+    font-size: 0.75rem;
+  }
+
+  &__actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-left: auto;
+  }
+
+  // ── Edition du voisinage ────────────────────────────────────────
+  &__voisins {
+    margin-top: 1rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-sm);
+    background: var(--bb-surface-1);
+
+    h3 {
+      margin: 0;
+      font-family: var(--bb-font-display);
+      font-size: 0.9375rem;
+      font-weight: 800;
+      color: var(--bb-text-primary);
+    }
+  }
+
+  &__filtre { width: min(100%, 320px); }
+
+  &__puces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.75rem 0;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  &__puce {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--bb-border-light);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--bb-text-primary);
+    font: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+
+    small { color: var(--bb-text-muted); }
+
+    &--active {
+      border-color: var(--geo-accent);
+      background: var(--bb-success-bg);
+      color: var(--geo-accent);
+      font-weight: 700;
+    }
+  }
+
+  &__voisins-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  // ── Ajout ───────────────────────────────────────────────────────
+  &__ajout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-top: 1rem;
+
+    mat-form-field { flex: 1 1 260px; }
+  }
+
+  // ── Table des saisies hors liste ────────────────────────────────
+  &__table-wrap { overflow-x: auto; }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+
+    th,
+    td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--bb-border-light);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--bb-text-muted);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+  }
+}
+
+.bb-empty {
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  color: var(--bb-text-muted);
+
+  mat-icon { width: 26px; height: 26px; font-size: 26px; opacity: 0.45; }
+  p { margin: 0; font-size: 0.8125rem; text-align: center; }
+}
+
+@media (max-width: 600px) {
+  .geo__actions { margin-left: 0; }
+  .geo__ajout button { width: 100%; }
+}
+
+// Focus clavier explicite et cible tactile uniforme, comme ailleurs.
+.geo :where(button, a):focus-visible {
+  outline: none;
+  box-shadow: var(--bb-focus-ring);
+}
+
+.geo button { min-height: 44px; }
+.geo__miette,
+.geo__puce,
+.geo__lieu-nom--lien { min-height: 36px; }

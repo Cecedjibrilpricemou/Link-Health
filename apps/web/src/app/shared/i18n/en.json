@@ -1538,7 +1538,31 @@
       "PHARMACIE_REMISE_LABEL": "Maximum discount (%)",
       "PHARMACIE_REMISE_HINT": "Cap as a percentage of the total. Without a cap, a typo brings a sale to zero with nothing to stop it.",
       "PHARMACIE_CATEGORIES_TITLE": "Categories requiring a prescription",
-      "PHARMACIE_CATEGORIES_DESC": "In addition to controlled products, which always require one (EF-05-12). Still pending a decision: leaving everything off means only controlled products require a prescription."
+      "PHARMACIE_CATEGORIES_DESC": "In addition to controlled products, which always require one (EF-05-12). Still pending a decision: leaving everything off means only controlled products require a prescription.",
+      "TAB_PAYS": "Country",
+      "PAYS_TITLE": "Country of this installation",
+      "PAYS_DESC": "An installation serves a single country: its health data stays there. The administrative divisions declared here decide the names shown everywhere (Prefecture, Department, LGA, District…) and how a request widens.",
+      "PAYS_NOM": "Country name",
+      "PAYS_CODE": "Country code",
+      "PAYS_CODE_HINT": "Two letters, ISO 3166: GN, SN, CI, NG, MZ…",
+      "PAYS_INDICATIF": "Dialling code",
+      "PAYS_NIVEAUX_TITLE": "Administrative levels",
+      "PAYS_NIVEAUX_DESC": "From the widest to the finest, two to six levels. The code is a stable lowercase identifier; names are shown in each user’s language.",
+      "PAYS_NIVEAU_CODE": "Code",
+      "PAYS_LIBELLE_FR": "Name in French",
+      "PAYS_LIBELLE_EN": "Name in English",
+      "PAYS_LIBELLE_PT": "Name in Portuguese",
+      "PAYS_MONTER": "Move this level up",
+      "PAYS_DESCENDRE": "Move this level down",
+      "PAYS_RETIRER": "Remove this level",
+      "PAYS_AJOUTER": "Add a level",
+      "PAYS_ROLES_TITLE": "Search and widening",
+      "PAYS_ROLES_DESC": "A prescription or a delivery first goes to the base level, then widens to the widening level if nobody answers. The widening level must be wider than the base level.",
+      "PAYS_BASE": "Base level",
+      "PAYS_BASE_HINT": "Where a pharmacy or a courier is looked for first (the commune in Guinea).",
+      "PAYS_ELARGISSEMENT": "Widening level",
+      "PAYS_ELARGISSEMENT_HINT": "Where the request widens next (the prefecture in Guinea).",
+      "PAYS_REFERENTIEL": "Open the places reference"
     },
     "ANALYTICS": {
       "SUBTITLE": "Epidemiological dashboard — {{nom}} Guinea 🇬🇳",
@@ -1916,7 +1940,42 @@
       "ERR_CHARGEMENT": "Could not load administrators.",
       "ERR_CREATION": "Account creation failed."
     },
-    "NAV_ADMINISTRATEURS": "Leadership"
+    "NAV_ADMINISTRATEURS": "Leadership",
+    "NAV_GEO": "Geographic reference",
+    "GEO": {
+      "TITLE": "Geographic reference",
+      "SUBTITLE": "The country's administrative divisions and their places.",
+      "REFRESH": "Refresh",
+      "STARTER": "Load the starter set",
+      "BREADCRUMB": "Position in the divisions",
+      "ROOT": "Country",
+      "EMPTY": "No place at this level yet.",
+      "NO_LEVELS": "No administrative level is declared: set them in Settings › Country.",
+      "TO_VALIDATE": "To confirm",
+      "CONFIRM": "Confirm",
+      "CONFIRM_ALL": "Confirm all ({{n}})",
+      "NEIGHBOURS": "neighbours",
+      "EDIT_NEIGHBOURS": "Neighbours",
+      "EDIT_NEIGHBOURS_OF": "Neighbours of {{nom}}",
+      "NEIGHBOURS_HELP": "Tick the bordering places. The link works both ways: they will be used to widen a request left unanswered.",
+      "FILTER": "Filter",
+      "SAVE_NEIGHBOURS": "Save ({{n}})",
+      "ADD": "Add",
+      "ADD_LABEL": "New place: {{niveau}}",
+      "OUTSIDE_TITLE": "Typed outside the reference",
+      "OUTSIDE_HELP": "These {{base}} names were typed on patients, facilities or couriers but are not in the reference. Add the ones that exist; a typo is fixed on the record concerned. The {{zone}} column shows where they were typed.",
+      "OUTSIDE_EMPTY": "Every entry matches the reference.",
+      "COL_PATIENTS": "Patients",
+      "COL_STRUCTURES": "Facilities",
+      "COL_COURIERS": "Couriers",
+      "COL_ACTION": "Action",
+      "ADD_FROM_TREE": "Add it from the tree",
+      "SUCCESS_ADD": "\"{{nom}}\" added to the reference.",
+      "SUCCESS_NEIGHBOURS": "Neighbours of {{nom}} saved.",
+      "SUCCESS_STARTER": "Starter set loaded: {{crees}} place(s) added, {{presents}} already present.",
+      "ERR_LOAD": "The reference could not be loaded.",
+      "ERR_SAVE": "The change could not be saved."
+    }
   },
   "PHARMACIEN": {
     "ROLE": "Pharmacist",
@@ -3933,5 +3992,10 @@
     "ERR_SILENCE": "I didn’t hear anything. Press “Dictate” again and speak close to the phone.",
     "ERR_HORS_LIGNE": "Dictation needs an Internet connection. You can type your text.",
     "ERR_GENERIQUE": "Dictation didn’t work. You can type your text."
+  },
+  "GEO": {
+    "DEFAUT_BASE": "Commune",
+    "DEFAUT_ELARGISSEMENT": "Prefecture",
+    "DEFAUT_LIEU": "Place"
   }
 }

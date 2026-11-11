@@ -13,11 +13,13 @@ import { ToastrService } from 'ngx-toastr';
 import { PatientService } from '../../../../core/services/patient.service';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../shared/services/i18n.service';
+import { GeographieService } from '../../../../core/services/geographie.service';
+import { SuggestionsLieuxComponent } from '../../../../shared/components/suggestions-lieux/suggestions-lieux.component';
 
 @Component({
   selector: 'app-adresse-patient',
   standalone: true,
-  imports: [FormsModule, MatFormFieldModule, MatInputModule, TranslatePipe],
+  imports: [FormsModule, MatFormFieldModule, MatInputModule, TranslatePipe, SuggestionsLieuxComponent],
   templateUrl: './adresse.component.html',
   styleUrl: './adresse.component.scss',
 })
@@ -25,6 +27,8 @@ export class AdressePatientComponent implements OnInit {
   private patientService = inject(PatientService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);
+  /** Les noms des niveaux (« Commune », « Ward »...) viennent du pays installe. */
+  readonly geo = inject(GeographieService);
 
   adresse = signal<AdressePatientView | null>(null);
   enregistrement = signal(false);
@@ -36,6 +40,7 @@ export class AdressePatientComponent implements OnInit {
   form = { commune: '', quartier: '', pointRepere: '' };
 
   ngOnInit() {
+    this.geo.chargerConfiguration().subscribe();
     this.patientService.monAdresse().subscribe({
       next: (res) => { if (res.data) this.appliquer(res.data); },
       error: () => { /* l'adresse reste vide : le patient peut la saisir */ },

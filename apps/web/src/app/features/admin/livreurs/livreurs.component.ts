@@ -12,6 +12,8 @@ import type { CreerLivreurDto, LivreurAdminView } from '@baobaoheath/shared-type
 import { LivreurAdminService } from '../../../core/services/livreur-admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { GeographieService } from '../../../core/services/geographie.service';
+import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
 
 type FormulaireLivreur = Required<CreerLivreurDto>;
 
@@ -33,6 +35,7 @@ function formulaireVide(): FormulaireLivreur {
     MatInputModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
+    SuggestionsLieuxComponent,
   ],
   templateUrl: './livreurs.component.html',
   styleUrl: './livreurs.component.scss',
@@ -40,6 +43,8 @@ function formulaireVide(): FormulaireLivreur {
 export class LivreursComponent implements OnInit {
   private readonly service = inject(LivreurAdminService);
   private readonly i18n = inject(I18nService);
+  /** M1 : « Commune », « LGA »... selon le pays installe. */
+  readonly geo = inject(GeographieService);
 
   readonly livreurs = signal<LivreurAdminView[]>([]);
   readonly chargement = signal(true);
@@ -59,6 +64,7 @@ export class LivreursComponent implements OnInit {
 
   ngOnInit(): void {
     this.charger();
+    this.geo.chargerConfiguration().subscribe();
   }
 
   charger(): void {
