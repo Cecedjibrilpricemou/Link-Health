@@ -5,6 +5,7 @@ import type {
   ChoisirOffreCourseDto,
   CourseLivreurView,
   CourseView,
+  LivreurZoneView,
   MesCoursesLivreurView,
   OffreCourseView,
   ProposerOffreCourseDto,
@@ -23,6 +24,21 @@ export class CourseService {
 
   mesCourses(): Observable<ApiResponse<MesCoursesLivreurView>> {
     return this.api.get<ApiResponse<MesCoursesLivreurView>>('/courses/mes-courses');
+  }
+
+  /** Disponibilite et zone du motard connecte (M4). */
+  profilLivreur(): Observable<ApiResponse<LivreurZoneView>> {
+    return this.api.get<ApiResponse<LivreurZoneView>>('/courses/livreur/profil');
+  }
+
+  /** Entrer en service ou en sortir : seul un motard en service est prevenu des courses. */
+  definirEnService(enService: boolean): Observable<ApiResponse<LivreurZoneView>> {
+    return this.api.put<ApiResponse<LivreurZoneView>>('/courses/livreur/service', { enService });
+  }
+
+  /** Les communes desservies en plus de la sienne (5 au plus, verifie par l'API). */
+  definirCommunes(communes: string[]): Observable<ApiResponse<LivreurZoneView>> {
+    return this.api.put<ApiResponse<LivreurZoneView>>('/courses/livreur/communes', { communes });
   }
 
   proposer(idCourse: string, dto: ProposerOffreCourseDto): Observable<ApiResponse<OffreCourseView>> {

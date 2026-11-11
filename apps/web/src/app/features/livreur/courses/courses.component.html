@@ -14,6 +14,79 @@
     </div>
   </header>
 
+  <!-- Disponibilite (M4) : seul un motard en service est prevenu des courses
+       et peut proposer une offre. -->
+  @if (zone(); as z) {
+    <section class="bb-service" [class.bb-service--actif]="z.enService" aria-labelledby="bb-service-titre">
+      <div class="bb-service__etat">
+        <span class="bb-service__pastille" aria-hidden="true"></span>
+        <div>
+          <h2 id="bb-service-titre">{{ (z.enService ? 'LIVREUR.SERVICE.EN_SERVICE' : 'LIVREUR.SERVICE.HORS_SERVICE') | translate }}</h2>
+          <p>{{ (z.enService ? 'LIVREUR.SERVICE.EN_SERVICE_AIDE' : 'LIVREUR.SERVICE.HORS_SERVICE_AIDE') | translate }}</p>
+        </div>
+      </div>
+      <button class="bb-course__button bb-service__bouton" type="button"
+              [class.bb-course__button--secondary]="z.enService"
+              (click)="basculerService()"
+              [disabled]="bascule() || (!z.enService && !z.estActif)">
+        <i class="pi" [class.pi-power-off]="!bascule()" [class.pi-spinner]="bascule()" [class.pi-spin]="bascule()" aria-hidden="true"></i>
+        {{ (z.enService ? 'LIVREUR.SERVICE.TERMINER' : 'LIVREUR.SERVICE.COMMENCER') | translate }}
+      </button>
+      @if (!z.estActif) {
+        <p class="bb-service__alerte" role="alert">{{ 'LIVREUR.SERVICE.SUSPENDU' | translate }}</p>
+      }
+    </section>
+
+    <!-- Zone de travail : sa commune, plus celles qu'il dessert. -->
+    <details class="bb-zone">
+      <summary>
+        <i class="pi pi-map-marker" aria-hidden="true"></i>
+        {{ 'LIVREUR.ZONE.TITRE' | translate }} :
+        <strong>{{ z.commune ?? z.quartier }}</strong>
+        @if (communes().length) { <span>+ {{ communes().length }}</span> }
+      </summary>
+      <p class="bb-zone__aide">{{ 'LIVREUR.ZONE.AIDE' | translate: { prefecture: z.prefecture, commune: z.commune ?? z.quartier } }}</p>
+
+      @if (communes().length) {
+        <ul class="bb-zone__liste">
+          @for (c of communes(); track c) {
+            <li class="bb-zone__commune">
+              {{ c }}
+              <button type="button" (click)="retirerCommune(c)"
+                      [attr.aria-label]="'LIVREUR.ZONE.RETIRER' | translate: { commune: c }">
+                <i class="pi pi-times" aria-hidden="true"></i>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (communes().length < max) {
+        <form class="bb-zone__ajout" (submit)="$event.preventDefault(); ajouterCommune()">
+          <input type="text" maxlength="80" autocomplete="off"
+                 [attr.aria-label]="'LIVREUR.ZONE.AJOUTER_LABEL' | translate"
+                 [placeholder]="'LIVREUR.ZONE.PLACEHOLDER' | translate"
+                 [value]="nouvelleCommune()"
+                 (input)="nouvelleCommune.set($any($event.target).value)" />
+          <button class="bb-course__button bb-course__button--secondary" type="submit"
+                  [disabled]="!nouvelleCommune().trim()">
+            <i class="pi pi-plus" aria-hidden="true"></i>
+            {{ 'LIVREUR.ZONE.AJOUTER' | translate }}
+          </button>
+        </form>
+      } @else {
+        <p class="bb-zone__aide">{{ 'LIVREUR.ZONE.MAX' | translate }}</p>
+      }
+
+      <button class="bb-course__button bb-zone__enregistrer" type="button"
+              (click)="enregistrerCommunes()"
+              [disabled]="!communesModifiees() || enregistrementCommunes()">
+        <i class="pi pi-check" aria-hidden="true"></i>
+        {{ 'LIVREUR.ZONE.ENREGISTRER' | translate }}
+      </button>
+    </details>
+  }
+
   @if (chargement()) {
     <p class="bb-course__empty">{{ 'COMMON.LOADING' | translate }}</p>
   } @else if (courses().length === 0) {
