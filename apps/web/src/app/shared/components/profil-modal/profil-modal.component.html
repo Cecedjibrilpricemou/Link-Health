@@ -107,15 +107,26 @@
             <div class="bb-profil-modal__field">
               <label for="profil-prenom">{{ 'PROFIL_MODAL.PRENOM_LABEL' | translate }}</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <input matInput id="profil-prenom" [(ngModel)]="profilForm.prenom" [placeholder]="'PROFIL_MODAL.PRENOM_PH' | translate" />
+                <input matInput id="profil-prenom" [(ngModel)]="profilForm.prenom" [readonly]="nomVerrouille()"
+                       [attr.aria-describedby]="nomVerrouille() ? 'profil-nom-verrou' : null"
+                       [placeholder]="'PROFIL_MODAL.PRENOM_PH' | translate" />
               </mat-form-field>
             </div>
             <div class="bb-profil-modal__field">
               <label for="profil-nom">{{ 'PROFIL_MODAL.NOM_LABEL' | translate }}</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <input matInput id="profil-nom" [(ngModel)]="profilForm.nom" [placeholder]="'PROFIL_MODAL.NOM_PH' | translate" />
+                <input matInput id="profil-nom" [(ngModel)]="profilForm.nom" [readonly]="nomVerrouille()"
+                       [attr.aria-describedby]="nomVerrouille() ? 'profil-nom-verrou' : null"
+                       [placeholder]="'PROFIL_MODAL.NOM_PH' | translate" />
               </mat-form-field>
             </div>
+            @if (nomVerrouille()) {
+              <!-- EF-01-08 : le nom confronte au registre de l'ordre figure sur ce qu'il signe. -->
+              <p id="profil-nom-verrou" class="bb-profil-modal__verrou" role="note">
+                <i class="pi pi-lock" aria-hidden="true"></i>
+                {{ 'PROFIL_MODAL.NOM_VERROUILLE_ORDRE' | translate }}
+              </p>
+            }
             <!-- Le numero est la cle du compte : il ne se change qu'avec le mot
                  de passe et un code envoye au nouveau numero. -->
             <div class="bb-profil-modal__field">

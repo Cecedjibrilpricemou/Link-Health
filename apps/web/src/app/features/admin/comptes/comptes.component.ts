@@ -177,6 +177,106 @@ export class ComptesComponent implements OnInit {
     });
   }
 
+  // ── Le numero d'ordre (EF-01-08) ───────────────────────────────────
+  //
+  // La route existait sans ecran : un professionnel suspendu ne pouvait pas
+  // etre reactive faute de pouvoir verifier son ordre. L'administrateur
+  // declare ici avoir confronte le numero au registre ; son nom reste attache
+  // a cette verification, et le nom du professionnel est alors fige.
+  aVerifier = signal<CompteView | null>(null);
+  numeroOrdre = signal('');
+  peutVerifierOrdre = computed(() => this.numeroOrdre().trim().length >= 3 && !this.enCours());
+
+  ouvrirVerificationOrdre(compte: CompteView) {
+    this.aVerifier.set(compte);
+    this.numeroOrdre.set(compte.numeroOrdre ?? '');
+    this.erreur.set('');
+  }
+
+  fermerVerificationOrdre() {
+    this.aVerifier.set(null);
+  }
+
+  confirmerVerificationOrdre() {
+    const compte = this.aVerifier();
+    if (!compte || !this.peutVerifierOrdre()) return;
+    this.enCours.set(true);
+    this.erreur.set('');
+    this.admin.verifierOrdre(compte.id, this.numeroOrdre().trim()).subscribe({
+      next: () => {
+        this.enCours.set(false);
+        this.aVerifier.set(null);
+        this.succes.set(this.i18n.t('ADMIN.COMPTES.ORDRE_VERIFIE_MSG', { nom: `${compte.prenom} ${compte.nom}` }));
+        setTimeout(() => this.succes.set(''), 6000);
+        this.rechercher();
+      },
+      error: (err) => {
+        this.enCours.set(false);
+        this.erreur.set(this.messageDe(err, 'ADMIN.COMPTES.ERR_ORDRE'));
+      },
+    });
+  }
+
+  // ── Corriger un nom ────────────────────────────────────────────────
+  //
+  // Un professionnel dont l'ordre est verifie ne change plus son nom seul :
+  // il figure sur ce qu'il signe. L'administration le corrige ici, avec un
+  // motif ; le journal garde l'ancien et le nouveau.
+  aRenommer = signal<CompteView | null>(null);
+  prenomCorrige = signal('');
+  nomCorrige = signal('');
+  motifNom = signal('');
+  peutCorrigerNom = computed(() => {
+    const c = this.aRenommer();
+    if (!c || this.enCours() || this.motifNom().trim().length < MOTIF_MIN) return false;
+    const prenom = this.prenomCorrige().trim();
+    const nom = this.nomCorrige().trim();
+    return !!prenom && !!nom && (prenom !== c.prenom || nom !== c.nom);
+  });
+
+  ouvrirCorrectionNom(compte: CompteView) {
+    this.aRenommer.set(compte);
+    this.prenomCorrige.set(compte.prenom);
+    this.nomCorrige.set(compte.nom);
+    this.motifNom.set('');
+    this.erreur.set('');
+  }
+
+  fermerCorrectionNom() {
+    this.aRenommer.set(null);
+  }
+
+  confirmerCorrectionNom() {
+    const compte = this.aRenommer();
+    if (!compte || !this.peutCorrigerNom()) return;
+    const prenom = this.prenomCorrige().trim();
+    const nom = this.nomCorrige().trim();
+    this.enCours.set(true);
+    this.erreur.set('');
+    this.admin.corrigerNomCompte(compte.id, {
+      ...(prenom !== compte.prenom ? { prenom } : {}),
+      ...(nom !== compte.nom ? { nom } : {}),
+      motif: this.motifNom().trim(),
+    }).subscribe({
+      next: (res) => {
+        this.enCours.set(false);
+        this.aRenommer.set(null);
+        this.succes.set(this.i18n.t('ADMIN.COMPTES.NOM_CORRIGE_MSG', {
+          nom: `${res.data?.prenom ?? prenom} ${res.data?.nom ?? nom}`,
+        }));
+        setTimeout(() => this.succes.set(''), 6000);
+        this.rechercher();
+      },
+      error: (err) => {
+        this.enCours.set(false);
+        this.erreur.set(this.messageDe(err, 'ADMIN.COMPTES.ERR_NOM'));
+      },
+    });
+  }
+
+  /** Une boite est ouverte : l'erreur s'affiche dedans, pas sous le tableau. */
+  boiteOuverte = computed(() => !!this.cible() || !!this.aVerifier() || !!this.aRenommer());
+
   private messageDe(err: unknown, cleDefaut: string): string {
     const e = err as { error?: { error?: string; message?: string } };
     return e?.error?.error ?? e?.error?.message ?? this.i18n.t(cleDefaut);

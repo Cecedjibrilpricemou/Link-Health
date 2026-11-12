@@ -203,3 +203,27 @@
   mat-icon { font-size: 26px; width: 26px; height: 26px; opacity: 0.45; }
   p { font-size: 0.8125rem; margin: 0; }
 }
+
+// ── EF-01-08 : l'ordre professionnel, et la correction du nom ─────────
+.comptes-table__ordre {
+  display: block;
+  width: fit-content;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+
+  &--ok { background: var(--bb-success-bg); color: var(--cpt-accent); }
+  &--attente { background: color-mix(in srgb, var(--bb-warning) 16%, transparent); color: var(--bb-warning); }
+}
+
+.comptes-table__secondaire { margin-left: 4px; }
+
+.comptes-boite__duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  @media (max-width: 520px) { grid-template-columns: 1fr; }
+}

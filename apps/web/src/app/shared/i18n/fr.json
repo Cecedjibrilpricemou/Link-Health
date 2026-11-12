@@ -102,7 +102,8 @@
     "TEL_RENVOYER": "Renvoyer un code",
     "TEL_CONFIRMER": "Confirmer le changement",
     "TEL_CHANGE": "Numéro changé. Votre ancien numéro en a été averti, et vos autres sessions ont été fermées.",
-    "TEL_ERR": "Le changement de numéro n'a pas abouti."
+    "TEL_ERR": "Le changement de numéro n'a pas abouti.",
+    "NOM_VERROUILLE_ORDRE": "Votre nom a été vérifié avec votre numéro d'ordre : il ne se modifie plus ici. Pour une correction, adressez-vous à l'administration de la plateforme."
   },
   "STATUT": {
     "TERMINEE": "Terminée",
@@ -2288,7 +2289,24 @@
       "SUBTITLE": "Suspendre ou rouvrir un compte. Une suspension prend effet immédiatement.",
       "SUSPEND": "Suspendre",
       "SUSPENDU": "Compte de {{nom}} fermé. {{sessions}} session(s) et {{sockets}} connexion(s) temps réel coupées.",
-      "TITLE": "Comptes"
+      "TITLE": "Comptes",
+      "ORDRE_OK": "Ordre vérifié · n° {{numero}}",
+      "ORDRE_ATTENTE": "Ordre à vérifier",
+      "ORDRE_VERIFIER": "Vérifier l'ordre",
+      "ORDRE_TITRE": "Vérifier le numéro d'ordre de {{nom}}",
+      "ORDRE_AIDE": "Confrontez le numéro au registre de l'ordre. Votre nom restera attaché à cette vérification. Ensuite, le compte pourra être activé, et le nom du professionnel ne se changera plus que par l'administration.",
+      "ORDRE_NUMERO": "Numéro d'inscription à l'ordre",
+      "ORDRE_CONFIRMER": "J'ai vérifié ce numéro au registre",
+      "ORDRE_VERIFIE_MSG": "Numéro d'ordre de {{nom}} vérifié.",
+      "ERR_ORDRE": "La vérification de l'ordre n'a pas pu être enregistrée.",
+      "NOM_CORRIGER": "Corriger le nom",
+      "NOM_TITRE": "Corriger le nom de {{nom}}",
+      "NOM_AIDE": "Le journal gardera l'ancien et le nouveau nom, avec votre motif. Pour un patient, la correction se fait à l'accueil, sur l'écran Identités.",
+      "NOM_PRENOM": "Prénom",
+      "NOM_NOM": "Nom",
+      "NOM_CONFIRMER": "Enregistrer la correction",
+      "NOM_CORRIGE_MSG": "Nom corrigé : {{nom}}.",
+      "ERR_NOM": "La correction du nom n'a pas pu être enregistrée."
     },
     "LIVREURS": {
       "TITLE": "Livreurs",

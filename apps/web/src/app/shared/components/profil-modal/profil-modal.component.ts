@@ -42,6 +42,13 @@ export class ProfilModalComponent implements OnInit {
   // Le numero n'y est plus : il a son propre parcours (voir plus bas).
   profilForm = { prenom: '', nom: '', email: '' };
 
+  /**
+   * EF-01-08 : un professionnel dont l'ordre est verifie ne change plus son
+   * nom seul ; l'administration le corrige, avec une trace. L'API le refuse de
+   * toute facon : l'ecran le dit avant, plutot qu'apres un echec.
+   */
+  nomVerrouille = computed(() => !!this.currentUser()?.ordreVerifieLe);
+
   // ── Changer de numero ─────────────────────────────────────────────
   //
   // Le numero est la cle du compte (connexion, codes, USSD). Il ne change

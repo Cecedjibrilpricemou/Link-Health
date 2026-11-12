@@ -36,6 +36,7 @@ function enVue(u: {
   id: string; prenom: string; nom: string; email: string | null; telephone: string;
   role: Role; estActif: boolean; suspenduLe: Date | null; motifSuspension: string | null;
   derniereConnexion: Date | null;
+  numeroOrdre?: string | null; ordreVerifieLe?: Date | null;
   suspenduPar: { prenom: string; nom: string } | null;
   structure: { nom: string } | null;
 }): CompteView {
@@ -61,11 +62,17 @@ function enVue(u: {
     // que de laisser croire a une suspension documentee : 15 comptes de la
     // base de demonstration sont dans ce cas.
     fermeSansMotif: !u.estActif && u.suspenduLe === null,
+    // EF-01-08 : l'ecran doit pouvoir dire qui attend la verification de son
+    // ordre - sans elle, le compte ne s'active pas, et le nom n'est pas fige.
+    soumisOrdre: ROLES_A_ORDRE.includes(u.role),
+    numeroOrdre: u.numeroOrdre ?? null,
+    ordreVerifieLe: u.ordreVerifieLe?.toISOString() ?? null,
   };
 }
 
 const SELECTION = {
   id: true, prenom: true, nom: true, email: true, telephone: true, role: true,
+  numeroOrdre: true, ordreVerifieLe: true,
   estActif: true, suspenduLe: true, motifSuspension: true, derniereConnexion: true,
   suspenduPar: { select: { prenom: true, nom: true } },
   structure: { select: { nom: true } },
@@ -300,4 +307,94 @@ export async function reactiver(auteur: Auteur, idCible: string): Promise<Suspen
     sessionsFermees: 0,
     socketsFermes: 0,
   };
+}
+
+// ── Le nom d'un professionnel ────────────────────────────────────────
+
+/**
+ * Un professionnel peut-il changer lui-meme son prenom ou son nom ?
+ *
+ * Tant que son numero d'ordre n'est pas verifie, oui. Ensuite, non : son nom
+ * est celui que l'administration a confronte au registre de l'ordre, et il
+ * figure sur les ordonnances qu'il signe. Le changer seul couperait le lien
+ * entre la signature et l'inscription verifiee. La correction passe alors par
+ * l'administration (`corrigerNom`), avec un motif et une trace.
+ *
+ * Appelee par `PUT /auth/profile`, comme la regle du patient (R15).
+ */
+export async function assertNomModifiableParLeProfessionnel(
+  userId: string,
+  souhait: { prenom?: string; nom?: string },
+): Promise<void> {
+  if (!souhait.prenom && !souhait.nom) return;
+  const actuel = await prisma.utilisateur.findUnique({
+    where: { id: userId },
+    select: { role: true, prenom: true, nom: true, ordreVerifieLe: true },
+  });
+  if (!actuel || !ROLES_A_ORDRE.includes(actuel.role) || !actuel.ordreVerifieLe) return;
+  const change = (souhait.prenom && souhait.prenom.trim() !== actuel.prenom)
+    || (souhait.nom && souhait.nom.trim() !== actuel.nom);
+  if (change) {
+    throw new ForbiddenError(
+      "Votre nom a ete verifie avec votre numero d'ordre : pour le corriger, adressez-vous a l'administration de la plateforme"
+    );
+  }
+}
+
+/**
+ * L'administration corrige le nom d'un compte professionnel, avec un motif.
+ *
+ * **La trace garde l'avant et l'apres.** Le journal d'audit enregistre deja
+ * la requete, mais pas ce qu'il y avait avant : une ligne dediee le fait, en
+ * ajout seul. Une ordonnance signee sous l'ancien nom reste ainsi rattachable.
+ *
+ * Les patients n'empruntent pas ce chemin : leur identite se corrige a
+ * l'accueil, sur l'ecran Identites (R15), qui garde son propre historique.
+ */
+export async function corrigerNom(
+  auteur: Auteur,
+  idCible: string,
+  dto: { prenom?: string; nom?: string; motif: string },
+  maintenant = new Date(),
+): Promise<CompteView> {
+  const motif = dto.motif.trim();
+  if (motif.length < MOTIF_MIN) {
+    throw new ValidationError("Le motif est exige, dix caracteres au moins : une correction sans motif n'est pas contestable");
+  }
+  const cible = await prisma.utilisateur.findUnique({ where: { id: idCible }, select: SELECTION });
+  if (!cible) throw new NotFoundError('Compte introuvable');
+  if (cible.role === Role.PATIENT) {
+    throw new ValidationError("Le nom d'un patient se corrige a l'accueil, depuis l'ecran Identites");
+  }
+  if (cible.role === Role.SUPER_ADMIN && auteur.role !== Role.SUPER_ADMIN) {
+    throw new ForbiddenError("Seul un super administrateur peut corriger le nom d'un super administrateur");
+  }
+
+  const prenom = dto.prenom?.trim();
+  const nom = dto.nom?.trim();
+  const apres = {
+    prenom: prenom && prenom !== cible.prenom ? prenom : cible.prenom,
+    nom: nom && nom !== cible.nom ? nom : cible.nom,
+  };
+  if (apres.prenom === cible.prenom && apres.nom === cible.nom) {
+    throw new ValidationError('Aucun changement : les valeurs saisies sont deja celles du compte');
+  }
+
+  const maj = await prisma.$transaction(async (tx) => {
+    const u = await tx.utilisateur.update({ where: { id: idCible }, data: apres, select: SELECTION });
+    await tx.journalAudit.create({
+      data: {
+        action: 'CORRECTION_NOM',
+        ressource: 'utilisateurs',
+        idRessource: idCible,
+        idUtilisateur: auteur.userId,
+        creeLe: maintenant,
+        metadonnees: { avant: { prenom: cible.prenom, nom: cible.nom }, apres, motif },
+      },
+    });
+    return u;
+  });
+
+  logger.info('[COMPTE] nom corrige', { idCible, parQui: auteur.userId });
+  return enVue(maj);
 }

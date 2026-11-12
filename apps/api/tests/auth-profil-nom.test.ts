@@ -5,6 +5,7 @@ jest.mock('../src/config/prisma', () => ({
   prisma: { utilisateur: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() } },
 }));
 jest.mock('../src/services/patient.service', () => ({ assertNomModifiableParLePatient: jest.fn() }));
+jest.mock('../src/services/compte.service', () => ({ assertNomModifiableParLeProfessionnel: jest.fn() }));
 jest.mock('../src/services/email.service', () => ({
   envoyerOtpConnexion: jest.fn(),
   envoyerEmailResetMotDePasse: jest.fn(),
@@ -19,6 +20,9 @@ const { prisma } = jest.requireMock('../src/config/prisma') as {
 };
 const { assertNomModifiableParLePatient } = jest.requireMock('../src/services/patient.service') as {
   assertNomModifiableParLePatient: jest.Mock;
+};
+const { assertNomModifiableParLeProfessionnel } = jest.requireMock('../src/services/compte.service') as {
+  assertNomModifiableParLeProfessionnel: jest.Mock;
 };
 
 beforeEach(() => {
@@ -35,6 +39,17 @@ describe('PUT /auth/profile et le nom du patient', () => {
 
   it('n ecrit rien quand la garde refuse', async () => {
     assertNomModifiableParLePatient.mockRejectedValue(new ForbiddenError('identite verifiee'));
+    await expect(updateProfil('u1', { nom: 'Camara' })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.utilisateur.update).not.toHaveBeenCalled();
+  });
+
+  // Et la meme fenetre, pour un professionnel dont l'ordre est verifie.
+  it('passe aussi par la garde du professionnel, et n ecrit rien si elle refuse', async () => {
+    await updateProfil('u1', { prenom: 'Awa', nom: 'Camara' });
+    expect(assertNomModifiableParLeProfessionnel).toHaveBeenCalledWith('u1', { prenom: 'Awa', nom: 'Camara' });
+
+    prisma.utilisateur.update.mockClear();
+    assertNomModifiableParLeProfessionnel.mockRejectedValue(new ForbiddenError('ordre verifie'));
     await expect(updateProfil('u1', { nom: 'Camara' })).rejects.toBeInstanceOf(ForbiddenError);
     expect(prisma.utilisateur.update).not.toHaveBeenCalled();
   });

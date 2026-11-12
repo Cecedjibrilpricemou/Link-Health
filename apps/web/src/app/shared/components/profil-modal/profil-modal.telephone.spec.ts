@@ -66,6 +66,14 @@ describe('profil : changement de numero', () => {
     expect(c.etapeTel()).toBe('ferme');
   });
 
+  // EF-01-08 : le nom d'un professionnel dont l'ordre est verifie.
+  it('verrouille le nom quand l ordre est verifie, et seulement alors', () => {
+    const { c, auth } = monter();
+    expect(c.nomVerrouille()).toBe(false);
+    auth.currentUser.set({ ...auth.currentUser(), role: 'MEDECIN', ordreVerifieLe: '2026-10-01T00:00:00.000Z' } as never);
+    expect(c.nomVerrouille()).toBe(true);
+  });
+
   it('montre l erreur du serveur et reste a l etape', () => {
     const { c, auth } = monter();
     auth.demanderChangementTelephone = () => throwError(() => ({ error: { error: 'Mot de passe incorrect' } }));

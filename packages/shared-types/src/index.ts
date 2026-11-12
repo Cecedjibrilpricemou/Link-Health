@@ -534,6 +534,8 @@ export interface UserDto {
   photoUrl?: string;
   estActif: boolean;
   doitChangerMotDePasse: boolean;
+  /** EF-01-08 : une fois l ordre verifie, le professionnel ne change plus son nom seul. */
+  ordreVerifieLe?: string | null;
   creeLe: string;
   modifieLe: string;
 }
@@ -3724,6 +3726,18 @@ export interface CompteView {
    * suspension documentee.
    */
   fermeSansMotif: boolean;
+  /** EF-01-08 : role qui releve d un ordre professionnel (medecin, pharmacien...). */
+  soumisOrdre: boolean;
+  numeroOrdre: string | null;
+  /** Null tant que l administration n a pas confronte le numero au registre. */
+  ordreVerifieLe: HorodatageApi | null;
+}
+
+/** Correction du nom d un compte professionnel par l administration. */
+export interface CorrigerNomCompteDto {
+  prenom?: string;
+  nom?: string;
+  motif: string;
 }
 
 /** Le resultat d une suspension ou d une reactivation. */

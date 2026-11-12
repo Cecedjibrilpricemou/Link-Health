@@ -1222,6 +1222,13 @@ export const verifierOrdreSchema = z.object({
   }).max(60),
 }).strict();
 
+// Correction du nom d'un compte professionnel par l'administration.
+export const corrigerNomCompteSchema = z.object({
+  prenom: z.string().trim().min(1).max(80).optional(),
+  nom: z.string().trim().min(1).max(80).optional(),
+  motif: z.string().trim().min(10).max(500),
+}).strict();
+
 // --- Bris de glace (EF-02-06) ---------------------------------------
 //
 // Les bornes sont celles de la base (`bris_de_glace_*`). Le message est en

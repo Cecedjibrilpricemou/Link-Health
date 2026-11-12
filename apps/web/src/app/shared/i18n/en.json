@@ -102,7 +102,8 @@
     "TEL_RENVOYER": "Send a new code",
     "TEL_CONFIRMER": "Confirm the change",
     "TEL_CHANGE": "Number changed. Your previous number has been notified, and your other sessions have been signed out.",
-    "TEL_ERR": "The number could not be changed."
+    "TEL_ERR": "The number could not be changed.",
+    "NOM_VERROUILLE_ORDRE": "Your name has been verified with your professional licence number: it can no longer be changed here. For a correction, please contact the platform administration."
   },
   "STATUT": {
     "TERMINEE": "Completed",
@@ -1751,7 +1752,24 @@
       "SUBTITLE": "Suspend or reopen an account. A suspension takes effect immediately.",
       "SUSPEND": "Suspend",
       "SUSPENDU": "{{nom}}'s account closed. {{sessions}} session(s) and {{sockets}} live connection(s) cut.",
-      "TITLE": "Accounts"
+      "TITLE": "Accounts",
+      "ORDRE_OK": "Licence verified · no. {{numero}}",
+      "ORDRE_ATTENTE": "Licence to verify",
+      "ORDRE_VERIFIER": "Verify licence",
+      "ORDRE_TITRE": "Verify {{nom}}'s professional licence number",
+      "ORDRE_AIDE": "Check the number against the professional register. Your name will stay attached to this verification. The account can then be activated, and the professional's name can only be changed by the administration.",
+      "ORDRE_NUMERO": "Professional register number",
+      "ORDRE_CONFIRMER": "I checked this number in the register",
+      "ORDRE_VERIFIE_MSG": "{{nom}}'s licence number has been verified.",
+      "ERR_ORDRE": "The licence verification could not be saved.",
+      "NOM_CORRIGER": "Correct name",
+      "NOM_TITRE": "Correct {{nom}}'s name",
+      "NOM_AIDE": "The log will keep the previous and the new name, with your reason. For a patient, the correction is made at the front desk, on the Identities screen.",
+      "NOM_PRENOM": "First name",
+      "NOM_NOM": "Last name",
+      "NOM_CONFIRMER": "Save the correction",
+      "NOM_CORRIGE_MSG": "Name corrected: {{nom}}.",
+      "ERR_NOM": "The name correction could not be saved."
     },
     "LIVREURS": {
       "TITLE": "Couriers",
