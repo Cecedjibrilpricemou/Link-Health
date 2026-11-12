@@ -1277,6 +1277,17 @@ model Medicament {
   /// patient (EF-05-06).
   contreIndications String[]
 
+  /// A1 : le texte sur lequel porte la recherche publique, normalise — sans
+  /// accents, en minuscules. Il reunit le libelle, le nom commercial, la DCI
+  /// et la classe therapeutique, parce qu'un visiteur tape « paracetamol »
+  /// sans accent et attend Doliprane.
+  ///
+  /// Rempli par `empreinteCatalogue`, jamais saisi a la main. Nullable pour
+  /// les lignes anterieures a la colonne : la recherche garde un repli sur
+  /// les champs bruts, donc un produit non reindexe reste trouvable quand on
+  /// l'ecrit avec ses accents.
+  rechercheTexte String?
+
   /// Les medicaments du referentiel ont un proprietaire nul. Les articles
   /// locaux d'une officine sont rattaches a sa structure et ne sont visibles
   /// que depuis ce perimetre.

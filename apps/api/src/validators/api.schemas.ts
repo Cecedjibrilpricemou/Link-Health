@@ -1423,3 +1423,12 @@ export const importerReferentielSchema = z.object({
 // par le service, apres retrait des doublons et de la commune du motard.
 export const definirEnServiceSchema = z.object({ enService: z.boolean() }).strict();
 export const definirCommunesDesserviesSchema = z.object({ communes: z.array(z.string().trim().min(1).max(80)).max(20) }).strict();
+
+// A1 : recherche publique de produits. Deux lettres au minimum, parce qu'une
+// seule ramenerait la moitie du catalogue ; la zone est obligatoire, parce
+// qu'afficher des prix a l'autre bout du pays n'aide personne.
+export const rechercheProduitsSchema = z.object({
+  q: z.string().trim().min(2).max(60),
+  prefecture: z.string().trim().min(1).max(80),
+  commune: z.string().trim().max(80).optional(),
+});

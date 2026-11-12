@@ -12,6 +12,13 @@ export const routes: Routes = [
       import('./features/landing/landing.component').then(m => m.LandingComponent)
   },
 
+  // ── Recherche publique de produits (A1) ─────────────────────────────
+  {
+    path: 'recherche',
+    loadComponent: () =>
+      import('./features/public/recherche/recherche.component').then(m => m.RechercheComponent)
+  },
+
   // ── Module Auth ─────────────────────────────────────────────────────
   {
     path: 'auth',

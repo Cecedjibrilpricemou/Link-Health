@@ -10,6 +10,7 @@
 // Usage : SEED_DEMO_PASSWORD=... npx tsx prisma/seed-demo.ts
 import 'dotenv/config';
 import { PrismaClient, Role, TypeStructure } from '../src/config/generated/client/client.js';
+import { empreinteCatalogue } from '../src/utils/catalogue.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { randomBytes } from 'crypto';
@@ -434,8 +435,13 @@ async function main() {
     const m = { ...fiche, contreIndications: 'contreIndications' in fiche ? [...fiche.contreIndications] : undefined };
     const existant = await prisma.medicament.findFirst({ where: { nomCommercial: m.nomCommercial } });
     const medicament = existant
-      ? await prisma.medicament.update({ where: { id: existant.id }, data: { ...m } })
-      : await prisma.medicament.create({ data: { ...m, listeEssentielle: true } });
+      ? await prisma.medicament.update({
+          where: { id: existant.id },
+          data: { ...m, rechercheTexte: empreinteCatalogue(m) },
+        })
+      : await prisma.medicament.create({
+          data: { ...m, listeEssentielle: true, rechercheTexte: empreinteCatalogue(m) },
+        });
 
     await mettreEnStock(medicament.id, medicament.nomCommercial ?? 'LOT');
   }
@@ -446,8 +452,13 @@ async function main() {
   for (const { ancienLibelle, ...a } of DEMO.articles) {
     const existant = await prisma.medicament.findFirst({ where: { libelle: { in: [a.libelle, ancienLibelle] } } });
     const article = existant
-      ? await prisma.medicament.update({ where: { id: existant.id }, data: { ...a } })
-      : await prisma.medicament.create({ data: { ...a } });
+      ? await prisma.medicament.update({
+          where: { id: existant.id },
+          data: { ...a, rechercheTexte: empreinteCatalogue(a) },
+        })
+      : await prisma.medicament.create({
+          data: { ...a, rechercheTexte: empreinteCatalogue(a) },
+        });
     // La cle du lot reste celle de l'ancien libelle : le numero de lot ne
     // change pas d'une version de la semence a l'autre.
     await mettreEnStock(article.id, ancienLibelle.replace(/\s/g, ''), 60);

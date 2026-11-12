@@ -40,6 +40,7 @@ import assuranceRoutes from './routes/assurance.routes';
 import referentielRoutes from './routes/referentiel.routes';
 import geographieRoutes from './routes/geographie.routes';
 import journalRoutes from './routes/journal.routes';
+import rechercheRoutes from './routes/recherche.routes';
 import compteRoutes from './routes/compte.routes';
 import rgpdRoutes from './routes/rgpd.routes';
 import identiteRoutes from './routes/identite.routes';
@@ -222,6 +223,8 @@ app.use('/api/v1/ussd', ussdRoutes);
 app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/v1/parametres', parametresRoutes);
+// A1 : sans authentification, comme /parametres/publics.
+app.use('/api/v1/recherche', rechercheRoutes);
 app.use('/api/v1/hopital', hopitalRoutes);
 app.use('/api/v1/laboratoire', laboratoireRoutes);
 app.use('/api/v1/resultats', resultatsRoutes);

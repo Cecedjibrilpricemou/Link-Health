@@ -45,7 +45,7 @@ const FICHIERS = [
   'commande', 'compte', 'consentement', 'consultation', 'course', 'fhir', 'geographie', 'hopital',
   'identite', 'journal', 'laboratoire', 'medecin', 'medicament', 'notification',
   'ordonnance', 'paiement', 'parametres', 'patient', 'pharmacien', 'privacy',
-  'referentiel', 'resultats', 'rgpd', 'stats', 'sync', 'triage', 'upload',
+  'recherche', 'referentiel', 'resultats', 'rgpd', 'stats', 'sync', 'triage', 'upload',
   'ussd', 'vaccination', 'webhook-chapchap',
 ] as const;
 
@@ -70,6 +70,8 @@ const PUBLIQUES: Record<string, string> = {
   'patient POST /': 'inscription du patient par lui-même ; pose les cookies en retour',
 
   // ── Ce qu'une page d'accueil doit pouvoir afficher avant toute connexion.
+  // A1 : chercher un produit en pharmacie avant meme d'avoir un compte.
+  'recherche GET /produits': "recherche publique de produits ; ne rend que des stocks declares par les pharmacies, jamais un produit reglemente, jamais une quantite",
   'parametres GET /publics': "nom et logo de la plateforme, affichés sur l'écran de connexion",
   'stats GET /public': 'compteurs agrégés, aucune donnée nominative',
   'admin-structure GET /structures/publiques':
