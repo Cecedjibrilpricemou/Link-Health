@@ -1602,7 +1602,8 @@
       "ZONES_FINAL_COMMANDE_LABEL": "Maximum wait for a pharmacy (minutes)",
       "ZONES_FINAL_COMMANDE_HINT": "After this delay since the prescription was sent, the request stops: the patient and the doctor are told that no pharmacy confirmed. Must exceed twice the widening delay.",
       "ZONES_FINAL_COURSE_LABEL": "Maximum wait for a courier (minutes)",
-      "ZONES_FINAL_COURSE_HINT": "After this delay without any offer, the delivery becomes \"no courier\": the patient chooses to search again or to collect the order. Must exceed twice the widening delay."
+      "ZONES_FINAL_COURSE_HINT": "After this delay without any offer, the delivery becomes \"no courier\": the patient chooses to search again or to collect the order. Must exceed twice the widening delay.",
+      "PAYS_DECOUPAGE_FIGE": "Addresses are already recorded under this division: level codes, their order, the base level and the widening level can no longer be changed. The country name, dialling code and displayed level names can still be edited."
     },
     "ANALYTICS": {
       "SUBTITLE": "Epidemiological dashboard — {{nom}} Guinea 🇬🇳",

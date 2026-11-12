@@ -142,17 +142,26 @@ export class SettingsComponent implements OnInit {
 
   readonly maxNiveaux = 6;
 
+  /**
+   * R6 : des adresses sont enregistrees selon ce decoupage. Codes, ordre,
+   * niveau de base et d'elargissement ne bougent plus (l'API le refuserait) ;
+   * le nom, l'indicatif et les libelles restent modifiables.
+   */
+  decoupageFige = signal(false);
+
   ajouterNiveau() {
-    if (this.pays.niveaux.length >= this.maxNiveaux) return;
+    if (this.decoupageFige() || this.pays.niveaux.length >= this.maxNiveaux) return;
     this.pays.niveaux = [...this.pays.niveaux, { code: '', libelles: { fr: '', en: '', pt: '' } }];
   }
 
   retirerNiveau(index: number) {
+    if (this.decoupageFige()) return;
     this.pays.niveaux = this.pays.niveaux.filter((_, i) => i !== index);
   }
 
   /** Les niveaux vont du plus large au plus fin : l'ordre a un sens. */
   deplacerNiveau(index: number, sens: -1 | 1) {
+    if (this.decoupageFige()) return;
     const cible = index + sens;
     if (cible < 0 || cible >= this.pays.niveaux.length) return;
     const niveaux = [...this.pays.niveaux];
@@ -292,5 +301,6 @@ export class SettingsComponent implements OnInit {
     this.zones = { ...vue.zones };
     this.pays = { ...vue.pays, niveaux: vue.pays.niveaux.map((n) => ({ ...n, libelles: { ...n.libelles } })) };
     this.modifieLe.set(vue.modifieLe);
+    this.decoupageFige.set(vue.decoupageFige === true);
   }
 }

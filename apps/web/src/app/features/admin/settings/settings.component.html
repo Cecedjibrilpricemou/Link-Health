@@ -506,6 +506,13 @@
 
           <h3 class="panel-subtitle">{{ 'ADMIN.SETTINGS.PAYS_NIVEAUX_TITLE' | translate }}</h3>
           <p class="panel-desc">{{ 'ADMIN.SETTINGS.PAYS_NIVEAUX_DESC' | translate }}</p>
+          <!-- R6 : des adresses sont enregistrees selon ce decoupage. -->
+          @if (decoupageFige()) {
+            <p class="pays-fige" id="pays-decoupage-fige" role="note">
+              <i class="pi pi-lock" aria-hidden="true"></i>
+              {{ 'ADMIN.SETTINGS.PAYS_DECOUPAGE_FIGE' | translate }}
+            </p>
+          }
 
           @for (n of pays.niveaux; track $index; let i = $index; let premier = $first; let dernier = $last) {
             <div class="setting-row niveau-row">
@@ -513,7 +520,7 @@
               <div class="niveau-row__champs">
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>{{ 'ADMIN.SETTINGS.PAYS_NIVEAU_CODE' | translate }}</mat-label>
-                  <input matInput [id]="'niveau-code-' + i" maxlength="30" [(ngModel)]="n.code" />
+                  <input matInput [id]="'niveau-code-' + i" maxlength="30" [(ngModel)]="n.code" [readonly]="decoupageFige()" />
                 </mat-form-field>
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>{{ 'ADMIN.SETTINGS.PAYS_LIBELLE_FR' | translate }}</mat-label>
@@ -528,6 +535,7 @@
                   <input matInput [id]="'niveau-pt-' + i" maxlength="40" [(ngModel)]="n.libelles.pt" />
                 </mat-form-field>
               </div>
+              @if (!decoupageFige()) {
               <div class="niveau-row__actions">
                 <button mat-icon-button type="button" [disabled]="premier" (click)="deplacerNiveau(i, -1)"
                         [attr.aria-label]="'ADMIN.SETTINGS.PAYS_MONTER' | translate">
@@ -542,11 +550,14 @@
                   <i class="pi pi-trash" aria-hidden="true"></i>
                 </button>
               </div>
+              }
             </div>
           }
-          <button mat-stroked-button type="button" (click)="ajouterNiveau()" [disabled]="pays.niveaux.length >= maxNiveaux">
+          @if (!decoupageFige()) {
+          <button mat-stroked-button type="button" id="pays-ajouter-niveau" (click)="ajouterNiveau()" [disabled]="pays.niveaux.length >= maxNiveaux">
             <i class="pi pi-plus" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.PAYS_AJOUTER' | translate }}
           </button>
+          }
 
           <div class="divider"></div>
 
@@ -556,7 +567,7 @@
             <div class="field">
               <label for="pays-base">{{ 'ADMIN.SETTINGS.PAYS_BASE' | translate }}</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <select matNativeControl id="pays-base" [(ngModel)]="pays.niveauBase">
+                <select matNativeControl id="pays-base" [(ngModel)]="pays.niveauBase" [disabled]="decoupageFige()">
                   @for (n of pays.niveaux; track $index) {
                     <option [value]="n.code">{{ n.libelles.fr || n.code }}</option>
                   }
@@ -567,7 +578,7 @@
             <div class="field">
               <label for="pays-elargissement">{{ 'ADMIN.SETTINGS.PAYS_ELARGISSEMENT' | translate }}</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <select matNativeControl id="pays-elargissement" [(ngModel)]="pays.niveauElargissement">
+                <select matNativeControl id="pays-elargissement" [(ngModel)]="pays.niveauElargissement" [disabled]="decoupageFige()">
                   @for (n of pays.niveaux; track $index) {
                     <option [value]="n.code">{{ n.libelles.fr || n.code }}</option>
                   }

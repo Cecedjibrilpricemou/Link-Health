@@ -333,3 +333,20 @@
   gap: 8px;
   margin-top: 8px;
 }
+
+// R6 : le decoupage est fige des que des adresses sont enregistrees.
+.pays-fige {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--bb-radius-sm);
+  border: 1px solid var(--bb-warning-border);
+  background: var(--bb-warning-bg);
+  color: var(--bb-text-primary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+
+  .pi { color: var(--bb-warning); margin-top: 2px; }
+}

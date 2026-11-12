@@ -28,14 +28,15 @@ const PARAMS = {
     ],
     niveauBase: 'commune', niveauElargissement: 'prefecture',
   },
-  modifieLe: null, idModifiePar: null,
+  modifieLe: null, idModifiePar: null, decoupageFige: false,
 } as unknown as ParametresSystemeView;
 
-function monter() {
+function monter(decoupageFige = false) {
   const envois: UpdateParametresSystemeDto[] = [];
+  const vue = () => ({ ...structuredClone(PARAMS), decoupageFige });
   const admin = {
-    getParametres: () => of({ success: true, data: structuredClone(PARAMS) }),
-    updateParametres: (dto: UpdateParametresSystemeDto) => { envois.push(dto); return of({ success: true, data: structuredClone(PARAMS) }); },
+    getParametres: () => of({ success: true, data: vue() }),
+    updateParametres: (dto: UpdateParametresSystemeDto) => { envois.push(dto); return of({ success: true, data: vue() }); },
   };
   TestBed.configureTestingModule({
     imports: [SettingsComponent],
@@ -103,6 +104,50 @@ describe('parametres : pays', () => {
     expect(pays.niveaux![0]!.code).toBe('region');
     expect(pays.niveaux![1]!.libelles).toEqual({ fr: 'Département' });
     expect(pays.niveaux![0]!.libelles).toEqual({ fr: 'Région', en: 'Region', pt: 'Região' });
+  });
+
+  // R6 : des adresses existent selon ce decoupage. L'ecran ne propose plus ce
+  // que l'API refuserait, et le dit.
+  it('decoupage fige : le dit, verrouille codes, ordre et roles, garde les libelles', () => {
+    const { c, el, rendre } = monter(true);
+    c.setTab('pays');
+    rendre();
+
+    expect(el.querySelector('#pays-decoupage-fige')).not.toBeNull();
+    expect(el.querySelector('#pays-ajouter-niveau')).toBeNull();
+    expect(el.querySelector('.niveau-row__actions')).toBeNull();
+    expect(el.querySelector<HTMLInputElement>('#niveau-code-0')!.readOnly).toBe(true);
+    expect(el.querySelector<HTMLInputElement>('#niveau-fr-0')!.readOnly).toBe(false);
+  });
+
+  it('decoupage fige : ajouter, retirer ou deplacer ne fait rien', () => {
+    const { c } = monter(true);
+    c.ajouterNiveau();
+    c.retirerNiveau(0);
+    c.deplacerNiveau(0, 1);
+    expect(c.pays.niveaux.map((n) => n.code)).toEqual(['region', 'prefecture', 'commune']);
+  });
+
+  it('decoupage fige : un libelle modifie part, avec les memes codes et roles', () => {
+    const { c, envois } = monter(true);
+    c.pays.niveaux[2]!.libelles.fr = 'Commune urbaine';
+
+    c.enregistrer('pays');
+
+    const pays = envois[0]!.pays!;
+    expect(pays.niveaux!.map((n) => n.code)).toEqual(['region', 'prefecture', 'commune']);
+    expect(pays.niveaux![2]!.libelles.fr).toBe('Commune urbaine');
+    expect([pays.niveauBase, pays.niveauElargissement]).toEqual(['commune', 'prefecture']);
+  });
+
+  it('installation vierge : le decoupage reste modifiable', () => {
+    const { c, el, rendre } = monter(false);
+    c.setTab('pays');
+    rendre();
+
+    expect(el.querySelector('#pays-decoupage-fige')).toBeNull();
+    expect(el.querySelector('#pays-ajouter-niveau')).not.toBeNull();
+    expect(el.querySelector<HTMLInputElement>('#niveau-code-0')!.readOnly).toBe(false);
   });
 
   it('les autres onglets partent tels quels', () => {
