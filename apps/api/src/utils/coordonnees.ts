@@ -13,6 +13,30 @@ export function verifierCoordonnees(latitude?: number | null, longitude?: number
   }
 }
 
+/**
+ * R4 : la position du patient est stockee chiffree, en une chaine
+ * « latitude,longitude ». Ces deux fonctions sont les seules a la composer et
+ * a la lire.
+ */
+export function positionEnTexte(latitude: number, longitude: number): string {
+  return `${latitude},${longitude}`;
+}
+
+/**
+ * Une chaine illisible (tronquee, ou encore chiffree faute de cle) rend une
+ * position absente plutot que fausse : mieux vaut ne pas guider le motard
+ * que l'envoyer ailleurs.
+ */
+export function lirePosition(texte: string | null | undefined): { latitude: number; longitude: number } | null {
+  if (!texte) return null;
+  const morceaux = texte.split(',');
+  if (morceaux.length !== 2) return null;
+  const [latitude, longitude] = morceaux.map((m) => Number(m.trim())) as [number, number];
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
+  return { latitude, longitude };
+}
+
 /** Distance a vol d'oiseau en kilometres (formule de haversine), arrondie au metre. */
 export function distanceKm(
   a: { latitude: number; longitude: number },

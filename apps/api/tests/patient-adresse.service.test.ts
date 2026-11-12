@@ -14,7 +14,8 @@ const { prisma } = jest.requireMock('../src/config/prisma') as {
 
 const STOCKEE = {
   id: 'pat-1', prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé',
-  pointRepere: 'Derriere la mosquee', latitude: 9.6, longitude: -13.6,
+  // R4 : stockee chiffree en « lat,lng » ; elle arrive ici dechiffree.
+  pointRepere: 'Derriere la mosquee', position: '9.6,-13.6',
   positionLe: new Date('2026-11-11T10:00:00Z'),
 };
 
@@ -32,14 +33,17 @@ describe('definirAdresse', () => {
 
     expect(prisma.patientProfile.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'pat-1' } }));
     expect(dataEcrite()).toEqual({ commune: 'Ratoma', quartier: 'Kipé', pointRepere: 'Derriere la mosquee' });
-    expect(vue).toEqual({ ...STOCKEE, id: undefined, positionLe: '2026-11-11T10:00:00.000Z' });
+    expect(vue).toEqual({
+      prefecture: STOCKEE.prefecture, commune: STOCKEE.commune, quartier: STOCKEE.quartier,
+      pointRepere: STOCKEE.pointRepere, latitude: 9.6, longitude: -13.6, positionLe: '2026-11-11T10:00:00.000Z',
+    });
   });
 
   // Changer de point de repere ne doit pas effacer le GPS en silence.
   it('garde la position deja donnee quand on n en envoie pas', async () => {
     await definirAdresse('u-pat', { commune: 'Ratoma', quartier: 'Kipé' });
 
-    expect(dataEcrite()).not.toHaveProperty('latitude');
+    expect(dataEcrite()).not.toHaveProperty('position');
     expect(dataEcrite()).not.toHaveProperty('positionLe');
   });
 
@@ -51,13 +55,14 @@ describe('definirAdresse', () => {
   it('enregistre la position donnee, datee', async () => {
     await definirAdresse('u-pat', { commune: 'Ratoma', quartier: 'Kipé', latitude: 9.64, longitude: -13.58 });
 
-    expect(dataEcrite()).toMatchObject({ latitude: 9.64, longitude: -13.58, positionLe: expect.any(Date) });
+    expect(dataEcrite()).toMatchObject({ position: '9.64,-13.58', positionLe: expect.any(Date) });
+    expect(dataEcrite()).not.toHaveProperty('latitude');
   });
 
   it('efface la position a la demande', async () => {
     await definirAdresse('u-pat', { commune: 'Ratoma', quartier: 'Kipé', effacerPosition: true });
 
-    expect(dataEcrite()).toMatchObject({ latitude: null, longitude: null, positionLe: null });
+    expect(dataEcrite()).toMatchObject({ position: null, positionLe: null });
   });
 
   // Une latitude sans longitude ne place rien sur une carte.
@@ -116,5 +121,19 @@ describe('definirAdresseSchema', () => {
   // La prefecture n'est pas modifiable ici : elle decoule de l'inscription.
   it('refuse un champ inconnu, dont la prefecture', () => {
     expect(ok({ commune: 'R', quartier: 'K', prefecture: 'Kindia' })).toBe(false);
+  });
+});
+
+// R4 : une position illisible (tronquee, ou encore chiffree faute de cle)
+// ne doit ni planter ni guider le motard au mauvais endroit.
+describe('monAdresse avec une position illisible', () => {
+  it('rend une position absente, sans date', async () => {
+    prisma.patientProfile.findUnique
+      .mockResolvedValueOnce({ id: 'pat-1', idFusionneDans: null })
+      .mockResolvedValueOnce({ ...STOCKEE, position: 'enc:v1:AAAA' });
+
+    const vue = await monAdresse('u-pat');
+
+    expect(vue).toMatchObject({ latitude: null, longitude: null, positionLe: null, pointRepere: 'Derriere la mosquee' });
   });
 });

@@ -937,7 +937,12 @@ model PatientProfile {
   /// Ville ou village de naissance, tel que declare.
   lieuNaissance String?
   /// Nom de la mere. Le trait le plus discriminant quand les noms se repetent.
+  /// Chiffre (R4) : la detection de doublons compare `nomMereEmpreinte`.
   nomMere       String?
+  /// R4 : empreinte de recherche du nom de la mere (HMAC de la valeur
+  /// normalisee). Posee par l'extension de chiffrement a chaque ecriture de
+  /// `nomMere` ; ne se retourne pas en nom sans la cle.
+  nomMereEmpreinte String?
 
   /// Le degre de confiance dans cette identite. Voir `NiveauIdentite`.
   niveauIdentite NiveauIdentite @default(PROVISOIRE)
@@ -982,8 +987,11 @@ model PatientProfile {
   pointRepere      String?
   /// Position donnee par le patient, avec son accord, et qu'il peut effacer.
   /// Montree au seul motard qui a sa course en main.
-  latitude         Float?
-  longitude        Float?
+  ///
+  /// R4 : « latitude,longitude » en une chaine, **chiffree** (le chiffrement
+  /// de champ ne porte que sur du texte). Aucune requete ne la filtre ni ne
+  /// la trie en base : seul le service d'adresse la lit et la decoupe.
+  position         String?
   /// Quand la position a ete donnee : une position ancienne se reverifie.
   positionLe       DateTime?
   photoUrl         String?
@@ -1031,6 +1039,8 @@ model PatientProfile {
   /// prochaine migration les emporte en silence.
   @@index([dateNaissance, lieuNaissance], map: "patients_traits_distinctifs_idx")
   @@index([niveauIdentite], map: "patients_niveau_identite_idx")
+  /// R4 : la detection de doublons cherche par empreinte du nom de la mere.
+  @@index([nomMereEmpreinte])
   @@map("patients")
 }
 

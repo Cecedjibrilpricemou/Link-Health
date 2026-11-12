@@ -22,6 +22,7 @@ import { notifierSansBloquer } from './notification.service';
 import { prochainNumero } from './numero.service';
 import { voisinsDe } from './geographie.service';
 import { dansLesZones, filtrePrefecture, filtreZone, filtreZones, memePrefecture, zonesDuLivreur } from '../utils/zone';
+import { lirePosition } from '../utils/coordonnees';
 
 export type CourseTransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -131,7 +132,7 @@ const COURSE_LIVREUR_ASSIGNED_SELECT = {
                 select: {
                   utilisateur: { select: { prenom: true, nom: true, telephone: true } },
                   // M3 : ou livrer. Rendu seulement pendant la course (voir plus bas).
-                  commune: true, quartier: true, pointRepere: true, latitude: true, longitude: true,
+                  commune: true, quartier: true, pointRepere: true, position: true,
                 },
               },
             },
@@ -177,8 +178,9 @@ function versCourseLivreurView(course: CourseLivreurAssignedPayload): CourseLivr
             commune: dossier.commune ?? null,
             quartier: dossier.quartier ?? null,
             pointRepere: dossier.pointRepere ?? null,
-            latitude: dossier.latitude ?? null,
-            longitude: dossier.longitude ?? null,
+            // R4 : la position est stockee chiffree, en « lat,lng ».
+            latitude: lirePosition(dossier.position)?.latitude ?? null,
+            longitude: lirePosition(dossier.position)?.longitude ?? null,
           },
         }
       : {}),
