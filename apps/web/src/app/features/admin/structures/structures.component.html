@@ -100,10 +100,20 @@
         </div>
         <div class="bb-struct__field">
           <label id="struct-pref-label" for="struct-pref">{{ geo.libelle('elargissement') }} *</label>
-          <app-liste-recherche inputId="struct-pref" [options]="prefectures() | optionsDe"
-                               [(ngModel)]="newStructure.prefecture" #structPref="ngModel" required
-                               [placeholder]="'PATIENT.PROFILE.GENDER_SELECT' | translate" />
-          @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
+          @if (saisieLibreZone()) {
+            <!-- R9 : referentiel encore vide - la zone se tape, sans liste ecrite dans le code. -->
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="struct-pref" [(ngModel)]="newStructure.prefecture" #structPref="ngModel" required
+                     maxlength="80" autocomplete="off" />
+            </mat-form-field>
+            <small class="bb-struct__hint" id="struct-pref-vide">{{ 'ADMIN.STRUCTURES.ZONES_VIDES' | translate }}</small>
+            @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
+          } @else {
+            <app-liste-recherche inputId="struct-pref" [options]="prefectures() | optionsDe"
+                                 [(ngModel)]="newStructure.prefecture" #structPref="ngModel" required
+                                 [placeholder]="'PATIENT.PROFILE.GENDER_SELECT' | translate" />
+            @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
+          }
         </div>
         <div class="bb-struct__field">
           <label for="struct-commune">{{ geo.libelle('base') }} *</label>

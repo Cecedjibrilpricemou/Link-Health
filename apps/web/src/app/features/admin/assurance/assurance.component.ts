@@ -34,6 +34,8 @@ import { AdminService } from '../../../core/services/admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
+import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
+import { GeographieService } from '../../../core/services/geographie.service';
 
 /** Les categories de l'enum Prisma, dans l'ordre ou on les rencontre. */
 const CATEGORIES: CategorieProduit[] = [
@@ -46,7 +48,7 @@ const CATEGORIES: CategorieProduit[] = [
   standalone: true,
   imports: [ListeRechercheComponent, 
     CommonModule, FormsModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatCheckboxModule, TranslatePipe,
+    MatSelectModule, MatCheckboxModule, TranslatePipe, SuggestionsLieuxComponent,
   ],
   templateUrl: './assurance.component.html',
   styleUrl: './assurance.component.scss',
@@ -61,6 +63,8 @@ export class AssuranceComponent implements OnInit {
   private admin = inject(AdminService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);
+  /** R9 : le nom du niveau (« Prefecture », « LGA »...) et ses lieux viennent du pays installe. */
+  readonly geo = inject(GeographieService);
 
   // ── Les assureurs ──────────────────────────────────────────────────
   assureurs = signal<AssureurView[]>([]);
