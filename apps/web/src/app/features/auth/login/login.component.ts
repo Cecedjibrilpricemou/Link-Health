@@ -18,6 +18,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AuthShellComponent } from '../../../shared/components/auth-shell/auth-shell.component';
 import { ToastrService } from 'ngx-toastr';
 import { accueilDuRole } from '../../../core/navigation/accueil-par-role';
+import { PlateformeSecuriseeComponent } from '../../../shared/components/plateforme-securisee/plateforme-securisee.component';
 
 
 /** Le message a afficher pour un echec de connexion ou de verification OTP. */
@@ -49,7 +50,7 @@ export function messageErreurConnexion(
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [
+  imports: [PlateformeSecuriseeComponent, 
     MatButtonModule,
     MatFormFieldModule, MatInputModule,
     FormsModule, RouterLink,
