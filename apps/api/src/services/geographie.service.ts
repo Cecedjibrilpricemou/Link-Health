@@ -92,6 +92,22 @@ export async function voisinsDe(zone: string | null | undefined, lieu: string | 
     .map((v) => v.nom);
 }
 
+/**
+ * R8 : la zone d'elargissement (la prefecture en Guinee) qu'un patient
+ * declare en demenageant, sous le nom exact du referentiel. Tant que le
+ * referentiel n'a aucun lieu a ce niveau, le texte saisi est garde tel quel ;
+ * ensuite, une zone inconnue rend `null` : elle n'enverrait l'ordonnance a
+ * aucune pharmacie.
+ */
+export async function zoneElargissementConnue(texte: string): Promise<string | null> {
+  const saisi = texte.trim();
+  if (!saisi) return null;
+  const p = await pays();
+  const zones = await prisma.lieuGeo.findMany({ where: { niveau: p.niveauElargissement }, select: { nom: true } });
+  if (zones.length === 0) return saisi;
+  return zones.find((z) => cle(z.nom) === cle(saisi))?.nom ?? null;
+}
+
 export async function configuration(): Promise<ConfigurationGeoView> {
   const p = await pays();
   return { ...p, jeuDeDepartDisponible: jeuPour(p) !== null };

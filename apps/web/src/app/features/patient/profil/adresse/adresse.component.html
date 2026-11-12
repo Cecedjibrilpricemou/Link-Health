@@ -6,8 +6,21 @@
 }
 
 <form class="adresse__form" (ngSubmit)="enregistrer()" autocomplete="off">
-  @if (adresse()) {
-    <p class="adresse__prefecture">{{ geo.libelle('elargissement') }} : <strong>{{ adresse()!.prefecture }}</strong></p>
+  <!-- R8 : en demenageant, le patient change lui-meme de prefecture. -->
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="adresse__large">
+    <mat-label>{{ geo.libelle('elargissement') }}</mat-label>
+    <input matInput id="adresse-prefecture" name="prefecture" maxlength="80" required autocomplete="off"
+           list="adresse-liste-zones" [ngModel]="prefecture()" (ngModelChange)="changerPrefecture($event)" />
+  </mat-form-field>
+  <app-suggestions-lieux idListe="adresse-liste-zones" role="elargissement" />
+  @if (demenage) {
+    <p class="adresse__demenagement adresse__large" id="adresse-demenagement" role="note">
+      <i class="pi pi-truck" aria-hidden="true"></i>
+      <span>
+        {{ 'PATIENT.ADRESSE.DEMENAGEMENT' | translate: { zone: prefecture().trim() } }}
+        @if (positionEnregistree && !positionProposee()) { {{ 'PATIENT.ADRESSE.DEMENAGEMENT_POSITION' | translate }} }
+      </span>
+    </p>
   }
   <!-- M1 : les noms du referentiel sont proposes ; le texte libre reste accepte. -->
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -15,7 +28,7 @@
     <input matInput id="adresse-commune" name="commune" maxlength="80" required autocomplete="off"
            list="adresse-liste-communes" [(ngModel)]="form.commune" />
   </mat-form-field>
-  <app-suggestions-lieux idListe="adresse-liste-communes" role="base" [dans]="adresse()?.prefecture" />
+  <app-suggestions-lieux idListe="adresse-liste-communes" role="base" [dans]="prefecture()" />
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
     <mat-label>{{ 'PATIENT.ADRESSE.QUARTIER' | translate }}</mat-label>
     <input matInput id="adresse-quartier" name="quartier" maxlength="80" required [(ngModel)]="form.quartier" />

@@ -13,8 +13,9 @@
 // Elle n'est montree qu'au motard qui a sa course en main.
 import type { AdressePatientView, DefinirAdresseDto } from '@baobaoheath/shared-types';
 import { prisma } from '../config/prisma';
-import { NotFoundError } from '../utils/app-error';
+import { NotFoundError, ValidationError } from '../utils/app-error';
 import { lirePosition, positionEnTexte, verifierCoordonnees } from '../utils/coordonnees';
+import { zoneElargissementConnue } from './geographie.service';
 
 // R4 : point de repere et position sont chiffres en base (voir
 // config/prisma-encryption.extension.ts) ; ils arrivent ici dechiffres.
@@ -64,28 +65,74 @@ export async function monAdresse(userId: string): Promise<AdressePatientView> {
   return versVue(adresse);
 }
 
-export async function definirAdresse(userId: string, dto: DefinirAdresseDto): Promise<AdressePatientView> {
+const cle = (s: string | null | undefined) => (s ?? '').trim().toLocaleLowerCase('fr');
+
+/**
+ * R8 : un demenagement dans une autre prefecture. Le patient la change
+ * lui-meme : c'est une adresse, pas une identite. Rend la prefecture a
+ * enregistrer (nom du referentiel), ou `null` si elle ne change pas.
+ */
+async function nouvellePrefecture(id: string, demandee: string | undefined): Promise<{ avant: string; apres: string } | null> {
+  if (demandee === undefined) return null;
+  const actuelle = await prisma.patientProfile.findUnique({ where: { id }, select: { prefecture: true } });
+  if (!actuelle) throw new NotFoundError('Profil patient non trouve');
+  const connue = await zoneElargissementConnue(demandee);
+  if (!connue) {
+    throw new ValidationError(`« ${demandee.trim()} » ne figure pas au referentiel : choisissez-la dans la liste proposee`);
+  }
+  return cle(connue) === cle(actuelle.prefecture) ? null : { avant: actuelle.prefecture, apres: connue };
+}
+
+export async function definirAdresse(
+  userId: string,
+  dto: DefinirAdresseDto,
+  maintenant = new Date(),
+): Promise<AdressePatientView> {
   verifierCoordonnees(dto.latitude, dto.longitude);
   const id = await idDossier(userId);
+  const demenagement = await nouvellePrefecture(id, dto.prefecture);
 
   // Une position envoyee remplace l'ancienne ; « effacer » la retire. Sans
   // l'une ni l'autre, la position deja donnee est gardee telle quelle : changer
   // de point de repere ne doit pas effacer le GPS en silence.
-  const position = dto.effacerPosition
-    ? { position: null, positionLe: null }
-    : dto.latitude !== undefined && dto.longitude !== undefined
-      ? { position: positionEnTexte(dto.latitude, dto.longitude), positionLe: new Date() }
+  // R8 : sauf en changeant de prefecture - c'etait celle de l'ancien domicile,
+  // et un motard irait la chercher.
+  const nouvellePosition = dto.latitude !== undefined && dto.longitude !== undefined;
+  const position = nouvellePosition
+    ? { position: positionEnTexte(dto.latitude!, dto.longitude!), positionLe: maintenant }
+    : dto.effacerPosition || demenagement
+      ? { position: null, positionLe: null }
       : {};
 
-  const adresse = await prisma.patientProfile.update({
-    where: { id },
-    data: {
-      commune: dto.commune,
-      quartier: dto.quartier,
-      pointRepere: dto.pointRepere?.trim() || null,
-      ...position,
-    },
-    select: ADRESSE_SELECT,
+  const data = {
+    ...(demenagement ? { prefecture: demenagement.apres } : {}),
+    commune: dto.commune,
+    quartier: dto.quartier,
+    pointRepere: dto.pointRepere?.trim() || null,
+    ...position,
+  };
+
+  if (!demenagement) {
+    const adresse = await prisma.patientProfile.update({ where: { id }, data, select: ADRESSE_SELECT });
+    return versVue(adresse);
+  }
+
+  // Les commandes deja lancees gardent leur zone ; les suivantes partent vers
+  // la nouvelle. Le changement est journalise : il deplace aussi le patient
+  // dans les comptes epidemiologiques de sa prefecture.
+  const adresse = await prisma.$transaction(async (tx) => {
+    const a = await tx.patientProfile.update({ where: { id }, data, select: ADRESSE_SELECT });
+    await tx.journalAudit.create({
+      data: {
+        action: 'CHANGEMENT_PREFECTURE',
+        ressource: 'patients',
+        idRessource: id,
+        idUtilisateur: userId,
+        creeLe: maintenant,
+        metadonnees: { avant: demenagement.avant, apres: demenagement.apres },
+      },
+    });
+    return a;
   });
   return versVue(adresse);
 }

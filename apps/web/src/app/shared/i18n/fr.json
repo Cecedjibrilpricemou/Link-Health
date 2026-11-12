@@ -391,7 +391,9 @@
       "GPS_ERR": "Position introuvable. Vérifiez que la localisation est activée et autorisée.",
       "SAVE": "Enregistrer mon adresse",
       "SUCCESS": "Adresse enregistrée.",
-      "ERR_SAVE": "L'adresse n'a pas pu être enregistrée."
+      "ERR_SAVE": "L'adresse n'a pas pu être enregistrée.",
+      "DEMENAGEMENT": "Vous changez de zone : vos prochaines ordonnances partiront vers les pharmacies de {{zone}}. Les commandes déjà lancées gardent leur zone.",
+      "DEMENAGEMENT_POSITION": "La position de votre ancien domicile sera effacée ; vous pourrez donner la nouvelle."
     },
     "PROFILE": {
       "TITLE": "Mon Profil",

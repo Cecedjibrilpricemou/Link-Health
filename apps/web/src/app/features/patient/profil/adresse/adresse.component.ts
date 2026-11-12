@@ -39,6 +39,43 @@ export class AdressePatientComponent implements OnInit {
 
   form = { commune: '', quartier: '', pointRepere: '' };
 
+  /**
+   * R8 : la prefecture saisie. Un signal : la note de demenagement et les
+   * communes proposees en dependent, et doivent suivre a chaque changement.
+   */
+  prefecture = signal('');
+
+  /**
+   * R8 : le patient a demenage dans une autre prefecture. Ses prochaines
+   * ordonnances partiront vers les pharmacies de la nouvelle, et la position
+   * de l'ancien domicile s'effacera s'il n'en donne pas une nouvelle.
+   */
+  get demenage(): boolean {
+    const a = this.adresse();
+    const p = this.prefecture().trim();
+    return !!a && !!p && cleLieu(p) !== cleLieu(a.prefecture);
+  }
+
+  /**
+   * Changer de prefecture vide la commune, le quartier et le repere de
+   * l'ancienne adresse : ils n'existent pas dans la nouvelle. Revenir a
+   * l'ancienne les rend.
+   */
+  changerPrefecture(prefecture: string) {
+    this.prefecture.set(prefecture);
+    const a = this.adresse();
+    if (!a) return;
+    if (this.demenage) {
+      if (this.form.commune === (a.commune ?? '')) this.form.commune = '';
+      if (this.form.quartier === (a.quartier ?? '')) this.form.quartier = '';
+      if (this.form.pointRepere === (a.pointRepere ?? '')) this.form.pointRepere = '';
+    } else {
+      this.form.commune ||= a.commune ?? '';
+      this.form.quartier ||= a.quartier ?? '';
+      this.form.pointRepere ||= a.pointRepere ?? '';
+    }
+  }
+
   ngOnInit() {
     this.geo.chargerConfiguration().subscribe();
     this.patientService.monAdresse().subscribe({
@@ -48,7 +85,7 @@ export class AdressePatientComponent implements OnInit {
   }
 
   get complete(): boolean {
-    return !!this.form.commune.trim() && !!this.form.quartier.trim();
+    return !!this.prefecture().trim() && !!this.form.commune.trim() && !!this.form.quartier.trim();
   }
 
   /** Une position est-elle deja enregistree ? */
@@ -88,6 +125,8 @@ export class AdressePatientComponent implements OnInit {
     if (!this.complete || this.enregistrement()) return;
     const position = this.positionProposee();
     this.envoyer({
+      // La prefecture ne part que si elle change : c'est un demenagement, journalise.
+      ...(this.demenage ? { prefecture: this.prefecture().trim() } : {}),
       commune: this.form.commune.trim(),
       quartier: this.form.quartier.trim(),
       pointRepere: this.form.pointRepere.trim(),
@@ -125,6 +164,10 @@ export class AdressePatientComponent implements OnInit {
 
   private appliquer(a: AdressePatientView) {
     this.adresse.set(a);
+    this.prefecture.set(a.prefecture ?? '');
     this.form = { commune: a.commune ?? '', quartier: a.quartier ?? '', pointRepere: a.pointRepere ?? '' };
   }
 }
+
+/** Comme l'API : sans casse ni espaces autour. */
+const cleLieu = (s: string | null | undefined) => (s ?? '').trim().toLocaleLowerCase('fr');

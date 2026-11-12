@@ -438,6 +438,11 @@ export interface AdressePatientView extends AdresseLivraisonView {
  * qu'avec l'accord du patient ; `effacerPosition` la retire.
  */
 export interface DefinirAdresseDto {
+  /**
+   * R8 : en demenageant dans une autre prefecture. Nom du referentiel ; la
+   * position enregistree s'efface si aucune nouvelle n'est donnee.
+   */
+  prefecture?: string;
   commune: string;
   quartier: string;
   pointRepere?: string;

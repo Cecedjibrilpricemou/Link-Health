@@ -18,12 +18,20 @@
 
 .adresse__large { grid-column: 1 / -1; }
 
-.adresse__prefecture {
-  grid-column: 1 / -1;
+// R8 : changer de prefecture, c'est changer les pharmacies qui recoivent
+// l'ordonnance. Le patient le lit avant d'enregistrer.
+.adresse__demenagement {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
   margin: 0;
-  color: var(--bb-text-secondary);
+  padding: 10px 12px;
+  border-radius: var(--bb-radius-sm);
+  border: 1px solid var(--bb-border-light);
+  background: var(--bb-surface-1);
+  color: var(--bb-text-primary);
 
-  strong { color: var(--bb-text-primary); }
+  .pi { color: var(--adr-accent); margin-top: 2px; }
 }
 
 .adresse__alerte {
