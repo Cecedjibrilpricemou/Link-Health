@@ -386,3 +386,65 @@
     &__content { padding: 1.25rem; }
   }
 }
+
+// ── Numero de telephone : affiche, change par un parcours a part ───────
+.bb-profil-modal__tel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius-sm);
+  background: var(--bb-surface-1);
+}
+
+.bb-profil-modal__tel-valeur {
+  color: var(--bb-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.bb-profil-modal__lien {
+  border: 0;
+  background: none;
+  padding: 6px 4px;
+  color: var(--bb-primary);
+  font-weight: 600;
+  cursor: pointer;
+  &:hover:not(:disabled) { text-decoration: underline; }
+  &:focus-visible { outline: none; box-shadow: var(--bb-focus-ring); border-radius: var(--bb-radius-sm); }
+  &:disabled { opacity: .5; cursor: default; }
+}
+
+:host-context([data-theme="dark"]) .bb-profil-modal__lien { color: var(--bb-bright); }
+
+.bb-profil-modal__tel-parcours {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius-lg);
+  background: var(--bb-surface-1);
+
+  h3 {
+    margin: 0 0 6px;
+    font-family: var(--bb-font-display);
+    font-size: 15px;
+    color: var(--bb-text-primary);
+  }
+}
+
+.bb-profil-modal__tel-aide {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--bb-text-secondary);
+}
+
+.bb-profil-modal__tel-dev {
+  margin: 0 0 12px;
+  padding: 6px 10px;
+  border-radius: var(--bb-radius-sm);
+  background: color-mix(in srgb, var(--bb-warning) 14%, transparent);
+  color: var(--bb-text-primary);
+  font-size: 12.5px;
+}

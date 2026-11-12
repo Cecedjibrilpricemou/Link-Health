@@ -76,6 +76,16 @@ export const updateProfileSchema = z.object({
   photoUrl: photoProfil.optional(),
 }).strict();
 
+// Changement de numero : mot de passe actuel, puis code envoye au nouveau numero.
+export const demanderChangementTelephoneSchema = z.object({
+  nouveauTelephone: phone,
+  motDePasse: z.string().min(1).max(128),
+}).strict();
+
+export const confirmerChangementTelephoneSchema = z.object({
+  code: z.string().trim().regex(/^\d{6}$/, 'Code a six chiffres'),
+}).strict();
+
 export const createPatientSchema = z.object({
   telephone: phone,
   motDePasse: z.string().min(6).max(128),

@@ -379,6 +379,7 @@ model Utilisateur {
   sessions                  Session[]
   evenementsConnexion       EvenementConnexion[]
   authOtps                  AuthOtp[]
+  changementsTelephone      ChangementTelephone[]
   motDePasseResets          MotDePasseReset[]
   auditLogs                 JournalAudit[]
   messagesEnvoyes           Message[]                @relation("Expediteur")
@@ -3220,4 +3221,31 @@ model CorrectionIdentite {
 
   @@index([idPatient, creeLe])
   @@map("corrections_identite")
+}
+
+/// Une demande de changement de numero de telephone, en attente du code.
+///
+/// **Le numero est la cle du compte** : il sert a se connecter, a recevoir
+/// les codes et a ouvrir le dossier par USSD. Il ne change donc qu'en deux
+/// temps : le mot de passe actuel prouve que c'est le titulaire, un code
+/// envoye au **nouveau** numero prouve qu'il le detient. Une session volee ne
+/// suffit plus a detourner le compte vers un autre telephone.
+///
+/// Le code n'est jamais stocke en clair (hache comme un mot de passe).
+model ChangementTelephone {
+  id               String    @id @default(cuid())
+  nouveauTelephone String
+  codeHash         String
+  expireLe         DateTime
+  tentatives       Int       @default(0)
+  maxTentatives    Int       @default(5)
+  /// Pose a la confirmation, ou quand les tentatives sont epuisees.
+  utiliseLe        DateTime?
+  creeLe           DateTime  @default(now())
+
+  idUtilisateur String
+  utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Cascade)
+
+  @@index([idUtilisateur, creeLe])
+  @@map("changements_telephone")
 }

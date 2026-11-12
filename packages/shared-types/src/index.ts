@@ -3906,6 +3906,17 @@ export interface NoterTraitsDto {
   nomMere?: string;
 }
 
+/**
+ * Changement de numero de telephone, etape 1 : un code est parti au nouveau
+ * numero. Le numero n est montre que masque.
+ */
+export interface DemandeChangementTelephoneView {
+  telephoneMasque: string;
+  expireDansMinutes: number;
+  /** Developpement seulement (EMAIL_OTP_DEV_FALLBACK=true, jamais en production). */
+  codeDeveloppement?: string;
+}
+
 /** R15 : un trait d identite corrigeable par l accueil ou l administration. */
 export type ChampCorrigeable = 'prenom' | 'nom' | 'sexe' | 'dateNaissance';
 
