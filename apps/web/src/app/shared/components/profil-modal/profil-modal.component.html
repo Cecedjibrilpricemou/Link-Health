@@ -116,11 +116,18 @@
                 <input matInput id="profil-nom" [(ngModel)]="profilForm.nom" [placeholder]="'PROFIL_MODAL.NOM_PH' | translate" />
               </mat-form-field>
             </div>
+            <!-- Le numero est la cle du compte : il ne se change qu'avec le mot
+                 de passe et un code envoye au nouveau numero. -->
             <div class="bb-profil-modal__field">
               <label for="profil-telephone">{{ 'PROFIL_MODAL.TEL_LABEL' | translate }}</label>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <input matInput id="profil-telephone" [(ngModel)]="profilForm.telephone" [placeholder]="'PROFIL_MODAL.TEL_PH' | translate" />
-              </mat-form-field>
+              <div class="bb-profil-modal__tel">
+                <span id="profil-telephone" class="bb-profil-modal__tel-valeur">{{ currentUser()?.telephone }}</span>
+                @if (etapeTel() === 'ferme') {
+                  <button type="button" class="bb-profil-modal__lien" (click)="ouvrirChangementTel()">
+                    {{ 'PROFIL_MODAL.TEL_CHANGER' | translate }}
+                  </button>
+                }
+              </div>
             </div>
             <div class="bb-profil-modal__field">
               <label for="profil-email">
@@ -132,6 +139,66 @@
               </mat-form-field>
             </div>
           </div>
+
+          @if (etapeTel() !== 'ferme') {
+            <section class="bb-profil-modal__tel-parcours" aria-labelledby="profil-tel-titre">
+              <h3 id="profil-tel-titre">{{ 'PROFIL_MODAL.TEL_TITRE' | translate }}</h3>
+              @if (etapeTel() === 'saisie') {
+                <p class="bb-profil-modal__tel-aide">{{ 'PROFIL_MODAL.TEL_AIDE' | translate }}</p>
+                <div class="bb-profil-modal__grid">
+                  <div class="bb-profil-modal__field">
+                    <label for="profil-tel-nouveau">{{ 'PROFIL_MODAL.TEL_NOUVEAU' | translate }}</label>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                      <input matInput id="profil-tel-nouveau" type="tel" autocomplete="tel"
+                             [ngModel]="nouveauTel()" (ngModelChange)="nouveauTel.set($event)"
+                             [placeholder]="'PROFIL_MODAL.TEL_PH' | translate" />
+                    </mat-form-field>
+                  </div>
+                  <div class="bb-profil-modal__field">
+                    <label for="profil-tel-mdp">{{ 'PROFIL_MODAL.TEL_MDP' | translate }}</label>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                      <input matInput id="profil-tel-mdp" type="password" autocomplete="current-password"
+                             [ngModel]="motDePasseTel()" (ngModelChange)="motDePasseTel.set($event)" />
+                    </mat-form-field>
+                  </div>
+                </div>
+                <div class="bb-profil-modal__actions">
+                  <button type="button" class="bb-profil-modal__lien" (click)="fermerChangementTel()" [disabled]="telEnCours()">
+                    {{ 'COMMON.CANCEL' | translate }}
+                  </button>
+                  <button type="button" class="bb-profil-modal__save-btn" (click)="demanderCodeTel()" [disabled]="!peutDemanderCodeTel()">
+                    <i [class]="telEnCours() ? 'pi pi-spinner pi-spin' : 'pi pi-send'" aria-hidden="true"></i>
+                    {{ 'PROFIL_MODAL.TEL_ENVOYER_CODE' | translate }}
+                  </button>
+                </div>
+              } @else {
+                <p class="bb-profil-modal__tel-aide">
+                  {{ 'PROFIL_MODAL.TEL_CODE_ENVOYE' | translate:{ numero: demandeTel()?.telephoneMasque ?? '', minutes: demandeTel()?.expireDansMinutes ?? 10 } }}
+                </p>
+                @if (demandeTel()?.codeDeveloppement) {
+                  <p class="bb-profil-modal__tel-dev" role="note">
+                    {{ 'PROFIL_MODAL.TEL_CODE_DEV' | translate }} <strong>{{ demandeTel()?.codeDeveloppement }}</strong>
+                  </p>
+                }
+                <div class="bb-profil-modal__field">
+                  <label for="profil-tel-code">{{ 'PROFIL_MODAL.TEL_CODE' | translate }}</label>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                    <input matInput id="profil-tel-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                           [ngModel]="codeTel()" (ngModelChange)="codeTel.set($event)" />
+                  </mat-form-field>
+                </div>
+                <div class="bb-profil-modal__actions">
+                  <button type="button" class="bb-profil-modal__lien" (click)="etapeTel.set('saisie')" [disabled]="telEnCours()">
+                    {{ 'PROFIL_MODAL.TEL_RENVOYER' | translate }}
+                  </button>
+                  <button type="button" class="bb-profil-modal__save-btn" (click)="confirmerCodeTel()" [disabled]="!peutConfirmerTel()">
+                    <i [class]="telEnCours() ? 'pi pi-spinner pi-spin' : 'pi pi-check'" aria-hidden="true"></i>
+                    {{ 'PROFIL_MODAL.TEL_CONFIRMER' | translate }}
+                  </button>
+                </div>
+              }
+            </section>
+          }
 
           <div class="bb-profil-modal__actions">
             <button class="bb-profil-modal__save-btn" (click)="saveProfil()" [disabled]="isSaving()">

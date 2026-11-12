@@ -2,7 +2,7 @@
 // patient dont l'identite est verifiee, elle ne doit pas rouvrir la porte que
 // son espace a fermee : meme regle, meme garde.
 jest.mock('../src/config/prisma', () => ({
-  prisma: { utilisateur: { findFirst: jest.fn(), update: jest.fn() } },
+  prisma: { utilisateur: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() } },
 }));
 jest.mock('../src/services/patient.service', () => ({ assertNomModifiableParLePatient: jest.fn() }));
 jest.mock('../src/services/email.service', () => ({
@@ -15,7 +15,7 @@ import { updateProfil } from '../src/services/auth.service';
 import { ForbiddenError } from '../src/utils/app-error';
 
 const { prisma } = jest.requireMock('../src/config/prisma') as {
-  prisma: { utilisateur: { findFirst: jest.Mock; update: jest.Mock } };
+  prisma: { utilisateur: { findFirst: jest.Mock; findUnique: jest.Mock; update: jest.Mock } };
 };
 const { assertNomModifiableParLePatient } = jest.requireMock('../src/services/patient.service') as {
   assertNomModifiableParLePatient: jest.Mock;
@@ -37,5 +37,20 @@ describe('PUT /auth/profile et le nom du patient', () => {
     assertNomModifiableParLePatient.mockRejectedValue(new ForbiddenError('identite verifiee'));
     await expect(updateProfil('u1', { nom: 'Camara' })).rejects.toBeInstanceOf(ForbiddenError);
     expect(prisma.utilisateur.update).not.toHaveBeenCalled();
+  });
+});
+
+// Le numero est la cle du compte : il ne change plus par ce formulaire.
+describe('PUT /auth/profile et le numero de telephone', () => {
+  beforeEach(() => prisma.utilisateur.findUnique.mockResolvedValue({ telephone: '620100010' }));
+
+  it('refuse un autre numero, sans rien ecrire', async () => {
+    await expect(updateProfil('u1', { telephone: '620999999' })).rejects.toThrow('code envoye au nouveau numero');
+    expect(prisma.utilisateur.update).not.toHaveBeenCalled();
+  });
+
+  it('laisse passer le meme numero renvoye avec le formulaire, sans l ecrire', async () => {
+    await updateProfil('u1', { telephone: ' 620100010 ', prenom: 'Awa' });
+    expect(prisma.utilisateur.update).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { prenom: 'Awa' } });
   });
 });

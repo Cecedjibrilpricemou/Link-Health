@@ -97,6 +97,8 @@ const TOUS_ROLES_CONNECTES: Record<string, string> = {
   'auth POST /logout': 'efface ses propres cookies',
   'auth PUT /change-password': 'son propre mot de passe',
   'auth PUT /profile': 'modifie le profil du porteur du jeton ; ne prend aucun identifiant en entree',
+  'auth POST /telephone/demande': 'son propre numero ; exige son mot de passe actuel, aucun identifiant de cible en entree',
+  'auth POST /telephone/confirmer': 'sa propre demande en cours, prouvee par le code recu au nouveau numero',
   'upload POST /avatar': 'enregistre la photo du porteur du jeton ; aucun identifiant de cible en entree',
 
   // ── Ses propres notifications, filtrées sur l'identifiant du jeton.

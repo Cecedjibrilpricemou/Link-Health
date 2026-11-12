@@ -1,5 +1,6 @@
 // shared/components/profil-modal/profil-modal.component.ts
-import { Component, inject, signal, OnInit, input, output } from '@angular/core';
+import { Component, computed, inject, signal, OnInit, input, output } from '@angular/core';
+import type { DemandeChangementTelephoneView } from '@baobaoheath/shared-types';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { CommonModule } from '@angular/common';
@@ -38,7 +39,76 @@ export class ProfilModalComponent implements OnInit {
   errorMsg    = signal('');
 
   // Formulaire profil
-  profilForm = { prenom: '', nom: '', email: '', telephone: '' };
+  // Le numero n'y est plus : il a son propre parcours (voir plus bas).
+  profilForm = { prenom: '', nom: '', email: '' };
+
+  // ── Changer de numero ─────────────────────────────────────────────
+  //
+  // Le numero est la cle du compte (connexion, codes, USSD). Il ne change
+  // qu'en deux temps : le mot de passe actuel, puis le code envoye au nouveau
+  // numero. Une session restee ouverte ne suffit plus a le detourner.
+  etapeTel = signal<'ferme' | 'saisie' | 'code'>('ferme');
+  nouveauTel = signal('');
+  motDePasseTel = signal('');
+  codeTel = signal('');
+  demandeTel = signal<DemandeChangementTelephoneView | null>(null);
+  telEnCours = signal(false);
+
+  peutDemanderCodeTel = computed(() =>
+    !this.telEnCours() && this.nouveauTel().trim().length >= 6 && this.motDePasseTel().length > 0);
+  peutConfirmerTel = computed(() => !this.telEnCours() && /^\d{6}$/.test(this.codeTel().trim()));
+
+  ouvrirChangementTel() {
+    this.nouveauTel.set('');
+    this.motDePasseTel.set('');
+    this.codeTel.set('');
+    this.demandeTel.set(null);
+    this.errorMsg.set('');
+    this.etapeTel.set('saisie');
+  }
+
+  fermerChangementTel() {
+    this.motDePasseTel.set('');
+    this.etapeTel.set('ferme');
+  }
+
+  demanderCodeTel() {
+    if (!this.peutDemanderCodeTel()) return;
+    this.telEnCours.set(true);
+    this.errorMsg.set('');
+    this.authService.demanderChangementTelephone(this.nouveauTel().trim(), this.motDePasseTel()).subscribe({
+      next: (demande) => {
+        this.telEnCours.set(false);
+        // Le mot de passe a servi : il ne reste pas en memoire.
+        this.motDePasseTel.set('');
+        this.codeTel.set('');
+        this.demandeTel.set(demande);
+        this.etapeTel.set('code');
+      },
+      error: (err) => {
+        this.telEnCours.set(false);
+        this.errorMsg.set(err?.error?.error ?? this.i18n.t('PROFIL_MODAL.TEL_ERR'));
+      },
+    });
+  }
+
+  confirmerCodeTel() {
+    if (!this.peutConfirmerTel()) return;
+    this.telEnCours.set(true);
+    this.errorMsg.set('');
+    this.authService.confirmerChangementTelephone(this.codeTel().trim()).subscribe({
+      next: () => {
+        this.telEnCours.set(false);
+        this.etapeTel.set('ferme');
+        this.demandeTel.set(null);
+        this.showSuccess(this.i18n.t('PROFIL_MODAL.TEL_CHANGE'));
+      },
+      error: (err) => {
+        this.telEnCours.set(false);
+        this.errorMsg.set(err?.error?.error ?? this.i18n.t('PROFIL_MODAL.TEL_ERR'));
+      },
+    });
+  }
   isUploadingPhoto = signal(false);
 
   // Formulaire mot de passe
@@ -52,7 +122,7 @@ export class ProfilModalComponent implements OnInit {
     if (u) {
       this.profilForm = {
         prenom: u.prenom, nom: u.nom,
-        email: u.email ?? '', telephone: u.telephone
+        email: u.email ?? ''
       };
     }
     // Si changement forcé → aller directement sur l'onglet mot de passe

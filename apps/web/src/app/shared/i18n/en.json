@@ -89,7 +89,20 @@
     "ERR_PHOTO_SIZE": "Image too large (3 MB maximum).",
     "SUCCESS_PHOTO_UPDATED": "Profile photo updated!",
     "ERR_PHOTO_UPLOAD": "Error while uploading the photo.",
-    "ROLE_ASSUREUR": "Insurance company"
+    "ROLE_ASSUREUR": "Insurance company",
+    "TEL_CHANGER": "Change number",
+    "TEL_TITRE": "Change phone number",
+    "TEL_AIDE": "Your number is used to sign in and to receive your codes. Confirm with your password: a code will be sent by SMS to the new number.",
+    "TEL_NOUVEAU": "New number",
+    "TEL_MDP": "Current password",
+    "TEL_ENVOYER_CODE": "Get a code",
+    "TEL_CODE_ENVOYE": "A code was sent to {{numero}}. It is valid for {{minutes}} minutes.",
+    "TEL_CODE_DEV": "Development mode, code:",
+    "TEL_CODE": "Code received by SMS",
+    "TEL_RENVOYER": "Send a new code",
+    "TEL_CONFIRMER": "Confirm the change",
+    "TEL_CHANGE": "Number changed. Your previous number has been notified, and your other sessions have been signed out.",
+    "TEL_ERR": "The number could not be changed."
   },
   "STATUT": {
     "TERMINEE": "Completed",

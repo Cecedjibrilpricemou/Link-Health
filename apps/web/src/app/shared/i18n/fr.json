@@ -89,7 +89,20 @@
     "ERR_PHOTO_SIZE": "Image trop volumineuse (3 Mo maximum).",
     "SUCCESS_PHOTO_UPDATED": "Photo de profil mise à jour !",
     "ERR_PHOTO_UPLOAD": "Erreur lors de l'envoi de la photo.",
-    "ROLE_ASSUREUR": "Compagnie d'assurance"
+    "ROLE_ASSUREUR": "Compagnie d'assurance",
+    "TEL_CHANGER": "Changer de numéro",
+    "TEL_TITRE": "Changer de numéro de téléphone",
+    "TEL_AIDE": "Votre numéro sert à vous connecter et à recevoir vos codes. Confirmez avec votre mot de passe : un code vous sera envoyé par SMS au nouveau numéro.",
+    "TEL_NOUVEAU": "Nouveau numéro",
+    "TEL_MDP": "Mot de passe actuel",
+    "TEL_ENVOYER_CODE": "Recevoir un code",
+    "TEL_CODE_ENVOYE": "Un code a été envoyé au {{numero}}. Il est valable {{minutes}} minutes.",
+    "TEL_CODE_DEV": "Mode développement, code :",
+    "TEL_CODE": "Code reçu par SMS",
+    "TEL_RENVOYER": "Renvoyer un code",
+    "TEL_CONFIRMER": "Confirmer le changement",
+    "TEL_CHANGE": "Numéro changé. Votre ancien numéro en a été averti, et vos autres sessions ont été fermées.",
+    "TEL_ERR": "Le changement de numéro n'a pas abouti."
   },
   "STATUT": {
     "TERMINEE": "Terminée",

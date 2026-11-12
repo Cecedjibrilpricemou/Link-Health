@@ -5,7 +5,7 @@ import { Observable, of } from 'rxjs';
 import { tap, map, switchMap } from 'rxjs/operators';
 import { ApiService } from './api.service';
 import { User, LoginPayload, RegisterPayload } from '../models/user.model';
-import type { OtpLoginChallenge } from '@baobaoheath/shared-types';
+import type { DemandeChangementTelephoneView, OtpLoginChallenge } from '@baobaoheath/shared-types';
 
 interface BackendAckResponse {
   success: boolean;
@@ -102,6 +102,26 @@ export class AuthService {
 
   updateProfil(dto: { prenom?: string; nom?: string; email?: string; telephone?: string; photoUrl?: string; }): Observable<User> {
     return this.api.put<BackendMeResponse>('/auth/profile', dto).pipe(
+      map(response => response.data),
+      tap(user => {
+        if (user?.id) {
+          this._currentUser.set(user);
+          localStorage.setItem('currentUser', JSON.stringify(user));
+        }
+      })
+    );
+  }
+
+  /** Changement de numero, etape 1 : mot de passe actuel, code envoye au nouveau numero. */
+  demanderChangementTelephone(nouveauTelephone: string, motDePasse: string): Observable<DemandeChangementTelephoneView> {
+    return this.api.post<{ success: boolean; data: DemandeChangementTelephoneView }>(
+      '/auth/telephone/demande', { nouveauTelephone, motDePasse },
+    ).pipe(map(response => response.data));
+  }
+
+  /** Etape 2 : le code recu ; le compte a jour remplace l'ancien. */
+  confirmerChangementTelephone(code: string): Observable<User> {
+    return this.api.post<BackendMeResponse>('/auth/telephone/confirmer', { code }).pipe(
       map(response => response.data),
       tap(user => {
         if (user?.id) {
