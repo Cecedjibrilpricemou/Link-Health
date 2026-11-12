@@ -19,6 +19,13 @@ export const routes: Routes = [
       import('./features/public/recherche/recherche.component').then(m => m.RechercheComponent)
   },
 
+  // ── Page publique d'une officine (A3) ───────────────────────────────
+  {
+    path: 'pharmacie/:id',
+    loadComponent: () =>
+      import('./features/public/pharmacie/pharmacie.component').then(m => m.PharmacieComponent)
+  },
+
   // ── Module Auth ─────────────────────────────────────────────────────
   {
     path: 'auth',

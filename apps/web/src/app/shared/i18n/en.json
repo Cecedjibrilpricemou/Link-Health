@@ -4006,7 +4006,10 @@
       "SEARCHING": "Searching…",
       "ERROR": "The search did not complete. Please try again shortly.",
       "INTRO": "Pick your area, then type what you are looking for.",
+      "INTRO_TITLE": "Tell us what you need, and where",
       "EMPTY": "No pharmacy in this area has declared this product in stock. Try another spelling, or the molecule rather than the brand.",
+      "EMPTY_TITLE": "No products found in this area",
+      "RESULTS_TITLE": "Products found",
       "ZONE_NEIGHBOURS": "Nothing in your area: here are pharmacies in neighbouring communes ({{communes}}).",
       "ZONE_WIDE": "Nothing nearby: here are pharmacies across {{zone}}.",
       "MOLECULE": "Molecule",
@@ -4022,7 +4025,26 @@
       "NOTE": "Prices and availability are those declared by each pharmacy. Call ahead before travelling.",
       "CTA_TITLE": "Create your account",
       "CTA_TEXT": "With an account, your prescriptions go straight to the pharmacies in your neighbourhood.",
-      "CTA_BUTTON": "Create an account"
+      "CTA_BUTTON": "Create an account",
+      "OPTIONAL": "(optional)",
+      "SEE_PHARMACIES": "See pharmacies",
+      "HIDE_PHARMACIES": "Hide pharmacies",
+      "CALL": "Call",
+      "CALL_FIRST": "Call the pharmacy before travelling: stock can sell out during the day.",
+      "ZONE_COUNTRY": "Nothing near you: here is what we found elsewhere in the country.",
+      "PHARMACIES_TITLE": "Pharmacies",
+      "IN_STOCK_ONE": "1 product in stock",
+      "IN_STOCK_MANY": "{{nombre}} products in stock"
+    },
+    "PHARMACY": {
+      "TAG": "Pharmacy",
+      "FILTER": "Search within this pharmacy",
+      "COUNT": "{{total}} products in stock",
+      "COUNT_FILTERED": "{{montres}} result(s) out of {{total}} in stock.",
+      "SEE_ALL": "See everything",
+      "EMPTY": "This pharmacy has nothing matching. Try another word, or go back to its full stock.",
+      "NOT_FOUND": "This pharmacy is not available.",
+      "BACK": "Back to search"
     }
   },
   "AGREMENT": {

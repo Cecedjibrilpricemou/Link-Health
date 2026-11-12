@@ -1,0 +1,257 @@
+.pharm-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &__lieu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    color: var(--bb-text-secondary);
+
+    .pi { color: var(--bb-primary); }
+  }
+
+  &__adresse {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--bb-text-muted);
+    font-size: 0.9rem;
+  }
+
+  &__tel {
+    min-height: 52px;
+    margin-top: 1.25rem;
+  }
+}
+
+.pharm-filtre {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: clamp(16px, 3vw, 24px);
+  background: var(--bb-surface-card);
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius-lg);
+  box-shadow: var(--bb-shadow-xs);
+
+  label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--bb-text-secondary);
+  }
+
+  &__ligne {
+    display: flex;
+    min-width: 0;
+    gap: 0.65rem;
+    align-items: stretch;
+  }
+
+  input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0.7rem 0.85rem;
+    font: inherit;
+    color: var(--bb-text-primary);
+    background: var(--bb-surface-0);
+    border: 1px solid var(--bb-border);
+    border-radius: var(--bb-radius);
+    transition: border-color var(--bb-transition), box-shadow var(--bb-transition);
+
+    &:focus-visible {
+      outline: none;
+      border-color: var(--bb-primary);
+      box-shadow: var(--bb-focus-ring);
+    }
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.pharm-compte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin: 1.25rem 0 0;
+  padding: 0.85rem 1rem;
+  color: var(--bb-text-secondary);
+  background: var(--bb-surface-1);
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius);
+  font-size: 0.9rem;
+  line-height: 1.5;
+
+  &__tout {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    font: inherit;
+    font-weight: 700;
+    color: var(--bb-primary);
+    background: var(--bb-surface-card);
+    border: 1px solid var(--bb-border);
+    border-radius: var(--bb-radius-pill);
+    cursor: pointer;
+    transition: background var(--bb-transition), border-color var(--bb-transition), box-shadow var(--bb-transition);
+
+    &:hover {
+      background: var(--bb-surface-0);
+      border-color: var(--bb-border-strong);
+    }
+    &:focus-visible {
+      outline: none;
+      box-shadow: var(--bb-focus-ring);
+    }
+  }
+}
+
+.pharm-vide,
+.pharm-note {
+  color: var(--bb-text-secondary);
+}
+
+.pharm-vide {
+  margin: 1rem 0 0;
+  padding: clamp(24px, 5vw, 42px);
+  background: var(--bb-surface-1);
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius-lg);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.pharm-note {
+  margin: 1rem 0 0;
+  padding: 0.9rem 1rem;
+  color: var(--bb-text-muted);
+  background: var(--bb-surface-1);
+  border-left: 3px solid var(--bb-border-strong);
+  border-radius: var(--bb-radius-sm);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.pharm-rayon {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 0.8rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pharm-produit {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: clamp(14px, 2vw, 18px);
+  background: var(--bb-surface-card);
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius-lg);
+  box-shadow: var(--bb-shadow-xs);
+  transition: border-color var(--bb-transition), box-shadow var(--bb-transition), transform var(--bb-transition);
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: var(--bb-border);
+    box-shadow: var(--bb-shadow-sm);
+  }
+
+  &__tete,
+  &__bas {
+    display: flex;
+    min-width: 0;
+    gap: 0.65rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__nom {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--bb-text-primary);
+  }
+
+  &__prix {
+    flex: 0 1 auto;
+    overflow-wrap: anywhere;
+    text-align: right;
+    font-weight: 800;
+    color: var(--bb-primary);
+  }
+
+  &__bas {
+    color: var(--bb-text-muted);
+    font-size: 0.82rem;
+  }
+
+  &__detail {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--bb-text-secondary);
+  }
+
+  &__fraicheur {
+    color: var(--bb-text-muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+}
+
+.pharm-etat {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.55rem;
+  color: var(--bb-success);
+  background: var(--bb-success-bg);
+  border: 1px solid var(--bb-success-border);
+  border-radius: var(--bb-radius-pill);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+
+  &--faible {
+    color: var(--bb-warning);
+    background: var(--bb-warning-bg);
+    border-color: var(--bb-warning-border);
+  }
+}
+
+@media (max-width: 640px) {
+  .pharm-filtre__ligne {
+    flex-direction: column;
+
+    .pub-btn { width: 100%; }
+  }
+
+  .pharm-compte {
+    align-items: stretch;
+    flex-direction: column;
+
+    &__tout { align-self: flex-start; }
+  }
+}
+
+@media (max-width: 420px) {
+  .pharm-produit__tete,
+  .pharm-produit__bas {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pharm-produit__prix { text-align: left; }
+}

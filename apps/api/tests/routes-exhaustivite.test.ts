@@ -72,6 +72,7 @@ const PUBLIQUES: Record<string, string> = {
   // ── Ce qu'une page d'accueil doit pouvoir afficher avant toute connexion.
   // A1 : chercher un produit en pharmacie avant meme d'avoir un compte.
   'recherche GET /produits': "recherche publique de produits ; ne rend que des stocks declares par les pharmacies, jamais un produit reglemente, jamais une quantite",
+  'recherche GET /pharmacies/:id': "page publique d'une officine : son rayon, son adresse et son telephone, rien de plus",
   'parametres GET /publics': "nom et logo de la plateforme, affichés sur l'écran de connexion",
   'stats GET /public': 'compteurs agrégés, aucune donnée nominative',
   'admin-structure GET /structures/publiques':

@@ -4322,7 +4322,21 @@ export interface CandidatDoublonView {
 export type EtatStockPublic = 'DISPONIBLE' | 'FAIBLE';
 
 /** Jusqu'ou la recherche a du s'etendre pour trouver quelque chose. */
-export type ZoneRechercheProduit = 'COMMUNE' | 'VOISINES' | 'PREFECTURE';
+export type ZoneRechercheProduit = 'COMMUNE' | 'VOISINES' | 'PREFECTURE' | 'PAYS';
+
+/** Une officine qui declare avoir le produit, et a quel prix chez elle. */
+export interface PharmacieProduitView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  /** Pour appeler avant de se deplacer. */
+  telephone: string | null;
+  prixGnf: number;
+  etatStock: EtatStockPublic;
+  declareLe: string;
+}
 
 export interface ProduitTrouveView {
   id: string;
@@ -4345,13 +4359,58 @@ export interface ProduitTrouveView {
   etatStock: EtatStockPublic;
   /** Quand l'officine a declare ce stock pour la derniere fois. */
   declareLe: string;
+  /** Les officines qui l'ont, la plus proche d'abord puis la moins chere. */
+  pharmacies: PharmacieProduitView[];
+}
+
+/** Une officine trouvee par son nom (A3). */
+export interface PharmacieTrouveeView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  telephone: string | null;
+  /** Ce qu'elle a en rayon, pour savoir si la visite vaut le coup. */
+  nombreProduits: number;
+}
+
+/** Un produit tel qu'il se presente dans le rayon d'une officine. */
+export interface ProduitEnRayonView {
+  id: string;
+  libelle: string;
+  molecule: string | null;
+  forme: string | null;
+  dosage: string | null;
+  categorie: string;
+  estMedicament: boolean;
+  prixGnf: number;
+  etatStock: EtatStockPublic;
+  declareLe: string;
+}
+
+/** Une officine et son rayon, pour sa page publique. */
+export interface PharmacieDetailView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  adresse: string | null;
+  telephone: string | null;
+  /** Tout ce qu'elle a en rayon, meme quand la liste rendue est filtree. */
+  nombreProduits: number;
+  produits: ProduitEnRayonView[];
 }
 
 export interface RechercheProduitsView {
   zoneUtilisee: ZoneRechercheProduit;
-  prefecture: string;
+  /** Nulle quand le visiteur n'a pas dit ou il est. */
+  prefecture: string | null;
   commune: string | null;
   /** Les communes voisines interrogees, quand la recherche s'est elargie. */
   communesVoisines: string[];
   produits: ProduitTrouveView[];
+  /** Les officines dont le nom ressemble a ce qui a ete tape. */
+  pharmaciesTrouvees: PharmacieTrouveeView[];
 }
