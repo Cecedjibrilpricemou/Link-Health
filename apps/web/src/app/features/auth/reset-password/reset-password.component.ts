@@ -10,11 +10,12 @@ import { I18nService } from '../../../shared/services/i18n.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AuthShellComponent } from '../../../shared/components/auth-shell/auth-shell.component';
 import { ToastrService } from 'ngx-toastr';
+import { PlateformeSecuriseeComponent } from '../../../shared/components/plateforme-securisee/plateforme-securisee.component';
 
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [
+  imports: [PlateformeSecuriseeComponent, 
     MatButtonModule,
     MatFormFieldModule, MatInputModule,
     FormsModule, RouterLink,
