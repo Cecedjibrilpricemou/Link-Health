@@ -41,7 +41,7 @@ const { prisma } = jest.requireMock('../src/config/prisma') as {
 const { getValeursParametres } = jest.requireMock('../src/services/parametres.service') as { getValeursParametres: M };
 
 const GUINEE: ParametresPaysView = {
-  code: 'GN', nom: 'Guinée', indicatifTelephone: '+224',
+  code: 'GN', nom: 'Guinée', indicatifTelephone: '+224', longueurNumero: 9,
   niveaux: [
     { code: 'region', libelles: { fr: 'Région' } },
     { code: 'prefecture', libelles: { fr: 'Préfecture' } },
@@ -50,7 +50,7 @@ const GUINEE: ParametresPaysView = {
   niveauBase: 'commune', niveauElargissement: 'prefecture',
 };
 const NIGERIA: ParametresPaysView = {
-  code: 'NG', nom: 'Nigeria', indicatifTelephone: '+234',
+  code: 'NG', nom: 'Nigeria', indicatifTelephone: '+234', longueurNumero: 10,
   niveaux: [
     { code: 'state', libelles: { fr: 'État', en: 'State' } },
     { code: 'lga', libelles: { fr: 'Zone de gouvernement local', en: 'LGA' } },

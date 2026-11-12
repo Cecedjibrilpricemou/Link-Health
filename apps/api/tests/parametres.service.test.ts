@@ -24,6 +24,14 @@ jest.mock('../src/config/prisma', () => ({
     commande: { findFirst: jest.fn() },
     course: { findFirst: jest.fn() },
     alerteEpidemique: { findFirst: jest.fn() },
+    facture: { findFirst: jest.fn() },
+    venteComptoir: { findFirst: jest.fn() },
+    lotStock: { findFirst: jest.fn() },
+    contratAssurance: { findFirst: jest.fn() },
+    medicament: { findFirst: jest.fn() },
+    consultation: { findFirst: jest.fn() },
+    examen: { findFirst: jest.fn() },
+    plateauTechnique: { findFirst: jest.fn() },
   },
 }));
 
@@ -37,6 +45,9 @@ const { prisma } = jest.requireMock('../src/config/prisma') as {
     lieuGeo: { count: M; findFirst: M };
     structureSante: { findFirst: M }; patientProfile: { findFirst: M }; livreurProfile: { findFirst: M };
     commande: { findFirst: M }; course: { findFirst: M }; alerteEpidemique: { findFirst: M };
+    facture: { findFirst: M }; venteComptoir: { findFirst: M }; lotStock: { findFirst: M };
+    contratAssurance: { findFirst: M }; medicament: { findFirst: M }; consultation: { findFirst: M };
+    examen: { findFirst: M }; plateauTechnique: { findFirst: M };
   };
 };
 
@@ -84,7 +95,7 @@ describe('getParametres', () => {
 
     const vue = await getParametres();
 
-    expect(vue).toEqual({ ...PARAMETRES_PAR_DEFAUT, modifieLe: null, idModifiePar: null, decoupageFige: false });
+    expect(vue).toEqual({ ...PARAMETRES_PAR_DEFAUT, modifieLe: null, idModifiePar: null, decoupageFige: false, deviseFigee: false });
     expect(prisma.parametresSysteme.findUnique).toHaveBeenCalledWith({ where: { id: 'global' } });
   });
 
@@ -114,6 +125,15 @@ describe('getParametres', () => {
 
     expect((await getParametres()).decoupageFige).toBe(true);
   });
+
+  // R12 : l'ecran doit savoir que la devise est figee, pour ne pas proposer
+  // une modification que l'API refusera.
+  it('dit que la devise est figee des qu un montant est enregistre', async () => {
+    prisma.parametresSysteme.findUnique.mockResolvedValue(null);
+    prisma.facture.findFirst.mockResolvedValue({ id: 'f1' });
+
+    expect((await getParametres()).deviseFigee).toBe(true);
+  });
 });
 
 describe('modifierParametres', () => {
@@ -139,13 +159,13 @@ describe('modifierParametres', () => {
       create: { id: 'global', valeurs: attendu, idModifiePar: 'admin-1' },
       update: { valeurs: attendu, idModifiePar: 'admin-1' },
     });
-    expect(vue).toEqual({ ...attendu, modifieLe, idModifiePar: 'admin-1', decoupageFige: false });
+    expect(vue).toEqual({ ...attendu, modifieLe, idModifiePar: 'admin-1', decoupageFige: false, deviseFigee: false });
   });
 
   // M1 : passer au decoupage d'un autre pays, verifie avant d'ecrire.
   describe('pays', () => {
     const NIGERIA = {
-      code: 'NG', nom: 'Nigeria', indicatifTelephone: '+234',
+      code: 'NG', nom: 'Nigeria', indicatifTelephone: '+234', longueurNumero: 10,
       niveaux: [
         { code: 'state', libelles: { fr: 'État', en: 'State' } },
         { code: 'lga', libelles: { fr: 'Zone de gouvernement local', en: 'LGA' } },
@@ -252,6 +272,87 @@ describe('modifierParametres', () => {
       await expect(modifierParametres('admin-1', { zones: { delaiFinalCourseMinutes: 45 } }))
         .rejects.toThrow("Le delai final des courses doit depasser deux fois le delai d'elargissement");
       expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  // R10 a R13 : des reglages qui ne doivent pas pouvoir se contredire.
+  describe('reglages coherents', () => {
+    const TABLES_MONTANTS = [
+      'facture', 'venteComptoir', 'commande', 'course', 'lotStock', 'contratAssurance',
+      'medicament', 'consultation', 'examen', 'plateauTechnique',
+    ] as const;
+
+    beforeEach(() => {
+      prisma.parametresSysteme.findUnique.mockResolvedValue(null);
+      prisma.parametresSysteme.upsert.mockResolvedValue({ id: 'global', modifieLe: new Date(), idModifiePar: 'admin-1' });
+    });
+
+    // R10 : le produit le plus controle ne doit pas rester valable le plus longtemps.
+    it('refuse une validite reglementee plus longue que la validite ordinaire', async () => {
+      await expect(modifierParametres('admin-1', { prescription: { dureeValiditeJours: 7 } }))
+        .rejects.toThrow('ne peut pas depasser la validite ordinaire');
+      await expect(modifierParametres('admin-1', { prescription: { dureeValiditeReglementeJours: 91 } }))
+        .rejects.toBeInstanceOf(ValidationError);
+      expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+    });
+
+    it('accepte une validite reglementee egale ou plus courte', async () => {
+      await modifierParametres('admin-1', { prescription: { dureeValiditeJours: 28 } });
+      await modifierParametres('admin-1', { prescription: { dureeValiditeReglementeJours: 7 } });
+      expect(prisma.parametresSysteme.upsert).toHaveBeenCalledTimes(2);
+    });
+
+    // R11 : sans moyen de paiement, plus rien ne peut etre paye.
+    it('refuse de desactiver le dernier moyen de paiement', async () => {
+      // Par defaut : especes et Orange Money actifs, MoMo non.
+      await modifierParametres('admin-1', { facturation: { paiementEspeces: false } });
+      await expect(modifierParametres('admin-1', { facturation: { paiementEspeces: false, paiementOrangeMoney: false } }))
+        .rejects.toThrow('au moins un moyen de paiement');
+      expect(prisma.parametresSysteme.upsert).toHaveBeenCalledTimes(1);
+    });
+
+    it('la marge seule ne declenche pas de refus', async () => {
+      await modifierParametres('admin-1', { facturation: { margePct: 10 } });
+      expect(prisma.parametresSysteme.upsert).toHaveBeenCalled();
+    });
+
+    // R12 : les montants n'ont pas de devise propre ; la changer les
+    // reetiquetterait sans les convertir.
+    it.each(TABLES_MONTANTS)('refuse de changer la devise des que %s porte un montant', async (table) => {
+      prisma[table].findFirst.mockResolvedValue({ id: 'x' });
+
+      await expect(modifierParametres('admin-1', { identite: { devise: 'XOF' } })).rejects.toBeInstanceOf(ConflictError);
+      expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+    });
+
+    it('renvoyer la meme devise avec le reste de l identite passe, meme avec des montants', async () => {
+      prisma.facture.findFirst.mockResolvedValue({ id: 'f1' });
+
+      const vue = await modifierParametres('admin-1', { identite: { devise: 'GNF', slogan: 'Nouveau' } });
+
+      expect(vue.identite.slogan).toBe('Nouveau');
+      expect(vue.deviseFigee).toBe(true);
+    });
+
+    it('sur une installation sans montant, la devise se choisit', async () => {
+      const vue = await modifierParametres('admin-1', { identite: { devise: 'XOF' } });
+      expect(vue.identite.devise).toBe('XOF');
+      expect(vue.deviseFigee).toBe(false);
+    });
+
+    it('ne compte que les prix reellement saisis', async () => {
+      await modifierParametres('admin-1', { identite: { devise: 'XOF' } });
+      expect(prisma.medicament.findFirst).toHaveBeenCalledWith({ where: { prixUnitaireGnf: { gt: 0 } }, select: { id: true } });
+      expect(prisma.consultation.findFirst).toHaveBeenCalledWith({ where: { tarifGnf: { not: null } }, select: { id: true } });
+    });
+
+    // R13 : un seul nom de pays, celui de l'installation.
+    it('le pays de l identite est toujours celui de l installation', async () => {
+      const vue = await modifierParametres('admin-1', { identite: { pays: 'Atlantide' } });
+      expect(vue.identite.pays).toBe('Guinée');
+
+      const autre = fusionnerParametres(PARAMETRES_PAR_DEFAUT, { identite: { pays: 'Guinée' }, pays: { nom: 'Sénégal' } });
+      expect(autre.identite.pays).toBe('Sénégal');
     });
   });
 });

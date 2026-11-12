@@ -2,7 +2,8 @@ import { prisma } from '../config/prisma';
 import { empreinteRecherche } from '../utils/encryption.utils';
 import { JwtPayload } from '../types/auth.types';
 import { assertCanAccessPatient } from './access-control.service';
-import type { CandidatDoublonView, TraitConcordant } from '@baobaoheath/shared-types';
+import type { CandidatDoublonView, ParametresPaysView, TraitConcordant } from '@baobaoheath/shared-types';
+import { PARAMETRES_PAR_DEFAUT, getValeursParametres } from './parametres.service';
 
 /**
  * Detection de doublons de dossier patient (EF-01-05).
@@ -59,11 +60,35 @@ export function normaliser(v: string): string {
     .trim();
 }
 
-/** Les chiffres d'un numero, sans indicatif ni separateurs. */
-export function normaliserTelephone(v: string): string {
-  const chiffres = v.replace(/\D/g, '');
-  // « +224627082602 » et « 627082602 » sont le meme numero.
-  return chiffres.length > 9 ? chiffres.slice(-9) : chiffres;
+/** La numerotation du pays installe (parametres, section `pays`). */
+export type Numerotation = Pick<ParametresPaysView, 'indicatifTelephone' | 'longueurNumero'>;
+
+/**
+ * Le numero national : ses chiffres, sans indicatif ni separateurs.
+ * « +224 627 08 26 02 », « 00224627082602 » et « 627082602 » sont le meme
+ * numero.
+ *
+ * R14 : on retire l'indicatif **du pays installe**, et le « 0 » que certains
+ * pays mettent devant le numero national (« 0803... » au Nigeria). Garder les
+ * 9 derniers chiffres etait une regle guineenne : dans un pays a 10 chiffres,
+ * elle tronquait le numero enregistre et confondait deux numeros differents.
+ *
+ * L'indicatif n'est retire que si le numero est ecrit en international (« + »
+ * ou « 00 ») ou s'il a exactement la longueur indicatif + numero : un numero
+ * national qui commencerait par les memes chiffres reste intact.
+ */
+export function normaliserTelephone(v: string, n: Numerotation = PARAMETRES_PAR_DEFAUT.pays): string {
+  const brut = (v ?? '').trim();
+  let chiffres = brut.replace(/\D/g, '');
+  const indicatif = n.indicatifTelephone.replace(/\D/g, '');
+  const international = brut.startsWith('+') || chiffres.startsWith('00');
+  if (chiffres.startsWith('00')) chiffres = chiffres.slice(2);
+  if (indicatif && chiffres.startsWith(indicatif)
+    && (international || chiffres.length === indicatif.length + n.longueurNumero)) {
+    chiffres = chiffres.slice(indicatif.length);
+  }
+  if (chiffres.length === n.longueurNumero + 1 && chiffres.startsWith('0')) chiffres = chiffres.slice(1);
+  return chiffres;
 }
 
 /**
@@ -171,7 +196,8 @@ export type PersonneAComparer = {
  */
 export function comparer(
   a: PersonneAComparer,
-  b: PersonneAComparer
+  b: PersonneAComparer,
+  numerotation: Numerotation = PARAMETRES_PAR_DEFAUT.pays,
 ): { score: number; traits: TraitConcordant[] } {
   const traits: TraitConcordant[] = [];
   let score = 0;
@@ -222,8 +248,8 @@ export function comparer(
     traits.push(parDefaut ? 'DATE_PAR_DEFAUT' : 'DATE_IDENTIQUE');
   }
 
-  const telA = normaliserTelephone(a.telephone);
-  const telB = normaliserTelephone(b.telephone);
+  const telA = normaliserTelephone(a.telephone, numerotation);
+  const telB = normaliserTelephone(b.telephone, numerotation);
   if (telA && telA === telB) {
     // Fort, mais pas decisif : un telephone familial est partage, et c'est
     // frequent. Une mere qui inscrit ses trois enfants donne son numero trois
@@ -306,7 +332,8 @@ export async function chercher(
   options: { exclureId?: string; limite?: number } = {}
 ): Promise<CandidatDoublonView[]> {
   const mots = motsDuNom(personne.prenom, personne.nom);
-  const tel = normaliserTelephone(personne.telephone);
+  const { pays: numerotation } = await getValeursParametres();
+  const tel = normaliserTelephone(personne.telephone, numerotation);
   // R4 : le nom de la mere est chiffre en base ; on compare son empreinte.
   // Normalisee sans accents ni casse, elle rapproche aussi « Condé » et « conde ».
   const empreinteMere = empreinteRecherche(personne.nomMere);
@@ -355,7 +382,7 @@ export async function chercher(
       dateNaissance: c.dateNaissance,
       lieuNaissance: c.lieuNaissance,
       nomMere: c.nomMere,
-    });
+    }, numerotation);
     if (score < SEUIL_A_VERIFIER) continue;
 
     vues.push({

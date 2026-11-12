@@ -832,6 +832,8 @@ export const updateParametresSystemeSchema = z.object({
     code: z.string().trim().regex(/^[A-Z]{2}$/, 'Code pays ISO a deux lettres majuscules'),
     nom: z.string().trim().min(1).max(80),
     indicatifTelephone: z.string().trim().regex(/^\+\d{1,4}$/, 'Indicatif de la forme +224'),
+    // R14 : de 6 a 12 chiffres selon les pays (UIT : 15 au plus, indicatif compris).
+    longueurNumero: z.coerce.number().int().min(6).max(12),
     niveaux: z.array(z.object({
       code: z.string().trim().regex(/^[a-z][a-z0-9_]{1,29}$/, 'Code en minuscules, sans espace'),
       libelles: z.object({

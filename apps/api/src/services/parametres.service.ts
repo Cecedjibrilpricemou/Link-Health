@@ -112,6 +112,9 @@ export const PARAMETRES_PAR_DEFAUT: ParametresSystemeValeurs = {
     code: 'GN',
     nom: 'Guinée',
     indicatifTelephone: '+224',
+    // R14 : chiffres du numero national, sans l'indicatif (627 08 26 02).
+    // 10 au Nigeria, 9 au Senegal : c'est un reglage, plus une regle ecrite.
+    longueurNumero: 9,
     niveaux: [
       { code: 'region', libelles: { fr: 'Région', en: 'Region', pt: 'Região' } },
       { code: 'prefecture', libelles: { fr: 'Préfecture', en: 'Prefecture', pt: 'Prefeitura' } },
@@ -134,6 +137,48 @@ export function verifierZones(zones: ParametresSystemeValeurs['zones']): void {
   if (zones.delaiFinalCourseMinutes <= 2 * zones.delaiElargissementCourseMinutes) {
     throw new ValidationError("Le delai final des courses doit depasser deux fois le delai d'elargissement");
   }
+}
+
+/**
+ * R10 : un produit reglemente (stupefiant, psychotrope) raccourcit la
+ * validite d'une ordonnance. Reglee plus longue que la validite ordinaire,
+ * elle ferait l'inverse : le produit le plus controle resterait delivrable le
+ * plus longtemps.
+ */
+export function verifierPrescription(p: ParametresSystemeValeurs['prescription']): void {
+  if (p.dureeValiditeReglementeJours > p.dureeValiditeJours) {
+    throw new ValidationError(
+      "La validite d'une ordonnance a produit reglemente ne peut pas depasser la validite ordinaire",
+    );
+  }
+}
+
+/** R11 : sans aucun moyen de paiement actif, plus rien ne pourrait etre paye. */
+export function verifierFacturation(f: ParametresSystemeValeurs['facturation']): void {
+  if (!f.paiementEspeces && !f.paiementOrangeMoney && !f.paiementMomo) {
+    throw new ValidationError('Gardez au moins un moyen de paiement actif : sinon plus rien ne peut etre paye');
+  }
+}
+
+/**
+ * R12 : les montants sont enregistres comme des nombres, sans devise. Changer
+ * la devise une fois des prix saisis les reetiquetterait sans les convertir
+ * (50 000 GNF deviendraient 50 000 XOF). Un seul montant suffit a la figer.
+ */
+export async function montantsEnregistres(): Promise<boolean> {
+  const presences = await Promise.all([
+    prisma.facture.findFirst({ select: { id: true } }),
+    prisma.venteComptoir.findFirst({ select: { id: true } }),
+    prisma.commande.findFirst({ select: { id: true } }),
+    prisma.course.findFirst({ select: { id: true } }),
+    prisma.lotStock.findFirst({ select: { id: true } }),
+    prisma.contratAssurance.findFirst({ select: { id: true } }),
+    prisma.medicament.findFirst({ where: { prixUnitaireGnf: { gt: 0 } }, select: { id: true } }),
+    prisma.consultation.findFirst({ where: { tarifGnf: { not: null } }, select: { id: true } }),
+    prisma.examen.findFirst({ where: { prixGnf: { not: null } }, select: { id: true } }),
+    prisma.plateauTechnique.findFirst({ where: { prixGnf: { not: null } }, select: { id: true } }),
+  ]);
+  return presences.some(Boolean);
 }
 
 /**
@@ -218,6 +263,9 @@ export function fusionnerParametres(
     (resultat as Record<Section, unknown>)[section] = fusion;
   }
 
+  // R13 : un seul nom de pays, celui de l'installation. L'ancien champ libre
+  // « Identite > Pays » pouvait le contredire ; il en est desormais le reflet.
+  resultat.identite = { ...resultat.identite, pays: resultat.pays.nom };
   return resultat;
 }
 
@@ -282,6 +330,7 @@ export async function getParametres(): Promise<ParametresSystemeView> {
     modifieLe: ligne?.modifieLe ?? null,
     idModifiePar: ligne?.idModifiePar ?? null,
     decoupageFige: await adressesEnregistrees(),
+    deviseFigee: await montantsEnregistres(),
   };
 }
 
@@ -295,6 +344,16 @@ export async function modifierParametres(
   const valeurs = fusionnerParametres(actuelles, dto);
 
   if (dto.zones) verifierZones(valeurs.zones);
+  if (dto.prescription) verifierPrescription(valeurs.prescription);
+  if (dto.facturation) verifierFacturation(valeurs.facturation);
+  // R12 : verifiee apres fusion et contre la valeur deja enregistree. Un
+  // envoi qui repete la meme devise passe : seul un changement est refuse.
+  if (valeurs.identite.devise !== actuelles.identite.devise && (await montantsEnregistres())) {
+    throw new ConflictError(
+      `La devise ne se modifie plus : des prix et des montants sont deja enregistres en ${actuelles.identite.devise}, `
+      + 'et ils ne seraient pas convertis.',
+    );
+  }
   if (dto.pays) {
     verifierPays(valeurs.pays);
     // R6 : le decoupage donne leur sens aux champs `commune` et `prefecture`
@@ -330,5 +389,6 @@ export async function modifierParametres(
     modifieLe: sauvegarde.modifieLe,
     idModifiePar: sauvegarde.idModifiePar,
     decoupageFige: await adressesEnregistrees(),
+    deviseFigee: await montantsEnregistres(),
   };
 }

@@ -110,11 +110,13 @@
                 <input matInput id="id-ville" maxlength="120" [(ngModel)]="identite.ville" />
               </mat-form-field>
             </div>
+            <!-- R13 : un seul nom de pays, celui de l'installation (onglet Pays). -->
             <div class="field">
               <label for="id-pays">{{ 'ADMIN.SETTINGS.IDENTITY_PAYS' | translate }}</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <input matInput id="id-pays" maxlength="120" [(ngModel)]="identite.pays" />
+                <input matInput id="id-pays" [value]="pays.nom" readonly disabled />
               </mat-form-field>
+              <small class="text-secondary mt-1 block" id="id-pays-hint">{{ 'ADMIN.SETTINGS.IDENTITY_PAYS_HINT' | translate }}</small>
             </div>
             <div class="field">
               <label for="id-tel">{{ 'ADMIN.SETTINGS.IDENTITY_TELEPHONE' | translate }}</label>
@@ -181,8 +183,15 @@
             <div class="field">
               <label for="id-devise">{{ 'ADMIN.SETTINGS.IDENTITY_DEVISE' | translate }}</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <input matInput id="id-devise" maxlength="3" style="text-transform: uppercase" [(ngModel)]="identite.devise" />
+                <!-- R12 : les montants enregistres n'ont pas de devise propre. -->
+                <input matInput id="id-devise" maxlength="3" style="text-transform: uppercase"
+                       [(ngModel)]="identite.devise" [readonly]="deviseFigee()" />
               </mat-form-field>
+              @if (deviseFigee()) {
+                <small class="settings-fige mt-1" id="id-devise-figee" role="note">
+                  <i class="pi pi-lock" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.IDENTITY_DEVISE_FIGEE' | translate }}
+                </small>
+              }
             </div>
           </div>
 
@@ -201,7 +210,9 @@
               <span class="setting-title" id="setting-especes-label">{{ 'ADMIN.SETTINGS.PAY_CASH_TITLE' | translate }}</span>
               <span class="setting-sub">{{ 'ADMIN.SETTINGS.PAY_CASH_SUB' | translate }}</span>
             </div>
-            <mat-slide-toggle aria-labelledby="setting-especes-label" [(ngModel)]="facturation.paiementEspeces"></mat-slide-toggle>
+            <!-- R11 : le dernier moyen actif ne se coupe pas. -->
+            <mat-slide-toggle aria-labelledby="setting-especes-label" [ngModel]="facturation.paiementEspeces" (ngModelChange)="basculerPaiement('paiementEspeces', $event)"
+                              [disabled]="dernierMoyenPaiement('paiementEspeces')"></mat-slide-toggle>
           </div>
 
           <div class="setting-row">
@@ -209,7 +220,8 @@
               <span class="setting-title" id="setting-om-label">{{ 'ADMIN.SETTINGS.PAY_OM_TITLE' | translate }}</span>
               <span class="setting-sub">{{ 'ADMIN.SETTINGS.PAY_OM_SUB' | translate }}</span>
             </div>
-            <mat-slide-toggle aria-labelledby="setting-om-label" [(ngModel)]="facturation.paiementOrangeMoney"></mat-slide-toggle>
+            <mat-slide-toggle aria-labelledby="setting-om-label" [ngModel]="facturation.paiementOrangeMoney" (ngModelChange)="basculerPaiement('paiementOrangeMoney', $event)"
+                              [disabled]="dernierMoyenPaiement('paiementOrangeMoney')"></mat-slide-toggle>
           </div>
 
           <div class="setting-row">
@@ -217,8 +229,13 @@
               <span class="setting-title" id="setting-momo-label">{{ 'ADMIN.SETTINGS.PAY_MOMO_TITLE' | translate }}</span>
               <span class="setting-sub">{{ 'ADMIN.SETTINGS.PAY_MOMO_SUB' | translate }}</span>
             </div>
-            <mat-slide-toggle aria-labelledby="setting-momo-label" [(ngModel)]="facturation.paiementMomo"></mat-slide-toggle>
+            <mat-slide-toggle aria-labelledby="setting-momo-label" [ngModel]="facturation.paiementMomo" (ngModelChange)="basculerPaiement('paiementMomo', $event)"
+                              [disabled]="dernierMoyenPaiement('paiementMomo')"></mat-slide-toggle>
           </div>
+
+          <p class="settings-fige" id="paiement-dernier" role="note">
+            <i class="pi pi-info-circle" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.PAY_DERNIER' | translate }}
+          </p>
 
           <div class="field mt-4">
             <label id="structure-marge-label">{{ 'ADMIN.SETTINGS.MARGE_LABEL' | translate: { value: facturation.margePct } }}</label>
@@ -373,6 +390,12 @@
                      [(ngModel)]="prescription.dureeValiditeReglementeJours" />
             </mat-form-field>
             <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.PRESCRIPTION_REG_HINT' | translate }}</small>
+            <!-- R10 : un produit reglemente raccourcit la validite, il ne l'allonge pas. -->
+            @if (validiteIncoherente()) {
+              <small class="settings-erreur mt-1" id="presc-reg-incoherent" role="alert">
+                <i class="pi pi-exclamation-triangle" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.PRESCRIPTION_REG_INCOHERENT' | translate }}
+              </small>
+            }
           </div>
 
           <div class="field mt-4">
@@ -499,6 +522,16 @@
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
                 <input matInput id="pays-indicatif" maxlength="5" inputmode="tel" [(ngModel)]="pays.indicatifTelephone" />
               </mat-form-field>
+            </div>
+            <!-- R14 : reconnaitre deux fois le meme numero suppose de savoir
+                 combien de chiffres compte un numero national ici. -->
+            <div class="field">
+              <label for="pays-longueur-numero">{{ 'ADMIN.SETTINGS.PAYS_LONGUEUR_NUMERO' | translate }}</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <input matInput id="pays-longueur-numero" type="number" min="6" max="12"
+                       [(ngModel)]="pays.longueurNumero" />
+              </mat-form-field>
+              <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.PAYS_LONGUEUR_NUMERO_HINT' | translate }}</small>
             </div>
           </div>
 

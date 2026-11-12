@@ -350,3 +350,32 @@
 
   .pi { color: var(--bb-warning); margin-top: 2px; }
 }
+
+// R10 a R13 : un reglage fige, ou qui se contredit, le dit sur place.
+.settings-fige,
+.settings-erreur {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  border-radius: var(--bb-radius-sm);
+}
+
+.settings-fige {
+  border: 1px solid var(--bb-warning-border);
+  background: var(--bb-warning-bg);
+  color: var(--bb-text-primary);
+
+  .pi { color: var(--bb-warning); margin-top: 2px; }
+}
+
+.settings-erreur {
+  border: 1px solid var(--bb-danger-border);
+  background: var(--bb-danger-bg);
+  color: var(--bb-danger);
+
+  .pi { margin-top: 2px; }
+}
