@@ -1,0 +1,142 @@
+<app-public-shell>
+  <header class="pub-hero">
+    <span class="pub-tag">{{ 'PUBLIC.SEARCH.TAG' | translate }}</span>
+    <h1 class="pub-hero__title">
+      {{ 'PUBLIC.SEARCH.TITLE_A' | translate }}
+      <span class="pub-hero__accent">{{ 'PUBLIC.SEARCH.TITLE_B' | translate }}</span>
+    </h1>
+    <p class="pub-hero__lead">{{ 'PUBLIC.SEARCH.LEAD' | translate }}</p>
+  </header>
+
+  <section class="pub-section">
+    <form class="rech-form" (ngSubmit)="chercher()">
+      <div class="rech-form__champ rech-form__champ--large">
+        <label for="rech-q">{{ 'PUBLIC.SEARCH.FIELD_PRODUCT' | translate }}</label>
+        <input
+          id="rech-q"
+          type="search"
+          name="q"
+          autocomplete="off"
+          [ngModel]="q()"
+          (ngModelChange)="q.set($event)"
+          [placeholder]="'PUBLIC.SEARCH.PLACEHOLDER' | translate"
+        />
+        <small id="rech-q-aide">{{ 'PUBLIC.SEARCH.FIELD_PRODUCT_HINT' | translate }}</small>
+      </div>
+
+      <div class="rech-form__champ">
+        <label for="rech-prefecture">{{ libelleZone() }}</label>
+        <select
+          id="rech-prefecture"
+          name="prefecture"
+          [ngModel]="prefecture()"
+          (ngModelChange)="changerPrefecture($event)"
+        >
+          <option value="">{{ 'PUBLIC.SEARCH.CHOOSE' | translate }}</option>
+          @for (p of prefectures(); track p) {
+            <option [value]="p">{{ p }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="rech-form__champ">
+        <label for="rech-commune">{{ libelleCommune() }}</label>
+        <select
+          id="rech-commune"
+          name="commune"
+          [ngModel]="commune()"
+          (ngModelChange)="commune.set($event)"
+          [disabled]="communes().length === 0"
+        >
+          <option value="">{{ 'PUBLIC.SEARCH.ALL_ZONE' | translate }}</option>
+          @for (c of communes(); track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select>
+      </div>
+
+      <button type="submit" class="pub-btn" [disabled]="!peutChercher() || chargement()">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        {{ (chargement() ? 'PUBLIC.SEARCH.SEARCHING' : 'PUBLIC.SEARCH.SUBMIT') | translate }}
+      </button>
+    </form>
+
+    @if (erreur()) {
+      <p class="rech-erreur" role="alert">{{ erreur() }}</p>
+    }
+  </section>
+
+  @if (resultat(); as r) {
+    <section class="pub-section rech-resultats" aria-live="polite">
+      @if (r.produits.length === 0) {
+        <p class="rech-vide">{{ 'PUBLIC.SEARCH.EMPTY' | translate }}</p>
+      } @else {
+        @if (r.zoneUtilisee === 'VOISINES') {
+          <p class="rech-zone" id="rech-zone-voisines">
+            {{ 'PUBLIC.SEARCH.ZONE_NEIGHBOURS' | translate: { communes: r.communesVoisines.join(', ') } }}
+          </p>
+        }
+        @if (r.zoneUtilisee === 'PREFECTURE' && r.commune) {
+          <p class="rech-zone" id="rech-zone-prefecture">
+            {{ 'PUBLIC.SEARCH.ZONE_WIDE' | translate: { zone: r.prefecture } }}
+          </p>
+        }
+
+        <ul class="rech-liste">
+          @for (p of r.produits; track p.id) {
+            <li class="rech-carte">
+              <div class="rech-carte__tete">
+                <h2 class="rech-carte__nom">{{ p.libelle }}</h2>
+                <span
+                  class="rech-etat"
+                  [class.rech-etat--faible]="p.etatStock === 'FAIBLE'"
+                >
+                  {{ (p.etatStock === 'FAIBLE' ? 'PUBLIC.SEARCH.STOCK_LOW' : 'PUBLIC.SEARCH.STOCK_OK') | translate }}
+                </span>
+              </div>
+
+              @if (p.molecule) {
+                <p class="rech-carte__molecule">{{ 'PUBLIC.SEARCH.MOLECULE' | translate }} : {{ p.molecule }}</p>
+              }
+              @if (p.forme || p.dosage) {
+                <p class="rech-carte__forme">{{ p.forme }} {{ p.dosage }}</p>
+              }
+
+              <p class="rech-carte__prix">{{ prix(p) }} GNF</p>
+
+              <p class="rech-carte__ou">
+                {{ (p.nombrePharmacies === 1 ? 'PUBLIC.SEARCH.PHARMACIES_ONE' : 'PUBLIC.SEARCH.PHARMACIES_MANY')
+                   | translate: { nombre: p.nombrePharmacies } }}
+                <span class="rech-carte__fraicheur">· {{ declare(p) }}</span>
+              </p>
+
+              @if (p.estMedicament) {
+                <p class="rech-conseil">{{ 'PUBLIC.SEARCH.ADVICE' | translate }}</p>
+              }
+            </li>
+          }
+        </ul>
+
+        <p class="rech-note">{{ 'PUBLIC.SEARCH.NOTE' | translate }}</p>
+      }
+    </section>
+  } @else if (!chargement()) {
+    <section class="pub-section">
+      <p class="rech-vide">{{ 'PUBLIC.SEARCH.INTRO' | translate }}</p>
+    </section>
+  }
+
+  <section class="pub-section">
+    <div class="pub-panel">
+      <div class="pub-panel__text">
+        <h2 class="pub-panel__title">{{ 'PUBLIC.SEARCH.CTA_TITLE' | translate }}</h2>
+        <p class="pub-panel__sub">{{ 'PUBLIC.SEARCH.CTA_TEXT' | translate }}</p>
+      </div>
+      <div class="pub-panel__actions">
+        <a routerLink="/auth/register" class="pub-btn pub-btn--white">
+          {{ 'PUBLIC.SEARCH.CTA_BUTTON' | translate }}
+        </a>
+      </div>
+    </div>
+  </section>
+</app-public-shell>

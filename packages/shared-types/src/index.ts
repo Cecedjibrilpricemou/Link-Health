@@ -4312,3 +4312,46 @@ export interface CandidatDoublonView {
   probable: boolean;
   traits: TraitConcordant[];
 }
+
+// ── A1 : recherche publique de produits ──────────────────────────────
+
+/**
+ * Ce que le public apprend d'un stock. **Jamais la quantite exacte** : elle
+ * renseigne un concurrent et designe l'officine a devaliser.
+ */
+export type EtatStockPublic = 'DISPONIBLE' | 'FAIBLE';
+
+/** Jusqu'ou la recherche a du s'etendre pour trouver quelque chose. */
+export type ZoneRechercheProduit = 'COMMUNE' | 'VOISINES' | 'PREFECTURE';
+
+export interface ProduitTrouveView {
+  id: string;
+  libelle: string;
+  /** La DCI : « paracetamol » pour un Doliprane. Absente hors medicament. */
+  molecule: string | null;
+  nomCommercial: string | null;
+  forme: string | null;
+  dosage: string | null;
+  categorie: string;
+  /**
+   * Un medicament se delivre parfois sur ordonnance. Tant que le catalogue ne
+   * porte pas cette information produit par produit, l'ecran invite a demander
+   * conseil plutot que de laisser croire a une vente libre.
+   */
+  estMedicament: boolean;
+  nombrePharmacies: number;
+  prixMinGnf: number;
+  prixMaxGnf: number;
+  etatStock: EtatStockPublic;
+  /** Quand l'officine a declare ce stock pour la derniere fois. */
+  declareLe: string;
+}
+
+export interface RechercheProduitsView {
+  zoneUtilisee: ZoneRechercheProduit;
+  prefecture: string;
+  commune: string | null;
+  /** Les communes voisines interrogees, quand la recherche s'est elargie. */
+  communesVoisines: string[];
+  produits: ProduitTrouveView[];
+}

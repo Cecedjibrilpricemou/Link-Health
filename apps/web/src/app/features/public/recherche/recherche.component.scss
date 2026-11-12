@@ -1,0 +1,159 @@
+// A1 : la recherche publique. Les couleurs viennent des tokens --bb-*, donc
+// la page suit le theme clair comme le theme sombre sans regle en double.
+
+.rech-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  padding: 1.25rem;
+  background: var(--bb-surface-card);
+  border: 1px solid var(--bb-border);
+  border-radius: var(--bb-radius-lg);
+  box-shadow: var(--bb-shadow-sm);
+
+  &__champ {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1 1 12rem;
+    min-width: 0;
+
+    &--large { flex: 2 1 18rem; }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--bb-text-secondary);
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      font: inherit;
+      color: var(--bb-text-primary);
+      background: var(--bb-surface-0);
+      border: 1px solid var(--bb-border-strong);
+      border-radius: var(--bb-radius);
+
+      &:focus-visible { outline: var(--bb-focus-ring); }
+      &:disabled { opacity: 0.6; }
+    }
+
+    small {
+      font-size: 0.78rem;
+      color: var(--bb-text-muted);
+    }
+  }
+}
+
+.rech-erreur {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  color: var(--bb-danger);
+  background: var(--bb-danger-bg);
+  border: 1px solid var(--bb-danger-border);
+  border-radius: var(--bb-radius);
+}
+
+.rech-vide,
+.rech-zone,
+.rech-note {
+  color: var(--bb-text-secondary);
+}
+
+.rech-zone {
+  padding: 0.6rem 0.9rem;
+  background: var(--bb-info-bg);
+  border: 1px solid var(--bb-info-border);
+  border-radius: var(--bb-radius);
+}
+
+.rech-note {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--bb-text-muted);
+}
+
+.rech-liste {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rech-carte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem;
+  background: var(--bb-surface-card);
+  border: 1px solid var(--bb-border);
+  border-radius: var(--bb-radius-lg);
+  box-shadow: var(--bb-shadow-xs);
+
+  &__tete {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  &__nom {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--bb-text-primary);
+  }
+
+  &__molecule,
+  &__forme,
+  &__ou {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--bb-text-secondary);
+  }
+
+  &__prix {
+    margin: 0.2rem 0 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--bb-primary);
+  }
+
+  &__fraicheur { color: var(--bb-text-muted); }
+}
+
+// Jamais la quantite : seulement de quoi decider s'il faut se depecher.
+.rech-etat {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bb-success);
+  background: var(--bb-success-bg);
+  border: 1px solid var(--bb-success-border);
+  border-radius: var(--bb-radius-pill);
+
+  &--faible {
+    color: var(--bb-warning);
+    background: var(--bb-warning-bg);
+    border-color: var(--bb-warning-border);
+  }
+}
+
+.rech-conseil {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  color: var(--bb-text-muted);
+}
+
+@media (max-width: 640px) {
+  .rech-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

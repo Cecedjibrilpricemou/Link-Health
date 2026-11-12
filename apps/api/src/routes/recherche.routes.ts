@@ -1,0 +1,39 @@
+// src/routes/recherche.routes.ts
+// A1 : la recherche publique de produits, sans compte.
+//
+// **Aucune authentification, et c'est le but** : quelqu'un qui cherche un
+// medicament la nuit ne va pas d'abord creer un compte. La limitation de
+// debit generale de /api/v1 s'applique.
+//
+// Cette route n'est volontairement pas journalisee (voir l'en-tete du
+// service) : ce qu'une personne cherche en pharmacie revele souvent ce dont
+// elle souffre.
+import { Router, Request, Response } from 'express';
+import { validateQuery } from '../middlewares/validate.middleware';
+import { rechercheProduitsSchema } from '../validators/api.schemas';
+import { chercherProduits } from '../services/recherche.service';
+import type { RechercheProduitsView } from '@baobaoheath/shared-types';
+
+const router = Router();
+
+router.get('/produits', validateQuery(rechercheProduitsSchema), async (req: Request, res: Response) => {
+  const { q, prefecture, commune } = req.query as {
+    q: string;
+    prefecture: string;
+    commune?: string;
+  };
+  const resultat = await chercherProduits({ q, prefecture, commune });
+  const data: RechercheProduitsView = {
+    zoneUtilisee: resultat.zoneUtilisee,
+    prefecture: resultat.prefecture,
+    commune: resultat.commune,
+    communesVoisines: resultat.communesVoisines,
+    produits: resultat.produits.map((p) => ({
+      ...p,
+      declareLe: p.declareLe.toISOString(),
+    })),
+  };
+  res.json({ success: true, data });
+});
+
+export default router;

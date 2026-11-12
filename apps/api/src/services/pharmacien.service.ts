@@ -9,6 +9,7 @@ import { hashPassword } from '../utils/password.utils';
 import { assertMotDePasseConforme } from '../utils/politique-mot-de-passe';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { estStructureOfficinale, filtreStructuresOfficinales } from '../utils/officine.util';
+import { empreinteCatalogue } from '../utils/catalogue';
 import { getValeursParametres } from './parametres.service';
 import {
   contientProduitReglemente,
@@ -928,6 +929,9 @@ export async function creerProduitOfficine(
     const cree = await tx.medicament.create({
       data: {
         libelle: dto.libelle.trim(),
+        // A1 : sans cette empreinte, l'article de l'officine serait absent de
+        // la recherche publique des qu'on l'ecrit sans ses accents.
+        rechercheTexte: empreinteCatalogue({ libelle: dto.libelle }),
         categorie: dto.categorie,
         prixUnitaireGnf: dto.prixUnitaireGnf,
         estActif: true,
@@ -964,7 +968,12 @@ export async function modifierProduitOfficine(
     const produit = await tx.medicament.updateMany({
       where: { id: idMedicament, idStructure: pharmacien.idStructure, estActif: true },
       data: {
-        ...(dto.libelle !== undefined ? { libelle: dto.libelle.trim() } : {}),
+        ...(dto.libelle !== undefined
+          ? {
+              libelle: dto.libelle.trim(),
+              rechercheTexte: empreinteCatalogue({ libelle: dto.libelle }),
+            }
+          : {}),
         ...(dto.categorie !== undefined ? { categorie: dto.categorie } : {}),
         ...(dto.prixUnitaireGnf !== undefined ? { prixUnitaireGnf: dto.prixUnitaireGnf } : {}),
       },
