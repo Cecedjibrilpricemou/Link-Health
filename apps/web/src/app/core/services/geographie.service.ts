@@ -32,6 +32,17 @@ export interface FiltreLieux {
   dans?: string;
 }
 
+/**
+ * Le drapeau d'un code pays ISO a deux lettres : chaque lettre devient son
+ * « indicateur regional » Unicode (G -> 🇬, N -> 🇳), et la paire s'affiche
+ * en drapeau. Un code invalide ne donne rien plutot qu'un symbole faux.
+ */
+export function drapeauDe(code: string | null | undefined): string {
+  const c = (code ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return '';
+  return String.fromCodePoint(...[...c].map((l) => 0x1f1e6 + l.charCodeAt(0) - 65));
+}
+
 @Injectable({ providedIn: 'root' })
 export class GeographieService {
   private readonly api = inject(ApiService);
@@ -86,6 +97,17 @@ export class GeographieService {
   }
 
   readonly niveaux = computed(() => this.configuration()?.niveaux ?? []);
+
+  /**
+   * Le pays installe tel qu'on l'affiche : « Guinée 🇬🇳 », « Sénégal 🇸🇳 ».
+   * Vide tant que la configuration n'est pas chargee : un ecran public ne
+   * doit pas annoncer un pays qui n'est pas le sien.
+   */
+  readonly paysAffiche = computed(() => {
+    const c = this.configuration();
+    const nom = c?.nom?.trim() ?? '';
+    return nom ? `${nom} ${drapeauDe(c?.code)}`.trim() : '';
+  });
 
   lieux(filtre: FiltreLieux = {}): Observable<ApiResponse<LieuGeoView[]>> {
     const params: Record<string, string> = {};

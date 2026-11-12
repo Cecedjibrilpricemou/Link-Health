@@ -133,7 +133,6 @@
       "SUBMIT": "Se connecter",
       "LOADING": "Connexion en cours...",
       "REGISTER_LINK": "Créer un compte",
-      "FOOTER": "Plateforme sécurisée · Guinée 🇬🇳",
       "SHOW": "VOIR",
       "HIDE": "CACHER",
       "WELCOME_TITLE": "Bienvenue",
@@ -183,8 +182,7 @@
       "SUCCESS_TITLE": "Email envoyé",
       "SUCCESS_MSG": "Si cette adresse email est associée à un compte actif, vous recevrez un lien de réinitialisation sous quelques minutes. Pensez à vérifier vos spams.",
       "SUCCESS_BACK": "Retour à la connexion",
-      "ERR_EMAIL": "Veuillez entrer une adresse email valide.",
-      "FOOTER": "Plateforme sécurisée · Guinée 🇬🇳"
+      "ERR_EMAIL": "Veuillez entrer une adresse email valide."
     },
     "RESET": {
       "TITLE": "Nouveau mot de passe",
@@ -204,8 +202,7 @@
       "ERR_PWD_MATCH": "Les mots de passe ne correspondent pas.",
       "ERR_GENERIC": "Une erreur est survenue. Veuillez réessayer.",
       "SHOW": "VOIR",
-      "HIDE": "CACHER",
-      "FOOTER": "Plateforme sécurisée · Guinée 🇬🇳"
+      "HIDE": "CACHER"
     },
     "REGISTER": {
       "TITLE": "Créer un compte",
@@ -255,7 +252,8 @@
       "CONFIRM_REQUIRED": "Veuillez confirmer",
       "CONFIRM_MISMATCH": "Non identique",
       "FOOTER_ENCRYPTED": "Vos données sont chiffrées et conformes à la réglementation."
-    }
+    },
+    "PLATEFORME_SECURISEE": "Plateforme sécurisée"
   },
   "LANDING": {
     "NAV_HOME": "Accueil",

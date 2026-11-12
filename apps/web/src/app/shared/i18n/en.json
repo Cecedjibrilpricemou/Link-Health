@@ -133,7 +133,6 @@
       "SUBMIT": "Sign in",
       "LOADING": "Signing in...",
       "REGISTER_LINK": "Create account",
-      "FOOTER": "Secure platform · Guinea 🇬🇳",
       "SHOW": "SHOW",
       "HIDE": "HIDE",
       "WELCOME_TITLE": "Welcome",
@@ -183,8 +182,7 @@
       "SUCCESS_TITLE": "Email sent",
       "SUCCESS_MSG": "If this email is associated with an active account, you will receive reset instructions shortly. Please check your spam folder.",
       "SUCCESS_BACK": "Back to sign in",
-      "ERR_EMAIL": "Please enter a valid email address.",
-      "FOOTER": "Secure platform · Guinea 🇬🇳"
+      "ERR_EMAIL": "Please enter a valid email address."
     },
     "RESET": {
       "TITLE": "New password",
@@ -204,8 +202,7 @@
       "ERR_PWD_MATCH": "Passwords do not match.",
       "ERR_GENERIC": "An error occurred. Please try again.",
       "SHOW": "SHOW",
-      "HIDE": "HIDE",
-      "FOOTER": "Secure platform · Guinea 🇬🇳"
+      "HIDE": "HIDE"
     },
     "REGISTER": {
       "TITLE": "Create account",
@@ -255,7 +252,8 @@
       "CONFIRM_REQUIRED": "Please confirm",
       "CONFIRM_MISMATCH": "Does not match",
       "FOOTER_ENCRYPTED": "Your data is encrypted and compliant with regulations."
-    }
+    },
+    "PLATEFORME_SECURISEE": "Secure platform"
   },
   "LANDING": {
     "NAV_HOME": "Home",
