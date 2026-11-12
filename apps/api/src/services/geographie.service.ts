@@ -21,7 +21,10 @@ import type {
   LieuHorsReferentielView,
   ModifierLieuGeoDto,
   ParametresPaysView,
+  RenommageLieuGeoView,
+  UtilisationLieuGeoView,
 } from '@baobaoheath/shared-types';
+import { StatutCommande, StatutCourse } from '../config/generated/client/client';
 import { prisma } from '../config/prisma';
 import { jeuPour, type NoeudJeu } from '../data/geographie/jeux-de-depart';
 import { ConflictError, NotFoundError, ValidationError } from '../utils/app-error';
@@ -280,4 +283,255 @@ export async function horsReferentiel(): Promise<LieuHorsReferentielView[]> {
   compter(livreurs as Saisie[], 'livreurs');
 
   return [...hors.values()].sort((a, b) => b.total - a.total || a.lieu.localeCompare(b.lieu, 'fr'));
+}
+
+// ── R7 : renommer et supprimer un lieu ─────────────────────────────────
+//
+// Le nom d'une commune ou d'une prefecture n'est pas une reference : il est
+// recopie en texte dans les adresses (pharmacies, patients, motards) et dans
+// les appels en cours, et c'est ce texte que comparent les recherches. Un
+// renommage qui ne toucherait que le referentiel laisserait ces adresses sous
+// l'ancien nom, hors referentiel et sans voisinage.
+//
+// - Renommer **propage** le nouveau nom aux adresses actuelles et aux appels
+//   en cours, dans la meme transaction, et le journalise. Les commandes et
+//   courses terminees gardent le nom de leur epoque : c'est leur histoire.
+// - Supprimer n'est permis qu'a un lieu **inutilise** : sans enfant, et dont
+//   aucune adresse ni aucun appel en cours ne porte le nom.
+
+// Le client est etendu (chiffrement) : `Prisma.TransactionClient` ne lui
+// correspond pas. On prend le type que `$transaction` passe vraiment.
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+type Client = Pick<Tx, 'structureSante' | 'patientProfile' | 'livreurProfile' | 'commande' | 'course'>;
+
+/** Ou le nom d'un lieu est recopie, selon son niveau. Les autres niveaux ne le sont nulle part. */
+type Portee = { champ: 'commune'; zone: string } | { champ: 'prefecture' };
+
+function porteeDe(l: Lieu, p: ParametresPaysView, parId: Map<string, Lieu>): Portee | null {
+  if (l.niveau === p.niveauBase) {
+    const zone = ancetre(l, p.niveauElargissement, parId)?.nom;
+    return zone ? { champ: 'commune', zone } : null;
+  }
+  if (l.niveau === p.niveauElargissement) return { champ: 'prefecture' };
+  return null;
+}
+
+/** Meme comparaison que les zones : sans casse ni espaces autour. */
+const egal = (s: string) => ({ equals: s.trim(), mode: 'insensitive' as const });
+
+/** Les adresses de structures et de patients qui portent ce nom. */
+function filtreAdresses(portee: Portee, nom: string) {
+  return portee.champ === 'commune'
+    ? { prefecture: egal(portee.zone), commune: egal(nom) }
+    : { prefecture: egal(nom) };
+}
+
+/** Les motards concernes : par leur adresse, ou (niveau de base) par une commune desservie. */
+async function motardsConcernes(client: Client, portee: Portee, nom: string) {
+  const livreurs = await client.livreurProfile.findMany({
+    where: { prefecture: egal(portee.champ === 'commune' ? portee.zone : nom) },
+    select: { id: true, commune: true, communesDesservies: true },
+  });
+  if (portee.champ === 'prefecture') return livreurs;
+  return livreurs.filter((l) => cle(l.commune) === cle(nom) || l.communesDesservies.some((c) => cle(c) === cle(nom)));
+}
+
+/**
+ * Les appels encore ouverts qui portent ce nom. Les voisines y sont gardees
+ * en cle (minuscules), comme les compare la recherche.
+ */
+async function appelsConcernes(client: Client, portee: Portee, nom: string) {
+  const zone = egal(portee.champ === 'commune' ? portee.zone : nom);
+  const commandes = await client.commande.findMany({
+    where: { statut: StatutCommande.RECHERCHE_PHARMACIE, prefectureRecherche: zone },
+    select: { id: true, communeRecherche: true, communesVoisines: true },
+  });
+  const courses = await client.course.findMany({
+    where: { statut: StatutCourse.APPEL_OFFRES, prefecture: zone },
+    select: { id: true, commune: true, communesVoisines: true },
+  });
+  if (portee.champ === 'prefecture') return { commandes, courses };
+  const porte = (commune: string | null, voisines: string[]) => cle(commune) === cle(nom) || voisines.includes(cle(nom));
+  return {
+    commandes: commandes.filter((c) => porte(c.communeRecherche, c.communesVoisines)),
+    courses: courses.filter((c) => porte(c.commune, c.communesVoisines)),
+  };
+}
+
+async function compterUtilisation(client: Client, lieu: Lieu, lieux: Lieu[], portee: Portee | null): Promise<UtilisationLieuGeoView> {
+  const enfants = lieux.filter((l) => l.idParent === lieu.id).length;
+  if (!portee) return { enfants, structures: 0, patients: 0, motards: 0, appelsEnCours: 0 };
+  const where = filtreAdresses(portee, lieu.nom);
+  const structures = await client.structureSante.count({ where });
+  const patients = await client.patientProfile.count({ where });
+  const motards = (await motardsConcernes(client, portee, lieu.nom)).length;
+  const appels = await appelsConcernes(client, portee, lieu.nom);
+  return { enfants, structures, patients, motards, appelsEnCours: appels.commandes.length + appels.courses.length };
+}
+
+/** Ce qui porte le nom d'un lieu : l'ecran le montre avant de renommer ou de supprimer. */
+export async function utilisationLieu(id: string): Promise<UtilisationLieuGeoView> {
+  const p = await pays();
+  const { lieux, parId } = await arbre();
+  const lieu = parId.get(id);
+  if (!lieu) throw new NotFoundError('Lieu non trouve');
+  return compterUtilisation(prisma, lieu, lieux, porteeDe(lieu, p, parId));
+}
+
+/**
+ * Renomme un lieu et propage le nouveau nom (R7).
+ *
+ * Refuse ce qui melangerait deux lieux : un frere du meme nom ; et, pour un
+ * nom recopie dans les adresses, un autre lieu de la meme zone qui porte deja
+ * le nouveau nom (ses adresses et celles-ci deviendraient indiscernables) ou
+ * l'ancien (on ne saurait pas a qui sont les adresses).
+ */
+export async function renommerLieu(
+  idAuteur: string,
+  id: string,
+  nomDemande: string,
+  maintenant = new Date(),
+): Promise<RenommageLieuGeoView> {
+  const nom = nomDemande.trim();
+  if (!nom) throw new ValidationError('Le nouveau nom est vide');
+  const p = await pays();
+  const { lieux, parId } = await arbre();
+  const lieu = parId.get(id);
+  if (!lieu) throw new NotFoundError('Lieu non trouve');
+  if (nom === lieu.nom) throw new ValidationError('Le nom est inchange');
+
+  const autres = lieux.filter((l) => l.id !== id && l.niveau === lieu.niveau);
+  const parent = lieu.idParent ? parId.get(lieu.idParent)?.nom : null;
+  if (autres.some((l) => l.idParent === lieu.idParent && cle(l.nom) === cle(nom))) {
+    throw new ConflictError(`« ${nom} » existe deja${parent ? ` dans ${parent}` : ''}`);
+  }
+
+  const portee = porteeDe(lieu, p, parId);
+  if (portee) {
+    const dansZone = (l: Lieu) =>
+      portee.champ === 'prefecture' || cle(ancetre(l, p.niveauElargissement, parId)?.nom) === cle(portee.zone);
+    const zone = portee.champ === 'commune' ? ` dans ${portee.zone}` : '';
+    if (autres.some((l) => dansZone(l) && cle(l.nom) === cle(nom))) {
+      throw new ConflictError(`Un autre lieu s'appelle deja « ${nom} »${zone} : leurs adresses ne se distingueraient plus`);
+    }
+    if (autres.some((l) => dansZone(l) && cle(l.nom) === cle(lieu.nom))) {
+      throw new ConflictError(
+        `Un autre lieu s'appelle aussi « ${lieu.nom} »${zone} : les adresses ne disent pas lequel est concerne. `
+        + "Renommez d'abord l'autre, ou corrigez ces adresses une a une",
+      );
+    }
+  }
+
+  const ancien = lieu.nom;
+  const resultat = await prisma.$transaction(async (tx) => {
+    const maj = await tx.lieuGeo.update({ where: { id }, data: { nom }, select: LIEU_SELECT });
+    const renommes = portee
+      ? await propagerNom(tx, portee, ancien, nom)
+      : { structures: 0, patients: 0, motards: 0, appelsEnCours: 0 };
+    await tx.journalAudit.create({
+      data: {
+        action: 'RENOMMAGE_LIEU',
+        ressource: 'geo_lieux',
+        idRessource: id,
+        idUtilisateur: idAuteur,
+        creeLe: maintenant,
+        metadonnees: { niveau: lieu.niveau, avant: ancien, apres: nom, renommes },
+      },
+    });
+    return { maj, renommes };
+  });
+  return { lieu: versVue(resultat.maj, parId), renommes: resultat.renommes };
+}
+
+async function propagerNom(
+  tx: Tx,
+  portee: Portee,
+  ancien: string,
+  nom: string,
+): Promise<RenommageLieuGeoView['renommes']> {
+  const where = filtreAdresses(portee, ancien);
+  const appels = await appelsConcernes(tx, portee, ancien);
+  const motards = await motardsConcernes(tx, portee, ancien);
+
+  if (portee.champ === 'prefecture') {
+    const structures = await tx.structureSante.updateMany({ where, data: { prefecture: nom } });
+    const patients = await tx.patientProfile.updateMany({ where, data: { prefecture: nom } });
+    const livreurs = await tx.livreurProfile.updateMany({ where, data: { prefecture: nom } });
+    for (const c of appels.commandes) await tx.commande.update({ where: { id: c.id }, data: { prefectureRecherche: nom } });
+    for (const c of appels.courses) await tx.course.update({ where: { id: c.id }, data: { prefecture: nom } });
+    return {
+      structures: structures.count, patients: patients.count, motards: livreurs.count,
+      appelsEnCours: appels.commandes.length + appels.courses.length,
+    };
+  }
+
+  const remplacer = (v: string | null) => (cle(v) === cle(ancien) ? nom : v);
+  const remplacerCles = (cles: string[]) => cles.map((c) => (c === cle(ancien) ? cle(nom) : c));
+  const structures = await tx.structureSante.updateMany({ where, data: { commune: nom } });
+  const patients = await tx.patientProfile.updateMany({ where, data: { commune: nom } });
+  for (const l of motards) {
+    await tx.livreurProfile.update({
+      where: { id: l.id },
+      data: {
+        commune: remplacer(l.commune),
+        communesDesservies: l.communesDesservies.map((c) => (cle(c) === cle(ancien) ? nom : c)),
+      },
+    });
+  }
+  for (const c of appels.commandes) {
+    await tx.commande.update({
+      where: { id: c.id },
+      data: { communeRecherche: remplacer(c.communeRecherche), communesVoisines: remplacerCles(c.communesVoisines) },
+    });
+  }
+  for (const c of appels.courses) {
+    await tx.course.update({
+      where: { id: c.id },
+      data: { commune: remplacer(c.commune), communesVoisines: remplacerCles(c.communesVoisines) },
+    });
+  }
+  return {
+    structures: structures.count, patients: patients.count, motards: motards.length,
+    appelsEnCours: appels.commandes.length + appels.courses.length,
+  };
+}
+
+/**
+ * Supprime un lieu inutilise (R7). Ses liens de voisinage sont retires des
+ * deux cotes. Un lieu encore porte par des adresses se renomme, il ne se
+ * supprime pas : ces adresses perdraient leur lieu sans que personne le sache.
+ */
+export async function supprimerLieu(idAuteur: string, id: string, maintenant = new Date()): Promise<void> {
+  const p = await pays();
+  const { lieux, parId } = await arbre();
+  const lieu = parId.get(id);
+  if (!lieu) throw new NotFoundError('Lieu non trouve');
+  const portee = porteeDe(lieu, p, parId);
+
+  await prisma.$transaction(async (tx) => {
+    const u = await compterUtilisation(tx, lieu, lieux, portee);
+    if (u.enfants > 0) {
+      throw new ConflictError(`« ${lieu.nom} » contient ${u.enfants} lieu(x) : supprimez-les d'abord`);
+    }
+    if (u.structures + u.patients + u.motards + u.appelsEnCours > 0) {
+      throw new ConflictError(
+        `« ${lieu.nom} » est encore utilise : ${u.structures} structure(s), ${u.patients} patient(s), `
+        + `${u.motards} motard(s), ${u.appelsEnCours} appel(s) en cours. Renommez-le plutot.`,
+      );
+    }
+    for (const autre of lieux.filter((l) => l.voisins.includes(id))) {
+      await tx.lieuGeo.update({ where: { id: autre.id }, data: { voisins: autre.voisins.filter((v) => v !== id) } });
+    }
+    await tx.lieuGeo.delete({ where: { id } });
+    await tx.journalAudit.create({
+      data: {
+        action: 'SUPPRESSION_LIEU',
+        ressource: 'geo_lieux',
+        idRessource: id,
+        idUtilisateur: idAuteur,
+        creeLe: maintenant,
+        metadonnees: { niveau: lieu.niveau, nom: lieu.nom, parent: lieu.idParent ? parId.get(lieu.idParent)?.nom ?? null : null },
+      },
+    });
+  });
 }

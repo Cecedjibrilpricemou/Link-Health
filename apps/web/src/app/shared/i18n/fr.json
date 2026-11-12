@@ -2568,7 +2568,19 @@
       "SUCCESS_NEIGHBOURS": "Voisinage de {{nom}} enregistré.",
       "SUCCESS_STARTER": "Jeu de départ chargé : {{crees}} lieu(x) ajouté(s), {{presents}} déjà présent(s).",
       "ERR_LOAD": "Le référentiel n’a pas pu être chargé.",
-      "ERR_SAVE": "La modification n’a pas pu être enregistrée."
+      "ERR_SAVE": "La modification n’a pas pu être enregistrée.",
+      "RENAME": "Renommer",
+      "RENAME_OF": "Renommer « {{nom}} »",
+      "DELETE": "Supprimer",
+      "DELETE_OF": "Supprimer « {{nom}} »",
+      "USAGE": "Porte ce nom aujourd'hui : {{enfants}} lieu(x) rattaché(s), {{structures}} structure(s), {{patients}} patient(s), {{motards}} motard(s), {{appels}} appel(s) en cours.",
+      "RENAME_HELP": "Le nouveau nom sera repris dans ces adresses et ces appels en cours, et le changement sera inscrit au journal. Les commandes et courses terminées gardent l'ancien nom.",
+      "NEW_NAME": "Nouveau nom",
+      "RENAME_CONFIRM": "Renommer partout",
+      "DELETE_BLOCKED": "Ce lieu est encore utilisé : il ne peut pas être supprimé. S'il est mal écrit, renommez-le ; s'il contient d'autres lieux, supprimez-les d'abord.",
+      "DELETE_CONFIRM": "Supprimer définitivement",
+      "SUCCESS_RENAME": "« {{avant}} » s'appelle désormais « {{nom}} » : {{structures}} structure(s), {{patients}} patient(s), {{motards}} motard(s) et {{appels}} appel(s) en cours mis à jour.",
+      "SUCCESS_DELETE": "« {{nom}} » a été supprimé."
     }
   },
   "ADMIN_STRUCTURE": {

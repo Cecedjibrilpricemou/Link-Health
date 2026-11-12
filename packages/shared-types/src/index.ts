@@ -372,6 +372,32 @@ export interface ModifierLieuGeoDto {
   aValider?: boolean;
 }
 
+/**
+ * R7 : ce qui porte le nom d'un lieu. Les adresses le recopient en texte
+ * (niveau de base : `commune`, dans sa zone ; niveau d'elargissement :
+ * `prefecture`) ; les autres niveaux ne sont recopies nulle part.
+ */
+export interface UtilisationLieuGeoView {
+  enfants: number;
+  structures: number;
+  patients: number;
+  /** Motards dont l'adresse ou une commune desservie porte ce nom. */
+  motards: number;
+  /** Commandes en recherche de pharmacie et courses en appel d'offres. */
+  appelsEnCours: number;
+}
+
+/** POST /geographie/lieux/:id/renommer (administration). */
+export interface RenommerLieuGeoDto {
+  nom: string;
+}
+
+/** Le lieu renomme, et ce qui a pris son nouveau nom avec lui. */
+export interface RenommageLieuGeoView {
+  lieu: LieuGeoView;
+  renommes: Omit<UtilisationLieuGeoView, 'enfants'>;
+}
+
 /** POST /geographie/jeu-de-depart (administration). */
 export interface JeuDeDepartGeoView {
   crees: number;
