@@ -2252,6 +2252,12 @@ export interface ParametresSystemeValeurs {
 export interface ParametresSystemeView extends ParametresSystemeValeurs {
   modifieLe: HorodatageApi | null;
   idModifiePar: string | null;
+  /**
+   * R6 : des adresses sont enregistrees selon le decoupage du pays. Les codes
+   * des niveaux, leur ordre, le niveau de base et le niveau d'elargissement ne
+   * se modifient plus ; le nom, l'indicatif et les libelles, si.
+   */
+  decoupageFige: boolean;
 }
 
 /** PUT /admin-structure/parametres — chaque section et chaque champ est optionnel. */

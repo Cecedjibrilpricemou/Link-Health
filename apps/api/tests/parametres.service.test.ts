@@ -10,22 +10,40 @@ import {
   nomSms,
   verifierPays,
   verifierZones,
+  decoupageChange,
 } from '../src/services/parametres.service';
-import { ValidationError } from '../src/utils/app-error';
+import { ConflictError, ValidationError } from '../src/utils/app-error';
 
 jest.mock('../src/config/prisma', () => ({
   prisma: {
     parametresSysteme: { findUnique: jest.fn(), upsert: jest.fn() },
-    lieuGeo: { count: jest.fn() },
+    lieuGeo: { count: jest.fn(), findFirst: jest.fn() },
+    structureSante: { findFirst: jest.fn() },
+    patientProfile: { findFirst: jest.fn() },
+    livreurProfile: { findFirst: jest.fn() },
+    commande: { findFirst: jest.fn() },
+    course: { findFirst: jest.fn() },
+    alerteEpidemique: { findFirst: jest.fn() },
   },
 }));
 
 // Pas de Redis en test : withCache/cacheDel doivent passer au travers.
 jest.mock('../src/config/redis', () => ({ getRedis: () => null }));
 
+type M = jest.Mock;
 const { prisma } = jest.requireMock('../src/config/prisma') as {
-  prisma: { parametresSysteme: { findUnique: jest.Mock; upsert: jest.Mock }; lieuGeo: { count: jest.Mock } };
+  prisma: {
+    parametresSysteme: { findUnique: M; upsert: M };
+    lieuGeo: { count: M; findFirst: M };
+    structureSante: { findFirst: M }; patientProfile: { findFirst: M }; livreurProfile: { findFirst: M };
+    commande: { findFirst: M }; course: { findFirst: M }; alerteEpidemique: { findFirst: M };
+  };
 };
+
+/** Les tables dont une seule ligne suffit a figer le decoupage (R6). */
+const TABLES_ADRESSES = [
+  'lieuGeo', 'structureSante', 'patientProfile', 'livreurProfile', 'commande', 'course', 'alerteEpidemique',
+] as const;
 
 afterEach(() => jest.resetAllMocks());
 
@@ -66,7 +84,7 @@ describe('getParametres', () => {
 
     const vue = await getParametres();
 
-    expect(vue).toEqual({ ...PARAMETRES_PAR_DEFAUT, modifieLe: null, idModifiePar: null });
+    expect(vue).toEqual({ ...PARAMETRES_PAR_DEFAUT, modifieLe: null, idModifiePar: null, decoupageFige: false });
     expect(prisma.parametresSysteme.findUnique).toHaveBeenCalledWith({ where: { id: 'global' } });
   });
 
@@ -82,9 +100,19 @@ describe('getParametres', () => {
     const vue = await getParametres();
 
     expect(vue.sync.ussdTimeoutSecondes).toBe(90);
+    expect(vue.decoupageFige).toBe(false);
     expect(vue.sync.frequenceMinutes).toBe(PARAMETRES_PAR_DEFAUT.sync.frequenceMinutes);
     expect(vue.modifieLe).toBe(modifieLe);
     expect(vue.idModifiePar).toBe('admin-1');
+  });
+
+  // R6 : l'ecran doit savoir que le decoupage est fige, pour ne pas proposer
+  // une modification que l'API refusera.
+  it('dit que le decoupage est fige des qu une adresse est enregistree', async () => {
+    prisma.parametresSysteme.findUnique.mockResolvedValue(null);
+    prisma.course.findFirst.mockResolvedValue({ id: 'c1' });
+
+    expect((await getParametres()).decoupageFige).toBe(true);
   });
 });
 
@@ -111,7 +139,7 @@ describe('modifierParametres', () => {
       create: { id: 'global', valeurs: attendu, idModifiePar: 'admin-1' },
       update: { valeurs: attendu, idModifiePar: 'admin-1' },
     });
-    expect(vue).toEqual({ ...attendu, modifieLe, idModifiePar: 'admin-1' });
+    expect(vue).toEqual({ ...attendu, modifieLe, idModifiePar: 'admin-1', decoupageFige: false });
   });
 
   // M1 : passer au decoupage d'un autre pays, verifie avant d'ecrire.
@@ -156,6 +184,47 @@ describe('modifierParametres', () => {
     it('les autres sections ne declenchent aucune verification du pays', async () => {
       await modifierParametres('admin-1', { zones: { delaiElargissementCourseMinutes: 15 } });
       expect(prisma.lieuGeo.count).not.toHaveBeenCalled();
+    });
+
+    // R6 : une fois des adresses enregistrees, le decoupage ne bouge plus.
+    // Changer le niveau d'elargissement ferait lire « Conakry » comme une
+    // region dans toutes les tables, sans que personne le sache.
+    it.each(TABLES_ADRESSES)('refuse de changer le decoupage des que %s a une ligne, sans rien ecrire', async (table) => {
+      prisma[table].findFirst.mockResolvedValue({ id: 'x' });
+
+      await expect(modifierParametres('admin-1', { pays: NIGERIA })).rejects.toBeInstanceOf(ConflictError);
+      expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+    });
+
+    it('refuse de changer seulement le niveau d elargissement quand des donnees existent', async () => {
+      prisma.patientProfile.findFirst.mockResolvedValue({ id: 'p1' });
+
+      await expect(modifierParametres('admin-1', { pays: { niveauElargissement: 'region' } }))
+        .rejects.toBeInstanceOf(ConflictError);
+      expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+    });
+
+    it('laisse modifier nom, indicatif et libelles quand des donnees existent', async () => {
+      for (const t of TABLES_ADRESSES) prisma[t].findFirst.mockResolvedValue({ id: 'x' });
+      prisma.lieuGeo.count.mockResolvedValue(0);
+      const niveaux = PARAMETRES_PAR_DEFAUT.pays.niveaux.map((n) =>
+        n.code === 'commune' ? { ...n, libelles: { ...n.libelles, fr: 'Commune urbaine' } } : n);
+
+      const vue = await modifierParametres('admin-1', { pays: { nom: 'République de Guinée', indicatifTelephone: '+224', niveaux } });
+
+      expect(vue.pays.nom).toBe('République de Guinée');
+      expect(vue.pays.niveaux[2]!.libelles.fr).toBe('Commune urbaine');
+      expect(prisma.parametresSysteme.upsert).toHaveBeenCalled();
+    });
+
+    it('sur une installation vierge, le decoupage se choisit librement', async () => {
+      for (const t of TABLES_ADRESSES) prisma[t].findFirst.mockResolvedValue(null);
+      prisma.lieuGeo.count.mockResolvedValue(0);
+
+      const vue = await modifierParametres('admin-1', { pays: NIGERIA });
+
+      expect(vue.pays).toEqual(NIGERIA);
+      for (const t of TABLES_ADRESSES) expect(prisma[t].findFirst).toHaveBeenCalled();
     });
 
     // R1 : un delai final trop court arreterait l'appel avant toute la prefecture.
@@ -332,6 +401,21 @@ describe('sections de parametres', () => {
     expect(() => verifierPays({ ...p, niveauBase: 'ward' })).toThrow('Niveau de base « ward » absent');
     expect(() => verifierPays({ ...p, niveauElargissement: 'lga' })).toThrow("Niveau d'elargissement « lga » absent");
     expect(() => verifierPays({ ...p, niveaux: [...p.niveaux, p.niveaux[0]!] })).toThrow(ValidationError);
+  });
+
+  // R6 : ce qui compte dans le decoupage, ce sont les codes et leur ordre,
+  // le niveau de base et le niveau d'elargissement - pas les libelles.
+  it('distingue un changement de decoupage d un changement de libelle', () => {
+    const p = PARAMETRES_PAR_DEFAUT.pays;
+    const [region, prefecture, commune] = p.niveaux as [typeof p.niveaux[0], typeof p.niveaux[0], typeof p.niveaux[0]];
+    expect(decoupageChange(p, { ...p })).toBe(false);
+    expect(decoupageChange(p, { ...p, nom: 'Autre', indicatifTelephone: '+000' })).toBe(false);
+    expect(decoupageChange(p, { ...p, niveaux: [region, prefecture, { ...commune, libelles: { fr: 'Ward' } }] })).toBe(false);
+    expect(decoupageChange(p, { ...p, niveauElargissement: 'region' })).toBe(true);
+    expect(decoupageChange(p, { ...p, niveauBase: 'prefecture' })).toBe(true);
+    expect(decoupageChange(p, { ...p, niveaux: [prefecture, region, commune] })).toBe(true);
+    expect(decoupageChange(p, { ...p, niveaux: [region, prefecture, { code: 'sp', libelles: { fr: 'SP' } }, commune] })).toBe(true);
+    expect(decoupageChange(p, { ...p, niveaux: [region, prefecture, commune, { code: 'quartier', libelles: { fr: 'Q' } }] })).toBe(true);
   });
 
   it('valide la forme du pays dans le schema', () => {

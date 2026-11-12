@@ -10,7 +10,7 @@
 import { Prisma } from '../config/generated/client/client';
 import { prisma } from '../config/prisma';
 import { cacheDel, withCache } from '../utils/cache';
-import { ValidationError } from '../utils/app-error';
+import { ConflictError, ValidationError } from '../utils/app-error';
 import type {
   IdentitePlateformeView,
   ParametresIdentiteView,
@@ -157,6 +157,37 @@ export function verifierPays(pays: ParametresPaysView): void {
   }
 }
 
+/**
+ * R6 : le decoupage, c'est ce qui donne un sens aux adresses enregistrees -
+ * les codes des niveaux **dans leur ordre**, le niveau de base (champ
+ * `commune`) et le niveau d'elargissement (champ `prefecture`). Les libelles
+ * n'en font pas partie : renommer « Commune » en « Sous-prefecture » a l'ecran
+ * ne change pas ce que la base contient.
+ */
+export function decoupageChange(avant: ParametresPaysView, apres: ParametresPaysView): boolean {
+  const codes = (p: ParametresPaysView) => p.niveaux.map((n) => n.code).join('>');
+  return codes(avant) !== codes(apres)
+    || avant.niveauBase !== apres.niveauBase
+    || avant.niveauElargissement !== apres.niveauElargissement;
+}
+
+/**
+ * Une adresse est-elle deja enregistree selon le decoupage ? Le referentiel,
+ * et toute table qui porte une `prefecture` ou une `commune`.
+ */
+export async function adressesEnregistrees(): Promise<boolean> {
+  const presences = await Promise.all([
+    prisma.lieuGeo.findFirst({ select: { id: true } }),
+    prisma.structureSante.findFirst({ select: { id: true } }),
+    prisma.patientProfile.findFirst({ select: { id: true } }),
+    prisma.livreurProfile.findFirst({ select: { id: true } }),
+    prisma.commande.findFirst({ select: { id: true } }),
+    prisma.course.findFirst({ select: { id: true } }),
+    prisma.alerteEpidemique.findFirst({ select: { id: true } }),
+  ]);
+  return presences.some(Boolean);
+}
+
 type Section = keyof ParametresSystemeValeurs;
 const SECTIONS = Object.keys(PARAMETRES_PAR_DEFAUT) as Section[];
 
@@ -250,6 +281,7 @@ export async function getParametres(): Promise<ParametresSystemeView> {
     ...fusionnerParametres(PARAMETRES_PAR_DEFAUT, ligne?.valeurs),
     modifieLe: ligne?.modifieLe ?? null,
     idModifiePar: ligne?.idModifiePar ?? null,
+    decoupageFige: await adressesEnregistrees(),
   };
 }
 
@@ -265,6 +297,14 @@ export async function modifierParametres(
   if (dto.zones) verifierZones(valeurs.zones);
   if (dto.pays) {
     verifierPays(valeurs.pays);
+    // R6 : le decoupage donne leur sens aux champs `commune` et `prefecture`
+    // deja enregistres. Une fois des donnees saisies, il ne bouge plus.
+    if (decoupageChange(actuelles.pays, valeurs.pays) && (await adressesEnregistrees())) {
+      throw new ConflictError(
+        "Le decoupage du pays ne se modifie plus : des adresses sont deja enregistrees selon lui. "
+        + 'Le nom, l indicatif et les libelles des niveaux restent modifiables.',
+      );
+    }
     // Un niveau retire alors que des lieux le portent laisserait le
     // referentiel incoherent : on le refuse plutot que de les orpheliner.
     const codes = valeurs.pays.niveaux.map((n) => n.code);
@@ -289,5 +329,6 @@ export async function modifierParametres(
     ...valeurs,
     modifieLe: sauvegarde.modifieLe,
     idModifiePar: sauvegarde.idModifiePar,
+    decoupageFige: await adressesEnregistrees(),
   };
 }
