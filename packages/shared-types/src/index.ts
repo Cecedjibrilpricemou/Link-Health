@@ -2260,6 +2260,12 @@ export interface ParametresPaysView {
   nom: string;
   /** Indicatif international : +224, +221, +234... */
   indicatifTelephone: string;
+  /**
+   * R14 : chiffres du numero national, sans indicatif (9 en Guinee, 10 au
+   * Nigeria). Un numero d'une autre longueur est refuse la ou il identifie
+   * une personne.
+   */
+  longueurNumero: number;
   niveaux: NiveauAdministratifView[];
   /** Code du niveau ou l'on cherche d'abord (la commune en Guinee). */
   niveauBase: string;
@@ -2289,6 +2295,12 @@ export interface ParametresSystemeView extends ParametresSystemeValeurs {
    * se modifient plus ; le nom, l'indicatif et les libelles, si.
    */
   decoupageFige: boolean;
+  /**
+   * R12 : des prix ou des montants sont enregistres. Ils n'ont pas de devise
+   * propre : la changer les reetiquetterait sans les convertir. Elle ne se
+   * modifie plus.
+   */
+  deviseFigee: boolean;
 }
 
 /** PUT /admin-structure/parametres — chaque section et chaque champ est optionnel. */

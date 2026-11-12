@@ -37,6 +37,7 @@ import {
   versResumePersonne,
 } from './assurance.service';
 import { normaliser, normaliserTelephone } from './doublon.service';
+import { getValeursParametres } from './parametres.service';
 import { genererMotDePasseTemp } from './hopital.service';
 import { initialiserConsentementsParDefaut } from './privacy.service';
 import { analyserCsv } from './referentiel.service';
@@ -122,9 +123,11 @@ async function rattacherOuCreerPatient(
   tx: ClientFiche,
   dto: PersonneAssureeDto
 ): Promise<{ idPatient: string; compteCree: boolean; motDePasseTemporaire: string | null }> {
-  const chiffres = normaliserTelephone(dto.telephone);
-  if (chiffres.length !== 9) {
-    throw new ValidationError('Numero de telephone invalide : 9 chiffres attendus');
+  // R14 : la longueur du numero national est celle du pays installe.
+  const { pays: numerotation } = await getValeursParametres();
+  const chiffres = normaliserTelephone(dto.telephone, numerotation);
+  if (chiffres.length !== numerotation.longueurNumero) {
+    throw new ValidationError(`Numero de telephone invalide : ${numerotation.longueurNumero} chiffres attendus`);
   }
 
   const comptes = await tx.utilisateur.findMany({
@@ -224,7 +227,7 @@ async function enregistrerFiche(
       numeroPiece,
       dateDelivrancePiece: dto.dateDelivrancePiece ? new Date(dto.dateDelivrancePiece) : null,
       dateExpirationPiece: dto.dateExpirationPiece ? new Date(dto.dateExpirationPiece) : null,
-      telephone: normaliserTelephone(dto.telephone),
+      telephone: normaliserTelephone(dto.telephone, (await getValeursParametres()).pays),
       adresse: dto.adresse?.trim() || null,
       idAssureur,
       idPatient,

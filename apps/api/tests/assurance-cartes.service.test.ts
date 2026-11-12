@@ -52,6 +52,11 @@ jest.mock('../src/config/prisma', () => {
   return { prisma };
 });
 jest.mock('../src/config/redis', () => ({ getRedis: () => null }));
+// R14 : la numerotation vient des parametres du pays installe.
+jest.mock('../src/services/parametres.service', () => {
+  const vrai = jest.requireActual('../src/services/parametres.service');
+  return { ...vrai, getValeursParametres: async () => ({ pays: vrai.PARAMETRES_PAR_DEFAUT.pays }) };
+});
 
 type M = jest.Mock;
 type Mocks = Record<string, Record<string, M>> & { $transaction: M };

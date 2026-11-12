@@ -2143,7 +2143,13 @@
       "ZONES_FINAL_COMMANDE_HINT": "Passé ce délai depuis l'envoi de l'ordonnance, l'appel s'arrête : le patient et le médecin sont avertis qu'aucune pharmacie n'a confirmé. Doit dépasser deux fois le délai d'élargissement.",
       "ZONES_FINAL_COURSE_LABEL": "Délai maximum d'attente d'un livreur (minutes)",
       "ZONES_FINAL_COURSE_HINT": "Passé ce délai sans aucune offre, la course passe « sans livreur » : le patient choisit de relancer ou d'aller chercher sa commande. Doit dépasser deux fois le délai d'élargissement.",
-      "PAYS_DECOUPAGE_FIGE": "Des adresses sont déjà enregistrées selon ce découpage : les codes, l'ordre des niveaux, le niveau de base et le niveau d'élargissement ne se modifient plus. Le nom du pays, l'indicatif et les noms affichés des niveaux restent modifiables."
+      "PAYS_DECOUPAGE_FIGE": "Des adresses sont déjà enregistrées selon ce découpage : les codes, l'ordre des niveaux, le niveau de base et le niveau d'élargissement ne se modifient plus. Le nom du pays, l'indicatif et les noms affichés des niveaux restent modifiables.",
+      "IDENTITY_PAYS_HINT": "Le pays de l'installation. Il se change dans l'onglet « Pays ».",
+      "IDENTITY_DEVISE_FIGEE": "Des prix et des montants sont déjà enregistrés dans cette devise. La changer les réétiquetterait sans les convertir : elle ne se modifie plus.",
+      "PAY_DERNIER": "Au moins un moyen de paiement doit rester actif : sans aucun, plus aucune consultation ne pourrait être payée.",
+      "PRESCRIPTION_REG_INCOHERENT": "La validité d'une ordonnance à produit réglementé doit être au plus égale à la validité ordinaire : sinon le produit le plus contrôlé resterait délivrable le plus longtemps.",
+      "PAYS_LONGUEUR_NUMERO": "Chiffres du numéro de téléphone",
+      "PAYS_LONGUEUR_NUMERO_HINT": "Sans l'indicatif : 9 en Guinée (627 08 26 02), 10 au Nigeria. Sert à reconnaître deux fois le même numéro."
     },
     "ANALYTICS": {
       "SUBTITLE": "Tableau de bord épidémiologique — {{nom}} · {{pays}}",

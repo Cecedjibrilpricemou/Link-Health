@@ -1606,7 +1606,13 @@
       "ZONES_FINAL_COMMANDE_HINT": "After this delay since the prescription was sent, the request stops: the patient and the doctor are told that no pharmacy confirmed. Must exceed twice the widening delay.",
       "ZONES_FINAL_COURSE_LABEL": "Maximum wait for a courier (minutes)",
       "ZONES_FINAL_COURSE_HINT": "After this delay without any offer, the delivery becomes \"no courier\": the patient chooses to search again or to collect the order. Must exceed twice the widening delay.",
-      "PAYS_DECOUPAGE_FIGE": "Addresses are already recorded under this division: level codes, their order, the base level and the widening level can no longer be changed. The country name, dialling code and displayed level names can still be edited."
+      "PAYS_DECOUPAGE_FIGE": "Addresses are already recorded under this division: level codes, their order, the base level and the widening level can no longer be changed. The country name, dialling code and displayed level names can still be edited.",
+      "IDENTITY_PAYS_HINT": "The country of this installation. Change it in the \"Country\" tab.",
+      "IDENTITY_DEVISE_FIGEE": "Prices and amounts are already recorded in this currency. Changing it would relabel them without converting them: it can no longer be changed.",
+      "PAY_DERNIER": "At least one payment method must stay enabled: with none, no consultation could be paid.",
+      "PRESCRIPTION_REG_INCOHERENT": "The validity of a prescription containing a controlled product must be at most equal to the ordinary validity: otherwise the most controlled product would stay dispensable the longest.",
+      "PAYS_LONGUEUR_NUMERO": "Digits in the phone number",
+      "PAYS_LONGUEUR_NUMERO_HINT": "Without the dialling code: 9 in Guinea (627 08 26 02), 10 in Nigeria. Used to recognise the same number twice."
     },
     "ANALYTICS": {
       "SUBTITLE": "Epidemiological dashboard — {{nom}} · {{pays}}",
