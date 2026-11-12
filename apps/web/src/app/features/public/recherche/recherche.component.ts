@@ -14,6 +14,7 @@ import { PublicShellComponent } from '../../../shared/components/public-shell/pu
 import { GeographieService } from '../../../core/services/geographie.service';
 import { RechercheService } from '../../../core/services/recherche.service';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { PlateformeService } from '../../../shared/services/plateforme.service';
 
 @Component({
   selector: 'app-recherche',
@@ -26,6 +27,11 @@ export class RechercheComponent implements OnInit {
   private readonly recherche = inject(RechercheService);
   private readonly i18n = inject(I18nService);
   readonly geo = inject(GeographieService);
+  /**
+   * La devise est un reglage de la plateforme (R12), pas un mot de la
+   * traduction : une installation hors de Guinee n'affiche pas « GNF ».
+   */
+  readonly plateforme = inject(PlateformeService);
 
   readonly q = signal('');
   readonly prefecture = signal('');

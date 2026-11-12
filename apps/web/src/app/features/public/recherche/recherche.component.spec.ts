@@ -13,6 +13,7 @@ import { RechercheComponent } from './recherche.component';
 import { GeographieService } from '../../../core/services/geographie.service';
 import { RechercheService } from '../../../core/services/recherche.service';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { PlateformeService } from '../../../shared/services/plateforme.service';
 
 const PRODUIT: ProduitTrouveView = {
   id: 'med-1',
@@ -59,6 +60,7 @@ function monter(recherche: Partial<RechercheService> = {}) {
       provideZonelessChangeDetection(),
       { provide: GeographieService, useValue: geo },
       { provide: RechercheService, useValue: service },
+      { provide: PlateformeService, useValue: { devise: () => 'GNF' } },
       // On verifie quelle phrase est choisie, pas sa traduction.
       {
         provide: I18nService,
