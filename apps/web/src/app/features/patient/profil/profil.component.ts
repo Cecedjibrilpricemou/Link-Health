@@ -1,5 +1,5 @@
 // features/patient/profil/profil.component.ts
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -72,7 +72,7 @@ export class ProfilComponent implements OnInit {
         if (response.success && response.data) {
           const data = response.data;
           this.profil.set(data);
-          this.formData = { ...data };
+          this.formData = this.formulaireDe(data);
           this.idStructureSelectionnee = data.idStructurePreferee ?? '';
         }
         this.isLoading.set(false);
@@ -95,7 +95,19 @@ export class ProfilComponent implements OnInit {
     });
   }
 
-  enableEdit() { this.formData = { ...this.profil() }; this.editMode.set(true); }
+  enableEdit() { this.formData = this.formulaireDe(this.profil()); this.editMode.set(true); }
+
+  /**
+   * R15 : une fois l'identite verifiee sur piece, le nom est celui que
+   * l'agent a lu. Le patient le voit, mais la correction passe par l'accueil.
+   */
+  nomVerrouille = computed(() => this.profil()?.niveauIdentite === 'VERIFIEE');
+
+  /** /patients/me imbrique le nom sous `utilisateur` : le formulaire le veut a plat. */
+  private formulaireDe(p: Patient | null): Partial<Patient> {
+    if (!p) return {};
+    return { ...p, prenom: p.utilisateur?.prenom ?? p.prenom, nom: p.utilisateur?.nom ?? p.nom };
+  }
   cancelEdit() { this.editMode.set(false); this.errorMessage.set(''); }
 
   private toArray(value: unknown): string[] | undefined {
@@ -110,12 +122,16 @@ export class ProfilComponent implements OnInit {
     // updatePatientSchema — telephone/dateNaissance/sexe are read-only here).
     // Sending the raw fetched object back (including nulls and unknown keys)
     // makes the strict Zod schema reject the whole request.
+    //
+    // Le groupe sanguin et les listes partent toujours, meme vides : vider un
+    // champ est une reponse (« aucune allergie connue »), pas un oubli. Le
+    // nom ne part pas quand il est verrouille (R15).
     return {
-      ...(f.prenom && { prenom: f.prenom }),
-      ...(f.nom && { nom: f.nom }),
-      ...(f.groupeSanguin && { groupeSanguin: f.groupeSanguin }),
-      ...(this.toArray(f.allergies)?.length && { allergies: this.toArray(f.allergies) }),
-      ...(this.toArray(f.maladiesChroniques)?.length && { maladiesChroniques: this.toArray(f.maladiesChroniques) }),
+      ...(!this.nomVerrouille() && f.prenom && { prenom: f.prenom }),
+      ...(!this.nomVerrouille() && f.nom && { nom: f.nom }),
+      groupeSanguin: f.groupeSanguin ?? '',
+      allergies: this.toArray(f.allergies) ?? [],
+      maladiesChroniques: this.toArray(f.maladiesChroniques) ?? [],
     };
   }
 

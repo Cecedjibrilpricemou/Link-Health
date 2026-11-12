@@ -6,7 +6,7 @@ import * as identite from '../services/identite.service';
 import * as doublon from '../services/doublon.service';
 import * as fusion from '../services/fusion.service';
 import {
-  annulerFusionSchema, filtreIdentitesSchema, fusionnerSchema, noterTraitsSchema,
+  annulerFusionSchema, corrigerIdentiteSchema, filtreIdentitesSchema, fusionnerSchema, noterTraitsSchema,
   verifierIdentiteSchema,
 } from '../validators/api.schemas';
 import type {
@@ -178,6 +178,20 @@ router.post('/:id/verifier', validateBody(verifierIdentiteSchema), async (req: A
 router.post('/:id/traits', validateBody(noterTraitsSchema), async (req: AuthRequest, res: Response) => {
   const data = await identite.noterTraits(req.user!, req.params['id'] as string, req.body);
   res.json({ success: true, data, message: 'Traits distinctifs enregistres.' });
+});
+
+/**
+ * R15 : corriger le sexe, la date de naissance, le prenom ou le nom, avec un
+ * motif. Chaque trait corrige garde son ancienne valeur et son auteur.
+ */
+router.post('/:id/corriger', validateBody(corrigerIdentiteSchema), async (req: AuthRequest, res: Response) => {
+  const data = await identite.corrigerIdentite(req.user!, req.params['id'] as string, req.body);
+  res.json({ success: true, data, message: `Identite de ${data.nomComplet} corrigee.` });
+});
+
+router.get('/:id/corrections', async (req: AuthRequest, res: Response) => {
+  const data = await identite.historiqueCorrections(req.user!, req.params['id'] as string);
+  res.json({ success: true, data });
 });
 
 export default router;

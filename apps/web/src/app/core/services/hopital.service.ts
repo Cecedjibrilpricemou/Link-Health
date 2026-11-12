@@ -14,6 +14,8 @@ import type {
   IdentitePatientView,
   NiveauIdentite,
   VerifierIdentiteDto,
+  CorrigerIdentiteDto,
+  CorrectionIdentiteView,
   PresenceDuJourView,
   CreateDemandeAnalyseDto,
   CreateEpisodeDto,
@@ -186,6 +188,15 @@ export class HopitalService {
 
   verifierIdentite(id: string, dto: VerifierIdentiteDto): Observable<ApiResponse<IdentitePatientView>> {
     return this.api.post<ApiResponse<IdentitePatientView>>(`/identites/${id}/verifier`, dto);
+  }
+
+  /** R15 : corriger sexe, date de naissance, prenom ou nom, avec un motif. */
+  corrigerIdentite(id: string, dto: CorrigerIdentiteDto): Observable<ApiResponse<IdentitePatientView>> {
+    return this.api.post<ApiResponse<IdentitePatientView>>(`/identites/${id}/corriger`, dto);
+  }
+
+  corrections(id: string): Observable<ApiResponse<CorrectionIdentiteView[]>> {
+    return this.api.get<ApiResponse<CorrectionIdentiteView[]>>(`/identites/${id}/corrections`);
   }
 
   /**

@@ -3862,6 +3862,9 @@ export type TypePieceIdentite =
 export interface IdentitePatientView {
   id: string;
   nomComplet: string;
+  /** Separes pour la correction (R15) ; `nomComplet` reste pour l affichage. */
+  prenom: string;
+  nom: string;
   telephone: string;
   dateNaissance: HorodatageApi;
   sexe: string;
@@ -3899,6 +3902,34 @@ export interface VerifierIdentiteDto {
 export interface NoterTraitsDto {
   lieuNaissance?: string;
   nomMere?: string;
+}
+
+/** R15 : un trait d identite corrigeable par l accueil ou l administration. */
+export type ChampCorrigeable = 'prenom' | 'nom' | 'sexe' | 'dateNaissance';
+
+/**
+ * R15 : corriger l identite d un patient. Seuls les traits fournis et
+ * differents de l actuel sont ecrits ; le motif est exige.
+ */
+export interface CorrigerIdentiteDto {
+  prenom?: string;
+  nom?: string;
+  sexe?: 'M' | 'F';
+  /** Date seule, AAAA-MM-JJ. */
+  dateNaissance?: string;
+  motif: string;
+}
+
+/** Une correction passee, telle que l historique la montre. */
+export interface CorrectionIdentiteView {
+  id: string;
+  champ: ChampCorrigeable;
+  ancienneValeur: string;
+  nouvelleValeur: string;
+  motif: string;
+  creeLe: HorodatageApi;
+  /** Null si l agent a depuis quitte la plateforme. */
+  auteur: string | null;
 }
 
 // --- Bris de glace (EF-02-06) ----------------------------------------------

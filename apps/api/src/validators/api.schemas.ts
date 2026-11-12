@@ -98,6 +98,9 @@ export const updatePatientSchema = createPatientSchema
   .extend({
     langue: z.string().trim().min(2).max(10).optional(),
     photoUrl: photoProfil.optional(),
+    // Une chaine vide efface le contact d'urgence : un numero qui n'est plus
+    // le bon ne doit pas rester faute de pouvoir le retirer.
+    urgenceTelephone: z.union([phone, z.literal('')]).optional(),
   })
   .partial()
   .strict();
@@ -1186,6 +1189,15 @@ export const verifierIdentiteSchema = z.object({
 export const noterTraitsSchema = z.object({
   lieuNaissance: z.string().trim().min(2).max(120).optional(),
   nomMere: z.string().trim().min(2).max(120).optional(),
+}).strict();
+
+// R15 : correction tracee de l'identite par l'accueil ou l'administration.
+export const corrigerIdentiteSchema = z.object({
+  prenom: z.string().trim().min(1).max(80).optional(),
+  nom: z.string().trim().min(1).max(80).optional(),
+  sexe: z.enum(['M', 'F']).optional(),
+  dateNaissance: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date AAAA-MM-JJ').optional(),
+  motif: z.string().trim().min(10).max(500),
 }).strict();
 
 export const filtreIdentitesSchema = z.object({

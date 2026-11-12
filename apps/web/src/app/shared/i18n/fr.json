@@ -437,7 +437,9 @@
       "STRUCTURE_TYPE_HOPITAL_PREF": "Hôpital Préfectoral",
       "STRUCTURE_TYPE_HOPITAL_REG": "Hôpital Régional",
       "STRUCTURE_TYPE_CHU": "CHU",
-      "STRUCTURE_TYPE_CLINIQUE": "Clinique Privée"
+      "STRUCTURE_TYPE_CLINIQUE": "Clinique Privée",
+      "NOM_VERROUILLE": "Votre identité a été vérifiée sur pièce : votre nom ne se modifie plus ici. Pour une correction, adressez-vous à l'accueil de votre structure.",
+      "BLOOD_UNKNOWN": "Je ne sais pas"
     },
     "DOSSIER": {
       "TITLE": "Mon Dossier Médical",
@@ -2984,7 +2986,27 @@
       "FUSION_AUCUNE": "Aucune fusion sur ce dossier.",
       "FUSION_FERMER": "Fermer",
       "FUSION_RETOUR": "Retour",
-      "FUSION_FAITE_VIDE": "{{absorbe}} a rejoint {{principal}}. Le dossier absorbé ne portait aucune donnée à déplacer — il est conservé, son code QR renvoie désormais vers {{principal}}, et la fusion peut être annulée."
+      "FUSION_FAITE_VIDE": "{{absorbe}} a rejoint {{principal}}. Le dossier absorbé ne portait aucune donnée à déplacer — il est conservé, son code QR renvoie désormais vers {{principal}}, et la fusion peut être annulée.",
+      "CORRIGER": "Corriger",
+      "CORRIGER_TITRE": "Corriger l'identité de {{nom}}",
+      "CORRIGER_AIDE": "Pour une erreur de saisie : sexe, date de naissance, prénom ou nom. Chaque changement garde l'ancienne valeur, votre nom et le motif. Corriger ne vérifie pas l'identité : le niveau reste le même.",
+      "CORRIGER_PRENOM": "Prénom",
+      "CORRIGER_NOM": "Nom",
+      "CORRIGER_SEXE": "Sexe",
+      "CORRIGER_NAISSANCE": "Date de naissance",
+      "CORRIGER_MOTIF": "Motif de la correction",
+      "CORRIGER_MOTIF_AIDE": "{{n}} caractères au moins. Par exemple : erreur de saisie à l'admission, acte de naissance présenté.",
+      "CORRIGER_CONFIRMER": "Enregistrer la correction",
+      "CORRECTIONS_PASSEES": "Corrections déjà faites",
+      "CHAMP_prenom": "Prénom",
+      "CHAMP_nom": "Nom",
+      "CHAMP_sexe": "Sexe",
+      "CHAMP_dateNaissance": "Date de naissance",
+      "AUTEUR_PARTI": "agent parti",
+      "SEXE_F": "Femme",
+      "SEXE_M": "Homme",
+      "CORRIGEE_MSG": "Identité de {{nom}} corrigée.",
+      "ERR_CORRECTION": "La correction n'a pas pu être enregistrée."
     },
     "NAV_IDENTITES": "Identités"
   },

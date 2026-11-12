@@ -30,6 +30,8 @@ export interface Patient {
   urgenceNom?: string;
   urgenceTelephone?: string;
   qrCode?: string;
+  /** R15 : une fois verifiee sur piece, le patient ne change plus son nom lui-meme. */
+  niveauIdentite?: 'PROVISOIRE' | 'VERIFIEE';
   // Identite : imbriquee ici, a plat dans les reponses de recherche
   utilisateur?: {
     prenom: string;

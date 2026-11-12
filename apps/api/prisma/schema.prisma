@@ -338,9 +338,10 @@ model Utilisateur {
   suspensionsPrononcees Utilisateur[] @relation("SuspensionsProoncees")
 
   /// Les identites de patients qu'il a verifiees (EF-01-04).
-  identitesVerifiees  PatientProfile[] @relation("IdentitesVerifiees")
-  brisDeGlaceDeclares BrisDeGlace[]    @relation("BrisDeGlaceDeclares")
-  brisDeGlaceRevus    BrisDeGlace[]    @relation("BrisDeGlaceRevus")
+  identitesVerifiees  PatientProfile[]     @relation("IdentitesVerifiees")
+  correctionsIdentite CorrectionIdentite[] @relation("CorrectionsIdentite")
+  brisDeGlaceDeclares BrisDeGlace[]        @relation("BrisDeGlaceDeclares")
+  brisDeGlaceRevus    BrisDeGlace[]        @relation("BrisDeGlaceRevus")
   /// Numero d'inscription a l'ordre professionnel (EF-01-08).
   ///
   /// **Sur l'utilisateur, pas sur chaque profil.** Le numero vivait sur
@@ -355,8 +356,8 @@ model Utilisateur {
   numeroOrdre         String?
   ordreVerifieLe      DateTime?
   idOrdreVerifiePar   String?
-  ordreVerifiePar     Utilisateur?     @relation("OrdresVerifies", fields: [idOrdreVerifiePar], references: [id], onDelete: SetNull)
-  ordresVerifies      Utilisateur[]    @relation("OrdresVerifies")
+  ordreVerifiePar     Utilisateur?         @relation("OrdresVerifies", fields: [idOrdreVerifiePar], references: [id], onDelete: SetNull)
+  ordresVerifies      Utilisateur[]        @relation("OrdresVerifies")
 
   textesConsentementPublies TexteConsentement[]     @relation("TextesConsentementPublies")
   evenementsConsentement    EvenementConsentement[] @relation("EvenementsConsentement")
@@ -968,8 +969,9 @@ model PatientProfile {
   brisDeGlace            BrisDeGlace[]           @relation("BrisDeGlacePatient")
   evenementsConsentement EvenementConsentement[]
 
-  fusionsPrincipal FusionDossier[] @relation("FusionPrincipal")
-  fusionsAbsorbe   FusionDossier[] @relation("FusionAbsorbe")
+  fusionsPrincipal FusionDossier[]      @relation("FusionPrincipal")
+  fusionsAbsorbe   FusionDossier[]      @relation("FusionAbsorbe")
+  corrections      CorrectionIdentite[]
   // Maille reelle du parcours commande/livraison : c'est dans son quartier que
   // le patient cherche une pharmacie, pas dans sa prefecture.
   commune          String?
@@ -987,8 +989,8 @@ model PatientProfile {
   photoUrl         String?
   urgenceNom       String?
   urgenceTelephone String?
-  creeLe           DateTime        @default(now())
-  modifieLe        DateTime        @updatedAt
+  creeLe           DateTime             @default(now())
+  modifieLe        DateTime             @updatedAt
 
   idUtilisateur String      @unique
   utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Restrict)
@@ -2446,7 +2448,7 @@ model Commande {
   voisinesLe          DateTime?
   /// Les voisines appelees, en minuscules, figees a cette date : un voisinage
   /// modifie ensuite ne change pas qui peut repondre a cet appel.
-  communesVoisines    String[]     @default([])
+  communesVoisines    String[]  @default([])
   /// M5 : personne n'a repondu dans la commune, l'appel s'est etendu a toute
   /// la prefecture a cette date. Null tant qu'il reste dans la commune.
   elargieLe           DateTime?
@@ -3179,4 +3181,33 @@ model MouvementStock {
   @@index([idLot, creeLe(sort: Desc)])
   @@index([reference])
   @@map("mouvements_stock")
+}
+
+/// R15 : la correction d'un trait d'identite (sexe, date de naissance, nom,
+/// prenom) par l'accueil ou l'administration, avec l'ancienne valeur.
+///
+/// **Une ligne par trait corrige, jamais modifiee ni supprimee.** Une erreur
+/// de saisie se corrige ; elle ne s'efface pas. La date de naissance decide de
+/// doses pediatriques, le sexe de normes biologiques : si une correction est
+/// elle-meme fausse, il faut pouvoir dire qui l'a faite, quand, et ce qu'il y
+/// avait avant.
+model CorrectionIdentite {
+  id             String   @id @default(cuid())
+  /// prenom | nom | sexe | dateNaissance
+  champ          String
+  ancienneValeur String
+  nouvelleValeur String
+  /// Pourquoi : « erreur de saisie a l'admission, acte de naissance presente ».
+  motif          String
+  creeLe         DateTime @default(now())
+
+  idPatient String
+  patient   PatientProfile @relation(fields: [idPatient], references: [id], onDelete: Restrict)
+
+  /// `SetNull` : le depart de l'agent n'efface pas la correction.
+  idAuteur String?
+  auteur   Utilisateur? @relation("CorrectionsIdentite", fields: [idAuteur], references: [id], onDelete: SetNull)
+
+  @@index([idPatient, creeLe])
+  @@map("corrections_identite")
 }
