@@ -14,6 +14,7 @@ import {
   MAX_VOISINS,
   modifierLieu,
   voisinsDe,
+  zoneElargissementConnue,
 } from '../src/services/geographie.service';
 import { ConflictError, NotFoundError, ValidationError } from '../src/utils/app-error';
 
@@ -121,6 +122,45 @@ describe('voisinsDe (M1-C)', () => {
     ]);
     // Au Nigeria, la zone d'elargissement est la LGA et la base le ward.
     expect(await voisinsDe('Ikeja', 'Alausa')).toEqual(['Oregun']);
+  });
+});
+
+// R8 : la prefecture qu'un patient declare en demenageant.
+describe('zoneElargissementConnue', () => {
+  const parNiveau = (lieux: typeof ARBRE) => ({ where }: { where: { niveau: string } }) =>
+    Promise.resolve(lieux.filter((l) => l.niveau === where.niveau));
+  const KINDIA = lieu('p-kindia', 'prefecture', 'Kindia', 'r-kindia');
+
+  it('rend le nom exact du referentiel, sans casse ni espaces', async () => {
+    installer(GUINEE);
+    prisma.lieuGeo.findMany.mockImplementation(parNiveau([...ARBRE, KINDIA]));
+    expect(await zoneElargissementConnue('  KINDIA ')).toBe('Kindia');
+    expect(prisma.lieuGeo.findMany.mock.calls[0][0].where).toEqual({ niveau: 'prefecture' });
+  });
+
+  it('une zone inconnue du referentiel rend null, une commune aussi', async () => {
+    installer(GUINEE);
+    prisma.lieuGeo.findMany.mockImplementation(parNiveau(ARBRE));
+    expect(await zoneElargissementConnue('Atlantis')).toBeNull();
+    expect(await zoneElargissementConnue('Ratoma')).toBeNull();
+  });
+
+  it('suit le niveau d elargissement du pays installe', async () => {
+    installer(NIGERIA);
+    prisma.lieuGeo.findMany.mockImplementation(parNiveau([lieu('l-ikeja', 'lga', 'Ikeja', 's-lagos')]));
+    expect(await zoneElargissementConnue('ikeja')).toBe('Ikeja');
+  });
+
+  it('tant que le referentiel n a aucune zone, garde le texte saisi', async () => {
+    installer(GUINEE);
+    prisma.lieuGeo.findMany.mockImplementation(parNiveau([REG]));
+    expect(await zoneElargissementConnue('  Boké ')).toBe('Boké');
+  });
+
+  it('un texte vide rend null', async () => {
+    installer(GUINEE);
+    expect(await zoneElargissementConnue('   ')).toBeNull();
+    expect(prisma.lieuGeo.findMany).not.toHaveBeenCalled();
   });
 });
 

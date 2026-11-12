@@ -123,6 +123,52 @@ describe('adresse du patient', () => {
     expect(el.querySelector('#adresse-gps')).not.toBeNull();
   });
 
+  // R8 : un patient qui demenage change lui-meme de prefecture.
+  it('sans changement de prefecture, elle ne part pas et rien n est annonce', () => {
+    const { c, el, envois } = monter(AVEC_POSITION);
+    c.changerPrefecture(' conakry ');
+    expect(c.demenage).toBe(false);
+    expect(el.querySelector('#adresse-demenagement')).toBeNull();
+
+    c.enregistrer();
+    expect(envois[0]).not.toHaveProperty('prefecture');
+  });
+
+  it('changer de prefecture vide l ancienne adresse, l annonce, puis l envoie', () => {
+    const { c, el, rendre, envois } = monter(AVEC_POSITION);
+
+    c.changerPrefecture('Kindia');
+    rendre();
+
+    expect(c.prefecture()).toBe('Kindia');
+    expect(c.form).toEqual({ commune: '', quartier: '', pointRepere: '' });
+    expect(el.querySelector('#adresse-demenagement')!.textContent).toContain('Kindia');
+    // Pas d'envoi tant que la nouvelle adresse n'est pas complete.
+    c.enregistrer();
+    expect(envois).toHaveLength(0);
+
+    c.form.commune = 'Kindia-Centre';
+    c.form.quartier = 'Banlieue';
+    c.enregistrer();
+    expect(envois).toEqual([{ prefecture: 'Kindia', commune: 'Kindia-Centre', quartier: 'Banlieue', pointRepere: '' }]);
+  });
+
+  it('revenir a l ancienne prefecture rend l ancienne adresse', () => {
+    const { c } = monter(AVEC_POSITION);
+    c.changerPrefecture('Kindia');
+    c.changerPrefecture('Conakry');
+    expect(c.prefecture()).toBe('Conakry');
+    expect(c.form).toEqual({ commune: 'Ratoma', quartier: 'Kipé', pointRepere: 'Derriere la mosquee' });
+  });
+
+  it('une prefecture vide bloque l enregistrement', () => {
+    const { c, envois } = monter(AVEC_POSITION);
+    c.changerPrefecture('  ');
+    expect(c.complete).toBe(false);
+    c.enregistrer();
+    expect(envois).toHaveLength(0);
+  });
+
   it('signale une position introuvable sans rien enregistrer', () => {
     Object.defineProperty(navigator, 'geolocation', {
       configurable: true,

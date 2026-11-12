@@ -5,12 +5,22 @@ import { NotFoundError, ValidationError } from '../src/utils/app-error';
 import { definirAdresseSchema } from '../src/validators/api.schemas';
 
 jest.mock('../src/config/prisma', () => ({
-  prisma: { patientProfile: { findUnique: jest.fn(), update: jest.fn() } },
+  prisma: {
+    patientProfile: { findUnique: jest.fn(), update: jest.fn() },
+    journalAudit: { create: jest.fn() },
+    $transaction: jest.fn(),
+  },
 }));
+jest.mock('../src/services/geographie.service', () => ({ zoneElargissementConnue: jest.fn() }));
 
 const { prisma } = jest.requireMock('../src/config/prisma') as {
-  prisma: { patientProfile: { findUnique: jest.Mock; update: jest.Mock } };
+  prisma: {
+    patientProfile: { findUnique: jest.Mock; update: jest.Mock };
+    journalAudit: { create: jest.Mock };
+    $transaction: jest.Mock;
+  };
 };
+const { zoneElargissementConnue } = jest.requireMock('../src/services/geographie.service') as { zoneElargissementConnue: jest.Mock };
 
 const STOCKEE = {
   id: 'pat-1', prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé',
@@ -118,9 +128,63 @@ describe('definirAdresseSchema', () => {
     expect(ok({ commune: 'R', quartier: 'K', latitude: 9, longitude: -13, effacerPosition: true })).toBe(false);
   });
 
-  // La prefecture n'est pas modifiable ici : elle decoule de l'inscription.
-  it('refuse un champ inconnu, dont la prefecture', () => {
-    expect(ok({ commune: 'R', quartier: 'K', prefecture: 'Kindia' })).toBe(false);
+  // R8 : la prefecture se change ici, en demenageant ; le reste reste ferme.
+  it('accepte la prefecture, refuse un champ inconnu', () => {
+    expect(ok({ commune: 'R', quartier: 'K', prefecture: 'Kindia' })).toBe(true);
+    expect(ok({ commune: 'R', quartier: 'K', prefecture: '  ' })).toBe(false);
+    expect(ok({ commune: 'R', quartier: 'K', sexe: 'F' })).toBe(false);
+  });
+});
+
+// R8 : un patient qui demenage change lui-meme de prefecture. Ce qui compte :
+// seulement vers une prefecture du referentiel, sous son nom exact ; l'ancienne
+// position s'efface (un motard irait a l'ancien domicile) ; le changement est
+// journalise ; et sans changement reel, rien de tout cela.
+describe('definirAdresse : changer de prefecture', () => {
+  const MAINTENANT = new Date('2026-11-12T12:00:00Z');
+  const KINDIA = { commune: 'Kindia-Centre', quartier: 'Banlieue', prefecture: '  kindia ' };
+
+  beforeEach(() => {
+    prisma.patientProfile.findUnique
+      .mockResolvedValueOnce({ id: 'pat-1', idFusionneDans: null })
+      .mockResolvedValueOnce({ prefecture: 'Conakry' });
+    zoneElargissementConnue.mockImplementation((t: string) =>
+      Promise.resolve(['Conakry', 'Kindia'].find((z) => z.toLowerCase() === t.trim().toLowerCase()) ?? null));
+    prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+  });
+
+  it('enregistre le nom du referentiel, efface l ancienne position et journalise', async () => {
+    await definirAdresse('u-pat', KINDIA, MAINTENANT);
+
+    expect(dataEcrite()).toEqual({
+      prefecture: 'Kindia', commune: 'Kindia-Centre', quartier: 'Banlieue', pointRepere: null,
+      position: null, positionLe: null,
+    });
+    expect(prisma.journalAudit.create).toHaveBeenCalledWith({
+      data: {
+        action: 'CHANGEMENT_PREFECTURE', ressource: 'patients', idRessource: 'pat-1', idUtilisateur: 'u-pat',
+        creeLe: MAINTENANT, metadonnees: { avant: 'Conakry', apres: 'Kindia' },
+      },
+    });
+  });
+
+  it('garde une nouvelle position donnee avec le demenagement', async () => {
+    await definirAdresse('u-pat', { ...KINDIA, latitude: 10.05, longitude: -12.86 }, MAINTENANT);
+    expect(dataEcrite()).toMatchObject({ prefecture: 'Kindia', position: '10.05,-12.86', positionLe: MAINTENANT });
+  });
+
+  it('refuse une prefecture inconnue du referentiel, sans rien ecrire', async () => {
+    await expect(definirAdresse('u-pat', { ...KINDIA, prefecture: 'Atlantis' }, MAINTENANT)).rejects.toBeInstanceOf(ValidationError);
+    expect(prisma.patientProfile.update).not.toHaveBeenCalled();
+    expect(prisma.journalAudit.create).not.toHaveBeenCalled();
+  });
+
+  it('la meme prefecture, autrement ecrite : ni changement, ni journal, position gardee', async () => {
+    await definirAdresse('u-pat', { commune: 'Ratoma', quartier: 'Kipé', prefecture: 'CONAKRY' }, MAINTENANT);
+
+    expect(dataEcrite()).not.toHaveProperty('prefecture');
+    expect(dataEcrite()).not.toHaveProperty('position');
+    expect(prisma.journalAudit.create).not.toHaveBeenCalled();
   });
 });
 

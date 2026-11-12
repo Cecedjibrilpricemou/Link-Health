@@ -391,7 +391,9 @@
       "GPS_ERR": "Location not found. Check that location is turned on and allowed.",
       "SAVE": "Save my address",
       "SUCCESS": "Address saved.",
-      "ERR_SAVE": "The address could not be saved."
+      "ERR_SAVE": "The address could not be saved.",
+      "DEMENAGEMENT": "You are changing area: your next prescriptions will go to pharmacies in {{zone}}. Orders already placed keep their area.",
+      "DEMENAGEMENT_POSITION": "The location of your former home will be cleared; you can give the new one."
     },
     "PROFILE": {
       "TITLE": "My Profile",

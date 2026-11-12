@@ -118,6 +118,8 @@ export const updatePatientSchema = createPatientSchema
 // M3 : l'adresse du patient. La position et son effacement s'excluent : on
 // ne peut pas a la fois donner et retirer sa position.
 export const definirAdresseSchema = z.object({
+  // R8 : en demenageant, le patient change aussi de prefecture.
+  prefecture: z.string().trim().min(1).max(80).optional(),
   commune: z.string().trim().min(1).max(80),
   quartier: z.string().trim().min(1).max(80),
   pointRepere: z.string().trim().max(200).optional(),
