@@ -112,12 +112,15 @@ export async function getHeatmapData(filters: HeatmapFilters) {
         where: whereConsultation,
         take: HEATMAP_MAX,
         include: {
+            // R4 : jamais la position du patient. La carte placait chaque
+            // prefecture au domicile exact du premier patient trouve : une
+            // adresse donnee pour le seul motard finissait sous les yeux des
+            // analystes. Une carte epidemiologique compte par zone, elle ne
+            // localise personne.
             patient: {
                 select: {
                     prefecture: true,
                     sousPrefecture: true,
-                    latitude: true,
-                    longitude: true,
                 },
             },
             diagnostics: {
@@ -130,8 +133,6 @@ export async function getHeatmapData(filters: HeatmapFilters) {
         prefecture: string;
         count: number;
         pathologies: Record<string, number>;
-        latitude?: number;
-        longitude?: number;
     }> = {};
 
     consultations.forEach((c) => {
@@ -141,8 +142,6 @@ export async function getHeatmapData(filters: HeatmapFilters) {
                 prefecture: pref,
                 count: 0,
                 pathologies: {},
-                latitude: c.patient.latitude ?? undefined,
-                longitude: c.patient.longitude ?? undefined,
             };
         }
         parPrefecture[pref].count++;

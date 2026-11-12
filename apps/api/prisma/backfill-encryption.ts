@@ -20,8 +20,8 @@ import 'dotenv/config';
 import { PrismaClient } from '../src/config/generated/client/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { ENCRYPTED_FIELDS, FieldMap } from '../src/config/prisma-encryption.extension';
-import { encryptArray, encryptField } from '../src/utils/encryption.utils';
+import { EMPREINTES, ENCRYPTED_FIELDS, FieldMap } from '../src/config/prisma-encryption.extension';
+import { decryptField, empreinteRecherche, encryptArray, encryptField } from '../src/utils/encryption.utils';
 
 const ENC_PREFIX = 'enc:v1:';
 const APPLY = process.argv.includes('--apply');
@@ -61,6 +61,10 @@ async function backfillModel(modelName: string, map: FieldMap): Promise<Totals> 
   const totals: Totals = { scanned: 0, updated: 0, fieldsEncrypted: 0 };
   const select: Record<string, boolean> = { id: true };
   for (const field of [...map.scalar, ...map.array]) select[field] = true;
+  // R4 : les empreintes de recherche (EMPREINTES) se posent dans le meme
+  // passage, depuis la valeur en clair - chiffree ou non, on la lit d'abord.
+  const empreintes = EMPREINTES[modelName] ?? {};
+  for (const colonne of Object.values(empreintes)) select[colonne] = true;
 
   let cursor: string | undefined;
   for (;;) {
@@ -76,6 +80,12 @@ async function backfillModel(modelName: string, map: FieldMap): Promise<Totals> 
     for (const row of rows) {
       totals.scanned += 1;
       const data: Record<string, unknown> = {};
+
+      for (const [champ, colonne] of Object.entries(empreintes)) {
+        const clair = typeof row[champ] === 'string' ? decryptField(row[champ] as string) : null;
+        const attendue = empreinteRecherche(clair);
+        if (row[colonne] !== attendue) data[colonne] = attendue;
+      }
 
       for (const field of map.scalar) {
         if (needsEncryption(row[field])) {

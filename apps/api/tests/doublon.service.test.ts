@@ -8,6 +8,10 @@
 // Fusionner deux personnes distinctes mélange leurs dossiers médicaux, ce qui
 // est bien plus dangereux que de laisser un doublon.
 
+// R4 : le nom de la mere se cherche par empreinte, calculee sous une cle
+// derivee de DB_ENCRYPTION_KEY. Une cle de test, jamais celle d'une base.
+process.env.DB_ENCRYPTION_KEY = 'ab'.repeat(32);
+
 jest.mock('../src/config/prisma', () => ({
   prisma: {
     patientProfile: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
@@ -28,6 +32,7 @@ import {
   chercher, comparer, distance, estDateParDefaut, memeMotEcritAutrement,
   normaliser, normaliserTelephone, pourPatient, SEUIL_A_VERIFIER, SEUIL_PROBABLE,
 } from '../src/services/doublon.service';
+import { empreinteRecherche } from '../src/utils/encryption.utils';
 
 // L'appelant autorise : depuis le 2026-10-24, ces lectures passent par
 // `assertCanAccessPatient`. Le refus hors perimetre est couvert par
@@ -313,10 +318,13 @@ describe('chercher', () => {
   // plus discriminant.
   it('ramène aussi par le nom de la mère', async () => {
     await chercher({ ...BASE, nomMere: 'Fatoumata Condé' });
-    const [args] = prisma.patientProfile.findMany.mock.calls[0] as [{ where: { OR: { nomMere?: unknown }[] } }];
-    const parLaMere = args.where.OR.filter((c) => c.nomMere);
+    const [args] = prisma.patientProfile.findMany.mock.calls[0] as [{ where: { OR: { nomMereEmpreinte?: unknown }[] } }];
+    const parLaMere = args.where.OR.filter((c) => c.nomMereEmpreinte);
     expect(parLaMere).toHaveLength(1);
-    expect(parLaMere[0]).toEqual({ nomMere: { equals: 'Fatoumata Condé', mode: 'insensitive' } });
+    // R4 : chiffre en base, le nom se compare par empreinte - sans accent ni casse.
+    expect(parLaMere[0]).toEqual({ nomMereEmpreinte: empreinteRecherche('fatoumata  CONDE') });
+    // Et le nom en clair ne part jamais dans la requete.
+    expect(JSON.stringify(args.where)).not.toMatch(/fatoumata/i);
   });
 
   // Le lieu de naissance reste dehors, et c'est voulu : « Conakry » ramènerait

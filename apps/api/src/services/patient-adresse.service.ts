@@ -14,27 +14,30 @@
 import type { AdressePatientView, DefinirAdresseDto } from '@baobaoheath/shared-types';
 import { prisma } from '../config/prisma';
 import { NotFoundError } from '../utils/app-error';
-import { verifierCoordonnees } from '../utils/coordonnees';
+import { lirePosition, positionEnTexte, verifierCoordonnees } from '../utils/coordonnees';
 
+// R4 : point de repere et position sont chiffres en base (voir
+// config/prisma-encryption.extension.ts) ; ils arrivent ici dechiffres.
 const ADRESSE_SELECT = {
   id: true, prefecture: true, commune: true, quartier: true, pointRepere: true,
-  latitude: true, longitude: true, positionLe: true,
+  position: true, positionLe: true,
 } as const;
 
 type Adresse = {
   prefecture: string; commune: string | null; quartier: string | null; pointRepere: string | null;
-  latitude: number | null; longitude: number | null; positionLe: Date | null;
+  position: string | null; positionLe: Date | null;
 };
 
 function versVue(a: Adresse): AdressePatientView {
+  const gps = lirePosition(a.position);
   return {
     prefecture: a.prefecture,
     commune: a.commune,
     quartier: a.quartier,
     pointRepere: a.pointRepere,
-    latitude: a.latitude,
-    longitude: a.longitude,
-    positionLe: a.positionLe?.toISOString() ?? null,
+    latitude: gps?.latitude ?? null,
+    longitude: gps?.longitude ?? null,
+    positionLe: gps ? a.positionLe?.toISOString() ?? null : null,
   };
 }
 
@@ -69,9 +72,9 @@ export async function definirAdresse(userId: string, dto: DefinirAdresseDto): Pr
   // l'une ni l'autre, la position deja donnee est gardee telle quelle : changer
   // de point de repere ne doit pas effacer le GPS en silence.
   const position = dto.effacerPosition
-    ? { latitude: null, longitude: null, positionLe: null }
-    : dto.latitude !== undefined
-      ? { latitude: dto.latitude, longitude: dto.longitude, positionLe: new Date() }
+    ? { position: null, positionLe: null }
+    : dto.latitude !== undefined && dto.longitude !== undefined
+      ? { position: positionEnTexte(dto.latitude, dto.longitude), positionLe: new Date() }
       : {};
 
   const adresse = await prisma.patientProfile.update({

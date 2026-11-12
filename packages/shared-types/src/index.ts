@@ -1129,12 +1129,14 @@ export interface DashboardAnalyticsView {
   topPathologies: TopPathologieView[];
 }
 
+/**
+ * Un point de la carte epidemiologique : une prefecture, ses cas.
+ * R4 : aucune coordonnee de patient ; la carte compte, elle ne localise personne.
+ */
 export interface HeatmapPointView {
   prefecture: string;
   count: number;
   pathologies: Record<string, number>;
-  latitude?: number;
-  longitude?: number;
 }
 
 export type NiveauAlerte = 'ATTENTION' | 'ALERTE' | 'URGENCE';

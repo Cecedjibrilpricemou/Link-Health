@@ -309,7 +309,7 @@ describe('ouverture et visibilité des courses', () => {
         pharmacie: { id: 'pharmacie-1', nom: 'Pharmacie du quartier' },
         ordonnance: { consultation: { patient: {
           utilisateur: { prenom: 'Awa', nom: 'Diallo', telephone: '+224600000000' },
-          commune: 'Ratoma', quartier: 'Kipé', pointRepere: 'Derriere la mosquee', latitude: 9.64, longitude: -13.58,
+          commune: 'Ratoma', quartier: 'Kipé', pointRepere: 'Derriere la mosquee', position: '9.64,-13.58',
         } } },
       },
     };
@@ -344,7 +344,7 @@ describe('ouverture et visibilité des courses', () => {
     prisma.course.findMany.mockResolvedValue([]);
     await coursesDuLivreur(livreur);
     const patient = prisma.course.findMany.mock.calls[0][0].select.commande.select.ordonnance.select.consultation.select.patient;
-    expect(patient.select).toMatchObject({ commune: true, quartier: true, pointRepere: true, latitude: true, longitude: true });
+    expect(patient.select).toMatchObject({ commune: true, quartier: true, pointRepere: true, position: true });
   });
 });
 

@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma';
+import { empreinteRecherche } from '../utils/encryption.utils';
 import { JwtPayload } from '../types/auth.types';
 import { assertCanAccessPatient } from './access-control.service';
 import type { CandidatDoublonView, TraitConcordant } from '@baobaoheath/shared-types';
@@ -306,7 +307,9 @@ export async function chercher(
 ): Promise<CandidatDoublonView[]> {
   const mots = motsDuNom(personne.prenom, personne.nom);
   const tel = normaliserTelephone(personne.telephone);
-  const mere = personne.nomMere ? personne.nomMere.trim() : '';
+  // R4 : le nom de la mere est chiffre en base ; on compare son empreinte.
+  // Normalisee sans accents ni casse, elle rapproche aussi « Condé » et « conde ».
+  const empreinteMere = empreinteRecherche(personne.nomMere);
 
   const candidats = await prisma.patientProfile.findMany({
     where: {
@@ -330,7 +333,7 @@ export async function chercher(
         // doublons les plus probables, et le nom de la mere est justement le
         // trait le plus discriminant. Le lieu de naissance, lui, reste hors du
         // pre-filtre : « Conakry » ramenerait presque toute la table.
-        ...(mere ? [{ nomMere: { equals: mere, mode: 'insensitive' as const } }] : []),
+        ...(empreinteMere ? [{ nomMereEmpreinte: empreinteMere }] : []),
       ],
     },
     select: {
