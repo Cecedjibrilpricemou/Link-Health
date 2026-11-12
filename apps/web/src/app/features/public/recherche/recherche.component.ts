@@ -120,7 +120,7 @@ export class RechercheComponent implements OnInit {
   }
 
   /** « Dixinn · Belle-Vue », ou juste ce qu'on connait. */
-  lieuDe(p: PharmacieProduitView): string {
+  lieuDe(p: Pick<PharmacieProduitView, 'commune' | 'quartier'>): string {
     return [p.commune, p.quartier].map((v) => (v ?? '').trim()).filter(Boolean).join(' \u00b7 ');
   }
 

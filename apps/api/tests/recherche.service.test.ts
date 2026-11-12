@@ -5,13 +5,15 @@
 // mal ecrit, le fait qu'il puisse chercher **sans dire ou il est**, et
 // l'ordre dans lequel on lui propose les officines.
 import {
+  catalogueDe,
+  chercherPharmacies,
   chercherProduits,
   comparerPharmacies,
   motsDeLaRecherche,
   rangProximite,
 } from '../src/services/recherche.service';
 import type { PharmacieProduit } from '../src/services/recherche.service';
-import { ValidationError } from '../src/utils/app-error';
+import { NotFoundError, ValidationError } from '../src/utils/app-error';
 import { empreinteCatalogue, etatDuStock, prixDeVenteGnf } from '../src/utils/catalogue';
 
 const voisines: { valeur: string[] } = { valeur: [] };
@@ -20,12 +22,20 @@ jest.mock('../src/services/geographie.service', () => ({
 }));
 
 jest.mock('../src/config/prisma', () => ({
-  prisma: { medicament: { findMany: jest.fn() } },
+  prisma: {
+    medicament: { findMany: jest.fn() },
+    structureSante: { findMany: jest.fn(), findFirst: jest.fn() },
+    stock: { groupBy: jest.fn(), count: jest.fn(), findMany: jest.fn() },
+  },
 }));
 
 type M = jest.Mock;
 const { prisma } = jest.requireMock('../src/config/prisma') as {
-  prisma: { medicament: { findMany: M } };
+  prisma: {
+    medicament: { findMany: M };
+    structureSante: { findMany: M; findFirst: M };
+    stock: { groupBy: M; count: M; findMany: M };
+  };
 };
 
 const MAINTENANT = new Date('2026-11-12T10:00:00.000Z');
@@ -79,6 +89,10 @@ const CRITERE = { q: 'paracetamol', prefecture: 'Conakry', commune: 'Dixinn' };
 beforeEach(() => {
   jest.clearAllMocks();
   voisines.valeur = [];
+  // Par defaut aucune officine ne porte le nom cherche : les tests de
+  // produits ne s'occupent pas de A3.
+  prisma.structureSante.findMany.mockResolvedValue([]);
+  prisma.stock.groupBy.mockResolvedValue([]);
 });
 
 // ── Ce qu'on cherche ────────────────────────────────────────────────
@@ -385,5 +399,169 @@ describe('etatDuStock', () => {
   it('passe en stock faible au seuil, pas en dessous', () => {
     expect(etatDuStock(11, 10)).toBe('DISPONIBLE');
     expect(etatDuStock(10, 10)).toBe('FAIBLE');
+  });
+});
+
+// ── A3 : chercher une officine par son nom ──────────────────────────
+
+const OFFICINE_BASE = {
+  id: 'ph-1',
+  nom: 'Pharmacie Pricemou',
+  prefecture: 'Conakry',
+  commune: 'Dixinn',
+  quartier: 'Belle-Vue',
+  telephone: '620000000',
+};
+
+describe('chercherPharmacies', () => {
+  it('trouve une officine par un mot de son nom', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([OFFICINE_BASE]);
+    prisma.stock.groupBy.mockResolvedValue([{ idStructure: 'ph-1', _count: { _all: 42 } }]);
+
+    const trouvees = await chercherPharmacies('pricemou');
+    expect(trouvees).toEqual([{ ...OFFICINE_BASE, nombreProduits: 42 }]);
+  });
+
+  it('ne cherche que des pharmacies ouvertes', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([]);
+    await chercherPharmacies('pricemou');
+    const ou = prisma.structureSante.findMany.mock.calls[0][0].where;
+    expect(ou.type).toBe('PHARMACIE');
+    expect(ou.estActive).toBe(true);
+  });
+
+  it('exige tous les mots du nom', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([]);
+    await chercherPharmacies('pharmacie du port');
+    expect(prisma.structureSante.findMany.mock.calls[0][0].where.AND).toHaveLength(3);
+  });
+
+  it('ne compte dans le rayon ni les produits reglementes ni les retires', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([OFFICINE_BASE]);
+    prisma.stock.groupBy.mockResolvedValue([]);
+    await chercherPharmacies('pricemou');
+    const ou = prisma.stock.groupBy.mock.calls[0][0].where;
+    expect(ou.medicament).toEqual({ estActif: true, estReglemente: false });
+    expect(ou.quantite).toEqual({ gt: 0 });
+  });
+
+  it('dit zero plutot que rien quand une officine n a plus de stock', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([OFFICINE_BASE]);
+    prisma.stock.groupBy.mockResolvedValue([]);
+    const trouvees = await chercherPharmacies('pricemou');
+    expect(trouvees[0]?.nombreProduits).toBe(0);
+  });
+
+  it('ne rend rien sur une recherche trop courte, sans interroger la base', async () => {
+    expect(await chercherPharmacies('p')).toEqual([]);
+    expect(prisma.structureSante.findMany).not.toHaveBeenCalled();
+  });
+
+  it('accompagne les resultats de produits', async () => {
+    prisma.medicament.findMany.mockResolvedValue([produit()]);
+    prisma.structureSante.findMany.mockResolvedValue([OFFICINE_BASE]);
+    prisma.stock.groupBy.mockResolvedValue([{ idStructure: 'ph-1', _count: { _all: 5 } }]);
+    const r = await chercherProduits(CRITERE);
+    expect(r.pharmaciesTrouvees[0]?.nom).toBe('Pharmacie Pricemou');
+  });
+
+  it('repond encore quand aucun produit ne correspond : l officine est une reponse', async () => {
+    prisma.medicament.findMany.mockResolvedValue([]);
+    prisma.structureSante.findMany.mockResolvedValue([OFFICINE_BASE]);
+    prisma.stock.groupBy.mockResolvedValue([{ idStructure: 'ph-1', _count: { _all: 5 } }]);
+    const r = await chercherProduits({ q: 'pricemou' });
+    expect(r.produits).toEqual([]);
+    expect(r.pharmaciesTrouvees).toHaveLength(1);
+  });
+});
+
+// ── A3 : le rayon d'une officine ────────────────────────────────────
+
+describe('catalogueDe', () => {
+  const RAYON = [
+    {
+      quantite: 40,
+      seuilAlerte: 10,
+      margeGnf: 1_500,
+      modifieLe: MAINTENANT,
+      medicament: {
+        id: 'med-1',
+        libelle: 'Doliprane 500 mg',
+        dci: 'Paracétamol',
+        forme: 'comprimé',
+        dosage: '500 mg',
+        categorie: 'MEDICAMENT',
+        prixUnitaireGnf: 10_000,
+      },
+    },
+  ];
+
+  it('rend l officine et ce qu elle a en rayon', async () => {
+    prisma.structureSante.findFirst.mockResolvedValue({ ...OFFICINE_BASE, adresse: 'Route du Niger' });
+    prisma.stock.count.mockResolvedValue(42);
+    prisma.stock.findMany.mockResolvedValue(RAYON);
+
+    const detail = await catalogueDe('ph-1');
+    expect(detail.nom).toBe('Pharmacie Pricemou');
+    expect(detail.nombreProduits).toBe(42);
+    expect(detail.produits[0]).toEqual({
+      id: 'med-1',
+      libelle: 'Doliprane 500 mg',
+      molecule: 'Paracétamol',
+      forme: 'comprimé',
+      dosage: '500 mg',
+      categorie: 'MEDICAMENT',
+      estMedicament: true,
+      prixGnf: 11_500,
+      etatStock: 'DISPONIBLE',
+      declareLe: MAINTENANT,
+    });
+  });
+
+  it('refuse une officine fermee ou qui n est pas une pharmacie', async () => {
+    prisma.structureSante.findFirst.mockResolvedValue(null);
+    await expect(catalogueDe('ph-inconnue')).rejects.toThrow(NotFoundError);
+    const ou = prisma.structureSante.findFirst.mock.calls[0][0].where;
+    expect(ou.type).toBe('PHARMACIE');
+    expect(ou.estActive).toBe(true);
+  });
+
+  it('ne montre jamais un produit reglemente dans un rayon', async () => {
+    prisma.structureSante.findFirst.mockResolvedValue({ ...OFFICINE_BASE, adresse: null });
+    prisma.stock.count.mockResolvedValue(0);
+    prisma.stock.findMany.mockResolvedValue([]);
+    await catalogueDe('ph-1');
+    expect(prisma.stock.findMany.mock.calls[0][0].where.medicament.estReglemente).toBe(false);
+  });
+
+  it('filtre le rayon quand on arrive en cherchant un produit precis', async () => {
+    prisma.structureSante.findFirst.mockResolvedValue({ ...OFFICINE_BASE, adresse: null });
+    prisma.stock.count.mockResolvedValue(42);
+    prisma.stock.findMany.mockResolvedValue(RAYON);
+    await catalogueDe('ph-1', 'paracetamol');
+    expect(prisma.stock.findMany.mock.calls[0][0].where.medicament.AND).toHaveLength(1);
+  });
+
+  it('annonce le rayon entier meme quand la liste est filtree', async () => {
+    prisma.structureSante.findFirst.mockResolvedValue({ ...OFFICINE_BASE, adresse: null });
+    prisma.stock.count.mockResolvedValue(42);
+    prisma.stock.findMany.mockResolvedValue(RAYON);
+    const detail = await catalogueDe('ph-1', 'paracetamol');
+    // « 1 resultat sur 42 en rayon » : sans ce total, on croirait l'officine vide.
+    expect(detail.nombreProduits).toBe(42);
+    expect(detail.produits).toHaveLength(1);
+    expect(prisma.stock.count.mock.calls[0][0].where.medicament).toEqual({
+      estActif: true,
+      estReglemente: false,
+    });
+  });
+
+  it('ne rend que ce qui est reellement en rayon', async () => {
+    prisma.structureSante.findFirst.mockResolvedValue({ ...OFFICINE_BASE, adresse: null });
+    prisma.stock.count.mockResolvedValue(0);
+    prisma.stock.findMany.mockResolvedValue([]);
+    await catalogueDe('ph-1');
+    expect(prisma.stock.findMany.mock.calls[0][0].where.quantite).toEqual({ gt: 0 });
+    expect(prisma.stock.findMany.mock.calls[0][0].where.idStructure).toBe('ph-1');
   });
 });

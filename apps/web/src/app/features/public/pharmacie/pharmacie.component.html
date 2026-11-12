@@ -1,0 +1,101 @@
+<app-public-shell>
+  @if (officine(); as o) {
+    <header class="pub-hero pharm-hero">
+      <span class="pub-tag">{{ 'PUBLIC.PHARMACY.TAG' | translate }}</span>
+      <h1 class="pub-hero__title">{{ o.nom }}</h1>
+      <p class="pub-hero__lead">
+        @if (lieu()) {
+          <span class="pharm-hero__lieu">
+            <i class="pi pi-map-marker" aria-hidden="true"></i>
+            {{ lieu() }}
+          </span>
+        }
+        @if (o.adresse) {
+          <span class="pharm-hero__adresse">{{ o.adresse }}</span>
+        }
+      </p>
+      @if (o.telephone) {
+        <a class="pub-btn pharm-hero__tel" [href]="'tel:' + o.telephone">
+          <i class="pi pi-phone" aria-hidden="true"></i>
+          {{ 'PUBLIC.SEARCH.CALL' | translate }} {{ o.telephone }}
+        </a>
+      }
+    </header>
+
+    <section class="pub-section">
+      <form class="pharm-filtre" (ngSubmit)="charger()">
+        <label for="pharm-q">{{ 'PUBLIC.PHARMACY.FILTER' | translate }}</label>
+        <div class="pharm-filtre__ligne">
+          <input
+            id="pharm-q"
+            type="search"
+            name="q"
+            autocomplete="off"
+            [ngModel]="q()"
+            (ngModelChange)="q.set($event)"
+            [placeholder]="'PUBLIC.SEARCH.PLACEHOLDER' | translate"
+          />
+          <button type="submit" class="pub-btn" [disabled]="chargement()">
+            <i class="pi pi-search" aria-hidden="true"></i>
+            {{ 'PUBLIC.SEARCH.SUBMIT' | translate }}
+          </button>
+        </div>
+      </form>
+
+      <p class="pharm-compte" aria-live="polite">
+        @if (filtre()) {
+          {{ 'PUBLIC.PHARMACY.COUNT_FILTERED' | translate: { montres: o.produits.length, total: o.nombreProduits } }}
+          <button type="button" class="pharm-compte__tout" (click)="toutVoir()">
+            {{ 'PUBLIC.PHARMACY.SEE_ALL' | translate }}
+          </button>
+        } @else {
+          {{ 'PUBLIC.PHARMACY.COUNT' | translate: { total: o.nombreProduits } }}
+        }
+      </p>
+
+      @if (o.produits.length === 0) {
+        <p class="pharm-vide">{{ 'PUBLIC.PHARMACY.EMPTY' | translate }}</p>
+      } @else {
+        <ul class="pharm-rayon">
+          @for (p of o.produits; track p.id) {
+            <li class="pharm-produit">
+              <div class="pharm-produit__tete">
+                <span class="pharm-produit__nom">{{ p.libelle }}</span>
+                <span class="pharm-produit__prix">{{ prix(p) }} {{ plateforme.devise() }}</span>
+              </div>
+              <div class="pharm-produit__bas">
+                <span class="pharm-produit__detail">
+                  @if (p.molecule) { {{ p.molecule }} }
+                  @if (p.forme || p.dosage) { · {{ p.forme }} {{ p.dosage }} }
+                </span>
+                <span
+                  class="pharm-etat"
+                  [class.pharm-etat--faible]="p.etatStock === 'FAIBLE'"
+                >
+                  {{ (p.etatStock === 'FAIBLE' ? 'PUBLIC.SEARCH.STOCK_LOW' : 'PUBLIC.SEARCH.STOCK_OK') | translate }}
+                </span>
+              </div>
+              <span class="pharm-produit__fraicheur">{{ declare(p) }}</span>
+            </li>
+          }
+        </ul>
+        <p class="pharm-note">{{ 'PUBLIC.SEARCH.CALL_FIRST' | translate }}</p>
+      }
+    </section>
+  } @else if (chargement()) {
+    <section class="pub-section">
+      <p class="pharm-vide" role="status">{{ 'PUBLIC.SEARCH.SEARCHING' | translate }}</p>
+    </section>
+  } @else {
+    <section class="pub-section">
+      <p class="pharm-vide" role="alert">{{ erreur() }}</p>
+    </section>
+  }
+
+  <section class="pub-section">
+    <a routerLink="/recherche" class="pub-btn pub-btn--ghost">
+      <i class="pi pi-arrow-left" aria-hidden="true"></i>
+      {{ 'PUBLIC.PHARMACY.BACK' | translate }}
+    </a>
+  </section>
+</app-public-shell>

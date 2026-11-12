@@ -26,7 +26,7 @@
 // donnee de sante creee par nous. Le test « la recherche ne laisse aucune
 // trace nominative » verrouille ce choix.
 import { prisma } from '../config/prisma';
-import { ValidationError } from '../utils/app-error';
+import { NotFoundError, ValidationError } from '../utils/app-error';
 import { empreinteCatalogue, etatDuStock, prixDeVenteGnf } from '../utils/catalogue';
 import type { EtatStock } from '../utils/catalogue';
 import { filtrePrefecture, filtreZones } from '../utils/zone';
@@ -76,18 +76,63 @@ export interface ProduitTrouve {
   pharmacies: PharmacieProduit[];
 }
 
+/** Une officine trouvee par son nom. */
+export interface PharmacieTrouvee {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  telephone: string | null;
+  /** Ce qu'elle a en rayon aujourd'hui, pour savoir si la visite vaut le coup. */
+  nombreProduits: number;
+}
+
+/** Un produit tel qu'il se presente dans le rayon d'une officine. */
+export interface ProduitEnRayon {
+  id: string;
+  libelle: string;
+  molecule: string | null;
+  forme: string | null;
+  dosage: string | null;
+  categorie: string;
+  estMedicament: boolean;
+  prixGnf: number;
+  etatStock: EtatStock;
+  declareLe: Date;
+}
+
+export interface PharmacieDetail {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  adresse: string | null;
+  telephone: string | null;
+  /** Tout ce qu'elle a en rayon, meme si la liste rendue est filtree. */
+  nombreProduits: number;
+  produits: ProduitEnRayon[];
+}
+
 export interface ResultatRecherche {
   zoneUtilisee: ZoneRecherche;
   prefecture: string | null;
   commune: string | null;
   communesVoisines: string[];
   produits: ProduitTrouve[];
+  /** Les officines dont le nom ressemble a ce qui a ete tape. */
+  pharmaciesTrouvees: PharmacieTrouvee[];
 }
 
 /** Au-dela, ce n'est plus une recherche mais un balayage du catalogue. */
 const PRODUITS_MAX = 20;
 /** Assez pour choisir, pas au point de noyer : on garde les mieux classees. */
 const PHARMACIES_MAX = 10;
+/** Une recherche de nom ne doit pas rendre l'annuaire entier. */
+const OFFICINES_MAX = 8;
+/** Le rayon d'une officine se parcourt, il ne se deverse pas. */
+const RAYON_MAX = 100;
 /** Un mot d'une lettre ramenerait la moitie du catalogue. */
 const LONGUEUR_MOT_MIN = 2;
 const MOTS_MAX = 4;
@@ -352,15 +397,156 @@ export async function chercherProduits(critere: CritereRecherche): Promise<Resul
         commune: commune || null,
         communesVoisines: etape.voisines,
         produits: vues,
+        pharmaciesTrouvees: await chercherPharmacies(critere.q),
       };
     }
   }
 
+  // Aucun produit : l'officine cherchee par son nom reste une reponse utile.
   return {
     zoneUtilisee: 'PAYS',
     prefecture: prefecture || null,
     commune: commune || null,
     communesVoisines: [],
     produits: [],
+    pharmaciesTrouvees: await chercherPharmacies(critere.q),
+  };
+}
+
+// ── A3 : les officines elles-memes ──────────────────────────────────
+
+/** Le filtre d'un produit servable au public : actif, et jamais reglemente. */
+const PRODUIT_PUBLIC = { estActif: true, estReglemente: false };
+
+/**
+ * Les officines dont le nom contient les mots cherches.
+ *
+ * Quelqu'un qui tape « pharmacie du port » cherche un lieu, pas une molecule.
+ * La meme barre sert aux deux : il n'y a rien a choisir avant de taper.
+ *
+ * La comparaison ignore la casse. Elle ne rapproche pas les accents, faute de
+ * colonne normalisee sur les structures : « Hopital » se trouve, « Hôpital »
+ * suppose d'ecrire l'accent. Les noms d'officines en portent rarement, et on
+ * n'a pas voulu toucher a une table utilisee partout pour ce seul besoin.
+ */
+export async function chercherPharmacies(q: string): Promise<PharmacieTrouvee[]> {
+  const mots = motsDeLaRecherche(q);
+  if (mots.length === 0) return [];
+
+  const officines = await prisma.structureSante.findMany({
+    where: {
+      type: 'PHARMACIE',
+      estActive: true,
+      AND: mots.map((mot) => ({ nom: { contains: mot, mode: 'insensitive' as const } })),
+    },
+    select: {
+      id: true,
+      nom: true,
+      prefecture: true,
+      commune: true,
+      quartier: true,
+      telephone: true,
+    },
+    orderBy: { nom: 'asc' },
+    take: OFFICINES_MAX,
+  });
+  if (officines.length === 0) return [];
+
+  // Combien chacune a en rayon : une seule requete, pas une par officine.
+  const comptes = await prisma.stock.groupBy({
+    by: ['idStructure'],
+    where: {
+      idStructure: { in: officines.map((o) => o.id) },
+      quantite: { gt: 0 },
+      medicament: PRODUIT_PUBLIC,
+    },
+    _count: { _all: true },
+  });
+  const parOfficine = new Map(comptes.map((c) => [c.idStructure, c._count._all]));
+
+  return officines.map((o) => ({
+    id: o.id,
+    nom: o.nom,
+    prefecture: o.prefecture,
+    commune: o.commune,
+    quartier: o.quartier,
+    telephone: o.telephone,
+    nombreProduits: parOfficine.get(o.id) ?? 0,
+  }));
+}
+
+/**
+ * Une officine et ce qu'elle a en rayon.
+ *
+ * `q` filtre dans son rayon : on arrive souvent ici depuis la recherche d'un
+ * produit, et retrouver ce produit dans une liste de deux cents lignes serait
+ * une corvee.
+ *
+ * Une officine fermee ou qui n'est pas une pharmacie n'existe pas ici : son
+ * adresse et son telephone ne sont pas des informations a servir au public
+ * sous pretexte qu'on connait son identifiant.
+ */
+export async function catalogueDe(idPharmacie: string, q?: string | null): Promise<PharmacieDetail> {
+  const officine = await prisma.structureSante.findFirst({
+    where: { id: idPharmacie, type: 'PHARMACIE', estActive: true },
+    select: {
+      id: true,
+      nom: true,
+      prefecture: true,
+      commune: true,
+      quartier: true,
+      adresse: true,
+      telephone: true,
+    },
+  });
+  if (!officine) throw new NotFoundError('Pharmacie introuvable');
+
+  const mots = motsDeLaRecherche(q ?? '');
+  const enRayon = { idStructure: officine.id, quantite: { gt: 0 } };
+
+  const [nombreProduits, stocks] = await Promise.all([
+    prisma.stock.count({ where: { ...enRayon, medicament: PRODUIT_PUBLIC } }),
+    prisma.stock.findMany({
+      where: {
+        ...enRayon,
+        medicament: { ...PRODUIT_PUBLIC, ...(mots.length > 0 ? { AND: mots.map(filtreMot) } : {}) },
+      },
+      select: {
+        quantite: true,
+        seuilAlerte: true,
+        margeGnf: true,
+        modifieLe: true,
+        medicament: {
+          select: {
+            id: true,
+            libelle: true,
+            dci: true,
+            forme: true,
+            dosage: true,
+            categorie: true,
+            prixUnitaireGnf: true,
+          },
+        },
+      },
+      orderBy: { medicament: { libelle: 'asc' } },
+      take: RAYON_MAX,
+    }),
+  ]);
+
+  return {
+    ...officine,
+    nombreProduits,
+    produits: stocks.map((s) => ({
+      id: s.medicament.id,
+      libelle: s.medicament.libelle,
+      molecule: s.medicament.dci,
+      forme: s.medicament.forme,
+      dosage: s.medicament.dosage,
+      categorie: s.medicament.categorie,
+      estMedicament: s.medicament.categorie === 'MEDICAMENT',
+      prixGnf: prixDeVenteGnf(s.medicament.prixUnitaireGnf, s.margeGnf),
+      etatStock: etatDuStock(s.quantite, s.seuilAlerte),
+      declareLe: s.modifieLe,
+    })),
   };
 }

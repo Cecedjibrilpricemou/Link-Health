@@ -77,6 +77,32 @@
         <span>{{ 'PUBLIC.SEARCH.SEARCHING' | translate }}</span>
       </div>
     } @else if (resultat(); as r) {
+      @if (r.pharmaciesTrouvees.length > 0) {
+        <section class="rech-trouvees" aria-labelledby="rech-pharmacies-titre">
+          <h2 id="rech-pharmacies-titre" class="rech-resultats__titre">
+            <i class="pi pi-building" aria-hidden="true"></i>
+            {{ 'PUBLIC.SEARCH.PHARMACIES_TITLE' | translate }}
+          </h2>
+          <ul class="rech-trouvees__liste">
+            @for (ph of r.pharmaciesTrouvees; track ph.id) {
+              <li>
+                <a class="rech-trouvee" [routerLink]="['/pharmacie', ph.id]" [queryParams]="{ q: q() }">
+                  <span class="rech-trouvee__nom">{{ ph.nom }}</span>
+                  <span class="rech-trouvee__lieu">
+                    <i class="pi pi-map-marker" aria-hidden="true"></i>
+                    {{ lieuDe(ph) }}
+                  </span>
+                  <span class="rech-trouvee__compte">
+                    {{ (ph.nombreProduits === 1 ? 'PUBLIC.SEARCH.IN_STOCK_ONE' : 'PUBLIC.SEARCH.IN_STOCK_MANY')
+                       | translate: { nombre: ph.nombreProduits } }}
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       @if (r.produits.length === 0) {
         <div class="rech-message rech-message--vide">
           <span class="rech-message__icone" aria-hidden="true"><i class="pi pi-search"></i></span>
@@ -152,37 +178,45 @@
                   {{ (estDeplie(p.id) ? 'PUBLIC.SEARCH.HIDE_PHARMACIES' : 'PUBLIC.SEARCH.SEE_PHARMACIES') | translate }}
                 </button>
 
-                @if (estDeplie(p.id)) {
-                  <ul class="rech-officines" [id]="'rech-officines-' + p.id">
-                    @for (ph of p.pharmacies; track ph.id) {
-                      <li class="rech-officine">
-                        <div class="rech-officine__ligne">
-                          <span class="rech-officine__nom">{{ ph.nom }}</span>
-                          <span class="rech-officine__prix">{{ prixPharmacie(ph) }} {{ plateforme.devise() }}</span>
-                        </div>
-                        <div class="rech-officine__ligne rech-officine__ligne--secondaire">
-                          <span class="rech-officine__lieu">
-                            <i class="pi pi-map-marker" aria-hidden="true"></i>
-                            {{ lieuDe(ph) }}
-                          </span>
-                          <span
-                            class="rech-etat rech-etat--petit"
-                            [class.rech-etat--faible]="ph.etatStock === 'FAIBLE'"
-                          >
-                            {{ (ph.etatStock === 'FAIBLE' ? 'PUBLIC.SEARCH.STOCK_LOW' : 'PUBLIC.SEARCH.STOCK_OK') | translate }}
-                          </span>
-                        </div>
-                        @if (ph.telephone) {
-                          <a class="rech-officine__tel" [href]="'tel:' + ph.telephone">
-                            <i class="pi pi-phone" aria-hidden="true"></i>
-                            {{ 'PUBLIC.SEARCH.CALL' | translate }} {{ ph.telephone }}
-                          </a>
-                        }
-                      </li>
-                    }
-                  </ul>
-                  <p class="rech-officines__note">{{ 'PUBLIC.SEARCH.CALL_FIRST' | translate }}</p>
-                }
+                <div
+                  class="rech-officines-panel"
+                  [class.rech-officines-panel--open]="estDeplie(p.id)"
+                  [attr.id]="'rech-officines-' + p.id"
+                  [attr.aria-hidden]="estDeplie(p.id) ? null : 'true'"
+                  [attr.inert]="estDeplie(p.id) ? null : ''"
+                >
+                  <div class="rech-officines-panel__inner">
+                    <ul class="rech-officines">
+                      @for (ph of p.pharmacies; track ph.id) {
+                        <li class="rech-officine">
+                          <div class="rech-officine__ligne">
+                            <span class="rech-officine__nom">{{ ph.nom }}</span>
+                            <span class="rech-officine__prix">{{ prixPharmacie(ph) }} {{ plateforme.devise() }}</span>
+                          </div>
+                          <div class="rech-officine__ligne rech-officine__ligne--secondaire">
+                            <span class="rech-officine__lieu">
+                              <i class="pi pi-map-marker" aria-hidden="true"></i>
+                              {{ lieuDe(ph) }}
+                            </span>
+                            <span
+                              class="rech-etat rech-etat--petit"
+                              [class.rech-etat--faible]="ph.etatStock === 'FAIBLE'"
+                            >
+                              {{ (ph.etatStock === 'FAIBLE' ? 'PUBLIC.SEARCH.STOCK_LOW' : 'PUBLIC.SEARCH.STOCK_OK') | translate }}
+                            </span>
+                          </div>
+                          @if (ph.telephone) {
+                            <a class="rech-officine__tel" [href]="'tel:' + ph.telephone">
+                              <i class="pi pi-phone" aria-hidden="true"></i>
+                              {{ 'PUBLIC.SEARCH.CALL' | translate }} {{ ph.telephone }}
+                            </a>
+                          }
+                        </li>
+                      }
+                    </ul>
+                    <p class="rech-officines__note">{{ 'PUBLIC.SEARCH.CALL_FIRST' | translate }}</p>
+                  </div>
+                </div>
               </li>
             }
           </ul>

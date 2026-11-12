@@ -9,6 +9,7 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import type {
   PharmacieProduitView,
+  PharmacieTrouveeView,
   ProduitTrouveView,
   RechercheProduitsView,
 } from '@baobaoheath/shared-types';
@@ -48,12 +49,23 @@ const PRODUIT: ProduitTrouveView = {
   pharmacies: [PHARMACIE, { ...PHARMACIE, id: 'ph-2', nom: 'Pharmacie Donka', prixGnf: 13_000 }],
 };
 
+const OFFICINE_TROUVEE: PharmacieTrouveeView = {
+  id: 'ph-1',
+  nom: 'Pharmacie Pricemou',
+  prefecture: 'Conakry',
+  commune: 'Dixinn',
+  quartier: 'Belle-Vue',
+  telephone: '620000000',
+  nombreProduits: 42,
+};
+
 const RESULTAT: RechercheProduitsView = {
   zoneUtilisee: 'COMMUNE',
   prefecture: 'Conakry',
   commune: 'Dixinn',
   communesVoisines: [],
   produits: [PRODUIT],
+  pharmaciesTrouvees: [OFFICINE_TROUVEE],
 };
 
 function monter(recherche: Partial<RechercheService> = {}) {
@@ -203,6 +215,11 @@ describe('recherche publique : les officines sous le produit', () => {
     expect(composant.lieuDe(PHARMACIE)).toBe('Dixinn · Belle-Vue');
     expect(composant.lieuDe({ ...PHARMACIE, quartier: null })).toBe('Dixinn');
     expect(composant.lieuDe({ ...PHARMACIE, commune: null, quartier: null })).toBe('');
+  });
+
+  it('sert aussi aux officines trouvees par leur nom (A3)', () => {
+    const { composant } = monter();
+    expect(composant.lieuDe(OFFICINE_TROUVEE)).toBe('Dixinn · Belle-Vue');
   });
 
   it('affiche le prix de chaque officine, pas seulement le plus bas', () => {

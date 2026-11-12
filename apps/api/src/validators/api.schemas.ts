@@ -1435,3 +1435,10 @@ export const rechercheProduitsSchema = z.object({
   prefecture: z.string().trim().max(80).optional(),
   commune: z.string().trim().max(80).optional(),
 });
+
+// A3 : le rayon d'une officine. `q` n'est pas obligatoire — on arrive souvent
+// ici depuis la recherche d'un produit, et on veut alors le retrouver sans
+// parcourir deux cents lignes.
+export const cataloguePharmacieSchema = z.object({
+  q: z.string().trim().max(60).optional(),
+});

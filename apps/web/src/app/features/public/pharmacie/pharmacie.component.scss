@@ -1,0 +1,155 @@
+// A3 : la page d'une officine. Couleurs prises aux tokens --bb-*, donc justes
+// en clair comme en sombre sans regle en double.
+
+.pharm-hero {
+  &__lieu {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  &__adresse {
+    display: block;
+    color: var(--bb-text-muted);
+  }
+
+  &__tel {
+    margin-top: 0.75rem;
+  }
+}
+
+.pharm-filtre {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--bb-text-secondary);
+  }
+
+  &__ligne {
+    display: flex;
+    gap: 0.6rem;
+    align-items: stretch;
+  }
+
+  input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.6rem 0.75rem;
+    font: inherit;
+    color: var(--bb-text-primary);
+    background: var(--bb-surface-0);
+    border: 1px solid var(--bb-border-strong);
+    border-radius: var(--bb-radius);
+
+    &:focus-visible { outline: var(--bb-focus-ring); }
+  }
+}
+
+.pharm-compte {
+  margin: 0.9rem 0 0;
+  font-size: 0.9rem;
+  color: var(--bb-text-secondary);
+
+  // « Tout voir » doit se lire comme une action, pas comme du texte.
+  &__tout {
+    margin-left: 0.4rem;
+    padding: 0;
+    font: inherit;
+    font-weight: 600;
+    color: var(--bb-primary);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:focus-visible { outline: var(--bb-focus-ring); }
+  }
+}
+
+.pharm-vide,
+.pharm-note {
+  color: var(--bb-text-secondary);
+}
+
+.pharm-note {
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  color: var(--bb-text-muted);
+}
+
+.pharm-rayon {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pharm-produit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.8rem 0.9rem;
+  background: var(--bb-surface-card);
+  border: 1px solid var(--bb-border);
+  border-radius: var(--bb-radius-lg);
+  box-shadow: var(--bb-shadow-xs);
+
+  &__tete,
+  &__bas {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  &__nom {
+    font-weight: 600;
+    color: var(--bb-text-primary);
+  }
+
+  &__prix {
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: var(--bb-primary);
+  }
+
+  &__detail {
+    font-size: 0.85rem;
+    color: var(--bb-text-secondary);
+  }
+
+  &__fraicheur {
+    font-size: 0.75rem;
+    color: var(--bb-text-muted);
+  }
+}
+
+// Jamais la quantite : seulement de quoi decider s'il faut se depecher.
+.pharm-etat {
+  flex: 0 0 auto;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--bb-success);
+  background: var(--bb-success-bg);
+  border: 1px solid var(--bb-success-border);
+  border-radius: var(--bb-radius-pill);
+
+  &--faible {
+    color: var(--bb-warning);
+    background: var(--bb-warning-bg);
+    border-color: var(--bb-warning-border);
+  }
+}
+
+@media (max-width: 640px) {
+  .pharm-filtre__ligne {
+    flex-direction: column;
+  }
+}

@@ -4031,7 +4031,20 @@
       "HIDE_PHARMACIES": "Masquer les pharmacies",
       "CALL": "Appeler",
       "CALL_FIRST": "Appelez la pharmacie avant de vous déplacer : un stock peut partir dans la journée.",
-      "ZONE_COUNTRY": "Rien près de chez vous : voici ce qu’on trouve ailleurs dans le pays."
+      "ZONE_COUNTRY": "Rien près de chez vous : voici ce qu’on trouve ailleurs dans le pays.",
+      "PHARMACIES_TITLE": "Pharmacies",
+      "IN_STOCK_ONE": "1 produit en rayon",
+      "IN_STOCK_MANY": "{{nombre}} produits en rayon"
+    },
+    "PHARMACY": {
+      "TAG": "Pharmacie",
+      "FILTER": "Chercher dans cette pharmacie",
+      "COUNT": "{{total}} produits en rayon",
+      "COUNT_FILTERED": "{{montres}} résultat(s) sur {{total}} en rayon.",
+      "SEE_ALL": "Tout voir",
+      "EMPTY": "Cette pharmacie n’a rien déclaré qui corresponde. Essayez un autre mot, ou revenez à tout son rayon.",
+      "NOT_FOUND": "Cette pharmacie n’est pas disponible.",
+      "BACK": "Retour à la recherche"
     }
   },
   "AGREMENT": {

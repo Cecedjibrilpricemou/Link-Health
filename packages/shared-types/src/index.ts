@@ -4363,6 +4363,46 @@ export interface ProduitTrouveView {
   pharmacies: PharmacieProduitView[];
 }
 
+/** Une officine trouvee par son nom (A3). */
+export interface PharmacieTrouveeView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  telephone: string | null;
+  /** Ce qu'elle a en rayon, pour savoir si la visite vaut le coup. */
+  nombreProduits: number;
+}
+
+/** Un produit tel qu'il se presente dans le rayon d'une officine. */
+export interface ProduitEnRayonView {
+  id: string;
+  libelle: string;
+  molecule: string | null;
+  forme: string | null;
+  dosage: string | null;
+  categorie: string;
+  estMedicament: boolean;
+  prixGnf: number;
+  etatStock: EtatStockPublic;
+  declareLe: string;
+}
+
+/** Une officine et son rayon, pour sa page publique. */
+export interface PharmacieDetailView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  adresse: string | null;
+  telephone: string | null;
+  /** Tout ce qu'elle a en rayon, meme quand la liste rendue est filtree. */
+  nombreProduits: number;
+  produits: ProduitEnRayonView[];
+}
+
 export interface RechercheProduitsView {
   zoneUtilisee: ZoneRechercheProduit;
   /** Nulle quand le visiteur n'a pas dit ou il est. */
@@ -4371,4 +4411,6 @@ export interface RechercheProduitsView {
   /** Les communes voisines interrogees, quand la recherche s'est elargie. */
   communesVoisines: string[];
   produits: ProduitTrouveView[];
+  /** Les officines dont le nom ressemble a ce qui a ete tape. */
+  pharmaciesTrouvees: PharmacieTrouveeView[];
 }

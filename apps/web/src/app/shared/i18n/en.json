@@ -4031,7 +4031,20 @@
       "HIDE_PHARMACIES": "Hide pharmacies",
       "CALL": "Call",
       "CALL_FIRST": "Call the pharmacy before travelling: stock can sell out during the day.",
-      "ZONE_COUNTRY": "Nothing near you: here is what we found elsewhere in the country."
+      "ZONE_COUNTRY": "Nothing near you: here is what we found elsewhere in the country.",
+      "PHARMACIES_TITLE": "Pharmacies",
+      "IN_STOCK_ONE": "1 product in stock",
+      "IN_STOCK_MANY": "{{nombre}} products in stock"
+    },
+    "PHARMACY": {
+      "TAG": "Pharmacy",
+      "FILTER": "Search within this pharmacy",
+      "COUNT": "{{total}} products in stock",
+      "COUNT_FILTERED": "{{montres}} result(s) out of {{total}} in stock.",
+      "SEE_ALL": "See everything",
+      "EMPTY": "This pharmacy has nothing matching. Try another word, or go back to its full stock.",
+      "NOT_FOUND": "This pharmacy is not available.",
+      "BACK": "Back to search"
     }
   },
   "AGREMENT": {
