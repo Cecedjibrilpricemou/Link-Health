@@ -16,6 +16,7 @@ import {
   pharmaciesDeLaZone,
   repondreDisponibilite,
   retirerPriseEnCharge,
+  toutesOntRefuse,
 } from '../src/services/commande.service';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../src/utils/app-error';
 import { CHAMPS_RECHERCHE, filtreZone } from '../src/utils/zone';
@@ -128,6 +129,37 @@ beforeEach(() => {
   prisma.utilisateur.findMany.mockResolvedValue([]);
 });
 afterEach(() => jest.resetAllMocks());
+
+// R5 : l'epuisement se juge par identifiant, pas par nombre de refus.
+describe('toutesOntRefuse', () => {
+  const non = (idStructure: string) => ({ idStructure, aTousLesProduits: false });
+  const oui = (idStructure: string) => ({ idStructure, aTousLesProduits: true });
+  const A = { id: 'a' }, B = { id: 'b' }, C = { id: 'c' };
+
+  it('vrai quand chaque sollicitee a dit non', () => {
+    expect(toutesOntRefuse([A, B], [non('a'), non('b')])).toBe(true);
+  });
+
+  it('faux tant qu une sollicitee n a pas repondu, meme avec autant de refus', () => {
+    expect(toutesOntRefuse([A, B], [non('a'), non('ancienne')])).toBe(false);
+  });
+
+  it('faux avec plus de refus que de sollicitees si l une manque', () => {
+    expect(toutesOntRefuse([A, B, C], [non('a'), non('b'), non('x'), non('y')])).toBe(false);
+  });
+
+  it('un oui n est pas un refus', () => {
+    expect(toutesOntRefuse([A, B], [non('a'), oui('b')])).toBe(false);
+  });
+
+  it('les refus de pharmacies qui ne sont plus appelees sont ignores', () => {
+    expect(toutesOntRefuse([B], [non('a'), non('b')])).toBe(true);
+  });
+
+  it('sans sollicitee, rien n est epuise', () => {
+    expect(toutesOntRefuse([], [non('a')])).toBe(false);
+  });
+});
 
 // ── Périmètre de l'appel ─────────────────────────────────────────────
 describe('pharmaciesDeLaZone', () => {
@@ -287,7 +319,7 @@ describe('repondreDisponibilite', () => {
   it('conclut sans pharmacie quand toutes ont refuse', async () => {
     prisma.commande.updateMany.mockResolvedValue({ count: 1 });
     prisma.commande.findUnique.mockResolvedValue(
-      commandeRelue({ reponses: [{ idStructure: 'ph-1', aTousLesProduits: false,
+      commandeRelue({ reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
         repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
     );
 
@@ -308,7 +340,7 @@ describe('repondreDisponibilite', () => {
       .mockResolvedValueOnce({ count: 1 })   // elargissement (prefecture, personne de plus)
       .mockResolvedValueOnce({ count: 0 });  // conclusion : le statut a change
     prisma.commande.findUnique.mockResolvedValue(
-      commandeRelue({ reponses: [{ idStructure: 'ph-1', aTousLesProduits: false,
+      commandeRelue({ reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
         repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
     );
 
@@ -322,7 +354,7 @@ describe('repondreDisponibilite', () => {
   it('ne conclut pas quand un autre passage vient d elargir', async () => {
     prisma.commande.updateMany.mockResolvedValue({ count: 0 });
     prisma.commande.findUnique.mockResolvedValue(
-      commandeRelue({ reponses: [{ idStructure: 'ph-1', aTousLesProduits: false,
+      commandeRelue({ reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
         repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
     );
 
@@ -337,13 +369,30 @@ describe('repondreDisponibilite', () => {
   it('attend encore si une sollicitee n a pas repondu', async () => {
     prisma.structureSante.findMany.mockResolvedValue([NOUNIE, { id: 'ph-2', nom: 'Pharmacie 2' }]);
     prisma.commande.findUnique.mockResolvedValue(
-      commandeRelue({ reponses: [{ idStructure: 'ph-1', aTousLesProduits: false,
+      commandeRelue({ reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
         repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
     );
 
     await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
 
-    expect(prisma.commande.update).not.toHaveBeenCalled();
+    // Ni elargissement ni conclusion : ph-2 peut encore repondre.
+    expect(prisma.commande.updateMany).not.toHaveBeenCalled();
+  });
+
+  // R5 : une pharmacie qui a refuse puis a quitte l'appel (desactivee, plus
+  // partenaire) garde sa reponse en base. Elle ne doit pas compter pour une
+  // sollicitee qui n'a jamais repondu.
+  it('n est pas trompe par le refus d une pharmacie qui n est plus appelee', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([NOUNIE, { id: 'ph-2', nom: 'Pharmacie 2' }]);
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ reponses: [
+      { idStructure: 'ph-nounie', aTousLesProduits: false, repondueLe: new Date(), structure: { nom: 'Pharmacie Nounie' } },
+      { idStructure: 'ph-partie', aTousLesProduits: false, repondueLe: new Date(), structure: { nom: 'Pharmacie partie' } },
+    ] }));
+
+    await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
+
+    expect(prisma.commande.updateMany).not.toHaveBeenCalled();
+    expect(notifierSansBloquer.mock.calls.map((c) => c[0].type)).not.toContain('COMMANDE_SANS_PHARMACIE');
   });
 
   // ── Habilitation ──────────────────────────────────────────────────
