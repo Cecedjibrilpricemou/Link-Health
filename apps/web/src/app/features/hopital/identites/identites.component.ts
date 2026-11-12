@@ -21,8 +21,8 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type {
-  CandidatDoublonView, FusionView, IdentitePatientView, NiveauIdentite,
-  TypePieceIdentite,
+  CandidatDoublonView, CorrectionIdentiteView, CorrigerIdentiteDto, FusionView, IdentitePatientView,
+  NiveauIdentite, TypePieceIdentite,
 } from '@baobaoheath/shared-types';
 import { HopitalService } from '../../../core/services/hopital.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -46,6 +46,11 @@ const NUMERO_MIN = 3;
  */
 const MOTIF_MIN = 10;
 const LIEU_MIN = 2;
+
+/** Une date de naissance telle qu'on la lit sur une piece : AAAA-MM-JJ, sans heure. */
+function jourDe(date: string | Date): string {
+  return new Date(date).toISOString().slice(0, 10);
+}
 
 @Component({
   selector: 'app-identites',
@@ -329,6 +334,82 @@ export class IdentitesComponent implements OnInit {
 
   annuler() {
     this.cible.set(null);
+  }
+
+  // ── La correction (R15) ────────────────────────────────────────────
+  //
+  // Une erreur de saisie a l'admission restait pour toujours : un enfant ne
+  // en 2020 enregistre en 2002 recevait des doses d'adulte. L'agent corrige
+  // ici, avec un motif ; chaque trait garde son ancienne valeur et son
+  // auteur. Corriger n'est pas verifier : le niveau d'identite ne bouge pas.
+  aCorriger = signal<IdentitePatientView | null>(null);
+  corPrenom = signal('');
+  corNom = signal('');
+  corSexe = signal('');
+  corNaissance = signal('');
+  corMotif = signal('');
+  corrections = signal<CorrectionIdentiteView[]>([]);
+  /** Une date de naissance ne peut pas etre dans le futur. */
+  readonly aujourdhui = new Date().toISOString().slice(0, 10);
+
+  /** Seuls les traits modifies partent ; sans aucun, rien a confirmer. */
+  private correctionDemandee = computed<CorrigerIdentiteDto | null>(() => {
+    const p = this.aCorriger();
+    if (!p) return null;
+    const dto: CorrigerIdentiteDto = { motif: this.corMotif().trim() };
+    const prenom = this.corPrenom().trim();
+    const nom = this.corNom().trim();
+    if (prenom && prenom !== p.prenom) dto.prenom = prenom;
+    if (nom && nom !== p.nom) dto.nom = nom;
+    if (this.corSexe() && this.corSexe() !== p.sexe) dto.sexe = this.corSexe() as 'M' | 'F';
+    if (this.corNaissance() && this.corNaissance() !== jourDe(p.dateNaissance)) {
+      dto.dateNaissance = this.corNaissance();
+    }
+    return dto.prenom || dto.nom || dto.sexe || dto.dateNaissance ? dto : null;
+  });
+
+  peutCorriger = computed(() =>
+    !!this.correctionDemandee() && this.corMotif().trim().length >= MOTIF_MIN && !this.enCours());
+
+  ouvrirCorrection(p: IdentitePatientView) {
+    this.aCorriger.set(p);
+    this.corPrenom.set(p.prenom);
+    this.corNom.set(p.nom);
+    this.corSexe.set(p.sexe);
+    this.corNaissance.set(jourDe(p.dateNaissance));
+    this.corMotif.set('');
+    this.corrections.set([]);
+    this.erreur.set('');
+    this.hopital.corrections(p.id).subscribe({
+      next: (res) => this.corrections.set(res.data ?? []),
+      error: () => this.corrections.set([]),
+    });
+  }
+
+  fermerCorrection() {
+    this.aCorriger.set(null);
+  }
+
+  confirmerCorrection() {
+    const p = this.aCorriger();
+    const dto = this.correctionDemandee();
+    if (!p || !dto || !this.peutCorriger()) return;
+
+    this.enCours.set(true);
+    this.erreur.set('');
+    this.hopital.corrigerIdentite(p.id, dto).subscribe({
+      next: (res) => {
+        this.enCours.set(false);
+        this.aCorriger.set(null);
+        this.succes.set(this.i18n.t('HOPITAL.IDENTITES.CORRIGEE_MSG', { nom: res.data?.nomComplet ?? '' }));
+        setTimeout(() => this.succes.set(''), 8000);
+        this.charger();
+      },
+      error: (err) => {
+        this.enCours.set(false);
+        this.erreur.set(this.messageDe(err, 'HOPITAL.IDENTITES.ERR_CORRECTION'));
+      },
+    });
   }
 
   confirmer() {

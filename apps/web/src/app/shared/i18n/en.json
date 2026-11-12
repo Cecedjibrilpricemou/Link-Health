@@ -437,7 +437,9 @@
       "STRUCTURE_TYPE_HOPITAL_PREF": "Prefectural Hospital",
       "STRUCTURE_TYPE_HOPITAL_REG": "Regional Hospital",
       "STRUCTURE_TYPE_CHU": "University Hospital",
-      "STRUCTURE_TYPE_CLINIQUE": "Private Clinic"
+      "STRUCTURE_TYPE_CLINIQUE": "Private Clinic",
+      "NOM_VERROUILLE": "Your identity has been verified with an ID document: your name can no longer be changed here. For a correction, please ask the front desk of your facility.",
+      "BLOOD_UNKNOWN": "I don't know"
     },
     "DOSSIER": {
       "TITLE": "My Medical Record",
@@ -2984,7 +2986,27 @@
       "FUSION_AUCUNE": "No merge on this record.",
       "FUSION_FERMER": "Close",
       "FUSION_RETOUR": "Back",
-      "FUSION_FAITE_VIDE": "{{absorbe}} joined {{principal}}. The absorbed record carried no data to move — it is kept, its QR code now points to {{principal}}, and the merge can be undone."
+      "FUSION_FAITE_VIDE": "{{absorbe}} joined {{principal}}. The absorbed record carried no data to move — it is kept, its QR code now points to {{principal}}, and the merge can be undone.",
+      "CORRIGER": "Correct",
+      "CORRIGER_TITRE": "Correct {{nom}}'s identity",
+      "CORRIGER_AIDE": "For a data entry error: sex, date of birth, first name or last name. Each change keeps the previous value, your name and the reason. Correcting does not verify the identity: the level stays the same.",
+      "CORRIGER_PRENOM": "First name",
+      "CORRIGER_NOM": "Last name",
+      "CORRIGER_SEXE": "Sex",
+      "CORRIGER_NAISSANCE": "Date of birth",
+      "CORRIGER_MOTIF": "Reason for the correction",
+      "CORRIGER_MOTIF_AIDE": "At least {{n}} characters. For example: entry error at admission, birth certificate shown.",
+      "CORRIGER_CONFIRMER": "Save the correction",
+      "CORRECTIONS_PASSEES": "Previous corrections",
+      "CHAMP_prenom": "First name",
+      "CHAMP_nom": "Last name",
+      "CHAMP_sexe": "Sex",
+      "CHAMP_dateNaissance": "Date of birth",
+      "AUTEUR_PARTI": "former staff",
+      "SEXE_F": "Female",
+      "SEXE_M": "Male",
+      "CORRIGEE_MSG": "{{nom}}'s identity has been corrected.",
+      "ERR_CORRECTION": "The correction could not be saved."
     },
     "NAV_IDENTITES": "Identities"
   },

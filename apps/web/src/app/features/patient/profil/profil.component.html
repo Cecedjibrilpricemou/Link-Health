@@ -104,7 +104,7 @@
         <div class="form-grid">
           <div class="form-field">
             <label class="form-field__label" for="profil-nom">{{ 'PATIENT.PROFILE.LAST_NAME' | translate }}</label>
-            @if (editMode()) {
+            @if (editMode() && !nomVerrouille()) {
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
               <input matInput id="profil-nom" class="form-field__input w-full" [(ngModel)]="formData.nom" [placeholder]="'PATIENT.PROFILE.LAST_NAME' | translate" />
             </mat-form-field>
@@ -114,7 +114,7 @@
           </div>
           <div class="form-field">
             <label class="form-field__label" for="profil-prenom">{{ 'PATIENT.PROFILE.FIRST_NAME' | translate }}</label>
-            @if (editMode()) {
+            @if (editMode() && !nomVerrouille()) {
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
               <input matInput id="profil-prenom" class="form-field__input w-full" [(ngModel)]="formData.prenom" [placeholder]="'PATIENT.PROFILE.FIRST_NAME' | translate" />
             </mat-form-field>
@@ -122,6 +122,13 @@
             <span id="profil-prenom" class="form-field__value">{{ profil()?.prenom || currentUser()?.prenom || '—' }}</span>
             }
           </div>
+          @if (editMode() && nomVerrouille()) {
+          <!-- R15 : nom lu sur une piece ; la correction passe par l'accueil, tracee. -->
+          <p class="profil-nom-verrouille" role="note">
+            <i class="pi pi-lock" aria-hidden="true"></i>
+            {{ 'PATIENT.PROFILE.NOM_VERROUILLE' | translate }}
+          </p>
+          }
           <div class="form-field">
             <label class="form-field__label" for="profil-tel">{{ 'PATIENT.PROFILE.PHONE' | translate }}</label>
             <!-- Non modifiable par le patient : omis de updatePatientSchema. -->
@@ -161,6 +168,8 @@
                 [(ngModel)]="formData.groupeSanguin"
                 [placeholder]="'PATIENT.PROFILE.BLOOD_SELECT' | translate"
               >
+                <!-- Pouvoir revenir a « inconnu » : une valeur fausse est pire qu'aucune. -->
+                <mat-option value="">{{ 'PATIENT.PROFILE.BLOOD_UNKNOWN' | translate }}</mat-option>
                 @for (opt of bloodOptions; track opt.value) {
                   <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
                 }

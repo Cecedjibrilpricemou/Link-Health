@@ -9,6 +9,7 @@ import { peutRenvoyerOtpEnClair } from '../utils/otp-developpement';
 import { assertMotDePasseConforme } from '../utils/politique-mot-de-passe';
 import { envoyerEmailResetMotDePasse, envoyerOtpConnexion } from './email.service';
 import { initialiserConsentementsParDefaut } from './privacy.service';
+import { assertNomModifiableParLePatient } from './patient.service';
 import {
   AppError,
   ConflictError,
@@ -530,6 +531,9 @@ export async function updateProfil(userId: string, dto: {
   telephone?: string;
   photoUrl?: string;
 }): Promise<void> {
+  // La fenetre « Mon profil » est commune a tous les roles : pour un patient,
+  // elle tient la meme regle que son espace (nom fige une fois verifie, R15).
+  await assertNomModifiableParLePatient(userId, { prenom: dto.prenom, nom: dto.nom });
   if (dto.email) {
     const existing = await prisma.utilisateur.findFirst({
       where: { email: dto.email, NOT: { id: userId } },

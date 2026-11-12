@@ -3,7 +3,9 @@ import { prisma } from '../config/prisma';
 import { ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { JwtPayload } from '../types/auth.types';
 import { assertCanAccessPatient, buildPatientWhereForUser } from './access-control.service';
-import type { IdentitePatientView, VerifierIdentiteDto } from '@baobaoheath/shared-types';
+import type {
+  ChampCorrigeable, CorrectionIdentiteView, CorrigerIdentiteDto, IdentitePatientView, VerifierIdentiteDto,
+} from '@baobaoheath/shared-types';
 
 /**
  * Verifier l'identite d'un patient (EF-01-04/10).
@@ -62,6 +64,8 @@ function enVue(l: Ligne): IdentitePatientView {
   return {
     id: l.id,
     nomComplet: `${l.utilisateur.prenom} ${l.utilisateur.nom}`,
+    prenom: l.utilisateur.prenom,
+    nom: l.utilisateur.nom,
     telephone: l.utilisateur.telephone,
     dateNaissance: l.dateNaissance.toISOString(),
     sexe: l.sexe,
@@ -230,6 +234,22 @@ export async function noterTraits(
   const mere = traits.nomMere?.trim();
   if (!lieu && !mere) throw new ValidationError('Aucun trait a enregistrer');
 
+  // Un trait lu sur une piece ne se reecrit pas sur simple declaration : il
+  // fondait la verification. Completer un trait absent reste possible.
+  const actuel = await prisma.patientProfile.findUnique({
+    where: { id: idPatient },
+    select: { niveauIdentite: true, lieuNaissance: true, nomMere: true },
+  });
+  if (!actuel) throw new NotFoundError('Patient non trouve');
+  if (actuel.niveauIdentite === NiveauIdentite.VERIFIEE) {
+    const ecrase = (nouveau: string | undefined, ancien: string | null) => !!nouveau && !!ancien && nouveau !== ancien;
+    if (ecrase(lieu, actuel.lieuNaissance) || ecrase(mere, actuel.nomMere)) {
+      throw new ForbiddenError(
+        "Ces traits ont ete verifies sur piece : pour les changer, refaites la verification avec la piece en main"
+      );
+    }
+  }
+
   const maj = await prisma.patientProfile.update({
     where: { id: idPatient },
     data: {
@@ -237,7 +257,140 @@ export async function noterTraits(
       ...(mere ? { nomMere: mere } : {}),
     },
     select: SELECTION,
-  }).catch(() => { throw new NotFoundError('Patient non trouve'); });
+  });
 
   return enVue(maj as Ligne);
+}
+
+// ── Correction de l'identite (R15) ──────────────────────────────────
+
+/** Le meme minimum que la fusion, et que la contrainte SQL. */
+const MOTIF_MIN = 10;
+const NAISSANCE_PLANCHER = new Date('1900-01-01T00:00:00.000Z');
+
+/** Une date de naissance sans heure : celle qu'on lit sur une piece. */
+function jourDe(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Corriger le sexe, la date de naissance, le prenom ou le nom d'un patient.
+ *
+ * **Personne ne pouvait le faire.** Une erreur de saisie a l'admission
+ * restait pour toujours : un enfant enregistre ne en 2002 au lieu de 2020
+ * recevait des doses d'adulte, une femme enregistree « M » des normes
+ * biologiques d'homme. Le figer etait voulu (identito-vigilance) ; ne laisser
+ * aucune issue ne l'etait pas.
+ *
+ * L'issue est etroite : l'accueil ou l'administration, sur un patient de son
+ * perimetre, avec un motif, et chaque trait corrige laisse une ligne avec son
+ * ancienne valeur. Le niveau d'identite ne change pas : l'agent corrige, il
+ * ne verifie pas — la verification reste le geste avec la piece.
+ */
+export async function corrigerIdentite(
+  user: JwtPayload,
+  idPatient: string,
+  dto: CorrigerIdentiteDto,
+  maintenant = new Date()
+): Promise<IdentitePatientView> {
+  const motif = dto.motif.trim();
+  if (motif.length < MOTIF_MIN) {
+    throw new ValidationError("Le motif est exige, dix caracteres au moins : une correction sans motif n'est pas contestable");
+  }
+  await assertCanAccessPatient(user, idPatient);
+
+  const patient = await prisma.patientProfile.findUnique({
+    where: { id: idPatient },
+    select: {
+      id: true, sexe: true, dateNaissance: true, idFusionneDans: true, idUtilisateur: true,
+      utilisateur: { select: { prenom: true, nom: true } },
+    },
+  });
+  if (!patient) throw new NotFoundError('Patient non trouve');
+  // Le dossier absorbe n'est plus lu : le corriger ne changerait rien de visible.
+  if (patient.idFusionneDans) {
+    throw new ValidationError('Ce dossier a ete fusionne dans un autre : corrigez le dossier principal');
+  }
+
+  const changements: { champ: ChampCorrigeable; ancienneValeur: string; nouvelleValeur: string }[] = [];
+  const prenom = dto.prenom?.trim();
+  if (prenom && prenom !== patient.utilisateur.prenom) {
+    changements.push({ champ: 'prenom', ancienneValeur: patient.utilisateur.prenom, nouvelleValeur: prenom });
+  }
+  const nom = dto.nom?.trim();
+  if (nom && nom !== patient.utilisateur.nom) {
+    changements.push({ champ: 'nom', ancienneValeur: patient.utilisateur.nom, nouvelleValeur: nom });
+  }
+  if (dto.sexe && dto.sexe !== patient.sexe) {
+    changements.push({ champ: 'sexe', ancienneValeur: patient.sexe, nouvelleValeur: dto.sexe });
+  }
+  let naissance: Date | undefined;
+  if (dto.dateNaissance) {
+    naissance = new Date(`${dto.dateNaissance}T00:00:00.000Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dto.dateNaissance) || Number.isNaN(naissance.getTime())
+      || jourDe(naissance) !== dto.dateNaissance) {
+      throw new ValidationError('Date de naissance invalide (AAAA-MM-JJ)');
+    }
+    if (naissance > maintenant || naissance < NAISSANCE_PLANCHER) {
+      throw new ValidationError('Date de naissance hors des limites plausibles');
+    }
+    if (jourDe(naissance) !== jourDe(patient.dateNaissance)) {
+      changements.push({
+        champ: 'dateNaissance', ancienneValeur: jourDe(patient.dateNaissance), nouvelleValeur: jourDe(naissance),
+      });
+    } else {
+      naissance = undefined;
+    }
+  }
+  if (changements.length === 0) {
+    throw new ValidationError('Aucun changement : les valeurs saisies sont deja celles du dossier');
+  }
+
+  const corrige = (champ: ChampCorrigeable) => changements.find((c) => c.champ === champ)?.nouvelleValeur;
+  const maj = await prisma.$transaction(async (tx) => {
+    if (corrige('prenom') || corrige('nom')) {
+      await tx.utilisateur.update({
+        where: { id: patient.idUtilisateur },
+        data: {
+          ...(corrige('prenom') ? { prenom: corrige('prenom') } : {}),
+          ...(corrige('nom') ? { nom: corrige('nom') } : {}),
+        },
+      });
+    }
+    await tx.correctionIdentite.createMany({
+      data: changements.map((c) => ({ ...c, motif, idPatient, idAuteur: user.userId, creeLe: maintenant })),
+    });
+    return tx.patientProfile.update({
+      where: { id: idPatient },
+      data: {
+        ...(corrige('sexe') ? { sexe: corrige('sexe') } : {}),
+        ...(naissance ? { dateNaissance: naissance } : {}),
+      },
+      select: SELECTION,
+    });
+  });
+  return enVue(maj as Ligne);
+}
+
+/** L'historique des corrections d'un patient, la plus recente d'abord. */
+export async function historiqueCorrections(user: JwtPayload, idPatient: string): Promise<CorrectionIdentiteView[]> {
+  await assertCanAccessPatient(user, idPatient);
+  const lignes = await prisma.correctionIdentite.findMany({
+    where: { idPatient },
+    orderBy: { creeLe: 'desc' },
+    take: 100,
+    select: {
+      id: true, champ: true, ancienneValeur: true, nouvelleValeur: true, motif: true, creeLe: true,
+      auteur: { select: { prenom: true, nom: true } },
+    },
+  });
+  return lignes.map((l) => ({
+    id: l.id,
+    champ: l.champ as ChampCorrigeable,
+    ancienneValeur: l.ancienneValeur,
+    nouvelleValeur: l.nouvelleValeur,
+    motif: l.motif,
+    creeLe: l.creeLe.toISOString(),
+    auteur: l.auteur ? `${l.auteur.prenom} ${l.auteur.nom}` : null,
+  }));
 }
