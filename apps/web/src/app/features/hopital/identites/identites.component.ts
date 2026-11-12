@@ -21,7 +21,7 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type {
-  CandidatDoublonView, CorrectionIdentiteView, CorrigerIdentiteDto, FusionView, IdentitePatientView,
+  CandidatDoublonView, CorrectionIdentiteView, CorrigerIdentiteDto, DemandeCorrectionIdentiteView, FusionView, IdentitePatientView,
   NiveauIdentite, TypePieceIdentite,
 } from '@baobaoheath/shared-types';
 import { HopitalService } from '../../../core/services/hopital.service';
@@ -142,6 +142,7 @@ export class IdentitesComponent implements OnInit {
 
   ngOnInit() {
     this.charger();
+    this.chargerDemandes();
   }
 
   /** Charge a la demande : dix lignes affichees ne doivent pas faire dix requetes. */
@@ -437,6 +438,78 @@ export class IdentitesComponent implements OnInit {
       error: (err) => {
         this.enCours.set(false);
         this.erreur.set(this.messageDe(err, 'HOPITAL.IDENTITES.ERR_VERIFICATION'));
+      },
+    });
+  }
+
+  // ── Les demandes des patients (R15) ────────────────────────────────
+  //
+  // Le patient ne corrige pas lui-meme son identite : il demande, avec sa
+  // raison. L'agent accepte (la correction tracee s'applique, avec ce qu'il a
+  // verifie comme motif) ou refuse en disant au patient quoi faire.
+  demandes = signal<DemandeCorrectionIdentiteView[]>([]);
+  decision = signal<{ demande: DemandeCorrectionIdentiteView; choix: 'ACCEPTER' | 'REFUSER' } | null>(null);
+  texteDecision = signal('');
+
+  peutDecider = computed(() =>
+    !!this.decision() && this.texteDecision().trim().length >= MOTIF_MIN && !this.enCours());
+
+  chargerDemandes() {
+    this.hopital.demandesCorrection().subscribe({
+      next: (res) => this.demandes.set(res.data ?? []),
+      error: () => this.demandes.set([]),
+    });
+  }
+
+  /** Ce que le patient demande, a cote de ce que le dossier porte. */
+  traitsDemandes(d: DemandeCorrectionIdentiteView): { cle: string; avant: string; apres: string }[] {
+    const p = d.patient;
+    const traits: { cle: string; avant: string; apres: string }[] = [];
+    if (d.demande.prenom) traits.push({ cle: 'HOPITAL.IDENTITES.CORRIGER_PRENOM', avant: p?.prenom ?? '—', apres: d.demande.prenom });
+    if (d.demande.nom) traits.push({ cle: 'HOPITAL.IDENTITES.CORRIGER_NOM', avant: p?.nom ?? '—', apres: d.demande.nom });
+    if (d.demande.sexe) traits.push({ cle: 'HOPITAL.IDENTITES.CORRIGER_SEXE', avant: p?.sexe ?? '—', apres: d.demande.sexe });
+    if (d.demande.dateNaissance) {
+      traits.push({ cle: 'HOPITAL.IDENTITES.CORRIGER_NAISSANCE', avant: p?.dateNaissance ?? '—', apres: d.demande.dateNaissance });
+    }
+    return traits;
+  }
+
+  ouvrirDecision(demande: DemandeCorrectionIdentiteView, choix: 'ACCEPTER' | 'REFUSER') {
+    this.decision.set({ demande, choix });
+    this.texteDecision.set('');
+    this.erreur.set('');
+  }
+
+  fermerDecision() {
+    this.decision.set(null);
+  }
+
+  confirmerDecision() {
+    const dec = this.decision();
+    if (!dec || !this.peutDecider()) return;
+    const texte = this.texteDecision().trim();
+    const requete = dec.choix === 'ACCEPTER'
+      ? this.hopital.accepterDemandeCorrection(dec.demande.id, texte)
+      : this.hopital.refuserDemandeCorrection(dec.demande.id, texte);
+
+    this.enCours.set(true);
+    this.erreur.set('');
+    requete.subscribe({
+      next: () => {
+        this.enCours.set(false);
+        this.decision.set(null);
+        this.demandes.update((l) => l.filter((d) => d.id !== dec.demande.id));
+        this.succes.set(this.i18n.t(dec.choix === 'ACCEPTER'
+          ? 'HOPITAL.IDENTITES.DEMANDE_ACCEPTEE_MSG'
+          : 'HOPITAL.IDENTITES.DEMANDE_REFUSEE_MSG'));
+        setTimeout(() => this.succes.set(''), 8000);
+        if (dec.choix === 'ACCEPTER') this.charger();
+      },
+      error: (err) => {
+        this.enCours.set(false);
+        this.erreur.set(this.messageDe(err, 'HOPITAL.IDENTITES.ERR_DEMANDE'));
+        // Deja traitee par un collegue : la liste a change.
+        this.chargerDemandes();
       },
     });
   }

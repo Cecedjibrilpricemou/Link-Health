@@ -138,7 +138,8 @@ export type TypeNotification =
   | 'COURSE_OUVERTE'
   | 'OFFRE_COURSE'
   | 'COURSE_ATTRIBUEE'
-  | 'COURSE_SANS_MOTARD';
+  | 'COURSE_SANS_MOTARD'
+  | 'IDENTITE_DEMANDE_TRAITEE';
 
 /** Statut d'une commande pharmacie (EF-07). */
 // ═══════════════════════════════════════════════════════════════════
@@ -3945,6 +3946,34 @@ export interface CorrigerIdentiteDto {
   /** Date seule, AAAA-MM-JJ. */
   dateNaissance?: string;
   motif: string;
+}
+
+/** R15 : le patient demande une correction ; l accueil l accepte ou la refuse. */
+export type StatutDemandeCorrection = 'EN_ATTENTE' | 'ACCEPTEE' | 'REFUSEE';
+
+export interface DemanderCorrectionIdentiteDto {
+  prenom?: string;
+  nom?: string;
+  sexe?: 'M' | 'F';
+  /** AAAA-MM-JJ. */
+  dateNaissance?: string;
+  /** Pourquoi, dans les mots du patient. */
+  justification: string;
+}
+
+export interface DemandeCorrectionIdentiteView {
+  id: string;
+  statut: StatutDemandeCorrection;
+  /** Les seuls traits demandes ; les autres sont absents. */
+  demande: { prenom?: string; nom?: string; sexe?: string; dateNaissance?: string };
+  justification: string;
+  /** La reponse de l accueil (exigee pour un refus). */
+  reponse: string | null;
+  creeLe: HorodatageApi;
+  traiteeLe: HorodatageApi | null;
+  traitePar: string | null;
+  /** Cote accueil seulement : l identite actuelle, pour comparer. */
+  patient?: { id: string; prenom: string; nom: string; sexe: string; dateNaissance: string };
 }
 
 /** Une correction passee, telle que l historique la montre. */

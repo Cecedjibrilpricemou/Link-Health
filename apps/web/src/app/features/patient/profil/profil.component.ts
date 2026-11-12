@@ -15,6 +15,7 @@ import { Patient } from '../../../core/models/patient.model';
 import type { StructureView } from '@baobaoheath/shared-types';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { AdressePatientComponent } from './adresse/adresse.component';
+import { DemandeCorrectionComponent, IdentiteActuelle } from './demande-correction/demande-correction.component';
 import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 const TAILLE_MAX_PHOTO = 3 * 1024 * 1024;
@@ -26,7 +27,7 @@ const TYPES_PHOTO_ACCEPTES = ['image/jpeg', 'image/png', 'image/webp'];
   imports: [ListeRechercheComponent, OptionsDePipe, 
     MatFormFieldModule, MatInputModule, MatSelectModule,
     CommonModule, FormsModule, RouterLink,
-    TranslatePipe, AvatarComponent, AdressePatientComponent
+    TranslatePipe, AvatarComponent, AdressePatientComponent, DemandeCorrectionComponent
   ],
   templateUrl: './profil.component.html',
   styleUrl: './profil.component.scss'
@@ -102,6 +103,18 @@ export class ProfilComponent implements OnInit {
    * l'agent a lu. Le patient le voit, mais la correction passe par l'accueil.
    */
   nomVerrouille = computed(() => this.profil()?.niveauIdentite === 'VERIFIEE');
+
+  /** R15 : l'identite actuelle, point de depart d'une demande de correction. */
+  identiteActuelle = computed<IdentiteActuelle | null>(() => {
+    const p = this.profil();
+    if (!p) return null;
+    return {
+      prenom: p.utilisateur?.prenom ?? p.prenom ?? '',
+      nom: p.utilisateur?.nom ?? p.nom ?? '',
+      sexe: p.sexe ?? '',
+      dateNaissance: p.dateNaissance ? String(p.dateNaissance).slice(0, 10) : '',
+    };
+  });
 
   /** /patients/me imbrique le nom sous `utilisateur` : le formulaire le veut a plat. */
   private formulaireDe(p: Patient | null): Partial<Patient> {

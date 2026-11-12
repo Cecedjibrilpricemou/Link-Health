@@ -1,0 +1,68 @@
+<p class="correction__intro">{{ 'PATIENT.CORRECTION.INTRO' | translate }}</p>
+
+@if (derniere(); as d) {
+  <div [class]="'correction__statut correction__statut--' + d.statut.toLowerCase()" id="correction-statut" role="status">
+    <p class="correction__statut-titre">
+      @switch (d.statut) {
+        @case ('EN_ATTENTE') { <i class="pi pi-clock" aria-hidden="true"></i> {{ 'PATIENT.CORRECTION.EN_ATTENTE' | translate }} }
+        @case ('ACCEPTEE') { <i class="pi pi-check-circle" aria-hidden="true"></i> {{ 'PATIENT.CORRECTION.ACCEPTEE' | translate }} }
+        @case ('REFUSEE') { <i class="pi pi-times-circle" aria-hidden="true"></i> {{ 'PATIENT.CORRECTION.REFUSEE' | translate }} }
+      }
+    </p>
+    <p class="correction__statut-detail">{{ resume(d) }}</p>
+    @if (d.statut === 'REFUSEE' && d.reponse) {
+      <p class="correction__statut-detail" id="correction-reponse">
+        {{ 'PATIENT.CORRECTION.REPONSE' | translate }} : <strong>{{ d.reponse }}</strong>
+      </p>
+    }
+  </div>
+}
+
+@if (!ouvert()) {
+  @if (!enAttente()) {
+    <button type="button" class="correction__bouton" id="correction-ouvrir" (click)="ouvrir()">
+      <i class="pi pi-pencil" aria-hidden="true"></i>
+      {{ 'PATIENT.CORRECTION.DEMANDER' | translate }}
+    </button>
+  }
+} @else {
+  <form class="correction__form" (ngSubmit)="envoyer()" autocomplete="off">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ 'PATIENT.PROFILE.FIRST_NAME' | translate }}</mat-label>
+      <input matInput id="correction-prenom" name="prenom" maxlength="80" [(ngModel)]="form.prenom" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ 'PATIENT.PROFILE.LAST_NAME' | translate }}</mat-label>
+      <input matInput id="correction-nom" name="nom" maxlength="80" [(ngModel)]="form.nom" />
+    </mat-form-field>
+    <div class="correction__champ">
+      <label class="correction__label" for="correction-sexe">{{ 'PATIENT.PROFILE.GENDER' | translate }}</label>
+      <select id="correction-sexe" name="sexe" class="correction__select" [(ngModel)]="form.sexe">
+        <option value="M">{{ 'PATIENT.PROFILE.GENDER_M' | translate }}</option>
+        <option value="F">{{ 'PATIENT.PROFILE.GENDER_F' | translate }}</option>
+      </select>
+    </div>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ 'PATIENT.PROFILE.BIRTH_DATE' | translate }}</mat-label>
+      <input matInput type="date" id="correction-naissance" name="dateNaissance" [(ngModel)]="form.dateNaissance" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="correction__large">
+      <mat-label>{{ 'PATIENT.CORRECTION.JUSTIFICATION' | translate }}</mat-label>
+      <textarea matInput id="correction-justification" name="justification" rows="3" maxlength="500"
+                [placeholder]="'PATIENT.CORRECTION.JUSTIFICATION_PH' | translate"
+                [(ngModel)]="form.justification"></textarea>
+    </mat-form-field>
+    <small class="correction__aide correction__large">{{ 'PATIENT.CORRECTION.AIDE' | translate }}</small>
+
+    <div class="correction__actions correction__large">
+      <button type="button" class="correction__bouton" (click)="fermer()" [disabled]="envoi()">
+        {{ 'PATIENT.CORRECTION.ANNULER' | translate }}
+      </button>
+      <button type="submit" class="correction__bouton correction__bouton--principal" id="correction-envoyer"
+              [disabled]="!peutEnvoyer()">
+        <i [class]="envoi() ? 'pi pi-spinner pi-spin' : 'pi pi-send'" aria-hidden="true"></i>
+        {{ 'PATIENT.CORRECTION.ENVOYER' | translate }}
+      </button>
+    </div>
+  </form>
+}

@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import type {
   AdressePatientView,
   DefinirAdresseDto,
+  DemandeCorrectionIdentiteView,
+  DemanderCorrectionIdentiteDto,
   CommandeView,
   FactureView,
   ModeRemise,
@@ -65,6 +67,15 @@ export class PatientService {
 
   definirAdresse(dto: DefinirAdresseDto): Observable<ApiResponse<AdressePatientView>> {
     return this.api.put<ApiResponse<AdressePatientView>>('/patients/me/adresse', dto);
+  }
+
+  /** R15 : le patient demande une correction de son identite ; l'accueil decide. */
+  mesDemandesCorrection(): Observable<ApiResponse<DemandeCorrectionIdentiteView[]>> {
+    return this.api.get<ApiResponse<DemandeCorrectionIdentiteView[]>>('/patients/me/demandes-correction');
+  }
+
+  demanderCorrection(dto: DemanderCorrectionIdentiteDto): Observable<ApiResponse<DemandeCorrectionIdentiteView>> {
+    return this.api.post<ApiResponse<DemandeCorrectionIdentiteView>>('/patients/me/demandes-correction', dto);
   }
 
   /** Le code PIN qui ouvre le dossier par USSD ; le mot de passe du compte est exige. */
