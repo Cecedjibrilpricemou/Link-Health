@@ -17,6 +17,8 @@ import type {
   LieuHorsReferentielView,
   ModifierLieuGeoDto,
   NiveauAdministratifView,
+  RenommageLieuGeoView,
+  UtilisationLieuGeoView,
 } from '@baobaoheath/shared-types';
 import { ApiService } from './api.service';
 import { I18nService } from '../../shared/services/i18n.service';
@@ -121,6 +123,22 @@ export class GeographieService {
 
   modifierLieu(id: string, dto: ModifierLieuGeoDto): Observable<ApiResponse<LieuGeoView>> {
     return this.api.put<ApiResponse<LieuGeoView>>(`/geographie/lieux/${id}`, dto);
+  }
+
+  /** R7 : ce qui porte le nom d'un lieu, montre avant de le renommer ou de le supprimer. */
+  utilisationLieu(id: string): Observable<ApiResponse<UtilisationLieuGeoView>> {
+    return this.api.get<ApiResponse<UtilisationLieuGeoView>>(`/geographie/lieux/${id}/utilisation`);
+  }
+
+  /** R7 : le nouveau nom suit dans les adresses et les appels en cours. */
+  renommerLieu(id: string, nom: string): Observable<ApiResponse<RenommageLieuGeoView>> {
+    this.suggestions.clear();
+    return this.api.post<ApiResponse<RenommageLieuGeoView>>(`/geographie/lieux/${id}/renommer`, { nom });
+  }
+
+  supprimerLieu(id: string): Observable<ApiResponse<void>> {
+    this.suggestions.clear();
+    return this.api.delete<ApiResponse<void>>(`/geographie/lieux/${id}`);
   }
 
   chargerJeuDeDepart(): Observable<ApiResponse<JeuDeDepartGeoView>> {

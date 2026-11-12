@@ -136,6 +136,11 @@ export const creerLieuGeoSchema = z.object({
   idParent: id.optional(),
 }).strict();
 
+/** R7 : le nom propage aux adresses ; memes bornes qu'a la creation. */
+export const renommerLieuGeoSchema = z.object({
+  nom: z.string().trim().min(1).max(80),
+}).strict();
+
 export const modifierLieuGeoSchema = z.object({
   /** Identifiants des lieux limitrophes, du meme niveau. */
   voisins: z.array(id).max(30).optional(),

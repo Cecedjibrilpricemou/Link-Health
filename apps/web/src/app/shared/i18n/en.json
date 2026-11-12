@@ -2032,7 +2032,19 @@
       "SUCCESS_NEIGHBOURS": "Neighbours of {{nom}} saved.",
       "SUCCESS_STARTER": "Starter set loaded: {{crees}} place(s) added, {{presents}} already present.",
       "ERR_LOAD": "The reference could not be loaded.",
-      "ERR_SAVE": "The change could not be saved."
+      "ERR_SAVE": "The change could not be saved.",
+      "RENAME": "Rename",
+      "RENAME_OF": "Rename \"{{nom}}\"",
+      "DELETE": "Delete",
+      "DELETE_OF": "Delete \"{{nom}}\"",
+      "USAGE": "Currently carrying this name: {{enfants}} place(s) below it, {{structures}} facility(ies), {{patients}} patient(s), {{motards}} courier(s), {{appels}} open request(s).",
+      "RENAME_HELP": "The new name will be applied to these addresses and open requests, and the change will be logged. Completed orders and deliveries keep the former name.",
+      "NEW_NAME": "New name",
+      "RENAME_CONFIRM": "Rename everywhere",
+      "DELETE_BLOCKED": "This place is still in use and cannot be deleted. If it is misspelt, rename it; if it contains other places, delete them first.",
+      "DELETE_CONFIRM": "Delete permanently",
+      "SUCCESS_RENAME": "\"{{avant}}\" is now \"{{nom}}\": {{structures}} facility(ies), {{patients}} patient(s), {{motards}} courier(s) and {{appels}} open request(s) updated.",
+      "SUCCESS_DELETE": "\"{{nom}}\" has been deleted."
     }
   },
   "PHARMACIEN": {

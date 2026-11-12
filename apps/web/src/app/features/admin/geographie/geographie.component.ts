@@ -14,7 +14,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import type { LieuGeoView, LieuHorsReferentielView } from '@baobaoheath/shared-types';
+import type { LieuGeoView, LieuHorsReferentielView, UtilisationLieuGeoView } from '@baobaoheath/shared-types';
 import type { Observable } from 'rxjs';
 import { GeographieService } from '../../../core/services/geographie.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
@@ -25,6 +25,14 @@ interface EditionVoisins {
   candidats: LieuGeoView[];
   selection: Set<string>;
   filtre: string;
+}
+
+/** R7 : renommer ou supprimer un lieu, apres avoir vu ce qui porte son nom. */
+interface Gestion {
+  lieu: LieuGeoView;
+  mode: 'renommer' | 'supprimer';
+  nom: string;
+  utilisation: UtilisationLieuGeoView | null;
 }
 
 @Component({
@@ -134,6 +142,7 @@ export class GeographieComponent implements OnInit {
 
   private apresNavigation(): void {
     this.voisins.set(null);
+    this.gestion.set(null);
     this.nouveauNom.set('');
     this.chargerLieux();
   }
@@ -171,6 +180,7 @@ export class GeographieComponent implements OnInit {
   }
 
   editerVoisins(lieu: LieuGeoView): void {
+    this.gestion.set(null);
     this.geo.lieux({ niveau: lieu.niveau }).subscribe({
       next: (r) => {
         // Les lieux du meme parent d'abord : ce sont presque toujours eux.
@@ -201,6 +211,71 @@ export class GeographieComponent implements OnInit {
     this.lancer('voisins', this.geo.modifierLieu(e.lieu.id, { voisins: [...e.selection] }), () => {
       this.voisins.set(null);
       this.annoncer(this.i18n.t('ADMIN.GEO.SUCCESS_NEIGHBOURS', { nom: e.lieu.nom }));
+      this.chargerLieux();
+    });
+  }
+
+  // ── R7 : renommer, supprimer ──────────────────────────────────────
+  //
+  // Le nom d'un lieu est recopie dans les adresses. Le panneau montre d'abord
+  // ce qui le porte : renommer le propage, supprimer n'est permis qu'a un
+  // lieu que plus rien n'utilise.
+  readonly gestion = signal<Gestion | null>(null);
+
+  readonly peutRenommer = computed(() => {
+    const g = this.gestion();
+    const nom = g?.nom.trim() ?? '';
+    return !!g && g.mode === 'renommer' && !!nom && nom !== g.lieu.nom && !this.action();
+  });
+
+  /** Inutilise : ni enfant, ni adresse, ni appel en cours. Tant que le compte n'est pas la, non. */
+  readonly inutilise = computed(() => {
+    const u = this.gestion()?.utilisation;
+    return !!u && u.enfants + u.structures + u.patients + u.motards + u.appelsEnCours === 0;
+  });
+
+  readonly peutSupprimer = computed(() => this.gestion()?.mode === 'supprimer' && this.inutilise() && !this.action());
+
+  ouvrirGestion(lieu: LieuGeoView, mode: 'renommer' | 'supprimer'): void {
+    this.voisins.set(null);
+    this.erreur.set('');
+    this.gestion.set({ lieu, mode, nom: lieu.nom, utilisation: null });
+    this.geo.utilisationLieu(lieu.id).subscribe({
+      next: (r) => this.gestion.update((g) => (g && g.lieu.id === lieu.id ? { ...g, utilisation: r.data ?? null } : g)),
+      error: (e: unknown) => this.erreur.set(this.messageDe(e, 'ADMIN.GEO.ERR_LOAD')),
+    });
+  }
+
+  saisirNom(nom: string): void {
+    this.gestion.update((g) => (g ? { ...g, nom } : g));
+  }
+
+  fermerGestion(): void {
+    this.gestion.set(null);
+  }
+
+  confirmerRenommage(): void {
+    const g = this.gestion();
+    if (!g || !this.peutRenommer()) return;
+    const nom = g.nom.trim();
+    this.lancer('renommer', this.geo.renommerLieu(g.lieu.id, nom), (data) => {
+      this.gestion.set(null);
+      const r = data?.renommes;
+      this.annoncer(this.i18n.t('ADMIN.GEO.SUCCESS_RENAME', {
+        avant: g.lieu.nom, nom,
+        structures: r?.structures ?? 0, patients: r?.patients ?? 0, motards: r?.motards ?? 0, appels: r?.appelsEnCours ?? 0,
+      }));
+      this.chargerLieux();
+      this.chargerHors();
+    });
+  }
+
+  confirmerSuppression(): void {
+    const g = this.gestion();
+    if (!g || !this.peutSupprimer()) return;
+    this.lancer('supprimer', this.geo.supprimerLieu(g.lieu.id), () => {
+      this.gestion.set(null);
+      this.annoncer(this.i18n.t('ADMIN.GEO.SUCCESS_DELETE', { nom: g.lieu.nom }));
       this.chargerLieux();
     });
   }

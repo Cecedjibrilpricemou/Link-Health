@@ -105,6 +105,15 @@
                         [attr.aria-label]="'ADMIN.GEO.EDIT_NEIGHBOURS_OF' | translate: { nom: l.nom }">
                   {{ 'ADMIN.GEO.EDIT_NEIGHBOURS' | translate }}
                 </button>
+                <!-- R7 : renommer propage aux adresses ; supprimer, seulement si inutilise. -->
+                <button mat-button type="button" (click)="ouvrirGestion(l, 'renommer')" [disabled]="!!action()"
+                        [attr.aria-label]="'ADMIN.GEO.RENAME_OF' | translate: { nom: l.nom }">
+                  {{ 'ADMIN.GEO.RENAME' | translate }}
+                </button>
+                <button mat-button type="button" class="geo__action-danger" (click)="ouvrirGestion(l, 'supprimer')" [disabled]="!!action()"
+                        [attr.aria-label]="'ADMIN.GEO.DELETE_OF' | translate: { nom: l.nom }">
+                  {{ 'ADMIN.GEO.DELETE' | translate }}
+                </button>
               </span>
             </li>
           }
@@ -138,6 +147,53 @@
             </button>
             <button mat-stroked-button type="button" (click)="voisins.set(null)">{{ 'COMMON.CANCEL' | translate }}</button>
           </div>
+        </div>
+      }
+
+      <!-- R7 : renommer ou supprimer, apres avoir vu ce qui porte le nom -->
+      @if (gestion(); as g) {
+        <div class="geo__voisins geo__gestion" id="geo-gestion" role="group"
+             [attr.aria-label]="(g.mode === 'renommer' ? 'ADMIN.GEO.RENAME_OF' : 'ADMIN.GEO.DELETE_OF') | translate: { nom: g.lieu.nom }">
+          <h3>{{ (g.mode === 'renommer' ? 'ADMIN.GEO.RENAME_OF' : 'ADMIN.GEO.DELETE_OF') | translate: { nom: g.lieu.nom } }}</h3>
+
+          @if (g.utilisation; as u) {
+            <p class="geo__hint" id="geo-utilisation">
+              {{ 'ADMIN.GEO.USAGE' | translate: { enfants: u.enfants, structures: u.structures, patients: u.patients, motards: u.motards, appels: u.appelsEnCours } }}
+            </p>
+          } @else {
+            <p class="geo__hint" role="status"><mat-spinner diameter="16" /> {{ 'COMMON.LOADING' | translate }}</p>
+          }
+
+          @if (g.mode === 'renommer') {
+            <p class="geo__hint">{{ 'ADMIN.GEO.RENAME_HELP' | translate }}</p>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="geo__filtre">
+              <mat-label>{{ 'ADMIN.GEO.NEW_NAME' | translate }}</mat-label>
+              <input matInput id="geo-gestion-nom" name="nomGestion" maxlength="80"
+                     [ngModel]="g.nom" (ngModelChange)="saisirNom($event)" />
+            </mat-form-field>
+            <div class="geo__voisins-actions">
+              <button mat-flat-button color="primary" type="button" id="geo-renommer" (click)="confirmerRenommage()" [disabled]="!peutRenommer()">
+                @if (action() === 'renommer') { <mat-spinner diameter="18" /> }
+                @else { <mat-icon fontSet="pi" fontIcon="pi-check" aria-hidden="true"></mat-icon> }
+                {{ 'ADMIN.GEO.RENAME_CONFIRM' | translate }}
+              </button>
+              <button mat-stroked-button type="button" (click)="fermerGestion()">{{ 'COMMON.CANCEL' | translate }}</button>
+            </div>
+          } @else {
+            @if (g.utilisation && !inutilise()) {
+              <p class="geo__bloque" id="geo-suppression-bloquee" role="note">
+                <i class="pi pi-lock" aria-hidden="true"></i> {{ 'ADMIN.GEO.DELETE_BLOCKED' | translate }}
+              </p>
+            }
+            <div class="geo__voisins-actions">
+              <button mat-flat-button color="warn" type="button" id="geo-supprimer" (click)="confirmerSuppression()" [disabled]="!peutSupprimer()">
+                @if (action() === 'supprimer') { <mat-spinner diameter="18" /> }
+                @else { <mat-icon fontSet="pi" fontIcon="pi-trash" aria-hidden="true"></mat-icon> }
+                {{ 'ADMIN.GEO.DELETE_CONFIRM' | translate }}
+              </button>
+              <button mat-stroked-button type="button" (click)="fermerGestion()">{{ 'COMMON.CANCEL' | translate }}</button>
+            </div>
+          }
         </div>
       }
 
