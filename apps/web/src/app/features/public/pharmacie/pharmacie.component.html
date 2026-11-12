@@ -15,7 +15,7 @@
         }
       </p>
       @if (o.telephone) {
-        <a class="pub-btn pharm-hero__tel" [href]="'tel:' + o.telephone">
+        <a class="pub-btn pub-btn--primary pub-btn--lg pharm-hero__tel" [href]="'tel:' + o.telephone">
           <i class="pi pi-phone" aria-hidden="true"></i>
           {{ 'PUBLIC.SEARCH.CALL' | translate }} {{ o.telephone }}
         </a>
@@ -35,7 +35,7 @@
             (ngModelChange)="q.set($event)"
             [placeholder]="'PUBLIC.SEARCH.PLACEHOLDER' | translate"
           />
-          <button type="submit" class="pub-btn" [disabled]="chargement()">
+          <button type="submit" class="pub-btn pub-btn--primary" [disabled]="chargement()">
             <i class="pi pi-search" aria-hidden="true"></i>
             {{ 'PUBLIC.SEARCH.SUBMIT' | translate }}
           </button>
