@@ -29,7 +29,7 @@
       </div>
 
       <div class="rech-form__champ">
-        <label for="rech-prefecture">{{ libelleZone() }}</label>
+        <label for="rech-prefecture">{{ libelleZone() }} <span class="rech-form__facultatif">{{ 'PUBLIC.SEARCH.OPTIONAL' | translate }}</span></label>
         <select
           id="rech-prefecture"
           name="prefecture"
@@ -44,7 +44,7 @@
       </div>
 
       <div class="rech-form__champ">
-        <label for="rech-commune">{{ libelleCommune() }}</label>
+        <label for="rech-commune">{{ libelleCommune() }} <span class="rech-form__facultatif">{{ 'PUBLIC.SEARCH.OPTIONAL' | translate }}</span></label>
         <select
           id="rech-commune"
           name="commune"
@@ -96,7 +96,12 @@
           }
           @if (r.zoneUtilisee === 'PREFECTURE' && r.commune) {
             <p class="rech-zone" id="rech-zone-prefecture">
-              {{ 'PUBLIC.SEARCH.ZONE_WIDE' | translate: { zone: r.prefecture } }}
+              {{ 'PUBLIC.SEARCH.ZONE_WIDE' | translate: { zone: r.prefecture ?? '' } }}
+            </p>
+          }
+          @if (r.zoneUtilisee === 'PAYS' && r.prefecture) {
+            <p class="rech-zone" id="rech-zone-pays">
+              {{ 'PUBLIC.SEARCH.ZONE_COUNTRY' | translate }}
             </p>
           }
 
@@ -134,6 +139,49 @@
 
                 @if (p.estMedicament) {
                   <p class="rech-conseil">{{ 'PUBLIC.SEARCH.ADVICE' | translate }}</p>
+                }
+
+                <button
+                  type="button"
+                  class="rech-carte__voir"
+                  [attr.aria-expanded]="estDeplie(p.id)"
+                  [attr.aria-controls]="'rech-officines-' + p.id"
+                  (click)="basculerPharmacies(p.id)"
+                >
+                  <i class="pi" [class.pi-chevron-down]="!estDeplie(p.id)" [class.pi-chevron-up]="estDeplie(p.id)" aria-hidden="true"></i>
+                  {{ (estDeplie(p.id) ? 'PUBLIC.SEARCH.HIDE_PHARMACIES' : 'PUBLIC.SEARCH.SEE_PHARMACIES') | translate }}
+                </button>
+
+                @if (estDeplie(p.id)) {
+                  <ul class="rech-officines" [id]="'rech-officines-' + p.id">
+                    @for (ph of p.pharmacies; track ph.id) {
+                      <li class="rech-officine">
+                        <div class="rech-officine__ligne">
+                          <span class="rech-officine__nom">{{ ph.nom }}</span>
+                          <span class="rech-officine__prix">{{ prixPharmacie(ph) }} {{ plateforme.devise() }}</span>
+                        </div>
+                        <div class="rech-officine__ligne rech-officine__ligne--secondaire">
+                          <span class="rech-officine__lieu">
+                            <i class="pi pi-map-marker" aria-hidden="true"></i>
+                            {{ lieuDe(ph) }}
+                          </span>
+                          <span
+                            class="rech-etat rech-etat--petit"
+                            [class.rech-etat--faible]="ph.etatStock === 'FAIBLE'"
+                          >
+                            {{ (ph.etatStock === 'FAIBLE' ? 'PUBLIC.SEARCH.STOCK_LOW' : 'PUBLIC.SEARCH.STOCK_OK') | translate }}
+                          </span>
+                        </div>
+                        @if (ph.telephone) {
+                          <a class="rech-officine__tel" [href]="'tel:' + ph.telephone">
+                            <i class="pi pi-phone" aria-hidden="true"></i>
+                            {{ 'PUBLIC.SEARCH.CALL' | translate }} {{ ph.telephone }}
+                          </a>
+                        }
+                      </li>
+                    }
+                  </ul>
+                  <p class="rech-officines__note">{{ 'PUBLIC.SEARCH.CALL_FIRST' | translate }}</p>
                 }
               </li>
             }

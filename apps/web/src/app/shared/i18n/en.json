@@ -4025,7 +4025,13 @@
       "NOTE": "Prices and availability are those declared by each pharmacy. Call ahead before travelling.",
       "CTA_TITLE": "Create your account",
       "CTA_TEXT": "With an account, your prescriptions go straight to the pharmacies in your neighbourhood.",
-      "CTA_BUTTON": "Create an account"
+      "CTA_BUTTON": "Create an account",
+      "OPTIONAL": "(optional)",
+      "SEE_PHARMACIES": "See pharmacies",
+      "HIDE_PHARMACIES": "Hide pharmacies",
+      "CALL": "Call",
+      "CALL_FIRST": "Call the pharmacy before travelling: stock can sell out during the day.",
+      "ZONE_COUNTRY": "Nothing near you: here is what we found elsewhere in the country."
     }
   },
   "AGREMENT": {

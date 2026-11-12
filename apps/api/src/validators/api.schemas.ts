@@ -1425,10 +1425,13 @@ export const definirEnServiceSchema = z.object({ enService: z.boolean() }).stric
 export const definirCommunesDesserviesSchema = z.object({ communes: z.array(z.string().trim().min(1).max(80)).max(20) }).strict();
 
 // A1 : recherche publique de produits. Deux lettres au minimum, parce qu'une
-// seule ramenerait la moitie du catalogue ; la zone est obligatoire, parce
-// qu'afficher des prix a l'autre bout du pays n'aide personne.
+// seule ramenerait la moitie du catalogue.
+//
+// **La zone est facultative** : exiger de la choisir avant de pouvoir taper
+// arretait net quelqu'un qui voulait juste savoir ou trouver du paracetamol.
+// Sans elle, on cherche dans tout le pays et chaque pharmacie dit ou elle est.
 export const rechercheProduitsSchema = z.object({
   q: z.string().trim().min(2).max(60),
-  prefecture: z.string().trim().min(1).max(80),
+  prefecture: z.string().trim().max(80).optional(),
   commune: z.string().trim().max(80).optional(),
 });

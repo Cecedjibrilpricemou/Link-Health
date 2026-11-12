@@ -319,3 +319,103 @@
     flex-direction: column;
   }
 }
+
+// ── A2 : les officines qui ont le produit ───────────────────────────
+
+// La zone aide, elle n'est pas exigee : le dire a cote du libelle.
+.rech-form__facultatif {
+  font-weight: 400;
+  color: var(--bb-text-muted);
+}
+
+.rech-carte__voir {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bb-primary);
+  background: transparent;
+  border: 1px solid var(--bb-border-strong);
+  border-radius: var(--bb-radius-pill);
+  cursor: pointer;
+  transition: var(--bb-transition);
+
+  &:hover { background: var(--bb-surface-1); }
+  &:focus-visible { outline: var(--bb-focus-ring); }
+}
+
+.rech-officines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  &__note {
+    margin: 0.5rem 0 0;
+    font-size: 0.78rem;
+    color: var(--bb-text-muted);
+  }
+}
+
+.rech-officine {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--bb-surface-1);
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius);
+
+  &__ligne {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    justify-content: space-between;
+
+    &--secondaire { font-size: 0.82rem; }
+  }
+
+  &__nom {
+    font-weight: 600;
+    color: var(--bb-text-primary);
+  }
+
+  &__prix {
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: var(--bb-primary);
+  }
+
+  &__lieu {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--bb-text-secondary);
+  }
+
+  // Appeler avant de traverser la ville : l'action doit se voir.
+  &__tel {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--bb-primary);
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+    &:focus-visible { outline: var(--bb-focus-ring); }
+  }
+}
+
+.rech-etat--petit {
+  padding: 0.05rem 0.45rem;
+  font-size: 0.7rem;
+}

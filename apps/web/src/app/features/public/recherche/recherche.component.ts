@@ -8,13 +8,16 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import type { ProduitTrouveView, RechercheProduitsView } from '@baobaoheath/shared-types';
+import type { PharmacieProduitView, ProduitTrouveView, RechercheProduitsView } from '@baobaoheath/shared-types';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { PublicShellComponent } from '../../../shared/components/public-shell/public-shell.component';
 import { GeographieService } from '../../../core/services/geographie.service';
 import { RechercheService } from '../../../core/services/recherche.service';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { PlateformeService } from '../../../shared/services/plateforme.service';
+
+/** Ou le navigateur retient la zone choisie, pour ne pas la redemander. */
+const ZONE_RETENUE = 'keneya.recherche.zone';
 
 @Component({
   selector: 'app-recherche',
@@ -50,14 +53,79 @@ export class RechercheComponent implements OnInit {
   readonly libelleZone = computed(() => this.geo.libelle('elargissement'));
   readonly libelleCommune = computed(() => this.geo.libelle('base'));
 
-  readonly peutChercher = computed(
-    () => this.q().trim().length >= 2 && this.prefecture().trim() !== '',
-  );
+  /**
+   * **Deux lettres suffisent.** Exiger de choisir sa zone avant de pouvoir
+   * taper arretait net quelqu'un qui voulait juste savoir ou trouver du
+   * paracetamol. La zone resserre et classe ; elle ne commande pas.
+   */
+  readonly peutChercher = computed(() => this.q().trim().length >= 2);
+
+  /** Les produits dont la liste d'officines est ouverte. */
+  private readonly deplies = signal<ReadonlySet<string>>(new Set());
 
   ngOnInit(): void {
     this.geo.chargerConfiguration().subscribe(() => {
-      this.geo.nomsSuggeres('elargissement').subscribe((noms) => this.prefectures.set(noms));
+      this.geo.nomsSuggeres('elargissement').subscribe((noms) => {
+        this.prefectures.set(noms);
+        this.reprendreLaZone(noms);
+      });
     });
+  }
+
+  /**
+   * La zone de la derniere visite, si elle existe encore au referentiel.
+   *
+   * On ne redemande pas a quelqu'un ou il habite a chaque passage. Le
+   * navigateur peut refuser de nous repondre (navigation privee, stockage
+   * bloque) : dans ce cas on n'insiste pas, la recherche marche sans.
+   */
+  private reprendreLaZone(connues: string[]): void {
+    let garde: { prefecture?: string; commune?: string } | null = null;
+    try {
+      const brut = localStorage.getItem(ZONE_RETENUE);
+      garde = brut ? (JSON.parse(brut) as { prefecture?: string; commune?: string }) : null;
+    } catch {
+      return;
+    }
+    const prefecture = (garde?.prefecture ?? '').trim();
+    if (!prefecture || !connues.includes(prefecture)) return;
+    this.prefecture.set(prefecture);
+    this.geo.nomsSuggeres('base', prefecture).subscribe((noms) => {
+      this.communes.set(noms);
+      const commune = (garde?.commune ?? '').trim();
+      if (commune && noms.includes(commune)) this.commune.set(commune);
+    });
+  }
+
+  private retenirLaZone(): void {
+    try {
+      localStorage.setItem(
+        ZONE_RETENUE,
+        JSON.stringify({ prefecture: this.prefecture(), commune: this.commune() }),
+      );
+    } catch {
+      // Sans stockage, on redemandera la prochaine fois. Ce n'est pas grave.
+    }
+  }
+
+  /** Les officines d'un produit sont-elles ouvertes ? */
+  estDeplie(idProduit: string): boolean {
+    return this.deplies().has(idProduit);
+  }
+
+  basculerPharmacies(idProduit: string): void {
+    const ouverts = new Set(this.deplies());
+    if (!ouverts.delete(idProduit)) ouverts.add(idProduit);
+    this.deplies.set(ouverts);
+  }
+
+  /** « Dixinn · Belle-Vue », ou juste ce qu'on connait. */
+  lieuDe(p: PharmacieProduitView): string {
+    return [p.commune, p.quartier].map((v) => (v ?? '').trim()).filter(Boolean).join(' \u00b7 ');
+  }
+
+  prixPharmacie(p: PharmacieProduitView): string {
+    return this.montant(p.prixGnf);
   }
 
   changerPrefecture(nom: string): void {
@@ -74,6 +142,8 @@ export class RechercheComponent implements OnInit {
     if (!this.peutChercher() || this.chargement()) return;
     this.chargement.set(true);
     this.erreur.set('');
+    this.deplies.set(new Set());
+    this.retenirLaZone();
     this.recherche.produits(this.q().trim(), this.prefecture(), this.commune()).subscribe({
       next: (r) => {
         this.resultat.set(r.data ?? null);

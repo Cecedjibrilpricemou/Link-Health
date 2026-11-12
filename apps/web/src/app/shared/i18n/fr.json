@@ -4025,7 +4025,13 @@
       "NOTE": "Les prix et les disponibilités sont ceux déclarés par chaque pharmacie. Appelez-la avant de vous déplacer.",
       "CTA_TITLE": "Créez votre compte",
       "CTA_TEXT": "Avec un compte, vos ordonnances partent directement aux pharmacies de votre quartier.",
-      "CTA_BUTTON": "Créer un compte"
+      "CTA_BUTTON": "Créer un compte",
+      "OPTIONAL": "(facultatif)",
+      "SEE_PHARMACIES": "Voir les pharmacies",
+      "HIDE_PHARMACIES": "Masquer les pharmacies",
+      "CALL": "Appeler",
+      "CALL_FIRST": "Appelez la pharmacie avant de vous déplacer : un stock peut partir dans la journée.",
+      "ZONE_COUNTRY": "Rien près de chez vous : voici ce qu’on trouve ailleurs dans le pays."
     }
   },
   "AGREMENT": {

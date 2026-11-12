@@ -4322,7 +4322,21 @@ export interface CandidatDoublonView {
 export type EtatStockPublic = 'DISPONIBLE' | 'FAIBLE';
 
 /** Jusqu'ou la recherche a du s'etendre pour trouver quelque chose. */
-export type ZoneRechercheProduit = 'COMMUNE' | 'VOISINES' | 'PREFECTURE';
+export type ZoneRechercheProduit = 'COMMUNE' | 'VOISINES' | 'PREFECTURE' | 'PAYS';
+
+/** Une officine qui declare avoir le produit, et a quel prix chez elle. */
+export interface PharmacieProduitView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  /** Pour appeler avant de se deplacer. */
+  telephone: string | null;
+  prixGnf: number;
+  etatStock: EtatStockPublic;
+  declareLe: string;
+}
 
 export interface ProduitTrouveView {
   id: string;
@@ -4345,11 +4359,14 @@ export interface ProduitTrouveView {
   etatStock: EtatStockPublic;
   /** Quand l'officine a declare ce stock pour la derniere fois. */
   declareLe: string;
+  /** Les officines qui l'ont, la plus proche d'abord puis la moins chere. */
+  pharmacies: PharmacieProduitView[];
 }
 
 export interface RechercheProduitsView {
   zoneUtilisee: ZoneRechercheProduit;
-  prefecture: string;
+  /** Nulle quand le visiteur n'a pas dit ou il est. */
+  prefecture: string | null;
   commune: string | null;
   /** Les communes voisines interrogees, quand la recherche s'est elargie. */
   communesVoisines: string[];

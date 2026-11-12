@@ -19,7 +19,7 @@ const router = Router();
 router.get('/produits', validateQuery(rechercheProduitsSchema), async (req: Request, res: Response) => {
   const { q, prefecture, commune } = req.query as {
     q: string;
-    prefecture: string;
+    prefecture?: string;
     commune?: string;
   };
   const resultat = await chercherProduits({ q, prefecture, commune });
@@ -31,6 +31,10 @@ router.get('/produits', validateQuery(rechercheProduitsSchema), async (req: Requ
     produits: resultat.produits.map((p) => ({
       ...p,
       declareLe: p.declareLe.toISOString(),
+      pharmacies: p.pharmacies.map((ph) => ({
+        ...ph,
+        declareLe: ph.declareLe.toISOString(),
+      })),
     })),
   };
   res.json({ success: true, data });
