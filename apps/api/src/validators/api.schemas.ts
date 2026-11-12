@@ -1201,6 +1201,23 @@ export const noterTraitsSchema = z.object({
   nomMere: z.string().trim().min(2).max(120).optional(),
 }).strict();
 
+// R15 : le patient demande une correction ; l'accueil l'accepte ou la refuse.
+export const demanderCorrectionIdentiteSchema = z.object({
+  prenom: z.string().trim().min(1).max(80).optional(),
+  nom: z.string().trim().min(1).max(80).optional(),
+  sexe: z.enum(['M', 'F']).optional(),
+  dateNaissance: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date AAAA-MM-JJ').optional(),
+  justification: z.string().trim().min(10).max(500),
+}).strict();
+
+export const accepterDemandeCorrectionSchema = z.object({
+  motif: z.string().trim().min(10).max(500),
+}).strict();
+
+export const refuserDemandeCorrectionSchema = z.object({
+  reponse: z.string().trim().min(10).max(500),
+}).strict();
+
 // R15 : correction tracee de l'identite par l'accueil ou l'administration.
 export const corrigerIdentiteSchema = z.object({
   prenom: z.string().trim().min(1).max(80).optional(),

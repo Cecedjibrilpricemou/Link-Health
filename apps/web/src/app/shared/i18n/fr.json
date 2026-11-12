@@ -851,6 +851,22 @@
       "ERR_LOAD": "Impossible de charger vos cartes d'assurance.",
       "ERR_IMPRESSION": "La fenêtre d'impression a été bloquée par le navigateur. Autorisez les fenêtres pour ce site, ou téléchargez la carte.",
       "PHOTO_ALT": "Photo de {{nom}}"
+    },
+    "CORRECTION": {
+      "TITLE": "Corriger mon identité",
+      "INTRO": "Une erreur dans votre nom, votre prénom, votre sexe ou votre date de naissance ? Demandez la correction : l'accueil de votre structure la vérifiera, le plus souvent sur présentation d'une pièce.",
+      "DEMANDER": "Demander une correction",
+      "JUSTIFICATION": "Pourquoi cette correction ?",
+      "JUSTIFICATION_PH": "Ex. : mon prénom est mal écrit depuis l'inscription",
+      "AIDE": "Modifiez seulement ce qui est faux. Une seule demande peut attendre à la fois. Pensez à apporter votre pièce d'identité lors de votre prochain passage.",
+      "ENVOYER": "Envoyer la demande",
+      "ANNULER": "Annuler",
+      "ENVOYEE": "Demande envoyée à l'accueil.",
+      "ERR": "La demande n'a pas pu être envoyée.",
+      "EN_ATTENTE": "Demande en attente de réponse de l'accueil",
+      "ACCEPTEE": "Demande acceptée : votre identité a été corrigée",
+      "REFUSEE": "Demande non acceptée",
+      "REPONSE": "Réponse de l'accueil"
     }
   },
   "ASC": {
@@ -3037,7 +3053,19 @@
       "SEXE_F": "Femme",
       "SEXE_M": "Homme",
       "CORRIGEE_MSG": "Identité de {{nom}} corrigée.",
-      "ERR_CORRECTION": "La correction n'a pas pu être enregistrée."
+      "ERR_CORRECTION": "La correction n'a pas pu être enregistrée.",
+      "DEMANDES_TITRE": "Demandes de correction des patients ({{n}})",
+      "DEMANDES_AIDE": "Le patient demande, vous décidez. Acceptez après avoir vérifié une pièce ; sinon, refusez en lui disant quoi faire.",
+      "DEMANDE_ACCEPTER": "Accepter",
+      "DEMANDE_REFUSER": "Refuser",
+      "DEMANDE_ACCEPTER_TITRE": "Accepter la demande de {{nom}}",
+      "DEMANDE_REFUSER_TITRE": "Refuser la demande de {{nom}}",
+      "DEMANDE_ACCEPTER_AIDE": "La correction sera appliquée et tracée : ancienne valeur, votre nom et votre motif. Dites ce que vous avez vérifié.",
+      "DEMANDE_REFUSER_AIDE": "Le patient lira votre réponse. Dites-lui pourquoi, et quoi faire (par exemple : venir avec sa pièce).",
+      "DEMANDE_REPONSE": "Réponse au patient",
+      "DEMANDE_ACCEPTEE_MSG": "Demande acceptée : identité corrigée. Le patient est prévenu.",
+      "DEMANDE_REFUSEE_MSG": "Demande refusée. Le patient est prévenu.",
+      "ERR_DEMANDE": "La demande n'a pas pu être traitée."
     },
     "NAV_IDENTITES": "Identités"
   },

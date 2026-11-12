@@ -30,7 +30,9 @@ import {
 } from '../validators/api.schemas';
 import * as ussd from '../services/ussd.service';
 import * as adresse from '../services/patient-adresse.service';
-import type { AdressePatientView } from '@baobaoheath/shared-types';
+import * as demandeCorrection from '../services/demande-correction.service';
+import type { AdressePatientView, DemandeCorrectionIdentiteView } from '@baobaoheath/shared-types';
+import { demanderCorrectionIdentiteSchema } from '../validators/api.schemas';
 
 const router = Router();
 
@@ -51,6 +53,17 @@ router.get('/me/adresse', authenticate, requireRole('PATIENT'), async (req: Auth
 router.put('/me/adresse', authenticate, requireRole('PATIENT'), validateBody(definirAdresseSchema), async (req: AuthRequest, res: Response) => {
   const data: AdressePatientView = await adresse.definirAdresse(req.user!.userId, req.body);
   res.json({ success: true, data, message: 'Adresse enregistree' });
+});
+
+// R15 : le patient demande la correction de son identite ; l'accueil decide.
+router.post('/me/demandes-correction', authenticate, requireRole('PATIENT'), validateBody(demanderCorrectionIdentiteSchema), async (req: AuthRequest, res: Response) => {
+  const data: DemandeCorrectionIdentiteView = await demandeCorrection.demanderCorrection(req.user!.userId, req.body);
+  res.status(201).json({ success: true, data, message: "Demande envoyee a l'accueil" });
+});
+
+router.get('/me/demandes-correction', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  const data: DemandeCorrectionIdentiteView[] = await demandeCorrection.mesDemandes(req.user!.userId);
+  res.json({ success: true, data });
 });
 
 // Le code PIN qui ouvre le dossier par USSD. Le mot de passe du compte est

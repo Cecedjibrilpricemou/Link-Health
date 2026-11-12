@@ -269,8 +269,24 @@ const MOTIF_MIN = 10;
 const NAISSANCE_PLANCHER = new Date('1900-01-01T00:00:00.000Z');
 
 /** Une date de naissance sans heure : celle qu'on lit sur une piece. */
-function jourDe(date: Date): string {
+export function jourDe(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Une date de naissance saisie (AAAA-MM-JJ), verifiee : une date qui existe
+ * (pas un 30 fevrier), ni future, ni avant 1900. La meme regle pour la
+ * correction par l'accueil et pour la demande du patient.
+ */
+export function lireDateNaissance(texte: string, maintenant: Date): Date {
+  const date = new Date(`${texte}T00:00:00.000Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texte) || Number.isNaN(date.getTime()) || jourDe(date) !== texte) {
+    throw new ValidationError('Date de naissance invalide (AAAA-MM-JJ)');
+  }
+  if (date > maintenant || date < NAISSANCE_PLANCHER) {
+    throw new ValidationError('Date de naissance hors des limites plausibles');
+  }
+  return date;
 }
 
 /**
@@ -326,14 +342,7 @@ export async function corrigerIdentite(
   }
   let naissance: Date | undefined;
   if (dto.dateNaissance) {
-    naissance = new Date(`${dto.dateNaissance}T00:00:00.000Z`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dto.dateNaissance) || Number.isNaN(naissance.getTime())
-      || jourDe(naissance) !== dto.dateNaissance) {
-      throw new ValidationError('Date de naissance invalide (AAAA-MM-JJ)');
-    }
-    if (naissance > maintenant || naissance < NAISSANCE_PLANCHER) {
-      throw new ValidationError('Date de naissance hors des limites plausibles');
-    }
+    naissance = lireDateNaissance(dto.dateNaissance, maintenant);
     if (jourDe(naissance) !== jourDe(patient.dateNaissance)) {
       changements.push({
         champ: 'dateNaissance', ancienneValeur: jourDe(patient.dateNaissance), nouvelleValeur: jourDe(naissance),

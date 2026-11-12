@@ -220,6 +220,19 @@
         <app-adresse-patient />
       </div>
 
+      <!-- ── R15 : demander la correction de son identite ── -->
+      @if (identiteActuelle(); as identite) {
+      <div class="profil-card profil-card--full">
+        <div class="profil-card__header">
+          <div class="profil-card__header-icon profil-card__header-icon--blue">
+            <i class="pi pi-id-card" aria-hidden="true"></i>
+          </div>
+          <h3 class="profil-card__title">{{ 'PATIENT.CORRECTION.TITLE' | translate }}</h3>
+        </div>
+        <app-demande-correction [actuelle]="identite" />
+      </div>
+      }
+
       <!-- ── STRUCTURE PREFEREE (modèle hybride) ────────────── -->
       <div class="profil-card profil-card--full">
         <div class="profil-card__header">

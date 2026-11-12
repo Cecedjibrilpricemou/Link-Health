@@ -441,3 +441,55 @@
   &__avant { color: var(--bb-text-muted); text-decoration: line-through; }
   &__qui { display: block; margin-top: 2px; font-size: 11.5px; color: var(--bb-text-secondary); }
 }
+
+
+// -- R15 : les demandes de correction envoyees par les patients ---------
+.identites-demandes {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1.15rem;
+  border-left: 3px solid var(--bb-warning);
+
+  &__titre {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--bb-text-primary);
+
+    mat-icon { font-size: 17px; width: 17px; height: 17px; color: var(--bb-warning); }
+  }
+
+  &__aide { margin: 0 0 10px; font-size: 13px; color: var(--bb-text-secondary); }
+
+  &__liste { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+
+  &__item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-sm);
+    background: var(--bb-surface-1);
+  }
+
+  &__corps { flex: 1 1 260px; min-width: 0; }
+
+  &__traits {
+    margin: 4px 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+    color: var(--bb-text-primary);
+
+    mat-icon { font-size: 12px; width: 12px; height: 12px; vertical-align: middle; margin: 0 4px; color: var(--idt-accent); }
+  }
+
+  &__actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  &__refuser { color: var(--bb-danger); }
+}

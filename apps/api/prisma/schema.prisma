@@ -288,6 +288,7 @@ enum TypeNotification {
   OFFRE_COURSE // P8-a : une offre nouvelle ou modifiee attend le choix du patient
   COURSE_ATTRIBUEE // P8-a : l'officine sait qu'un livreur a ete choisi
   COURSE_SANS_MOTARD // R1 : delai final atteint, le patient choisit relancer ou retrait
+  IDENTITE_DEMANDE_TRAITEE // R15 : l'accueil a accepte ou refuse la correction demandee
 }
 
 enum UssdSessionStatus {
@@ -338,10 +339,11 @@ model Utilisateur {
   suspensionsPrononcees Utilisateur[] @relation("SuspensionsProoncees")
 
   /// Les identites de patients qu'il a verifiees (EF-01-04).
-  identitesVerifiees  PatientProfile[]     @relation("IdentitesVerifiees")
-  correctionsIdentite CorrectionIdentite[] @relation("CorrectionsIdentite")
-  brisDeGlaceDeclares BrisDeGlace[]        @relation("BrisDeGlaceDeclares")
-  brisDeGlaceRevus    BrisDeGlace[]        @relation("BrisDeGlaceRevus")
+  identitesVerifiees         PatientProfile[]            @relation("IdentitesVerifiees")
+  correctionsIdentite        CorrectionIdentite[]        @relation("CorrectionsIdentite")
+  demandesCorrectionTraitees DemandeCorrectionIdentite[] @relation("DemandesCorrectionTraitees")
+  brisDeGlaceDeclares        BrisDeGlace[]               @relation("BrisDeGlaceDeclares")
+  brisDeGlaceRevus           BrisDeGlace[]               @relation("BrisDeGlaceRevus")
   /// Numero d'inscription a l'ordre professionnel (EF-01-08).
   ///
   /// **Sur l'utilisateur, pas sur chaque profil.** Le numero vivait sur
@@ -353,11 +355,11 @@ model Utilisateur {
   /// numero au registre de l'ordre. Il n'y a pas d'API nationale a interroger ;
   /// c'est donc un acte humain, trace comme la verification d'identite
   /// (EF-01-04).
-  numeroOrdre         String?
-  ordreVerifieLe      DateTime?
-  idOrdreVerifiePar   String?
-  ordreVerifiePar     Utilisateur?         @relation("OrdresVerifies", fields: [idOrdreVerifiePar], references: [id], onDelete: SetNull)
-  ordresVerifies      Utilisateur[]        @relation("OrdresVerifies")
+  numeroOrdre                String?
+  ordreVerifieLe             DateTime?
+  idOrdreVerifiePar          String?
+  ordreVerifiePar            Utilisateur?                @relation("OrdresVerifies", fields: [idOrdreVerifiePar], references: [id], onDelete: SetNull)
+  ordresVerifies             Utilisateur[]               @relation("OrdresVerifies")
 
   textesConsentementPublies TexteConsentement[]     @relation("TextesConsentementPublies")
   evenementsConsentement    EvenementConsentement[] @relation("EvenementsConsentement")
@@ -936,10 +938,10 @@ model PatientProfile {
   // Facultatifs : un ASC qui enregistre quelqu'un en brousse ne les a pas
   // toujours. Ils deviennent exigibles pour passer en identite verifiee.
   /// Ville ou village de naissance, tel que declare.
-  lieuNaissance String?
+  lieuNaissance    String?
   /// Nom de la mere. Le trait le plus discriminant quand les noms se repetent.
   /// Chiffre (R4) : la detection de doublons compare `nomMereEmpreinte`.
-  nomMere       String?
+  nomMere          String?
   /// R4 : empreinte de recherche du nom de la mere (HMAC de la valeur
   /// normalisee). Posee par l'extension de chiffrement a chaque ecriture de
   /// `nomMere` ; ne se retourne pas en nom sans la cle.
@@ -975,31 +977,32 @@ model PatientProfile {
   brisDeGlace            BrisDeGlace[]           @relation("BrisDeGlacePatient")
   evenementsConsentement EvenementConsentement[]
 
-  fusionsPrincipal FusionDossier[]      @relation("FusionPrincipal")
-  fusionsAbsorbe   FusionDossier[]      @relation("FusionAbsorbe")
-  corrections      CorrectionIdentite[]
+  fusionsPrincipal   FusionDossier[]             @relation("FusionPrincipal")
+  fusionsAbsorbe     FusionDossier[]             @relation("FusionAbsorbe")
+  corrections        CorrectionIdentite[]
+  demandesCorrection DemandeCorrectionIdentite[]
   // Maille reelle du parcours commande/livraison : c'est dans son quartier que
   // le patient cherche une pharmacie, pas dans sa prefecture.
-  commune          String?
-  quartier         String?
-  village          String?
+  commune            String?
+  quartier           String?
+  village            String?
   /// M3 : ce qui guide le motard quand la rue n'a pas de nom
   /// (« derriere la mosquee de Kipe »).
-  pointRepere      String?
+  pointRepere        String?
   /// Position donnee par le patient, avec son accord, et qu'il peut effacer.
   /// Montree au seul motard qui a sa course en main.
   ///
   /// R4 : « latitude,longitude » en une chaine, **chiffree** (le chiffrement
   /// de champ ne porte que sur du texte). Aucune requete ne la filtre ni ne
   /// la trie en base : seul le service d'adresse la lit et la decoupe.
-  position         String?
+  position           String?
   /// Quand la position a ete donnee : une position ancienne se reverifie.
-  positionLe       DateTime?
-  photoUrl         String?
-  urgenceNom       String?
-  urgenceTelephone String?
-  creeLe           DateTime             @default(now())
-  modifieLe        DateTime             @updatedAt
+  positionLe         DateTime?
+  photoUrl           String?
+  urgenceNom         String?
+  urgenceTelephone   String?
+  creeLe             DateTime                    @default(now())
+  modifieLe          DateTime                    @updatedAt
 
   idUtilisateur String      @unique
   utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Restrict)
@@ -3248,4 +3251,46 @@ model ChangementTelephone {
 
   @@index([idUtilisateur, creeLe])
   @@map("changements_telephone")
+}
+
+/// R15 : ou en est une demande de correction d'identite.
+enum StatutDemandeCorrection {
+  EN_ATTENTE
+  ACCEPTEE
+  REFUSEE
+}
+
+/// R15 : le patient demande lui-meme la correction de son identite.
+///
+/// Il ne la fait pas : une identite verifiee sur piece ne se reecrit pas sur
+/// simple declaration. Il la **demande**, avec sa raison, et l'accueil de sa
+/// structure l'accepte - la correction passe alors par `CorrectionIdentite`,
+/// avec l'ancienne valeur et l'agent - ou la refuse en disant pourquoi.
+///
+/// Seuls les traits demandes sont remplis ; les autres restent nuls.
+model DemandeCorrectionIdentite {
+  id            String                  @id @default(cuid())
+  prenom        String?
+  nom           String?
+  sexe          String?
+  /// AAAA-MM-JJ, comme sur une piece.
+  dateNaissance String?
+  /// Pourquoi, dans les mots du patient : « mon acte de naissance dit 2020 ».
+  justification String
+  statut        StatutDemandeCorrection @default(EN_ATTENTE)
+  /// La reponse de l'accueil, exigee pour un refus.
+  reponse       String?
+  creeLe        DateTime                @default(now())
+  traiteeLe     DateTime?
+
+  idPatient String
+  patient   PatientProfile @relation(fields: [idPatient], references: [id], onDelete: Restrict)
+
+  /// `SetNull` : le depart de l'agent n'efface pas la decision.
+  idTraitePar String?
+  traitePar   Utilisateur? @relation("DemandesCorrectionTraitees", fields: [idTraitePar], references: [id], onDelete: SetNull)
+
+  @@index([statut, creeLe])
+  @@index([idPatient, creeLe])
+  @@map("demandes_correction_identite")
 }

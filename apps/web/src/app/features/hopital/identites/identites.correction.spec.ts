@@ -30,6 +30,7 @@ function monter() {
         useValue: {
           identites: () => { chargements.n++; return of({ success: true, data: [PATIENT] }); },
           corrections: () => of({ success: true, data: [] }),
+          demandesCorrection: () => of({ success: true, data: [] }),
           corrigerIdentite: (id: string, dto: CorrigerIdentiteDto) => {
             envois.push({ id, dto });
             return of({ success: true, data: { ...PATIENT, sexe: 'F' } });

@@ -851,6 +851,22 @@
       "ERR_LOAD": "Unable to load your insurance cards.",
       "ERR_IMPRESSION": "The print window was blocked by the browser. Allow pop-ups for this site, or download the card.",
       "PHOTO_ALT": "Photo of {{nom}}"
+    },
+    "CORRECTION": {
+      "TITLE": "Correct my identity",
+      "INTRO": "A mistake in your last name, first name, sex or date of birth? Request a correction: the front desk of your facility will check it, usually against an identity document.",
+      "DEMANDER": "Request a correction",
+      "JUSTIFICATION": "Why this correction?",
+      "JUSTIFICATION_PH": "E.g. my first name has been misspelled since registration",
+      "AIDE": "Only change what is wrong. Only one request can be pending at a time. Remember to bring your identity document on your next visit.",
+      "ENVOYER": "Send the request",
+      "ANNULER": "Cancel",
+      "ENVOYEE": "Request sent to the front desk.",
+      "ERR": "The request could not be sent.",
+      "EN_ATTENTE": "Request awaiting a reply from the front desk",
+      "ACCEPTEE": "Request accepted: your identity has been corrected",
+      "REFUSEE": "Request not accepted",
+      "REPONSE": "Front desk reply"
     }
   },
   "ASC": {
@@ -3037,7 +3053,19 @@
       "SEXE_F": "Female",
       "SEXE_M": "Male",
       "CORRIGEE_MSG": "{{nom}}'s identity has been corrected.",
-      "ERR_CORRECTION": "The correction could not be saved."
+      "ERR_CORRECTION": "The correction could not be saved.",
+      "DEMANDES_TITRE": "Patient correction requests ({{n}})",
+      "DEMANDES_AIDE": "The patient asks, you decide. Accept after checking a document; otherwise, decline and tell them what to do.",
+      "DEMANDE_ACCEPTER": "Accept",
+      "DEMANDE_REFUSER": "Decline",
+      "DEMANDE_ACCEPTER_TITRE": "Accept {{nom}}'s request",
+      "DEMANDE_REFUSER_TITRE": "Decline {{nom}}'s request",
+      "DEMANDE_ACCEPTER_AIDE": "The correction will be applied and logged: previous value, your name and your reason. Say what you checked.",
+      "DEMANDE_REFUSER_AIDE": "The patient will read your reply. Tell them why, and what to do (for example: come with their document).",
+      "DEMANDE_REPONSE": "Reply to the patient",
+      "DEMANDE_ACCEPTEE_MSG": "Request accepted: identity corrected. The patient has been notified.",
+      "DEMANDE_REFUSEE_MSG": "Request declined. The patient has been notified.",
+      "ERR_DEMANDE": "The request could not be processed."
     },
     "NAV_IDENTITES": "Identities"
   },
