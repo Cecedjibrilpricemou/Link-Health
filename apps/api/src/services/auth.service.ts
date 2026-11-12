@@ -10,6 +10,7 @@ import { assertMotDePasseConforme } from '../utils/politique-mot-de-passe';
 import { envoyerEmailResetMotDePasse, envoyerOtpConnexion } from './email.service';
 import { initialiserConsentementsParDefaut } from './privacy.service';
 import { assertNomModifiableParLePatient } from './patient.service';
+import { assertNomModifiableParLeProfessionnel } from './compte.service';
 import {
   AppError,
   ConflictError,
@@ -408,6 +409,8 @@ export async function getMe(userId: string) {
       photoUrl: true,
       estActif: true,
       doitChangerMotDePasse: true,
+      // L'ecran verrouille le nom d'un professionnel dont l'ordre est verifie.
+      ordreVerifieLe: true,
       creeLe: true,
       modifieLe: true,
     },
@@ -534,6 +537,8 @@ export async function updateProfil(userId: string, dto: {
   // La fenetre « Mon profil » est commune a tous les roles : pour un patient,
   // elle tient la meme regle que son espace (nom fige une fois verifie, R15).
   await assertNomModifiableParLePatient(userId, { prenom: dto.prenom, nom: dto.nom });
+  // Et pour un professionnel : nom fige une fois son ordre verifie.
+  await assertNomModifiableParLeProfessionnel(userId, { prenom: dto.prenom, nom: dto.nom });
   if (dto.email) {
     const existing = await prisma.utilisateur.findFirst({
       where: { email: dto.email, NOT: { id: userId } },
