@@ -671,6 +671,20 @@ async function pharmacieDuPharmacien(userId: string) {
 }
 
 /**
+ * R5 : chaque pharmacie sollicitee a-t-elle dit non ? Comparaison par
+ * identifiant. Sans sollicitee, rien n'est epuise : il n'y avait personne a
+ * attendre, et c'est au lancement d'en conclure.
+ */
+export function toutesOntRefuse(
+  sollicitees: { id: string }[],
+  reponses: { idStructure: string; aTousLesProduits: boolean }[],
+): boolean {
+  if (sollicitees.length === 0) return false;
+  const refusees = new Set(reponses.filter((r) => !r.aTousLesProduits).map((r) => r.idStructure));
+  return sollicitees.every((p) => refusees.has(p.id));
+}
+
+/**
  * Toutes les pharmacies sollicitées ont répondu « non » : il n'y a plus rien à
  * attendre. Le patient et le médecin sont avertis, et le patient reprend son
  * ordonnance.
@@ -681,14 +695,18 @@ async function verifierEpuisementDesReponses(idCommande: string) {
     select: {
       prefectureRecherche: true, communeRecherche: true, quartierRecherche: true, elargieLe: true,
       voisinesLe: true, communesVoisines: true,
-      statut: true, reponses: { select: { aTousLesProduits: true } },
+      statut: true, reponses: { select: { idStructure: true, aTousLesProduits: true } },
     },
   });
   if (!commande || commande.statut !== StatutCommande.RECHERCHE_PHARMACIE) return;
 
+  // R5 : on regarde **qui** a refuse, pas combien. Une pharmacie qui a refuse
+  // puis quitte l'appel (desactivee, plus partenaire, commune changee) garde
+  // sa reponse en base : compter les refus la ferait passer pour une
+  // sollicitee, et la commande serait conclue alors qu'une autre n'a jamais
+  // repondu.
   const sollicitees = await pharmaciesSollicitees(commande);
-  const refus = commande.reponses.filter((r) => !r.aTousLesProduits).length;
-  if (sollicitees.length === 0 || refus < sollicitees.length) return;
+  if (!toutesOntRefuse(sollicitees, commande.reponses)) return;
 
   // M5 : toute la zone a dit non. Avant de renvoyer le patient, on tente
   // l'etape suivante, sans attendre le delai du job.
