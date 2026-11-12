@@ -129,6 +129,24 @@ export class PatientCommandesComponent implements OnInit {
     });
   }
 
+  /** R1 : apres le delai final sans offre, le patient relance la recherche d'un livreur. */
+  relancerLivraison(c: CommandeView): void {
+    if (!c.idCourse || this.enCours()) return;
+    this.enCours.set(c.id);
+    this.coursesService.relancer(c.idCourse).subscribe({
+      next: () => {
+        this.enCours.set(null);
+        this.toastr.success(this.i18n.t('PATIENT.COMMANDES.RELANCER_LIVRAISON_OK'));
+        this.charger();
+      },
+      error: (error: unknown) => {
+        this.enCours.set(null);
+        const e = error as { error?: { error?: string } };
+        this.toastr.error(e?.error?.error ?? this.i18n.t('COMMON.ERROR_GENERIC'));
+      },
+    });
+  }
+
   demanderRenoncementLivraison(c: CommandeView): void {
     this.motifRenoncementLivraison.set('');
     this.renonceLivraison.set(c);

@@ -287,6 +287,7 @@ enum TypeNotification {
   COURSE_OUVERTE // P8-a : les livreurs actifs de la zone sont appeles
   OFFRE_COURSE // P8-a : une offre nouvelle ou modifiee attend le choix du patient
   COURSE_ATTRIBUEE // P8-a : l'officine sait qu'un livreur a ete choisi
+  COURSE_SANS_MOTARD // R1 : delai final atteint, le patient choisit relancer ou retrait
 }
 
 enum UssdSessionStatus {
@@ -2505,6 +2506,10 @@ model Course {
   /// etendu a toute la prefecture a cette date.
   elargieLe           DateTime?
   creeeLe             DateTime     @default(now())
+  /// R1 : debut de l'appel en cours. Egale a creeeLe, remise a l'heure d'une
+  /// relance par le patient : les delais d'elargissement et le delai final
+  /// se comptent depuis ici.
+  ouverteLe           DateTime     @default(now())
   attribueeLe         DateTime?
   remiseLe            DateTime?
   livreeLe            DateTime?

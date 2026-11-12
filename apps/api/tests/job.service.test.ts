@@ -12,13 +12,18 @@ jest.mock('../src/services/laboratoire.service', () => ({
 }));
 jest.mock('../src/services/commande.service', () => ({
   elargirCommandesEnAttente: jest.fn().mockResolvedValue({ elargies: 0 }),
+  conclureCommandesExpirees: jest.fn().mockResolvedValue({ conclues: 0 }),
 }));
 jest.mock('../src/services/course.service', () => ({
   elargirCoursesEnAttente: jest.fn().mockResolvedValue({ elargies: 0 }),
+  conclureCoursesExpirees: jest.fn().mockResolvedValue({ conclues: 0 }),
 }));
 jest.mock('../src/services/parametres.service', () => ({
   getValeursParametres: jest.fn().mockResolvedValue({
-    zones: { delaiElargissementCommandeMinutes: 7, delaiElargissementCourseMinutes: 13 },
+    zones: {
+      delaiElargissementCommandeMinutes: 7, delaiElargissementCourseMinutes: 13,
+      delaiFinalCommandeMinutes: 45, delaiFinalCourseMinutes: 90,
+    },
   }),
 }));
 jest.mock('../src/config/logger', () => ({
@@ -26,8 +31,8 @@ jest.mock('../src/config/logger', () => ({
 }));
 
 import { startBackgroundJobs } from '../src/services/job.service';
-import { elargirCommandesEnAttente } from '../src/services/commande.service';
-import { elargirCoursesEnAttente } from '../src/services/course.service';
+import { conclureCommandesExpirees, elargirCommandesEnAttente } from '../src/services/commande.service';
+import { conclureCoursesExpirees, elargirCoursesEnAttente } from '../src/services/course.service';
 
 describe('startBackgroundJobs', () => {
   it('unrefs all recurring timers so they do not keep Jest alive', async () => {
@@ -54,6 +59,9 @@ describe('startBackgroundJobs', () => {
       await new Promise((r) => setImmediate(r));
       expect(elargirCommandesEnAttente).toHaveBeenCalledWith(7);
       expect(elargirCoursesEnAttente).toHaveBeenCalledWith(13);
+      // R1 : le delai final, administre lui aussi.
+      expect(conclureCommandesExpirees).toHaveBeenCalledWith(45);
+      expect(conclureCoursesExpirees).toHaveBeenCalledWith(90);
     } finally {
       if (previousEnableJobs === undefined) delete process.env.ENABLE_JOBS;
       else process.env.ENABLE_JOBS = previousEnableJobs;

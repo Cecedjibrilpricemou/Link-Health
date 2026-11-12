@@ -127,7 +127,10 @@ export class SettingsComponent implements OnInit {
   // toute la prefecture (ordonnances pour les pharmacies, courses pour les motards).
   zones: ParametresZonesView = {
     delaiElargissementCommandeMinutes: 10,
-    delaiElargissementCourseMinutes: 10
+    delaiElargissementCourseMinutes: 10,
+    // R1 : au-dela, l'appel s'arrete (sans pharmacie, sans motard).
+    delaiFinalCommandeMinutes: 60,
+    delaiFinalCourseMinutes: 60
   };
 
   // M1 : le pays de l'installation et son decoupage administratif. Une

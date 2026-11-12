@@ -451,6 +451,25 @@
             <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_COURSE_HINT' | translate }}</small>
           </div>
 
+          <!-- R1 : au-dela, l'appel s'arrete au lieu d'attendre sans fin -->
+          <div class="field mt-4">
+            <label for="zones-final-commande">{{ 'ADMIN.SETTINGS.ZONES_FINAL_COMMANDE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="zones-final-commande" type="number" min="3" max="4320"
+                     [(ngModel)]="zones.delaiFinalCommandeMinutes" />
+            </mat-form-field>
+            <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_FINAL_COMMANDE_HINT' | translate }}</small>
+          </div>
+
+          <div class="field mt-4">
+            <label for="zones-final-course">{{ 'ADMIN.SETTINGS.ZONES_FINAL_COURSE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="zones-final-course" type="number" min="3" max="4320"
+                     [(ngModel)]="zones.delaiFinalCourseMinutes" />
+            </mat-form-field>
+            <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_FINAL_COURSE_HINT' | translate }}</small>
+          </div>
+
           <ng-container *ngTemplateOutlet="footer; context: { section: 'zones' }"></ng-container>
         </div>
       }

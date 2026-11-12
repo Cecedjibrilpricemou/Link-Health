@@ -800,6 +800,9 @@ export const updateParametresSystemeSchema = z.object({
   zones: z.object({
     delaiElargissementCommandeMinutes: z.coerce.number().int().min(1).max(1440),
     delaiElargissementCourseMinutes: z.coerce.number().int().min(1).max(1440),
+    // R1 : au-dela, l'appel s'arrete (sans pharmacie, sans motard).
+    delaiFinalCommandeMinutes: z.coerce.number().int().min(3).max(4320),
+    delaiFinalCourseMinutes: z.coerce.number().int().min(3).max(4320),
   }).partial().strict().optional(),
 
   // M1 : le pays de l'installation et son decoupage administratif. La

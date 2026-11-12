@@ -98,9 +98,13 @@ export const PARAMETRES_PAR_DEFAUT: ParametresSystemeValeurs = {
   // M5 : un appel sans preneur dans sa commune s'ouvre a toute la prefecture
   // au bout de ce delai. 10 minutes : assez pour qu'un pharmacien ou un
   // motard occupe reponde, pas assez pour qu'un patient se decourage.
+  // R1 : au-dela de ce delai depuis l'ouverture, l'appel s'arrete au lieu
+  // d'attendre sans fin. 60 minutes laissent passer les deux elargissements.
   zones: {
     delaiElargissementCommandeMinutes: 10,
     delaiElargissementCourseMinutes: 10,
+    delaiFinalCommandeMinutes: 60,
+    delaiFinalCourseMinutes: 60,
   },
   // M1 : une installation par pays. La Guinee est la configuration fournie,
   // pas une hypothese du code : un autre pays declare ici ses propres niveaux.
@@ -117,6 +121,20 @@ export const PARAMETRES_PAR_DEFAUT: ParametresSystemeValeurs = {
     niveauElargissement: 'prefecture',
   },
 };
+
+/**
+ * R1 : le delai final doit laisser passer les deux elargissements (voisines
+ * puis prefecture, chacun apres le delai d'elargissement). Plus court, il
+ * arreterait l'appel avant qu'il ait atteint toute la prefecture.
+ */
+export function verifierZones(zones: ParametresSystemeValeurs['zones']): void {
+  if (zones.delaiFinalCommandeMinutes <= 2 * zones.delaiElargissementCommandeMinutes) {
+    throw new ValidationError("Le delai final des commandes doit depasser deux fois le delai d'elargissement");
+  }
+  if (zones.delaiFinalCourseMinutes <= 2 * zones.delaiElargissementCourseMinutes) {
+    throw new ValidationError("Le delai final des courses doit depasser deux fois le delai d'elargissement");
+  }
+}
 
 /**
  * Le decoupage declare doit tenir debout : des codes uniques, et un niveau
@@ -244,6 +262,7 @@ export async function modifierParametres(
   const actuelles = fusionnerParametres(PARAMETRES_PAR_DEFAUT, ligne?.valeurs);
   const valeurs = fusionnerParametres(actuelles, dto);
 
+  if (dto.zones) verifierZones(valeurs.zones);
   if (dto.pays) {
     verifierPays(valeurs.pays);
     // Un niveau retire alors que des lieux le portent laisserait le
