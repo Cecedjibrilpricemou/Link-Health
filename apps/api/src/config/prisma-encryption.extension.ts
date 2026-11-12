@@ -23,7 +23,12 @@ export const ENCRYPTED_FIELDS: Record<string, FieldMap> = {
     array: ['allergies', 'maladiesChroniques'],
   },
   Consultation: { scalar: ['motifPrincipal', 'resumeIa', 'notesAsc', 'notesMedecin'], array: ['symptomes'] },
-  Ordonnance: { scalar: ['posologie', 'instructions'], array: [] },
+  // La posologie et les instructions vivent sur chaque ligne, pas sur le
+  // document. Declarees sous `Ordonnance`, elles n'ont jamais ete chiffrees
+  // (aucune ecriture d'Ordonnance ne les porte), et le rattrapage s'arretait
+  // sur un champ inconnu. `chiffrement-champs-declares.test.ts` confronte
+  // desormais cette liste au schema.
+  LigneOrdonnance: { scalar: ['posologie', 'instructions'], array: [] },
   Vaccination: { scalar: ['reaction'], array: [] },
   Message: { scalar: ['contenu'], array: [] },
   PersonneAssuree: { scalar: ['lieuNaissance', 'nationalite', 'adresse'], array: [] },
