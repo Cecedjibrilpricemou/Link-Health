@@ -7,11 +7,13 @@ import { AdminService } from '../../../core/services/admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import type { CreationPharmacieView, StructureAdminView } from '@baobaoheath/shared-types';
+import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
+import { GeographieService } from '../../../core/services/geographie.service';
 
 @Component({
   selector: 'app-admin-structure-pharmacies',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatFormFieldModule, MatInputModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, MatFormFieldModule, MatInputModule, TranslatePipe, SuggestionsLieuxComponent],
   styleUrl: './pharmacies.component.scss',
   template: `
     <header class="bb-page-head">
@@ -42,7 +44,9 @@ import type { CreationPharmacieView, StructureAdminView } from '@baobaoheath/sha
         <h2 class="bb-agents__form-title">{{ 'ADMIN_STRUCTURE.PHARMACIES.FORM_TITLE' | translate }}</h2>
         <div class="bb-agents__form-grid">
           <mat-form-field appearance="outline"><mat-label>{{ 'ADMIN_STRUCTURE.PHARMACIES.NAME' | translate }}</mat-label><input matInput [(ngModel)]="form.nom" required /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>{{ 'ADMIN_STRUCTURE.PHARMACIES.PREFECTURE' | translate }}</mat-label><input matInput [(ngModel)]="form.prefecture" required /></mat-form-field>
+          <!-- R9 : les zones du referentiel sont proposees ; le texte libre reste accepte. -->
+          <mat-form-field appearance="outline"><mat-label>{{ geo.libelle('elargissement') }}</mat-label><input matInput id="pharmacie-prefecture" [(ngModel)]="form.prefecture" required maxlength="80" autocomplete="off" list="pharmacie-liste-zones" /></mat-form-field>
+          <app-suggestions-lieux idListe="pharmacie-liste-zones" role="elargissement" />
           <mat-form-field appearance="outline"><mat-label>{{ 'ADMIN_STRUCTURE.PHARMACIES.ADDRESS' | translate }}</mat-label><input matInput [(ngModel)]="form.adresse" /></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>{{ 'ADMIN_STRUCTURE.PHARMACIES.PHONE' | translate }}</mat-label><input matInput [(ngModel)]="form.telephone" /></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>{{ 'ADMIN_STRUCTURE.PHARMACIES.ADMIN_FIRST_NAME' | translate }}</mat-label><input matInput [(ngModel)]="form.prenom" required /></mat-form-field>
@@ -78,6 +82,8 @@ import type { CreationPharmacieView, StructureAdminView } from '@baobaoheath/sha
 export class PharmaciesComponent implements OnInit {
   private readonly admin = inject(AdminService);
   private readonly i18n = inject(I18nService);
+  /** R9 : le nom du niveau (« Prefecture », « LGA »...) et ses lieux viennent du pays installe. */
+  readonly geo = inject(GeographieService);
   pharmacies = signal<StructureAdminView[]>([]);
   loading = signal(true);
   saving = signal(false);

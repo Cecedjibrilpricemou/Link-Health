@@ -2003,7 +2003,8 @@
       "ETAT_INACTIVES": "Inactives",
       "RESULTATS": "{{n}} structure(s) sur {{total}}",
       "AUCUN_RESULTAT": "Aucune structure ne correspond à ces critères.",
-      "ACTIONS_ARIA": "Actions"
+      "ACTIONS_ARIA": "Actions",
+      "ZONES_VIDES": "Le référentiel géographique n'a encore aucune zone : saisissez-la. Pour proposer la liste du pays, chargez le jeu de départ dans Référentiel géographique."
     },
     "SETTINGS": {
       "NOTICE_LINK": "Gérer les structures de santé",
@@ -2143,7 +2144,7 @@
       "PAYS_DECOUPAGE_FIGE": "Des adresses sont déjà enregistrées selon ce découpage : les codes, l'ordre des niveaux, le niveau de base et le niveau d'élargissement ne se modifient plus. Le nom du pays, l'indicatif et les noms affichés des niveaux restent modifiables."
     },
     "ANALYTICS": {
-      "SUBTITLE": "Tableau de bord épidémiologique — {{nom}} Guinée 🇬🇳",
+      "SUBTITLE": "Tableau de bord épidémiologique — {{nom}} · {{pays}}",
       "EXPORT": "Exporter",
       "TAB_OVERVIEW": "Vue d'ensemble",
       "TAB_HEATMAP": "Carte de densité",
@@ -2183,7 +2184,7 @@
       "NO_COVERAGE_DATA": "Aucune donnée de couverture vaccinale",
       "PATIENT_UNIT": "patient vacciné",
       "PATIENTS_UNIT": "patients vaccinés",
-      "PREFILTRE_ALL": "Toute la Guinée",
+      "PREFILTRE_ALL": "Toutes les zones",
       "TYPE_GROUP_CHU": "CHU",
       "TYPE_GROUP_HOPITAL_REG": "Hôpitaux Régionaux",
       "TYPE_GROUP_HOPITAL_PREF": "Hôpitaux Préfectoraux",
@@ -2200,7 +2201,7 @@
       "DEF_STRUCTURES": "Postes, centres, hôpitaux, CHU et cliniques en activité. Hors pharmacies, laboratoires, assureurs et structures désactivées.",
       "DEF_JAUGE": "{{n}} patient(s) sur {{total}} ont reçu au moins une dose.",
       "UN_SEUL_STATUT": "Toutes les consultations ({{n}}) ont le statut « {{statut}} ».",
-      "PREFILTRE_ARIA": "Filtrer par préfecture"
+      "PREFILTRE_ARIA": "Filtrer par zone"
     },
     "JOURNAL": {
       "ACTION_LABEL": {

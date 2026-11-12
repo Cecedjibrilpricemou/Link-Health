@@ -1466,7 +1466,8 @@
       "ETAT_INACTIVES": "Inactive",
       "RESULTATS": "{{n}} of {{total}} facilities",
       "AUCUN_RESULTAT": "No facility matches these criteria.",
-      "ACTIONS_ARIA": "Actions"
+      "ACTIONS_ARIA": "Actions",
+      "ZONES_VIDES": "The geographic reference has no areas yet: type it in. To offer the country list, load the starter set in Geographic reference."
     },
     "SETTINGS": {
       "NOTICE_LINK": "Manage health facilities",
@@ -1606,7 +1607,7 @@
       "PAYS_DECOUPAGE_FIGE": "Addresses are already recorded under this division: level codes, their order, the base level and the widening level can no longer be changed. The country name, dialling code and displayed level names can still be edited."
     },
     "ANALYTICS": {
-      "SUBTITLE": "Epidemiological dashboard — {{nom}} Guinea 🇬🇳",
+      "SUBTITLE": "Epidemiological dashboard — {{nom}} · {{pays}}",
       "EXPORT": "Export",
       "TAB_OVERVIEW": "Overview",
       "TAB_HEATMAP": "Heatmap",
@@ -1646,7 +1647,7 @@
       "NO_COVERAGE_DATA": "No vaccine coverage data",
       "PATIENT_UNIT": "patient vaccinated",
       "PATIENTS_UNIT": "patients vaccinated",
-      "PREFILTRE_ALL": "All of Guinea",
+      "PREFILTRE_ALL": "All areas",
       "TYPE_GROUP_CHU": "University Hospitals",
       "TYPE_GROUP_HOPITAL_REG": "Regional Hospitals",
       "TYPE_GROUP_HOPITAL_PREF": "Prefectural Hospitals",
@@ -1663,7 +1664,7 @@
       "DEF_STRUCTURES": "Active health posts, centres, hospitals, teaching hospitals and clinics. Excludes pharmacies, laboratories, insurers and deactivated facilities.",
       "DEF_JAUGE": "{{n}} of {{total}} patient(s) received at least one dose.",
       "UN_SEUL_STATUT": "All consultations ({{n}}) have the status “{{statut}}”.",
-      "PREFILTRE_ARIA": "Filter by prefecture"
+      "PREFILTRE_ARIA": "Filter by area"
     },
     "JOURNAL": {
       "ACTION_LABEL": {

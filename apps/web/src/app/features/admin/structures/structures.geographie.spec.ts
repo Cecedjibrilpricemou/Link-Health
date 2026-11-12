@@ -58,9 +58,17 @@ describe('structures : referentiel geographique', () => {
     expect(c.prefectures().map((p) => p.value)).toEqual(['Conakry', 'Kindia']);
   });
 
-  it('Guinee sans referentiel : la liste de repli permet encore de creer une structure', () => {
+  // R9 : plus de liste guineenne ecrite dans le code, meme en Guinee. Tant
+  // que le referentiel est vide, la zone se saisit librement.
+  it('Guinee sans referentiel : aucune liste ecrite en dur, la zone se saisit', () => {
     const { c } = monter(GUINEE, []);
-    expect(c.prefectures().map((p) => p.value)).toContain('Labé');
+    expect(c.prefectures()).toEqual([]);
+    expect(c.saisieLibreZone()).toBe(true);
+  });
+
+  it('referentiel rempli : la zone se choisit dans la liste', () => {
+    const { c } = monter(GUINEE, ['Conakry']);
+    expect(c.saisieLibreZone()).toBe(false);
   });
 
   // Un autre pays n'herite jamais de noms guineens.

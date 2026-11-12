@@ -13,6 +13,7 @@ import { AdminService } from '../../../core/services/admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { PlateformeService } from '../../../shared/services/plateforme.service';
+import { GeographieService } from '../../../core/services/geographie.service';
 import type {
   AlerteEpidemiqueView,
   CouvertureVaccinView,
@@ -50,6 +51,8 @@ export class AnalyticsComponent implements OnInit {
   private adminService = inject(AdminService);
   private i18n = inject(I18nService);
   readonly plateforme = inject(PlateformeService);
+  readonly geo = inject(GeographieService);
+  private readonly zonesReferentiel = signal<string[]>([]);
 
   dashboard = signal<DashboardAnalyticsView | null>(null);
   heatmap = signal<HeatmapPointView[]>([]);
@@ -116,17 +119,25 @@ export class AnalyticsComponent implements OnInit {
     return `${rempli} ${circonference - rempli}`;
   });
 
+  /**
+   * R9 : les zones du filtre viennent du pays installe - son referentiel - et
+   * des donnees elles-memes : une zone saisie avant le referentiel doit rester
+   * filtrable. Plus de liste guineenne ecrite ici : un autre pays n'y voyait
+   * que des noms qui ne sont pas les siens.
+   */
+  readonly zonesFiltre = computed(() => {
+    const noms = new Map<string, string>();
+    for (const nom of [...this.zonesReferentiel(), ...this.heatmap().map((h) => h.prefecture)]) {
+      const propre = (nom ?? '').trim();
+      if (propre && !noms.has(propre.toLocaleLowerCase('fr'))) noms.set(propre.toLocaleLowerCase('fr'), propre);
+    }
+    return [...noms.values()].sort((a, b) => a.localeCompare(b, 'fr'));
+  });
+
   get prefiltreOptions() {
     return [
       { label: this.i18n.t('ADMIN.ANALYTICS.PREFILTRE_ALL'), value: '' },
-      { label: 'Conakry', value: 'Conakry' },
-      { label: 'Kindia', value: 'Kindia' },
-      { label: 'Boké', value: 'Boké' },
-      { label: 'Mamou', value: 'Mamou' },
-      { label: 'Labé', value: 'Labé' },
-      { label: 'Faranah', value: 'Faranah' },
-      { label: 'Kankan', value: 'Kankan' },
-      { label: 'Nzérékoré', value: 'Nzérékoré' }
+      ...this.zonesFiltre().map((z) => ({ label: z, value: z })),
     ];
   }
   prefiltreSelectionne = '';
@@ -154,7 +165,11 @@ export class AnalyticsComponent implements OnInit {
     'PHARMACIE': '#3EBB70'
   };
 
-  ngOnInit() { this.loadAll(); }
+  ngOnInit() {
+    this.loadAll();
+    this.geo.chargerConfiguration().subscribe(() =>
+      this.geo.nomsSuggeres('elargissement').subscribe((noms) => this.zonesReferentiel.set(noms)));
+  }
 
   loadAll() {
     this.loadDashboard();

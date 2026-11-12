@@ -280,3 +280,12 @@
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: none; }
 }
+
+// R9 : referentiel encore vide - la zone se tape ; l'ecran dit comment le remplir.
+.bb-struct__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--bb-text-secondary);
+}

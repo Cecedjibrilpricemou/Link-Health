@@ -41,9 +41,6 @@ const ICONES_TYPE: Record<string, string> = {
   ASSURANCE: 'pi-shield',
 };
 
-/** Repli guineen tant que le referentiel est vide (voir `prefectures`). */
-const PREFECTURES_GUINEE_REPLI = ['Conakry','Kindia','Boké','Mamou','Labé','Faranah','Kankan','Nzérékoré','Coyah','Dubréka','Forécariah','Fria','Télimélé','Pita','Dalaba','Tougué','Dinguiraye','Kouroussa','Siguiri','Mandiana','Kérouané','Macenta','Guékédou','Kissidougou','Beyla','Lola','Yomou'];
-
 /** Recherche insensible a la casse et aux accents (« Labé » = « labe »). */
 function normaliser(v: string): string {
   return v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -148,17 +145,17 @@ export class StructuresComponent implements OnInit {
 
   /**
    * Les zones d'elargissement proposees (les prefectures en Guinee), tirees du
-   * referentiel. Tant qu'il est vide **et que le pays est la Guinee**, l'ancienne
-   * liste sert de repli : sans elle, aucune structure ne pourrait etre creee
-   * avant le chargement du jeu de depart. Un autre pays n'herite jamais de
-   * noms guineens.
+   * referentiel du pays installe.
+   *
+   * R9 : plus de liste guineenne de repli. Elle etait incomplete (27
+   * prefectures sur 33) et figeait dans le code un decoupage qui appartient
+   * au referentiel. Tant que celui-ci est vide, la zone se saisit librement
+   * (`saisieLibreZone`) et l'ecran invite a charger le jeu de depart.
    */
-  readonly prefectures = computed(() => {
-    const noms = this.zonesReferentiel();
-    const guinee = (this.geo.configuration()?.code ?? 'GN') === 'GN';
-    const liste = noms.length > 0 ? noms : guinee ? PREFECTURES_GUINEE_REPLI : [];
-    return liste.map((p) => ({ label: p, value: p }));
-  });
+  readonly prefectures = computed(() => this.zonesReferentiel().map((p) => ({ label: p, value: p })));
+
+  /** Referentiel encore vide : la zone se tape, pour qu'une structure puisse quand meme etre creee. */
+  readonly saisieLibreZone = computed(() => this.zonesReferentiel().length === 0);
 
   /** Les colonnes du document imprime **et** du fichier : les memes.
    * C'est ce qui empeche la feuille et le tableur de se contredire. */
