@@ -15,7 +15,10 @@ import { PlateformeService } from '../../../shared/services/plateforme.service';
 const PARAMS = {
   identite: { nom: 'KÈNÈYA' }, facturation: {}, securite: {}, alertes: {}, sync: {}, prescription: {},
   pharmacie: { categoriesExigeantOrdonnance: [] },
-  zones: { delaiElargissementCommandeMinutes: 10, delaiElargissementCourseMinutes: 10 },
+  zones: {
+    delaiElargissementCommandeMinutes: 10, delaiElargissementCourseMinutes: 10,
+    delaiFinalCommandeMinutes: 60, delaiFinalCourseMinutes: 90,
+  },
   pays: {
     code: 'GN', nom: 'Guinée', indicatifTelephone: '+224',
     niveaux: [
@@ -105,6 +108,10 @@ describe('parametres : pays', () => {
   it('les autres onglets partent tels quels', () => {
     const { c, envois } = monter();
     c.enregistrer('zones');
-    expect(envois[0]).toEqual({ zones: { delaiElargissementCommandeMinutes: 10, delaiElargissementCourseMinutes: 10 } });
+    expect(envois[0]).toEqual({ zones: {
+      delaiElargissementCommandeMinutes: 10, delaiElargissementCourseMinutes: 10,
+      // R1 : le delai final part avec la section, tel que lu.
+      delaiFinalCommandeMinutes: 60, delaiFinalCourseMinutes: 90,
+    } });
   });
 });

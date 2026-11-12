@@ -397,15 +397,16 @@ export async function elargirCoursesEnAttente(
       elargieLe: null,
       // Chaque etape a son propre delai : depuis l'ouverture tant que la
       // course est dans sa commune, depuis l'ouverture aux voisines ensuite.
+      // R1 : l'ouverture de l'appel en cours, remise a l'heure par une relance.
       OR: [
-        { voisinesLe: null, creeeLe: { lte: limite } },
+        { voisinesLe: null, ouverteLe: { lte: limite } },
         { voisinesLe: { lte: limite } },
       ],
       // Des offres attendent le choix du patient : elargir n'apporterait rien.
       offres: { none: {} },
     },
     select: { id: true },
-    orderBy: { creeeLe: 'asc' },
+    orderBy: { ouverteLe: 'asc' },
     take: 100,
   });
   // Ne compte que les courses effectivement portees a de nouveaux motards.
@@ -414,6 +415,87 @@ export async function elargirCoursesEnAttente(
     if ((await elargirCourse(id)) > 0) elargies++;
   }
   return { elargies };
+}
+
+/**
+ * R1 : une course restee sans aucune offre au-dela du delai final passe
+ * « sans motard ». La commande reste prete pour la livraison : c'est le
+ * patient qui choisit de relancer la recherche ou d'aller la chercher.
+ * Une course qui a recu des offres attend son choix, elle n'expire pas.
+ * Conditionnel : une offre arrivee a la meme seconde garde la course ouverte.
+ */
+export async function conclureCoursesExpirees(
+  delaiFinalMinutes: number,
+  maintenant = new Date(),
+): Promise<{ conclues: number }> {
+  const limite = new Date(maintenant.getTime() - delaiFinalMinutes * 60_000);
+  const sansOffre = { statut: StatutCourse.APPEL_OFFRES, offres: { none: {} } };
+  const expirees = await prisma.course.findMany({
+    where: { ...sansOffre, ouverteLe: { lte: limite } },
+    select: { id: true },
+    orderBy: { ouverteLe: 'asc' },
+    take: 100,
+  });
+  let conclues = 0;
+  for (const { id } of expirees) {
+    const conclue = await prisma.course.updateMany({
+      where: { id, ...sansOffre },
+      data: { statut: StatutCourse.SANS_MOTARD },
+    });
+    if (conclue.count !== 1) continue;
+    conclues++;
+    await avertirSansMotard(id);
+  }
+  return { conclues };
+}
+
+/** Le patient choisit la suite ; l'officine sait que personne ne viendra pour l'instant. */
+async function avertirSansMotard(idCourse: string): Promise<void> {
+  try {
+    const course = await prisma.course.findUnique({
+      where: { id: idCourse },
+      select: {
+        numero: true,
+        commande: {
+          select: {
+            idPharmacie: true,
+            ordonnance: { select: { consultation: { select: { patient: { select: { idUtilisateur: true } } } } } },
+          },
+        },
+      },
+    });
+    if (!course) throw new NotFoundError('Course introuvable pour la notification');
+    const idPatient = course.commande.ordonnance.consultation?.patient.idUtilisateur;
+    if (idPatient) {
+      await notifierSansBloquer({
+        idUtilisateur: idPatient,
+        type: 'COURSE_SANS_MOTARD',
+        titre: 'Aucun livreur disponible pour le moment',
+        contenu: `Aucun livreur n'a propose la course ${course.numero}. Vous pouvez relancer la recherche ou aller chercher votre commande a la pharmacie.`,
+        lienAction: '/patient/commandes',
+        metadonnees: { idCourse, numero: course.numero },
+      });
+    }
+    const idPharmacie = course.commande.idPharmacie;
+    if (!idPharmacie) return;
+    const pharmaciens = await prisma.utilisateur.findMany({
+      where: { idStructure: idPharmacie, role: Role.PHARMACIEN, estActif: true },
+      select: { id: true },
+    });
+    await Promise.all(pharmaciens.map(({ id }) => notifierSansBloquer({
+      idUtilisateur: id,
+      type: 'COURSE_SANS_MOTARD',
+      titre: 'Course sans livreur',
+      contenu: `Aucun livreur n'a propose la course ${course.numero}. Le patient choisit de relancer ou de venir la chercher.`,
+      lienAction: '/pharmacien/commandes',
+      metadonnees: { idCourse, numero: course.numero },
+    })));
+  } catch (error: unknown) {
+    logger.warn('[COURSE] notification sans motard impossible', {
+      idCourse,
+      erreur: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 /** Notifie les destinataires sans faire echouer l'action metier. */
@@ -870,6 +952,47 @@ export async function declarerRecu(user: JwtPayload, idCourse: string): Promise<
     if (majCommande.count !== 1) throw new ConflictError('La commande ne peut pas etre cloturee dans son etat actuel');
     return obtenirCourseView(tx, idCourse);
   });
+}
+
+/**
+ * R1 : apres le delai final, le patient relance la recherche d'un livreur.
+ * L'appel repart de zero : sa commune d'abord, puis les elargissements, avec
+ * des delais comptes depuis la relance.
+ */
+export async function relancerCourse(user: JwtPayload, idCourse: string): Promise<CourseView> {
+  exigerRole(user, Role.PATIENT);
+  const vue = await prisma.$transaction(async (tx) => {
+    const course = await tx.course.findUnique({
+      where: { id: idCourse },
+      select: { id: true, statut: true, idCommande: true },
+    });
+    if (!course) throw new NotFoundError('Course non trouvee');
+    const commande = await commandeDuPatient(tx, user, course.idCommande);
+    if (course.statut !== StatutCourse.SANS_MOTARD) {
+      throw new ConflictError('Seule une course sans livreur peut etre relancee');
+    }
+    // Repassee au retrait, la commande n'attend plus de livreur.
+    if (commande.statut !== StatutCommande.PRETE_POUR_LIVRAISON) {
+      throw new ConflictError("La commande n'attend plus de livraison");
+    }
+    assertTransitionCourse(course.statut, StatutCourse.APPEL_OFFRES);
+
+    const relancee = await tx.course.updateMany({
+      where: { id: idCourse, statut: StatutCourse.SANS_MOTARD },
+      data: {
+        statut: StatutCourse.APPEL_OFFRES,
+        ouverteLe: new Date(),
+        voisinesLe: null,
+        communesVoisines: [],
+        elargieLe: null,
+      },
+    });
+    if (relancee.count !== 1) throw new ConflictError('La course a change avant la relance');
+    return obtenirCourseView(tx, idCourse);
+  });
+  // Hors transaction : un echec d'envoi ne doit pas annuler la relance.
+  await notifierLivreursCourse(idCourse);
+  return vue;
 }
 
 /** Le patient peut repasser au retrait tant que les produits ne sont pas partis. */

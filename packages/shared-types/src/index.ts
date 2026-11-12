@@ -137,7 +137,8 @@ export type TypeNotification =
   | 'ORDONNANCE_LIGNE_REFUSEE'
   | 'COURSE_OUVERTE'
   | 'OFFRE_COURSE'
-  | 'COURSE_ATTRIBUEE';
+  | 'COURSE_ATTRIBUEE'
+  | 'COURSE_SANS_MOTARD';
 
 /** Statut d'une commande pharmacie (EF-07). */
 // ═══════════════════════════════════════════════════════════════════
@@ -2189,6 +2190,9 @@ export interface ParametresPharmacieView {
 export interface ParametresZonesView {
   delaiElargissementCommandeMinutes: number;
   delaiElargissementCourseMinutes: number;
+  /** R1 : au-dela, depuis l'ouverture, l'appel s'arrete (sans pharmacie / sans motard). */
+  delaiFinalCommandeMinutes: number;
+  delaiFinalCourseMinutes: number;
 }
 
 /** Langues dans lesquelles un niveau administratif peut etre nomme. */

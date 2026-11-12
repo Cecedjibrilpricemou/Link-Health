@@ -3,8 +3,8 @@ import { detecterEtPersisterAlertesEpidemiques } from './analytics.service';
 import { verifierRappelsAEnvoyer } from './notification.service';
 import { expirerSessionsUssd } from './ussd.service';
 import { traiterAlertesCritiques } from './laboratoire.service';
-import { elargirCommandesEnAttente } from './commande.service';
-import { elargirCoursesEnAttente } from './course.service';
+import { conclureCommandesExpirees, elargirCommandesEnAttente } from './commande.service';
+import { conclureCoursesExpirees, elargirCoursesEnAttente } from './course.service';
 import { getValeursParametres } from './parametres.service';
 import { logger } from '../config/logger';
 
@@ -90,6 +90,14 @@ export function startBackgroundJobs() {
       const courses = await elargirCoursesEnAttente(zones.delaiElargissementCourseMinutes);
       if (commandes.elargies > 0 || courses.elargies > 0 || isVerboseJobsEnabled()) {
         logger.info('[JOB] appels elargis a la prefecture', { commandes: commandes.elargies, courses: courses.elargies });
+      }
+      // R1 : au-dela du delai final, l'appel s'arrete au lieu d'attendre sans fin.
+      const commandesConclues = await conclureCommandesExpirees(zones.delaiFinalCommandeMinutes);
+      const coursesConclues = await conclureCoursesExpirees(zones.delaiFinalCourseMinutes);
+      if (commandesConclues.conclues > 0 || coursesConclues.conclues > 0 || isVerboseJobsEnabled()) {
+        logger.info('[JOB] appels arretes au delai final', {
+          commandes: commandesConclues.conclues, courses: coursesConclues.conclues,
+        });
       }
     }).catch((error: unknown) => logger.error('[JOB] elargissement failed', { error }));
   };

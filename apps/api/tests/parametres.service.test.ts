@@ -9,6 +9,7 @@ import {
   modifierParametres,
   nomSms,
   verifierPays,
+  verifierZones,
 } from '../src/services/parametres.service';
 import { ValidationError } from '../src/utils/app-error';
 
@@ -156,6 +157,33 @@ describe('modifierParametres', () => {
       await modifierParametres('admin-1', { zones: { delaiElargissementCourseMinutes: 15 } });
       expect(prisma.lieuGeo.count).not.toHaveBeenCalled();
     });
+
+    // R1 : un delai final trop court arreterait l'appel avant toute la prefecture.
+    it('refuse un delai final qui ne laisse pas passer les deux elargissements', async () => {
+      await expect(modifierParametres('admin-1', { zones: { delaiFinalCourseMinutes: 20 } }))
+        .rejects.toThrow("Le delai final des courses doit depasser deux fois le delai d'elargissement");
+      // Verifie apres fusion : allonger l'elargissement suffit a rendre l'actuel trop court.
+      await expect(modifierParametres('admin-1', { zones: { delaiElargissementCommandeMinutes: 30 } }))
+        .rejects.toThrow("Le delai final des commandes doit depasser deux fois le delai d'elargissement");
+      expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+      await modifierParametres('admin-1', { zones: { delaiFinalCourseMinutes: 21 } });
+      expect(prisma.parametresSysteme.upsert).toHaveBeenCalled();
+    });
+
+    // Compare aux reglages enregistres, pas aux defauts : un elargissement deja
+    // porte a 25 minutes interdit un delai final de 45.
+    it('verifie le delai final contre l elargissement deja enregistre', async () => {
+      prisma.parametresSysteme.findUnique.mockResolvedValue({
+        id: 'global',
+        valeurs: { zones: { delaiElargissementCourseMinutes: 25, delaiFinalCourseMinutes: 100 } },
+        modifieLe: new Date('2026-11-01T10:00:00Z'),
+        idModifiePar: 'admin-1',
+      });
+
+      await expect(modifierParametres('admin-1', { zones: { delaiFinalCourseMinutes: 45 } }))
+        .rejects.toThrow("Le delai final des courses doit depasser deux fois le delai d'elargissement");
+      expect(prisma.parametresSysteme.upsert).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -275,7 +303,11 @@ describe('sections de parametres', () => {
     expect(PARAMETRES_PAR_DEFAUT.zones).toEqual({
       delaiElargissementCommandeMinutes: 10,
       delaiElargissementCourseMinutes: 10,
+      // R1 : l'appel s'arrete au bout d'une heure, apres les deux elargissements.
+      delaiFinalCommandeMinutes: 60,
+      delaiFinalCourseMinutes: 60,
     });
+    expect(() => verifierZones(PARAMETRES_PAR_DEFAUT.zones)).not.toThrow();
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { updateParametresSystemeSchema } = require('../src/validators/api.schemas');
     const ok = (v: unknown) => updateParametresSystemeSchema.safeParse({ zones: { delaiElargissementCourseMinutes: v } }).success;

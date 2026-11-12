@@ -85,6 +85,12 @@ router.post(
   },
 );
 
+// R1 : apres le delai final, le patient relance la recherche d'un livreur.
+router.post('/:id/relancer', requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  const data = await course.relancerCourse(req.user!, String(req.params['id']));
+  res.json({ success: true, data, message: 'Recherche de livreur relancee' });
+});
+
 router.post(
   '/:id/renoncer',
   requireRole('PATIENT'),

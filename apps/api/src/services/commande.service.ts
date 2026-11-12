@@ -273,7 +273,7 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
   });
 
   if (pharmacies.length === 0) {
-    await avertirIndisponibilite(commande.id);
+    await avertirIndisponibilite(commande.id, 'refus');
     return getCommande(commande.id);
   }
 
@@ -703,22 +703,58 @@ async function verifierEpuisementDesReponses(idCommande: string) {
     data: { statut: StatutCommande.SANS_PHARMACIE },
   });
   if (conclue.count !== 1) return;
-  await avertirIndisponibilite(idCommande);
+  await avertirIndisponibilite(idCommande, 'refus');
+}
+
+/**
+ * R1 : le job arrete les appels restes sans preneur au-dela du delai final,
+ * compte depuis la creation. Sans cela, une commande dont une pharmacie ne
+ * repond jamais attendrait indefiniment, et le patient avec elle.
+ * Conditionnel, comme la conclusion sur refus (R2) : une pharmacie qui prend
+ * la commande a la meme seconde la garde.
+ */
+export async function conclureCommandesExpirees(
+  delaiFinalMinutes: number,
+  maintenant = new Date(),
+): Promise<{ conclues: number }> {
+  const limite = new Date(maintenant.getTime() - delaiFinalMinutes * 60_000);
+  const expirees = await prisma.commande.findMany({
+    where: { statut: StatutCommande.RECHERCHE_PHARMACIE, creeLe: { lte: limite } },
+    select: { id: true },
+    orderBy: { creeLe: 'asc' },
+    take: 100,
+  });
+  let conclues = 0;
+  for (const { id } of expirees) {
+    const conclue = await prisma.commande.updateMany({
+      where: { id, statut: StatutCommande.RECHERCHE_PHARMACIE },
+      data: { statut: StatutCommande.SANS_PHARMACIE },
+    });
+    if (conclue.count !== 1) continue;
+    conclues++;
+    await avertirIndisponibilite(id, 'delai');
+  }
+  return { conclues };
 }
 
 /** Patient et médecin avertis : aucune pharmacie n'a la totalité. */
-async function avertirIndisponibilite(idCommande: string) {
+async function avertirIndisponibilite(idCommande: string, cause: 'refus' | 'delai') {
   const destinataires = await destinatairesDeLaCommande(idCommande);
   if (!destinataires) return;
 
+  // Apres le delai, certaines n'ont simplement pas repondu : on ne pretend
+  // pas qu'elles ont toutes dit non.
+  const constat = cause === 'refus'
+    ? 'aucune pharmacie partenaire de la zone ne detient la totalite.'
+    : "aucune pharmacie partenaire de la zone n'a confirme la totalite dans le delai.";
   for (const idUtilisateur of destinataires.utilisateurs) {
     await notifierSansBloquer({
       idUtilisateur,
       type: 'COMMANDE_SANS_PHARMACIE',
       titre: 'Aucune pharmacie ne dispose de tous les produits',
       contenu:
-        `Ordonnance ${destinataires.numeroOrdonnance} : aucune pharmacie partenaire de la zone ` +
-        `ne detient la totalite. L'ordonnance reste valable et peut etre presentee ailleurs.`,
+        `Ordonnance ${destinataires.numeroOrdonnance} : ${constat} ` +
+        `L'ordonnance reste valable et peut etre presentee ailleurs.`,
       lienAction: '/patient/ordonnances',
       metadonnees: { idCommande },
     });

@@ -9,6 +9,7 @@
 import {
   choisirModeRemise,
   commandesDeLaPharmacie,
+  conclureCommandesExpirees,
   elargirCommande,
   elargirCommandesEnAttente,
   lancerRecherchePharmacie,
@@ -870,5 +871,44 @@ describe('notification de l appel', () => {
 
     const appels = notifierSansBloquer.mock.calls.filter((c) => c[0].type === 'COMMANDE_A_SERVIR');
     expect(appels).toHaveLength(0);
+  });
+});
+
+// R1 : un appel sans preneur s'arrete au delai final au lieu d'attendre sans fin.
+describe('delai final de l appel', () => {
+  const MAINTENANT = new Date('2026-11-12T10:00:00Z');
+
+  beforeEach(() => {
+    prisma.commande.findMany.mockResolvedValue([{ id: 'cmd-1' }]);
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+  });
+
+  it('ne prend que les appels encore ouverts plus vieux que le delai', async () => {
+    await conclureCommandesExpirees(60, MAINTENANT);
+
+    expect(prisma.commande.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { statut: 'RECHERCHE_PHARMACIE', creeLe: { lte: new Date('2026-11-12T09:00:00Z') } },
+    }));
+  });
+
+  it('conclut sans pharmacie et dit au patient que personne n a confirme a temps', async () => {
+    const res = await conclureCommandesExpirees(60, MAINTENANT);
+
+    expect(prisma.commande.updateMany).toHaveBeenCalledWith({
+      where: { id: 'cmd-1', statut: 'RECHERCHE_PHARMACIE' },
+      data: { statut: 'SANS_PHARMACIE' },
+    });
+    expect(res).toEqual({ conclues: 1 });
+    const avis = notifierSansBloquer.mock.calls.map((c) => c[0]).filter((n) => n.type === 'COMMANDE_SANS_PHARMACIE');
+    expect(avis.length).toBeGreaterThan(0);
+    // Certaines n'ont pas repondu : on ne pretend pas qu'elles ont toutes refuse.
+    expect(avis[0].contenu).toContain("n'a confirme la totalite dans le delai");
+  });
+
+  it('laisse a la pharmacie une commande prise a la meme seconde', async () => {
+    prisma.commande.updateMany.mockResolvedValue({ count: 0 });
+
+    expect(await conclureCommandesExpirees(60, MAINTENANT)).toEqual({ conclues: 0 });
+    expect(notifierSansBloquer).not.toHaveBeenCalled();
   });
 });

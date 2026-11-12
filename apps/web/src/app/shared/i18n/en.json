@@ -797,7 +797,11 @@
       "RECEPTION_IRREVERSIBLE": "Confirm only after you have received all your products. This declaration closes the order and cannot be undone.",
       "RECEPTION_CONFIRMER": "Confirm receipt",
       "RECEPTION_OK": "Receipt confirmed. Your order is complete.",
-      "RENONCER_LIVRAISON_OK": "The order has switched back to pharmacy pickup."
+      "RENONCER_LIVRAISON_OK": "The order has switched back to pharmacy pickup.",
+      "SANS_MOTARD_TITRE": "No courier available",
+      "SANS_MOTARD_TEXTE": "No courier offered a price in time. You can search again or collect your order at the pharmacy.",
+      "RELANCER_LIVRAISON": "Search again",
+      "RELANCER_LIVRAISON_OK": "The courier search has started again."
     },
     "NAV_COMMANDES": "My orders",
     "NAV_CARTES_ASSURANCE": "Insurance cards",
@@ -1562,7 +1566,11 @@
       "PAYS_BASE_HINT": "Where a pharmacy or a courier is looked for first (the commune in Guinea).",
       "PAYS_ELARGISSEMENT": "Widening level",
       "PAYS_ELARGISSEMENT_HINT": "Where the request widens next (the prefecture in Guinea).",
-      "PAYS_REFERENTIEL": "Open the places reference"
+      "PAYS_REFERENTIEL": "Open the places reference",
+      "ZONES_FINAL_COMMANDE_LABEL": "Maximum wait for a pharmacy (minutes)",
+      "ZONES_FINAL_COMMANDE_HINT": "After this delay since the prescription was sent, the request stops: the patient and the doctor are told that no pharmacy confirmed. Must exceed twice the widening delay.",
+      "ZONES_FINAL_COURSE_LABEL": "Maximum wait for a courier (minutes)",
+      "ZONES_FINAL_COURSE_HINT": "After this delay without any offer, the delivery becomes \"no courier\": the patient chooses to search again or to collect the order. Must exceed twice the widening delay."
     },
     "ANALYTICS": {
       "SUBTITLE": "Epidemiological dashboard — {{nom}} Guinea 🇬🇳",

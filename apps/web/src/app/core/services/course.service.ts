@@ -57,6 +57,11 @@ export class CourseService {
     return this.api.post<ApiResponse<CourseView>>(`/courses/${idCourse}/recu`, {});
   }
 
+  /** R1 : rouvre une course restee sans livreur au-dela du delai final. */
+  relancer(idCourse: string): Observable<ApiResponse<CourseView>> {
+    return this.api.post<ApiResponse<CourseView>>(`/courses/${idCourse}/relancer`, {});
+  }
+
   renoncer(idCourse: string, dto: RenoncerALaLivraisonDto): Observable<ApiResponse<CourseView>> {
     return this.api.post<ApiResponse<CourseView>>(`/courses/${idCourse}/renoncer`, dto);
   }

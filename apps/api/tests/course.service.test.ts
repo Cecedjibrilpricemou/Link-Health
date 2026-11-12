@@ -6,6 +6,8 @@ import {
   declarerRecu,
   elargirCourse,
   elargirCoursesEnAttente,
+  conclureCoursesExpirees,
+  relancerCourse,
   ouvrirCourse,
   proposer,
   remettreAuMotard,
@@ -517,7 +519,8 @@ describe('elargissement a la prefecture (M5)', () => {
         elargieLe: null,
         // Depuis l'ouverture dans la commune, depuis l'ouverture aux voisines ensuite (M1-C).
         OR: [
-          { voisinesLe: null, creeeLe: { lte: new Date('2026-11-11T11:50:00Z') } },
+          // R1 : depuis l'ouverture de l'appel en cours, remise a l'heure par une relance.
+          { voisinesLe: null, ouverteLe: { lte: new Date('2026-11-11T11:50:00Z') } },
           { voisinesLe: { lte: new Date('2026-11-11T11:50:00Z') } },
         ],
         // Des offres attendent deja le choix du patient : rien a elargir.
@@ -907,5 +910,130 @@ describe('remise et confirmation patient', () => {
       data: { statut: StatutCommande.PRETE_POUR_RETRAIT, modeRemise: 'RETRAIT_PHARMACIE' },
     }));
     expect(result.statut).toBe(StatutCourse.SANS_MOTARD);
+  });
+});
+
+// R1 : une course sans offre s'arrete au delai final ; le patient choisit la suite.
+describe('delai final de la course', () => {
+  const MAINTENANT = new Date('2026-11-12T10:00:00Z');
+  const pourNotifier = {
+    numero: 'LV-2026-000001',
+    commande: {
+      idPharmacie: 'pharmacie-1',
+      ordonnance: { consultation: { patient: { idUtilisateur: patient.userId } } },
+    },
+  };
+
+  beforeEach(() => {
+    prisma.course.findMany.mockResolvedValue([{ id: 'course-1' }]);
+    prisma.course.findUnique.mockResolvedValue(pourNotifier);
+    prisma.utilisateur.findMany.mockResolvedValue([{ id: 'pharmacien-user' }]);
+  });
+
+  it('ne prend que les courses sans offre ouvertes avant le delai', async () => {
+    await conclureCoursesExpirees(60, MAINTENANT);
+
+    expect(prisma.course.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        statut: StatutCourse.APPEL_OFFRES,
+        // Des offres attendent le choix du patient : la course n'expire pas.
+        offres: { none: {} },
+        ouverteLe: { lte: new Date('2026-11-12T09:00:00Z') },
+      },
+    }));
+  });
+
+  it('passe sans motard, sans toucher a la commande, et previent patient et officine', async () => {
+    const res = await conclureCoursesExpirees(60, MAINTENANT);
+
+    expect(prisma.course.updateMany).toHaveBeenCalledWith({
+      where: { id: 'course-1', statut: StatutCourse.APPEL_OFFRES, offres: { none: {} } },
+      data: { statut: StatutCourse.SANS_MOTARD },
+    });
+    // Le patient choisit : relancer, ou aller chercher. Rien n'est decide pour lui.
+    expect(prisma.commande.updateMany).not.toHaveBeenCalled();
+    expect(res).toEqual({ conclues: 1 });
+    const avis = (notifierSansBloquer as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(avis.map((a) => [a.idUtilisateur, a.type])).toEqual([
+      [patient.userId, 'COURSE_SANS_MOTARD'],
+      ['pharmacien-user', 'COURSE_SANS_MOTARD'],
+    ]);
+  });
+
+  it('garde ouverte une course qui recoit une offre a la meme seconde', async () => {
+    prisma.course.updateMany.mockResolvedValue({ count: 0 });
+
+    expect(await conclureCoursesExpirees(60, MAINTENANT)).toEqual({ conclues: 0 });
+    expect(notifierSansBloquer).not.toHaveBeenCalled();
+  });
+});
+
+describe('relance de la course par le patient', () => {
+  const commandeALivrer = {
+    id: 'commande-1',
+    statut: StatutCommande.PRETE_POUR_LIVRAISON,
+    modeRemise: 'LIVRAISON',
+    idPharmacie: 'pharmacie-1',
+    quartierRecherche: 'Kipe',
+    ordonnance: { consultation: { patient: { idUtilisateur: patient.userId, prefecture: 'Conakry' } } },
+  };
+
+  beforeEach(() => {
+    prisma.course.findUnique
+      .mockResolvedValueOnce({ id: 'course-1', statut: StatutCourse.SANS_MOTARD, idCommande: 'commande-1' })
+      .mockResolvedValueOnce(courseView)
+      .mockResolvedValueOnce({ numero: 'LV-2026-000001', quartier: 'Kipe', prefecture: 'Conakry', commune: 'Ratoma' });
+    prisma.commande.findUnique.mockResolvedValue(commandeALivrer);
+    prisma.livreurProfile.findMany.mockResolvedValue([{ utilisateur: { id: 'motard-ratoma' } }]);
+  });
+
+  it('rouvre l appel depuis la commune, delais remis a zero, et previent les motards', async () => {
+    const res = await relancerCourse(patient, 'course-1');
+
+    expect(prisma.course.updateMany).toHaveBeenCalledWith({
+      where: { id: 'course-1', statut: StatutCourse.SANS_MOTARD },
+      data: {
+        statut: StatutCourse.APPEL_OFFRES,
+        ouverteLe: expect.any(Date),
+        voisinesLe: null,
+        communesVoisines: [],
+        elargieLe: null,
+      },
+    });
+    expect((notifierSansBloquer as jest.Mock).mock.calls.map((c) => [c[0].idUtilisateur, c[0].type]))
+      .toEqual([['motard-ratoma', 'COURSE_OUVERTE']]);
+    expect(res.statut).toBe(StatutCourse.APPEL_OFFRES);
+  });
+
+  it('refuse une commande deja repassee au retrait', async () => {
+    prisma.commande.findUnique.mockResolvedValue({ ...commandeALivrer, statut: StatutCommande.PRETE_POUR_RETRAIT });
+
+    await expect(relancerCourse(patient, 'course-1')).rejects.toThrow("La commande n'attend plus de livraison");
+    expect(prisma.course.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('refuse une course qui n est pas sans motard', async () => {
+    prisma.course.findUnique.mockReset();
+    prisma.course.findUnique.mockResolvedValue({ id: 'course-1', statut: StatutCourse.APPEL_OFFRES, idCommande: 'commande-1' });
+
+    await expect(relancerCourse(patient, 'course-1')).rejects.toThrow('Seule une course sans livreur peut etre relancee');
+    expect(prisma.course.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('refuse la commande d un autre patient', async () => {
+    prisma.commande.findUnique.mockResolvedValue({
+      ...commandeALivrer,
+      ordonnance: { consultation: { patient: { idUtilisateur: 'autre-patient', prefecture: 'Conakry' } } },
+    });
+
+    await expect(relancerCourse(patient, 'course-1')).rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.course.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('perd sans rien ecrire si la course a change entre-temps', async () => {
+    prisma.course.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(relancerCourse(patient, 'course-1')).rejects.toBeInstanceOf(ConflictError);
+    expect(notifierSansBloquer).not.toHaveBeenCalled();
   });
 });
