@@ -30,6 +30,7 @@ const PHARMACIE: PharmacieProduitView = {
   prixGnf: 11_500,
   etatStock: 'DISPONIBLE',
   declareLe: new Date().toISOString(),
+  ouverture: { ouvert: null, fermeA: null, prochaine: null },
 };
 
 const PRODUIT: ProduitTrouveView = {
@@ -57,6 +58,7 @@ const OFFICINE_TROUVEE: PharmacieTrouveeView = {
   quartier: 'Belle-Vue',
   telephone: '620000000',
   nombreProduits: 42,
+  ouverture: { ouvert: null, fermeA: null, prochaine: null },
 };
 
 const RESULTAT: RechercheProduitsView = {

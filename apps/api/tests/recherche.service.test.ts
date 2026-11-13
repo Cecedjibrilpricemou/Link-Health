@@ -281,6 +281,8 @@ describe('A2 : la liste des pharmacies qui ont le produit', () => {
       prixGnf: 11_500,
       etatStock: 'DISPONIBLE',
       declareLe: MAINTENANT,
+      // Pas d'horaires saisis : on ne dit ni ouvert ni ferme (voir horaires.test.ts).
+      ouverture: { ouvert: null, fermeA: null, prochaine: null },
     });
   });
 
@@ -419,7 +421,12 @@ describe('chercherPharmacies', () => {
     prisma.stock.groupBy.mockResolvedValue([{ idStructure: 'ph-1', _count: { _all: 42 } }]);
 
     const trouvees = await chercherPharmacies('pricemou');
-    expect(trouvees).toEqual([{ ...OFFICINE_BASE, nombreProduits: 42 }]);
+    expect(trouvees).toEqual([{
+      ...OFFICINE_BASE,
+      nombreProduits: 42,
+      // Pas d'horaires saisis : on ne dit ni ouvert ni ferme (voir horaires.test.ts).
+      ouverture: { ouvert: null, fermeA: null, prochaine: null },
+    }]);
   });
 
   it('ne cherche que des pharmacies ouvertes', async () => {
@@ -450,6 +457,21 @@ describe('chercherPharmacies', () => {
     prisma.stock.groupBy.mockResolvedValue([]);
     const trouvees = await chercherPharmacies('pricemou');
     expect(trouvees[0]?.nombreProduits).toBe(0);
+  });
+
+  it('rend l etat d ouverture a partir des horaires de l officine', async () => {
+    // Le calcul est eprouve dans horaires.test.ts ; ce qui se verifie ici est
+    // le cablage : les horaires sont bien lus et transmis.
+    const lundiMatin = new Date('2026-11-09T10:00:00');
+    jest.useFakeTimers().setSystemTime(lundiMatin);
+    prisma.structureSante.findMany.mockResolvedValue([
+      { ...OFFICINE_BASE, horaires: { '1': { ouvre: '08:00', ferme: '20:00' } } },
+    ]);
+    prisma.stock.groupBy.mockResolvedValue([]);
+
+    const trouvees = await chercherPharmacies('pricemou');
+    expect(trouvees[0]?.ouverture).toEqual({ ouvert: true, fermeA: '20:00', prochaine: null });
+    jest.useRealTimers();
   });
 
   it('ne rend rien sur une recherche trop courte, sans interroger la base', async () => {

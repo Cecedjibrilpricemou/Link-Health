@@ -1,0 +1,205 @@
+:host {
+  display: block;
+  --hor-accent: var(--bb-primary);
+  --hor-accent-soft: color-mix(in srgb, var(--bb-bright) 14%, transparent);
+}
+
+:host-context([data-theme="dark"]) {
+  --hor-accent: var(--bb-bright);
+  --hor-accent-soft: color-mix(in srgb, var(--bb-bright) 18%, transparent);
+}
+
+.bb-hor {
+  max-width: 920px;
+  margin: 0 auto;
+  font-variant-numeric: tabular-nums;
+
+  &__message {
+    color: var(--bb-text-secondary);
+    font-size: 13.5px;
+  }
+
+  &__etat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    margin: 0 0 16px;
+    padding: 8px 14px;
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-pill);
+    background: var(--bb-surface-card);
+    color: var(--bb-text-secondary);
+    font-size: 13px;
+    font-weight: 700;
+
+    &--ouvert {
+      border-color: var(--bb-success-border);
+      background: var(--bb-success-bg);
+      color: var(--hor-accent);
+    }
+  }
+
+  &__form {
+    padding: 1.25rem;
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-xl);
+    background: var(--bb-surface-card);
+    box-shadow: var(--bb-shadow-sm);
+  }
+
+  &__jours {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__jour {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 60px;
+    padding: 10px 14px;
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-lg);
+    background: var(--bb-surface-0);
+
+    &--ferme {
+      background: var(--bb-surface-1);
+    }
+  }
+
+  &__bascule {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+    color: var(--bb-text-primary);
+    cursor: pointer;
+
+    input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--hor-accent);
+    }
+  }
+
+  &__nom {
+    font-weight: 700;
+  }
+
+  &__creneau {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    input[type="time"] {
+      box-sizing: border-box;
+      width: 126px;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid var(--bb-border);
+      border-radius: var(--bb-radius);
+      background: var(--bb-surface-card);
+      color: var(--bb-text-primary);
+      font: inherit;
+      transition: border-color var(--bb-transition), box-shadow var(--bb-transition);
+
+      &:hover {
+        border-color: var(--bb-border-strong);
+      }
+
+      &:focus {
+        border-color: var(--hor-accent);
+        outline: none;
+        box-shadow: 0 0 0 4px var(--hor-accent-soft);
+      }
+    }
+  }
+
+  &__etiquette {
+    color: var(--bb-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  &__clos {
+    margin-left: auto;
+    color: var(--bb-text-muted);
+    font-size: 13px;
+  }
+
+  &__erreur,
+  &__avis {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border-radius: var(--bb-radius);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  &__erreur {
+    border: 1px solid var(--bb-danger-border);
+    background: var(--bb-danger-bg);
+    color: var(--bb-danger);
+  }
+
+  &__avis {
+    border: 1px solid var(--bb-warning-border);
+    background: var(--bb-warning-bg);
+    color: var(--bb-warning);
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+
+  &__note {
+    margin: 14px 0 0;
+    color: var(--bb-text-muted);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 600px) {
+  .bb-hor {
+    &__form {
+      padding: 1rem;
+    }
+
+    &__jour {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    &__bascule {
+      min-width: 0;
+    }
+
+    &__creneau {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 8px;
+
+      input[type="time"] {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+
+    &__clos {
+      margin-left: 28px;
+    }
+  }
+}

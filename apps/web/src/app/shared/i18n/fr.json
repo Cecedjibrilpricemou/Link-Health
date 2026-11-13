@@ -19,6 +19,15 @@
     "SUCCESS": "Opération réussie",
     "CONFIRM": "Confirmer",
     "CLOSE": "Fermer",
+    "DAYS": {
+      "0": "Dimanche",
+      "1": "Lundi",
+      "2": "Mardi",
+      "3": "Mercredi",
+      "4": "Jeudi",
+      "5": "Vendredi",
+      "6": "Samedi"
+    },
     "NEW": "Nouveau",
     "NAVIGATION": "Navigation",
     "GENERAL": "Général",
@@ -1526,6 +1535,7 @@
     },
     "NAV_APPROVISIONNEMENTS": "Approvisionnement",
     "NAV_PEREMPTIONS": "Péremptions",
+    "NAV_HORAIRES": "Horaires",
     "APPRO": {
       "TITLE": "Approvisionnement",
       "SUB": "Enregistrez une facture fournisseur : chaque ligne entre en stock comme un lot, avec sa propre date de péremption.",
@@ -1565,6 +1575,21 @@
       "SEUIL": "Horizon",
       "JOURS": "jours",
       "ERR_LOAD": "Impossible de charger les péremptions."
+    },
+    "HORAIRES": {
+      "TITLE": "Horaires d’ouverture",
+      "SUB": "Définissez les jours et les heures d’ouverture de votre officine.",
+      "ETAT_OUVERT": "Ouvert jusqu’à {{heure}}",
+      "ETAT_FERME": "Actuellement fermé",
+      "ETAT_INCONNU": "Horaires non renseignés",
+      "DE": "De",
+      "A": "À",
+      "FERME": "Fermé",
+      "ERREUR_CRENEAU": "L’heure de fermeture doit être après l’heure d’ouverture.",
+      "AUCUN_JOUR": "Aucun jour d’ouverture n’est sélectionné.",
+      "PARTOUT": "Appliquer aux jours ouverts",
+      "NOTE": "Les horaires renseignés sont affichés aux personnes qui recherchent votre officine.",
+      "ENREGISTRE": "Horaires enregistrés."
     },
     "NAV_CONNEXIONS": "Connexions",
     "NAV_AGENTS": "Utilisateurs",

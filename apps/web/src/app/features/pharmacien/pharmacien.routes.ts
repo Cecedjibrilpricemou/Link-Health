@@ -30,6 +30,11 @@ export const PHARMACIEN_ROUTES: Routes = [
           import('./peremptions/peremptions.component').then(m => m.PeremptionsComponent)
       },
       {
+        path: 'horaires',
+        loadComponent: () =>
+          import('./horaires/horaires.component').then(m => m.HorairesComponent)
+      },
+      {
         path: 'caisse',
         loadComponent: () =>
           import('./caisse/caisse.component').then(m => m.CaisseComponent)

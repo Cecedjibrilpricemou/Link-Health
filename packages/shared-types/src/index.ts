@@ -4336,6 +4336,8 @@ export interface PharmacieProduitView {
   prixGnf: number;
   etatStock: EtatStockPublic;
   declareLe: string;
+  /** Ouvert maintenant ? Le visiteur va se deplacer. */
+  ouverture: EtatOuvertureView;
 }
 
 export interface ProduitTrouveView {
@@ -4373,6 +4375,7 @@ export interface PharmacieTrouveeView {
   telephone: string | null;
   /** Ce qu'elle a en rayon, pour savoir si la visite vaut le coup. */
   nombreProduits: number;
+  ouverture: EtatOuvertureView;
 }
 
 /** Un produit tel qu'il se presente dans le rayon d'une officine. */
@@ -4401,6 +4404,9 @@ export interface PharmacieDetailView {
   /** Tout ce qu'elle a en rayon, meme quand la liste rendue est filtree. */
   nombreProduits: number;
   produits: ProduitEnRayonView[];
+  /** Les sept jours, pour que le visiteur sache quand revenir. */
+  horaires: HorairesView | null;
+  ouverture: EtatOuvertureView;
 }
 
 export interface RechercheProduitsView {
@@ -4413,4 +4419,37 @@ export interface RechercheProduitsView {
   produits: ProduitTrouveView[];
   /** Les officines dont le nom ressemble a ce qui a ete tape. */
   pharmaciesTrouvees: PharmacieTrouveeView[];
+}
+
+// ── Horaires d'ouverture d'une officine ──────────────────────────────
+
+/** Un creneau, en heures locales. */
+export interface CreneauView {
+  ouvre: string;
+  ferme: string;
+}
+
+/**
+ * Les sept jours, indexes comme `Date.getDay()` : « 0 » pour dimanche. Une
+ * entree nulle veut dire ferme ce jour-la.
+ */
+export type HorairesView = Record<string, CreneauView | null>;
+
+export interface EtatOuvertureView {
+  /** Nul quand l'officine n'a pas saisi ses horaires : on ne devine pas. */
+  ouvert: boolean | null;
+  /** L'heure de fermeture du jour, quand c'est ouvert. */
+  fermeA: string | null;
+  /** Le prochain creneau quand c'est ferme ; `dansJours: 0` pour aujourd'hui. */
+  prochaine: { dansJours: number; heure: string } | null;
+}
+
+export interface HorairesOfficineView {
+  horaires: HorairesView | null;
+  etat: EtatOuvertureView;
+}
+
+/** Ce que le titulaire enregistre : sept jours, un creneau ou rien. */
+export interface DefinirHorairesDto {
+  horaires: HorairesView;
 }
