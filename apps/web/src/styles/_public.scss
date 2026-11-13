@@ -207,14 +207,24 @@ app-public-nav { display: contents; }
   &__menu-tools { display: flex; gap: 8px; padding: 14px 0; }
   &__menu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; @media (max-width: 380px) { grid-template-columns: 1fr; } }
 
-  // Moins de 1100px : on resserre ; moins de 960px : menu mobile
-  @media (max-width: 1100px) { gap: 12px; &__link { padding: 8px 9px; font-size: 13px; } &__link::after { left: 9px; right: 9px; } }
-  @media (max-width: 960px) {
+  // La navigation reste compacte jusqu'au menu burger afin de garder les
+  // liens et les actions dans la largeur utile du conteneur.
+  @media (max-width: 1440px) {
+    gap: 8px;
+    &__link { padding: 8px 6px; font-size: 12.5px; }
+    &__link::after { left: 6px; right: 6px; }
+    &__actions { gap: 6px; }
+  }
+  // 1280px, et non 1200 : mesure faite dans le navigateur, la barre complete
+  // reclame 1245px pour loger le logo, les sept liens, le theme, la langue et
+  // les deux actions. A 1210px « Creer un compte » etait encore rogne. La
+  // marge absorbe un nom de plateforme plus long que celui de la demonstration.
+  @media (max-width: 1280px) {
     position: sticky;
-    &__links, &__desktop-only, &__login { display: none; }
+    &__links, &__desktop-only, &__login, &__register { display: none; }
     &__burger { display: inline-flex; }
   }
-  @media (min-width: 961px) { &__menu { display: none; } }
+  @media (min-width: 1281px) { &__menu { display: none; } }
   @media (max-width: 600px) {
     padding-block: 10px; gap: 10px; min-height: 60px;
     &__logo-name { font-size: 15px; }
