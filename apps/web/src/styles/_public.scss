@@ -10,6 +10,13 @@
 // ═══════════════════════════════════════════════════════════════════
 
 $pub-largeur: 1200px;
+// La barre du haut ne se cale pas sur la largeur du contenu : elle porte sept
+// liens, deux actions, le theme et la langue, et les libelles francais sont
+// plus longs que les anglais (« Trouver un medicament », « Se connecter »).
+// Alignee sur 1200px, sa gouttiere grandissait avec l'ecran — a 1920px elle
+// prenait 384px de chaque cote — et l'espace utile restait bloque vers
+// 1150px : « Creer un compte » debordait aussi bien a 1300 qu'a 1920.
+$pub-nav-largeur: 1440px;
 $pub-gouttiere: clamp(20px, 4vw, 32px);
 $pub-rythme: clamp(56px, 8vw, 104px);
 
@@ -129,7 +136,7 @@ app-public-nav { display: contents; }
 .pub-nav {
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
-  padding: 12px max(#{$pub-gouttiere}, calc((100% - #{$pub-largeur}) / 2 + 24px));
+  padding: 12px max(#{$pub-gouttiere}, calc((100% - #{$pub-nav-largeur}) / 2 + 24px));
   min-height: 64px;
   background: color-mix(in srgb, var(--bb-surface-ground) 76%, transparent);
   backdrop-filter: saturate(170%) blur(16px); -webkit-backdrop-filter: saturate(170%) blur(16px);
@@ -209,7 +216,12 @@ app-public-nav { display: contents; }
 
   // La navigation reste compacte jusqu'au menu burger afin de garder les
   // liens et les actions dans la largeur utile du conteneur.
-  @media (max-width: 1440px) {
+  //
+  // 1520px et non 1440 : juste au-dessus de la largeur de reference, la barre
+  // n'a pas encore sa gouttiere pleine et l'espace utile est a son minimum.
+  // Mesure faite dans le navigateur, en francais : a 1441px il ne restait que
+  // 37px de marge, de quoi casser au premier libelle plus long.
+  @media (max-width: 1520px) {
     gap: 8px;
     &__link { padding: 8px 6px; font-size: 12.5px; }
     &__link::after { left: 6px; right: 6px; }
