@@ -489,9 +489,17 @@
     // qu'une largeur nulle : un texte réduit à zéro reste lu par les
     // lecteurs d'écran au milieu d'une liste d'icônes, et les annonce deux
     // fois.
-    .bb-nav__brand-name,
     .bb-nav__section,
     [matListItemTitle] { display: none; }
+
+    .bb-nav__brand-name {
+      display: flex;
+      width: 100%;
+      flex: 0 0 auto;
+      justify-content: center;
+    }
+
+    .bb-nav__brand-name .bb-brand__name { display: none; }
 
     .bb-nav__brand {
       justify-content: center;
