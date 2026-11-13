@@ -172,3 +172,11 @@ Service i18n maison (`shared/services/i18n.service.ts`), dictionnaires `shared/i
 | `npm run backup:db` / `npm run restore:db` | sauvegarde / restauration |
 | `npm run prisma:studio --workspace=apps/api` | administration de la base |
 | `node scripts/audit-gate.mjs` | portillon de sécurité, depuis `apps/api` ou `apps/web` |
+
+## Licence
+
+**Tous droits réservés** — voir [LICENSE](LICENSE).
+
+Ce dépôt n'est pas un logiciel libre. Aucune licence d'utilisation, de
+modification ou de redistribution n'est concédée. Pouvoir lire le code ne
+vaut pas autorisation de s'en servir.
