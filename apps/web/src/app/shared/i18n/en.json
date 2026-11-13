@@ -4045,7 +4045,8 @@
       "EMPTY": "This pharmacy has nothing matching. Try another word, or go back to its full stock.",
       "NOT_FOUND": "This pharmacy is not available.",
       "BACK": "Back to search"
-    }
+    },
+    "LINK_SEARCH": "Find a medicine"
   },
   "AGREMENT": {
     "SECTION_TITRE": "Regulatory file",

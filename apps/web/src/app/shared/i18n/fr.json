@@ -4045,7 +4045,8 @@
       "EMPTY": "Cette pharmacie n’a rien déclaré qui corresponde. Essayez un autre mot, ou revenez à tout son rayon.",
       "NOT_FOUND": "Cette pharmacie n’est pas disponible.",
       "BACK": "Retour à la recherche"
-    }
+    },
+    "LINK_SEARCH": "Trouver un médicament"
   },
   "AGREMENT": {
     "SECTION_TITRE": "Dossier réglementaire",
