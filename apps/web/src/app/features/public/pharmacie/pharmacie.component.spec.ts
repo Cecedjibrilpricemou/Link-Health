@@ -38,6 +38,8 @@ const OFFICINE: PharmacieDetailView = {
   telephone: '620000000',
   nombreProduits: 42,
   produits: [PRODUIT],
+  horaires: null,
+  ouverture: { ouvert: null, fermeA: null, prochaine: null },
 };
 
 function monter(options: { id?: string | null; q?: string | null; erreur?: boolean } = {}) {

@@ -13,6 +13,8 @@ import {
   desactiverProduitOfficine,
   scanPatient,
   verifierOrdonnance,
+  getHorairesOfficine,
+  definirHorairesOfficine,
 } from '../src/services/pharmacien.service';
 import { ForbiddenError, NotFoundError, ValidationError } from '../src/utils/app-error';
 
@@ -28,6 +30,7 @@ jest.mock('../src/config/prisma', () => ({
     // P6-b : l'acte de delivrance, nominatif, qui porte la quantite remise.
     acteDelivrance: { create: jest.fn(), aggregate: jest.fn() },
     mouvementStock: { create: jest.fn() },
+    structureSante: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
     $transaction: jest.fn(),
   },
 }));
@@ -45,6 +48,7 @@ const { prisma } = jest.requireMock('../src/config/prisma') as {
     lotStock: { findMany: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
     acteDelivrance: { create: jest.Mock; aggregate: jest.Mock };
     mouvementStock: { create: jest.Mock };
+    structureSante: { findUniqueOrThrow: jest.Mock; update: jest.Mock };
     $transaction: jest.Mock;
   };
 };
@@ -713,5 +717,71 @@ describe('catalogues', () => {
 
     await expect(desactiverProduitOfficine('ph-u', 'local-1')).rejects.toBeInstanceOf(ValidationError);
     expect(prisma.medicament.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+// ── Horaires d'ouverture ─────────────────────────────────────────
+//
+// Le calcul de l'etat est eprouve dans horaires.test.ts. Ce qui se verifie
+// ici est ce que le service ajoute : qui a le droit d'ecrire, ce qu'il refuse
+// d'enregistrer, et le fait que rien n'est invente a la lecture.
+describe('horaires de l officine', () => {
+  const SEMAINE = {
+    '1': { ouvre: '08:00', ferme: '20:00' },
+    '0': null,
+  };
+
+  it('rend les horaires lus en base', async () => {
+    pharmacienValide();
+    prisma.structureSante.findUniqueOrThrow.mockResolvedValue({ horaires: SEMAINE });
+
+    const vue = await getHorairesOfficine('ph-u');
+    expect(vue.horaires).toEqual(SEMAINE);
+  });
+
+  it('ne dit ni ouvert ni ferme quand rien n est saisi', async () => {
+    // Une officine qui n'a rien rempli ne doit pas apparaitre close.
+    pharmacienValide();
+    prisma.structureSante.findUniqueOrThrow.mockResolvedValue({ horaires: null });
+
+    const vue = await getHorairesOfficine('ph-u');
+    expect(vue.horaires).toBeNull();
+    expect(vue.etat.ouvert).toBeNull();
+  });
+
+  it('ecarte une forme inattendue venue de la base', async () => {
+    pharmacienValide();
+    prisma.structureSante.findUniqueOrThrow.mockResolvedValue({ horaires: 'de 8h a 20h' });
+
+    expect((await getHorairesOfficine('ph-u')).horaires).toBeNull();
+  });
+
+  it('le titulaire enregistre ses horaires', async () => {
+    titulaireValide();
+    prisma.structureSante.update.mockResolvedValue({ horaires: SEMAINE });
+
+    const vue = await definirHorairesOfficine('ph-u', { horaires: SEMAINE });
+    expect(prisma.structureSante.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { horaires: SEMAINE } }),
+    );
+    expect(vue.horaires).toEqual(SEMAINE);
+  });
+
+  it('refuse un pharmacien qui n est pas titulaire', async () => {
+    // Annoncer au public que l'officine est ouverte engage l'etablissement.
+    pharmacienValide();
+
+    await expect(definirHorairesOfficine('ph-u', { horaires: SEMAINE }))
+      .rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.structureSante.update).not.toHaveBeenCalled();
+  });
+
+  it('refuse une fermeture qui precede l ouverture, sans rien ecrire', async () => {
+    titulaireValide();
+
+    await expect(
+      definirHorairesOfficine('ph-u', { horaires: { '2': { ouvre: '20:00', ferme: '08:00' } } }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(prisma.structureSante.update).not.toHaveBeenCalled();
   });
 });

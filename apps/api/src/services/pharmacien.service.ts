@@ -3,14 +3,17 @@ import { prisma } from '../config/prisma';
 import { peremptionLaPlusProche } from './approvisionnement.service';
 import { consommerLots } from './approvisionnement.service';
 import { enregistrerMouvementStock } from './mouvement-stock.service';
-import { Role, StatutOrdonnance, TypeActeDelivrance, TypeStructure } from '../config/generated/client/client';
+import { Prisma, Role, StatutOrdonnance, TypeActeDelivrance, TypeStructure } from '../config/generated/client/client';
 import { notifierSansBloquer } from './notification.service';
 import { hashPassword } from '../utils/password.utils';
 import { assertMotDePasseConforme } from '../utils/politique-mot-de-passe';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { estStructureOfficinale, filtreStructuresOfficinales } from '../utils/officine.util';
 import { empreinteCatalogue } from '../utils/catalogue';
+import { etatOuverture, horairesDepuisLaBase, joursInvalides } from '../utils/horaires';
+import type { Horaires } from '../utils/horaires';
 import { getValeursParametres } from './parametres.service';
+import type { HorairesOfficineView } from '@baobaoheath/shared-types';
 import {
   contientProduitReglemente,
   estExpiree,
@@ -1239,4 +1242,58 @@ export async function trouverPharmaciesProches(prefecture: string) {
     where: { ...filtreStructuresOfficinales(), prefecture, estActive: true },
     select: { id: true, nom: true, adresse: true, telephone: true, latitude: true, longitude: true },
   });
+}
+
+// ── Horaires d'ouverture (saisie par le titulaire) ──────────────────
+
+/**
+ * Les horaires de l'officine, avec l'etat du moment.
+ *
+ * L'etat est calcule ici et non dans le navigateur : une seule horloge fait
+ * foi, celle du serveur, qui est dans le fuseau du pays installe.
+ */
+export async function getHorairesOfficine(pharmacienId: string): Promise<HorairesOfficineView> {
+  const pharmacien = await getPharmacienAvecStructure(pharmacienId);
+  const structure = await prisma.structureSante.findUniqueOrThrow({
+    where: { id: pharmacien.idStructure as string },
+    select: { horaires: true },
+  });
+  const horaires = horairesDepuisLaBase(structure.horaires);
+  return { horaires, etat: etatOuverture(horaires) };
+}
+
+/**
+ * Le titulaire enregistre ses horaires.
+ *
+ * Reserve au titulaire, comme le catalogue et l'approvisionnement : annoncer
+ * au public que l'officine est ouverte engage l'etablissement, et un client
+ * qui se deplace pour rien ne revient pas.
+ */
+export async function definirHorairesOfficine(
+  pharmacienId: string,
+  dto: { horaires: Horaires },
+): Promise<HorairesOfficineView> {
+  const pharmacien = await getPharmacienAvecStructure(pharmacienId);
+  if (pharmacien.pharmacienProfile?.roleOfficine !== 'TITULAIRE') {
+    throw new ForbiddenError('Seul le titulaire peut definir les horaires de son officine');
+  }
+
+  const fautifs = joursInvalides(dto.horaires);
+  if (fautifs.length > 0) {
+    // Une fermeture avant l'ouverture afficherait l'officine close toute la
+    // journee, sans que personne comprenne pourquoi.
+    throw new ValidationError(
+      "L'heure de fermeture doit suivre l'heure d'ouverture (jours : " + fautifs.join(', ') + ')',
+    );
+  }
+
+  const structure = await prisma.structureSante.update({
+    where: { id: pharmacien.idStructure as string },
+    // Prisma attend sa propre forme de JSON ; nos horaires sont deja
+    // valides par le schema Zod et par `joursInvalides`.
+    data: { horaires: dto.horaires as unknown as Prisma.InputJsonObject },
+    select: { horaires: true },
+  });
+  const horaires = horairesDepuisLaBase(structure.horaires);
+  return { horaires, etat: etatOuverture(horaires) };
 }

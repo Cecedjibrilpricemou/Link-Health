@@ -789,6 +789,15 @@ model StructureSante {
   controlesEligibilite     ControleEligibilite[]
   latitude                 Float?
   longitude                Float?
+
+  /// Horaires d'ouverture, un creneau par jour : `{ "1": { "ouvre": "08:00",
+  /// "ferme": "20:00" }, "0": null }`. Le jour suit `Date.getDay()` — 0 pour
+  /// dimanche — pour n'avoir aucune conversion a faire a la lecture.
+  ///
+  /// **Nul n'est pas ferme** : une officine qui n'a rien saisi ne doit pas
+  /// apparaitre close, elle n'a simplement rien dit. Saisi par le titulaire.
+  horaires                 Json?
+
   telephone                String?
   photoUrl                 String?
   estActive                Boolean               @default(true)

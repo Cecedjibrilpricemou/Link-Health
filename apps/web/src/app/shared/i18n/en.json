@@ -19,6 +19,15 @@
     "SUCCESS": "Operation successful",
     "CONFIRM": "Confirm",
     "CLOSE": "Close",
+    "DAYS": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    },
     "NEW": "New",
     "NAVIGATION": "Navigation",
     "GENERAL": "General",
@@ -2221,6 +2230,7 @@
     },
     "NAV_APPROVISIONNEMENTS": "Stock intake",
     "NAV_PEREMPTIONS": "Expiry dates",
+    "NAV_HORAIRES": "Opening hours",
     "APPRO": {
       "TITLE": "Stock intake",
       "SUB": "Record a supplier invoice: each line enters stock as a batch, with its own expiry date.",
@@ -2260,6 +2270,21 @@
       "SEUIL": "Horizon",
       "JOURS": "days",
       "ERR_LOAD": "Could not load expiry dates."
+    },
+    "HORAIRES": {
+      "TITLE": "Opening hours",
+      "SUB": "Set the days and hours when your pharmacy is open.",
+      "ETAT_OUVERT": "Open until {{heure}}",
+      "ETAT_FERME": "Currently closed",
+      "ETAT_INCONNU": "Hours not provided",
+      "DE": "From",
+      "A": "To",
+      "FERME": "Closed",
+      "ERREUR_CRENEAU": "The closing time must be later than the opening time.",
+      "AUCUN_JOUR": "No opening days are selected.",
+      "PARTOUT": "Apply to open days",
+      "NOTE": "The hours you provide are shown to people looking for your pharmacy.",
+      "ENREGISTRE": "Opening hours saved."
     },
     "NAV_CONNEXIONS": "Sign-in history",
     "NAV_AGENTS": "Staff",

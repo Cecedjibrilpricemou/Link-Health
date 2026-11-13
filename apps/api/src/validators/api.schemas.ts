@@ -1442,3 +1442,15 @@ export const rechercheProduitsSchema = z.object({
 export const cataloguePharmacieSchema = z.object({
   q: z.string().trim().max(60).optional(),
 });
+
+// Horaires d'une officine : un creneau par jour, ou rien. Les heures sont
+// validees ici dans leur forme ; la coherence (fermeture apres ouverture) est
+// verifiee par le service, qui sait nommer les jours fautifs.
+const heureDuJour = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'heure attendue au format HH:MM');
+
+export const definirHorairesSchema = z.object({
+  horaires: z.record(
+    z.enum(['0', '1', '2', '3', '4', '5', '6']),
+    z.object({ ouvre: heureDuJour, ferme: heureDuJour }).nullable(),
+  ),
+});

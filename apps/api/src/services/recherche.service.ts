@@ -29,6 +29,8 @@ import { prisma } from '../config/prisma';
 import { NotFoundError, ValidationError } from '../utils/app-error';
 import { empreinteCatalogue, etatDuStock, prixDeVenteGnf } from '../utils/catalogue';
 import type { EtatStock } from '../utils/catalogue';
+import { etatOuverture, horairesDepuisLaBase } from '../utils/horaires';
+import type { EtatOuverture, Horaires } from '../utils/horaires';
 import { filtrePrefecture, filtreZones } from '../utils/zone';
 import type { Lieu } from '../utils/zone';
 import { voisinsDe } from './geographie.service';
@@ -54,6 +56,8 @@ export interface PharmacieProduit {
   prixGnf: number;
   etatStock: EtatStock;
   declareLe: Date;
+  /** Ouvert maintenant ? Le visiteur va se deplacer. */
+  ouverture: EtatOuverture;
 }
 
 export interface ProduitTrouve {
@@ -86,6 +90,7 @@ export interface PharmacieTrouvee {
   telephone: string | null;
   /** Ce qu'elle a en rayon aujourd'hui, pour savoir si la visite vaut le coup. */
   nombreProduits: number;
+  ouverture: EtatOuverture;
 }
 
 /** Un produit tel qu'il se presente dans le rayon d'une officine. */
@@ -113,6 +118,9 @@ export interface PharmacieDetail {
   /** Tout ce qu'elle a en rayon, meme si la liste rendue est filtree. */
   nombreProduits: number;
   produits: ProduitEnRayon[];
+  /** Les sept jours, pour que le visiteur sache quand revenir. */
+  horaires: Horaires | null;
+  ouverture: EtatOuverture;
 }
 
 export interface ResultatRecherche {
@@ -229,6 +237,7 @@ type LigneStock = {
     commune: string | null;
     quartier: string | null;
     telephone: string | null;
+    horaires: unknown;
   } | null;
 };
 
@@ -303,6 +312,7 @@ function resumer(
       prixGnf: prixDeVenteGnf(produit.prixUnitaireGnf, s.margeGnf),
       etatStock: etatDuStock(s.quantite, s.seuilAlerte),
       declareLe: s.modifieLe,
+      ouverture: etatOuverture(horairesDepuisLaBase(structure.horaires)),
     };
   });
   pharmacies.sort((a, b) => comparerPharmacies(a, b, contexte));
@@ -374,6 +384,7 @@ export async function chercherProduits(critere: CritereRecherche): Promise<Resul
                 commune: true,
                 quartier: true,
                 telephone: true,
+                horaires: true,
               },
             },
           },
@@ -446,6 +457,7 @@ export async function chercherPharmacies(q: string): Promise<PharmacieTrouvee[]>
       commune: true,
       quartier: true,
       telephone: true,
+      horaires: true,
     },
     orderBy: { nom: 'asc' },
     take: OFFICINES_MAX,
@@ -472,6 +484,7 @@ export async function chercherPharmacies(q: string): Promise<PharmacieTrouvee[]>
     quartier: o.quartier,
     telephone: o.telephone,
     nombreProduits: parOfficine.get(o.id) ?? 0,
+    ouverture: etatOuverture(horairesDepuisLaBase(o.horaires)),
   }));
 }
 
@@ -497,6 +510,7 @@ export async function catalogueDe(idPharmacie: string, q?: string | null): Promi
       quartier: true,
       adresse: true,
       telephone: true,
+      horaires: true,
     },
   });
   if (!officine) throw new NotFoundError('Pharmacie introuvable');
@@ -533,8 +547,11 @@ export async function catalogueDe(idPharmacie: string, q?: string | null): Promi
     }),
   ]);
 
+  const horaires = horairesDepuisLaBase(officine.horaires);
   return {
     ...officine,
+    horaires,
+    ouverture: etatOuverture(horaires),
     nombreProduits,
     produits: stocks.map((s) => ({
       id: s.medicament.id,

@@ -1,7 +1,9 @@
 import * as appro from '../services/approvisionnement.service';
+import * as pharmacien from '../services/pharmacien.service';
 import * as vente from '../services/vente.service';
 import * as caisse from '../services/caisse.service';
 import type {
+  HorairesOfficineView,
   ApprovisionnementView,
   LotStockView,
   PeremptionProcheView,
@@ -10,7 +12,7 @@ import type {
   SessionCaisseView,
   RapportCaisseView,
 } from '@baobaoheath/shared-types';
-import { creerApprovisionnementSchema } from '../validators/api.schemas';
+import { creerApprovisionnementSchema, definirHorairesSchema } from '../validators/api.schemas';
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireOfficineRole, requireRole } from '../middlewares/rbac.middleware';
@@ -60,6 +62,20 @@ router.post('/ordonnances/:id/delivrer', requirePersonnelClinique, validateBody(
 // option, et un refus n'est pas une delivrance de zero.
 router.post('/ordonnances/:id/substituer', requirePersonnelClinique, validateBody(substituerLigneSchema), ctrl.substituerLigneController);
 router.post('/ordonnances/:id/refuser', requirePersonnelClinique, validateBody(refuserLigneSchema), ctrl.refuserLigneController);
+// ── Horaires d'ouverture ─────────────────────────────────────────────
+// Le public voit ces horaires et s'en sert pour se deplacer : les annoncer
+// engage l'officine, donc seul le titulaire les fixe. La lecture, elle, est
+// ouverte a tout le personnel, qui doit pouvoir repondre au telephone.
+router.get('/horaires', requirePersonnelClinique, async (req: AuthRequest, res: Response) => {
+  const data: HorairesOfficineView = await pharmacien.getHorairesOfficine(req.user!.userId);
+  res.json({ success: true, data });
+});
+
+router.put('/horaires', requireTitulaire, validateBody(definirHorairesSchema), async (req: AuthRequest, res: Response) => {
+  const data: HorairesOfficineView = await pharmacien.definirHorairesOfficine(req.user!.userId, req.body);
+  res.json({ success: true, data, message: 'Horaires enregistres' });
+});
+
 // ── Approvisionnement et peremptions (addendum, points 1.3 et 1.4) ───
 // Saisie assistee : la facture est attachee en justificatif. L'extraction
 // automatique viendra ensuite, et devra toujours etre relue avant
