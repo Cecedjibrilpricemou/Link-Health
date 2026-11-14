@@ -9,8 +9,10 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import type { PharmacieProduitView, ProduitTrouveView, RechercheProduitsView } from '@baobaoheath/shared-types';
+import type { PharmacieCarteView } from '../../../shared/components/carte-pharmacies/carte-pharmacies.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { PublicShellComponent } from '../../../shared/components/public-shell/public-shell.component';
+import { CartePharmaciesComponent } from '../../../shared/components/carte-pharmacies/carte-pharmacies.component';
 import { GeographieService } from '../../../core/services/geographie.service';
 import { RechercheService } from '../../../core/services/recherche.service';
 import { I18nService } from '../../../shared/services/i18n.service';
@@ -22,7 +24,7 @@ const ZONE_RETENUE = 'keneya.recherche.zone';
 @Component({
   selector: 'app-recherche',
   standalone: true,
-  imports: [FormsModule, RouterLink, TranslatePipe, PublicShellComponent],
+  imports: [FormsModule, RouterLink, TranslatePipe, PublicShellComponent, CartePharmaciesComponent],
   templateUrl: './recherche.component.html',
   styleUrl: './recherche.component.scss',
 })
@@ -48,6 +50,21 @@ export class RechercheComponent implements OnInit {
   readonly resultat = signal<RechercheProduitsView | null>(null);
   /** Vrai une fois qu'une recherche a abouti : « rien trouve » n'est pas l'etat initial. */
   readonly aCherche = signal(false);
+  readonly pharmaciesCarte = computed(() => {
+    const resultat = this.resultat();
+    if (!resultat) return [];
+
+    const pharmacies = new Map<string, PharmacieCarteView>();
+    for (const pharmacie of resultat.pharmaciesTrouvees) {
+      pharmacies.set(pharmacie.id, pharmacie);
+    }
+    for (const produit of resultat.produits) {
+      for (const pharmacie of produit.pharmacies) {
+        if (!pharmacies.has(pharmacie.id)) pharmacies.set(pharmacie.id, pharmacie);
+      }
+    }
+    return [...pharmacies.values()];
+  });
 
   /** Les libelles du pays installe : « Prefecture » ici, « LGA » ailleurs. */
   readonly libelleZone = computed(() => this.geo.libelle('elargissement'));

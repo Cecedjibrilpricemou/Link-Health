@@ -1,0 +1,58 @@
+@import 'leaflet/dist/leaflet.css';
+
+app-carte-pharmacies {
+  display: block;
+  min-width: 0;
+}
+
+app-carte-pharmacies .carte-pharmacies {
+  min-width: 0;
+  overflow: hidden;
+
+  &__surface {
+    width: 100%;
+    height: 360px;
+    max-width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-lg);
+    background: var(--bb-surface-1);
+  }
+}
+
+/* L'epingle, dessinee plutot que chargee : voir le commentaire du composant. */
+app-carte-pharmacies .carte-pharmacies__epingle {
+  background: none;
+  border: 0;
+}
+
+app-carte-pharmacies .carte-pharmacies__epingle-point {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  border: 2px solid var(--bb-surface-card);
+  border-radius: 50% 50% 50% 0;
+  background: var(--bb-primary);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 35%);
+  transform: rotate(-45deg);
+}
+
+app-carte-pharmacies .leaflet-popup-content-wrapper,
+app-carte-pharmacies .leaflet-popup-tip,
+app-carte-pharmacies .leaflet-control-zoom a,
+app-carte-pharmacies .leaflet-control-attribution {
+  color: var(--bb-text-primary);
+  background: var(--bb-surface-card);
+  border-color: var(--bb-border);
+}
+
+app-carte-pharmacies .leaflet-control-attribution a {
+  color: var(--bb-primary);
+}
+
+@media (max-width: 600px) {
+  app-carte-pharmacies .carte-pharmacies__surface {
+    height: 280px;
+  }
+}

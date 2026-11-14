@@ -30,6 +30,8 @@ const PHARMACIE: PharmacieProduitView = {
   prixGnf: 11_500,
   etatStock: 'DISPONIBLE',
   declareLe: new Date().toISOString(),
+  latitude: 9.545,
+  longitude: -13.682,
   ouverture: { ouvert: null, fermeA: null, prochaine: null },
 };
 
@@ -58,6 +60,8 @@ const OFFICINE_TROUVEE: PharmacieTrouveeView = {
   quartier: 'Belle-Vue',
   telephone: '620000000',
   nombreProduits: 42,
+  latitude: 9.545,
+  longitude: -13.682,
   ouverture: { ouvert: null, fermeA: null, prochaine: null },
 };
 
@@ -222,6 +226,13 @@ describe('recherche publique : les officines sous le produit', () => {
   it('sert aussi aux officines trouvees par leur nom (A3)', () => {
     const { composant } = monter();
     expect(composant.lieuDe(OFFICINE_TROUVEE)).toBe('Dixinn · Belle-Vue');
+  });
+
+  it('regroupe les pharmacies de la recherche pour la carte sans doublons', () => {
+    const { composant } = monter();
+    composant.resultat.set(RESULTAT);
+
+    expect(composant.pharmaciesCarte().map((pharmacie) => pharmacie.id)).toEqual(['ph-1', 'ph-2']);
   });
 
   it('affiche le prix de chaque officine, pas seulement le plus bas', () => {

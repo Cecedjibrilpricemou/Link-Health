@@ -23,6 +23,10 @@
     </header>
 
     <section class="pub-section">
+      <app-carte-pharmacies [pharmacies]="[o]" />
+    </section>
+
+    <section class="pub-section">
       <form class="pharm-filtre" (ngSubmit)="charger()">
         <label for="pharm-q">{{ 'PUBLIC.PHARMACY.FILTER' | translate }}</label>
         <div class="pharm-filtre__ligne">

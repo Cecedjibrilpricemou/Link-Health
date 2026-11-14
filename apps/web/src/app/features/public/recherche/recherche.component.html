@@ -224,6 +224,8 @@
           <p class="rech-note">{{ 'PUBLIC.SEARCH.NOTE' | translate }}</p>
         </div>
       }
+
+      <app-carte-pharmacies [pharmacies]="pharmaciesCarte()" />
     } @else if (!aCherche() && !erreur()) {
       <div class="rech-message rech-message--intro">
         <span class="rech-message__icone" aria-hidden="true"><i class="pi pi-map-marker"></i></span>
