@@ -1454,3 +1454,26 @@ export const definirHorairesSchema = z.object({
     z.object({ ouvre: heureDuJour, ferme: heureDuJour }).nullable(),
   ),
 });
+
+/**
+ * La position d'une officine sur la carte.
+ *
+ * Les bornes sont celles du monde, pas celles du pays installe : la
+ * plateforme vise plusieurs pays, et une borne nationale ferait echouer la
+ * saisie le jour de l'ouverture du suivant.
+ *
+ * Le point (0, 0) est refuse. Il est en pleine mer, et c'est la valeur que
+ * produit un formulaire dont la saisie n'a pas abouti : l'accepter poserait
+ * un marqueur au large du Ghana sans que personne comprenne pourquoi.
+ */
+export const definirPositionSchema = z.object({
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+})
+  .strict()
+  .refine((d) => (d.latitude === null) === (d.longitude === null), {
+    message: 'La latitude et la longitude vont ensemble : les deux, ou aucune.',
+  })
+  .refine((d) => !(d.latitude === 0 && d.longitude === 0), {
+    message: 'Le point (0, 0) est en pleine mer : la position n\'a pas ete relevee.',
+  });

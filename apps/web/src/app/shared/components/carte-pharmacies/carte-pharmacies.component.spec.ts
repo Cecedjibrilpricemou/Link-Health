@@ -81,19 +81,18 @@ async function monter(pharmacies: PharmacieCarteView[]) {
 }
 
 /**
- * Deux passes, et non une.
+ * Une passe suffit, et c'est le signe que le montage est deterministe.
  *
- * L'effet qui monte la carte lit le conteneur rendu par le gabarit. A la
- * premiere passe ce conteneur n'existe pas encore : l'effet sort, puis se
- * redeclenche quand le viewChild se resout. Une seule passe laisse l'ordre de
- * ces deux etapes a la vitesse de la machine — vert ici, rouge sur le serveur
- * d'integration.
+ * Le composant monte sa carte dans un `afterRenderEffect`, execute une fois
+ * le DOM ecrit. Tant qu'il utilisait un effet ordinaire, le conteneur
+ * n'existait pas encore au premier passage et tout dependait de l'ordre des
+ * suivants : vert en local, rouge sur le serveur d'integration. Si ce test se
+ * remet a reclamer une seconde passe, c'est que le composant est reparti sur
+ * un effet ordinaire.
  */
 async function stabiliser(fixture: ComponentFixture<CartePharmaciesComponent>): Promise<void> {
-  for (let passe = 0; passe < 2; passe += 1) {
-    fixture.detectChanges();
-    await fixture.whenStable();
-  }
+  fixture.detectChanges();
+  await fixture.whenStable();
 }
 
 describe('CartePharmaciesComponent', () => {

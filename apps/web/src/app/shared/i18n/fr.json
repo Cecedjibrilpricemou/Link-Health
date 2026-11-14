@@ -1536,6 +1536,7 @@
     "NAV_APPROVISIONNEMENTS": "Approvisionnement",
     "NAV_PEREMPTIONS": "Péremptions",
     "NAV_HORAIRES": "Horaires",
+    "NAV_POSITION": "Ma position",
     "APPRO": {
       "TITLE": "Approvisionnement",
       "SUB": "Enregistrez une facture fournisseur : chaque ligne entre en stock comme un lot, avec sa propre date de péremption.",
@@ -1590,6 +1591,20 @@
       "PARTOUT": "Appliquer aux jours ouverts",
       "NOTE": "Les horaires renseignés sont affichés aux personnes qui recherchent votre officine.",
       "ENREGISTRE": "Horaires enregistrés."
+    },
+    "POSITION": {
+      "TITLE": "Ma position",
+      "SUB": "Indiquez sur la carte l’emplacement exact de votre officine.",
+      "CARTE_ARIA": "Carte pour définir la position de l’officine",
+      "COORDONNEES": "Coordonnées retenues",
+      "AIDE_CARTE": "Déplacez la carte jusqu’à votre officine, puis cliquez dessus",
+      "UTILISER_POSITION": "Utiliser ma position actuelle",
+      "GEOLOCALISATION_EN_COURS": "Localisation en cours…",
+      "GEOLOCALISATION_ERREUR": "Votre position n’a pas pu être déterminée. Autorisez la géolocalisation ou placez l’épingle sur la carte.",
+      "POINT_INTERDIT": "Cette position (0, 0) ne peut pas être enregistrée. Déplacez l’épingle.",
+      "RETIRER": "Retirer la position",
+      "ENREGISTREE": "Position enregistrée.",
+      "RETIREE": "Position retirée."
     },
     "NAV_CONNEXIONS": "Connexions",
     "NAV_AGENTS": "Utilisateurs",

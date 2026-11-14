@@ -99,6 +99,7 @@ export class PharmacienLayoutComponent {
     { labelKey: 'PHARMACIEN.NAV_APPROVISIONNEMENTS', icon: 'pi-truck', route: '/pharmacien/approvisionnements', roles: ['TITULAIRE'] },
     { labelKey: 'PHARMACIEN.NAV_PEREMPTIONS', icon: 'pi-clock', route: '/pharmacien/peremptions', roles: ['TITULAIRE', 'ADJOINT', 'PREPARATEUR'] },
     { labelKey: 'PHARMACIEN.NAV_HORAIRES', icon: 'pi-clock', route: '/pharmacien/horaires', roles: ['TITULAIRE'] },
+    { labelKey: 'PHARMACIEN.NAV_POSITION', icon: 'pi-map-marker', route: '/pharmacien/position', roles: ['TITULAIRE'] },
     { labelKey: 'PHARMACIEN.NAV_CONNEXIONS', icon: 'pi-shield', route: '/pharmacien/connexions', roles: ['TITULAIRE'] },
     { labelKey: 'PHARMACIEN.NAV_AGENTS', icon: 'pi-users', route: '/pharmacien/agents', roles: ['TITULAIRE'] },
     { labelKey: 'PHARMACIEN.NAV_ASSURANCES', icon: 'pi-shield', route: '/pharmacien/assurances', roles: ['TITULAIRE'] },
