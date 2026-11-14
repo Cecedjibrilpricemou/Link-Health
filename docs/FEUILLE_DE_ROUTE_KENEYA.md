@@ -2,42 +2,51 @@
 
 > Référence : *Cahier des charges Kènèya v2.0* du 13 septembre 2026 (exigences EF-01…EF-13, ENF-01…06, priorités M/S/C, lots V1→V4).
 > Ce fichier est le plan de travail vivant : on coche au fur et à mesure, on renumérote jamais.
-> Dernière mise à jour : **2026-10-02**.
+> Dernière mise à jour : **2026-11-06** (recompte complet contre le code).
 >
 > ⚠️ **Un addendum du 2026-09-28** (`ADDENDUM-CDC-2026-09-28.md`) ajoute huit points remontés par le chef de projet, dont **trois rouvraient du code livré** : le médecin fixe désormais les rendez-vous, le rôle biologiste disparaît, et les résultats d'analyse ne sont visibles du patient qu'après accord du médecin. **Six des huit blocs sont livrés** ; les blocs concernés portent la mention **🔁 rouvert**.
 >
-> ⚠️ Tout ce qui est coché ci-dessous est sur **`develop`**. La branche `main` s'arrête au **2026-09-26** et ne contient aucun bloc de l'addendum.
+> Tout ce qui est coché ci-dessous est sur **`main`**, la seule branche de référence depuis le 2026-10-31 (l'ancienne branche `develop` y a été fusionnée).
 
-## Où nous en sommes — recompté le 2026-10-10
+## Où nous en sommes — recompté le 2026-11-06
 
-Les cases de ce fichier, comptées à la main le 2026-10-02. `[~]` note un bloc livré en partie.
+Recompté **case par case, en vérifiant le code** (routes, modèles, écrans), et non en reportant le chiffre précédent. `[~]` note une case livrée en partie : ce qui reste est écrit sur la case elle-même.
 
 | Bloc | Fait | Partiel | Reste | État |
 |---|---|---|---|---|
-| **P0** Identité de la plateforme | 5 | — | 0 | ✅ **fini** |
-| **P1** Épisode de soins + demande d'analyse | 11 | — | 0 | ✅ **fini** (🔁 repris puis complété) |
-| **P2** Laboratoire | 11 | — | 1 | ⏳ reste la synchronisation hors connexion (EF-04-11) |
-| **P3** Ordonnance + sécurité de prescription | 5 | — | 1 | ⏳ |
-| **P4** Identité patient, consentement, accès | 7 | — | 0 | ✅ **fini** — journal des accès, identito-vigilance, doublons, fusion réversible, consentement versionné et branché, bris de glace, n° d'ordre pro. **Le bloc le plus sensible réglementairement** |
-| **P5** Fil d'avancement du parcours | 0 | — | 3 | ❌ non commencé |
-| **P6** Commande pharmacie et gestion d'officine | 5 | 1 | 7 | ⏳ lots, approvisionnement, péremptions, **vente au comptoir et tableau de bord** livrés ; restent les écrans de commande, l'import Excel et l'OCR |
-| **P7** Paiement | 3 | — | 2 | ⏳ passerelle réelle livrée |
-| **P8** Livraison, carte, annuaire | 0 | — | 9 | ❌ non commencé |
-| **P9** Notifications neutres | 1 | — | 1 | ⏳ **la neutralité est livrée le 02/10** — c'était un défaut en service, pas une case vide. Restent les préférences de canaux et le rejeu |
-| **P10** Assurance et tiers payant | 3 | 4 | 2 | ⏳ **livré le 02/10, API + caisse** : assureur, contrat, règles par catégorie, éligibilité tracée, reste à charge ligne par ligne affiché avant paiement. Restent la vue assureur, l'administration des assureurs à l'écran et les échanges automatiques |
-| **P11** Administration, audit, référentiels | 6 | 1 | — | ⏳ **référentiels, journal d'audit, suspension de compte, détection d'anomalies et demandes RGPD livrés** (API, Swagger et écrans). Reste **EF-12-02**, les conventions des partenaires |
-| **P12** Interopérabilité | 0 | — | 3 | ❌ non commencé |
-| **P13** Extension (lot V4) | 1 | — | 4 | ⏳ prise de RDV à distance livrée ; téléconsultation suspendue à D2 |
-| **Total** | **55** | **6** | **36** | **sur 97** |
+| **P0** Identité de la plateforme | 5 | — | — | ✅ **fini** |
+| **P1** Épisode de soins + demande d'analyse | 11 | — | — | ✅ **fini** |
+| **P2** Laboratoire | 11 | — | 1 | ⏳ reste la saisie hors connexion (EF-04-11) |
+| **P3** Ordonnance + sécurité de prescription | 5 | 1 | — | ⏳ reste le document imprimable du compte rendu de consultation |
+| **P4** Identité patient, consentement, accès | 8 | — | 1 | ⏳ reste la granularité du consentement par professionnel et par document (EF-02-05) |
+| **P5** Fil d'avancement du parcours | — | 3 | — | ⏳ « Mon parcours », documents et cartes d'assurance existent ; restent le fil unique, le reçu et la déclaration par le patient |
+| **P6** Commande pharmacie et gestion d'officine | 10 | 2 | 1 | ⏳ machine à états, panier, délivrance nominative, caisse, lots livrés ; restent l'import Excel, l'OCR et la pharmacie alternative automatique |
+| **P7** Paiement | 3 | 1 | 1 | ⏳ passerelle réelle livrée ; restent le reçu, les remboursements et le rapprochement |
+| **P8** Livraison, carte, annuaire | 3 | 5 | 1 | ⏳ courses, offres des motards et choix du patient livrés ; restent l'adresse GPS, la carte, le code de remise |
+| **P9** Notifications neutres | 1 | — | 1 | ⏳ restent les préférences de canaux et le rejeu |
+| **P10** Assurance et tiers payant | 4 | 4 | 1 | ⏳ espace assureur, contrats collectifs, situation par officine livrés ; restent l'autorisation préalable, l'échange par API, la règle de rejet (D4) |
+| **P11** Administration, audit, référentiels | 4 | 2 | 1 | ⏳ reste EF-12-02, les conventions des partenaires |
+| **P12** Interopérabilité | — | — | 3 | ❌ non commencé (l'export FHIR initial existe) |
+| **P13** Extension (lot V4) | 1 | — | 4 | ⏳ RDV à distance livré ; téléconsultation suspendue à D2 |
+| **Total** | **66** | **18** | **15** | **sur 99** |
 
-> **La ligne de total était fausse** : elle annonçait 42 faites sur 95, alors
-> que la somme des blocs donne 51 sur 97. Recomptée le 2026-10-04 en
-> additionnant la colonne, pas en reportant le chiffre précédent. C'est
-> pourtant cette ligne qu'on lit pour répondre à « qu'est-ce qu'il reste ».
+> **Écart avec le décompte du 10/10** (55 faites sur 97) : P6, P8 et P10 avaient avancé sans que leurs cases soient cochées, et P4 comptait 7 cases sur une liste qui en porte 9. Le total compte désormais les lignes de la liste, une à une.
 
-**Deux blocs sont réellement finis : P0 et P1.** P2 et P3 n'ont plus qu'une case chacun.
+**Deux blocs sont finis : P0 et P1.** P2, P3 et P4 n'ont plus qu'une case chacun ; P5 à P8 et P10 sont tous entamés ; P12 n'est pas commencé.
 
 ### Ce qui a été livré hors feuille de route, et qui compte
+
+**Depuis le 10 octobre** (PR #19 à #52) :
+
+| Objet | Contenu |
+|---|---|
+| **Application mobile Android** | Le site emballé par Capacitor (`gn.leadhealth.app`) : icône, écran de démarrage, essais sur émulateur et sur téléphone réel, commandes `mobile:usb`, `mobile:emulateur`, `mobile:telephone`. Guide : `docs/APPLICATION-MOBILE.md` |
+| Identité visuelle | Logo « croix et feuille » ; l'icône de l'onglet suit le logo téléversé ; logos et photos enregistrés par leur chemin (`/uploads/…`), relayés par nginx en production |
+| Écrans retravaillés | Stocks en tableau triable, page Structures (admin), tableau de bord pharmacien, indicateurs analytics définis, grille du laboratoire, 18 listes avec recherche, dictée du motif de RDV, établissement du dossier proposé par défaut |
+| Fiabilité | Tests des écrans critiques (ordonnances, admission, consultation ASC, caisse), E2E de la caisse stabilisé, limites de requêtes réglables, CI en Node 24 |
+| Démonstration | Jeu de démo enrichi (RDV, ventes, contrat collectif, course de livraison) et accentué ; il peut être rejoué après une vente |
+
+**Avant le 10 octobre :**
 
 | Date | Objet | Pourquoi ça ne figure dans aucune case |
 |---|---|---|
@@ -146,7 +155,7 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
   - Ces règles sont appliquées **au niveau du document**, après chaque prescription : le prescripteur ne peut pas s'y soustraire en les ignorant.
   - Front : champ « renouvellements » verrouillé dès qu'un produit réglementé entre dans l'ordonnance, bandeau au comptoir imposant le contrôle d'identité, bouton « Renouveler », et compteur de cycles restants côté patient.
   - Les deux durées et le plafond de renouvellements sont des **paramètres administrables** dans l'onglet « Ordonnances » du super-admin.
-- [ ] Compte rendu de consultation structuré, daté, signé (EF-05-03).
+- [~] Compte rendu de consultation structuré, daté, signé (EF-05-03). ✅ **Vérifié le 2026-11-06** : la consultation est structurée (constantes, diagnostics, ordonnances) et **signée par le médecin** (« Valider et signer »), datée par `signeLe`. **Reste le document imprimable** du compte rendu, comme il existe pour l'ordonnance et le bon d'examen.
 
 ### P4 — Identité patient, consentement, accès · L · EF-01 / EF-02 · ✅ **fini**
 - [x] **Livré le 2026-10-04** — champs identito-vigilance (lieu de naissance, nom de la mère) et niveaux d'identité `PROVISOIRE` / `VERIFIEE`, avec le **verrou du tiers payant** (EF-01-04/10). La contrainte SQL `patients_identite_verifiee_fondee` interdit une identité vérifiée sans pièce nommée : l'invariant est structurel, pas déclaratif. L'écran d'accueil dit que cela **ne conditionne pas les soins** — un agent qui refuserait quelqu'un sans papiers commettrait une faute grave. Le numéro de pièce n'est jamais réaffiché en entier.
@@ -177,12 +186,12 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
 
 > Cette case était comptée comme non commencée jusqu'au 2026-10-04, alors qu'elle était livrée la veille — la livraison ayant été faite sous P11, où vit le journal d'audit.
 
-### P5 — Fil d'avancement du parcours · S · EF-06 · ❌ **0 sur 3**
-- [ ] Endpoint patient agrégeant épisode → analyses → consultation → ordonnance → commande → livraison avec horodatages (EF-06-01).
-- [ ] Tous les documents téléchargeables/imprimables (EF-06-02/03).
-- [ ] Déclaration des informations d'assurance (EF-06-04).
+### P5 — Fil d'avancement du parcours · S · EF-06 · ⏳ **0 fait + 3 partiels sur 3**
+- [~] Endpoint patient agrégeant épisode → analyses → consultation → ordonnance → commande → livraison avec horodatages (EF-06-01). ✅ **Vérifié le 2026-11-06** : la page « Mon parcours » montre épisodes, analyses, rendez-vous et frise ; ordonnances, commandes et paiements ont chacun leur écran. **Reste le fil unique**, du rendez-vous à la livraison.
+- [~] Tous les documents téléchargeables/imprimables (EF-06-02/03). ✅ **Vérifié le 2026-11-06** : bon d'examen, compte rendu d'analyses et ordonnance s'impriment depuis l'espace patient. **Restent le reçu de paiement et le compte rendu de consultation.**
+- [~] Déclaration des informations d'assurance (EF-06-04). ✅ **Vérifié le 2026-11-06** : le patient voit ses cartes d'assurance (« Mes cartes ») ; contrats et adhésions sont saisis par l'assureur ou l'administration. **Reste la déclaration par le patient lui-même.**
 
-### P6 — Commande pharmacie **et gestion d'officine** · L · EF-07 / §3.2 · ⏳ **5 faites + 1 partielle sur 13**
+### P6 — Commande pharmacie **et gestion d'officine** · L · EF-07 / §3.2 · ⏳ **10 faites + 2 partielles sur 13** (recompté le 2026-11-06)
 
 > **Élargi le 2026-09-28** (addendum, point 1) : il ne s'agit plus seulement de servir des ordonnances, mais de **tenir une pharmacie**. S'ajoutent la vente au comptoir, l'import Excel du catalogue, l'approvisionnement par facture et les alertes de péremption.
 >
@@ -202,29 +211,29 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
 >
 > ⚠️ **`GET /commandes/:id` n'avait aucun contrôle** — ni rôle, ni propriété : tout compte connecté lisait la commande d'un inconnu, avec son nom et ses médicaments. Défaut présent depuis la mise en place de la route le 26/09, corrigé le 10/10. Quatre lectures sont légitimes : le patient, la pharmacie concernée, le prescripteur, l'administration.
 >
-> **Reste la machine à états au-delà de la prise en charge** : préparation, prêt pour retrait, et côté livraison les frais de transport proposés puis acceptés.
+> **Mise à jour du 2026-11-06** : la machine à états est complète (`StatutCommande`, de la recherche à la clôture, avec les deux sorties retrait et livraison), le panier est chiffré, la délivrance est nominative (actes `DELIVRE`, `SUBSTITUE`, `REFUSE` avec motif) et ne peut dépasser le prescrit (déclencheur différé). Côté livraison, la course part en appel d'offres quand la commande est prête : voir P8.
 >
 > L'attribution repose sur un `updateMany` conditionnel : deux pharmacies simultanées donnent un gagnant et un perdant, jamais deux gagnants. Vérifié par sabotage.
 
 - [x] **API livrée le 2026-09-26** — **Appel aux pharmacies du quartier** dès l'ordonnance prête : les pharmacies partenaires sont interrogées sur la disponibilité **de la totalité** des produits ; **la première qui déclare les avoir prend la commande**. Patient et médecin notifiés. Si aucune n'a tout, les deux sont avertis et le patient décide (voir `PARCOURS-COMMANDE-LIVRAISON.md`).
-- [ ] **Mode de remise choisi par le patient à la commande** (décision du 2026-09-26) : `RETRAIT_PHARMACIE` ou `LIVRAISON`. Ce n'est pas un repli technique — beaucoup de patients habitent à côté d'une pharmacie et iront chercher eux-mêmes. La livraison n'est jamais imposée.
-- [ ] `Commande` + lignes ; machine à états stricte, avec **deux sorties selon le mode** :
+- [x] ✅ **Vérifié le 2026-11-06** — **Mode de remise choisi par le patient à la commande** (décision du 2026-09-26) : `RETRAIT_PHARMACIE` ou `LIVRAISON`. Ce n'est pas un repli technique — beaucoup de patients habitent à côté d'une pharmacie et iront chercher eux-mêmes. La livraison n'est jamais imposée.
+- [x] ✅ **Vérifié le 2026-11-06** — `Commande` + lignes ; machine à états stricte, avec **deux sorties selon le mode** :
   - commun : Créée → Validée pharmacie → Prise en charge en cours → À payer → Payée → En préparation
   - retrait : → **Prête pour retrait** → Retirée → Clôturée
   - livraison : → **Frais de transport proposés** → **Acceptés par le patient** → Livreur notifié → En livraison → Livrée → Clôturée
   - (+ Échec, Annulée/Remboursée)
-- [ ] Panier chiffré ligne par ligne depuis l'ordonnance (EF-07-02).
-- [ ] Validation nominative obligatoire du pharmacien (EF-07-03) ; substitution tracée et notifiée (EF-07-04) ; refus motivé (EF-07-05).
-- [ ] Stock temps réel + pharmacie alternative (EF-07-06) ; délivrance partielle (EF-07-07) ; pas de retour (EF-07-11).
-- [ ] Historique et renouvellement (EF-07-09).
+- [x] ✅ **Vérifié le 2026-11-06** — Panier chiffré ligne par ligne depuis l'ordonnance (EF-07-02) : prix de référence plus marge de l'officine, total tenu égal à la somme des lignes par une contrainte différée.
+- [x] ✅ **Vérifié le 2026-11-06** — Validation nominative obligatoire du pharmacien (EF-07-03) ; substitution tracée et notifiée (EF-07-04) ; refus motivé (EF-07-05).
+- [~] Stock temps réel + pharmacie alternative (EF-07-06) ; délivrance partielle (EF-07-07) ; pas de retour (EF-07-11). ✅ **Vérifié le 2026-11-06** : stock par lots en temps réel, délivrance partielle et absence de retour livrées ; quand aucune officine n'a tout, la commande passe « sans pharmacie » et le patient décide. **Reste la proposition automatique d'une pharmacie alternative.**
+- [x] ✅ **Vérifié le 2026-11-06** — Historique et renouvellement (EF-07-09) : renouvellement au comptoir (P3), historique côté patient dans « Mes ordonnances » et « Mes commandes ».
 - [x] **API + front livrés le 2026-09-30** — **`LotStock`** : quantité, date de péremption, facture d'origine, prix d'achat. Sortie au plus proche de la péremption (`consommerLots`), et délivrance d'un lot périmé bloquée. `Stock.datePeremption` a disparu ; `Stock.quantite` est la somme de ses lots.
-- [x] **API + front livres le 2026-10-02** — **Vente au comptoir** : modeles `VenteComptoir` et `LigneVente`, panier, remise plafonnee par parametre, mode de paiement, vendeur, client **facultatif** (un passant n'a pas de dossier), ordonnance exigee pour un produit reglemente (EF-05-12) — l'ecran le dit **avant** d'encaisser — et verifiee par les memes regles qu'au guichet. Sortie de stock par `consommerLots`. Annulation d'une erreur de saisie qui remet **exactement** les lots sortis ; ce n'est pas un retour client (EF-07-11). **Reste le volet assurance, qui depend de P10.**
+- [x] **API + front livres le 2026-10-02** — **Vente au comptoir** : modeles `VenteComptoir` et `LigneVente`, panier, remise plafonnee par parametre, mode de paiement, vendeur, client **facultatif** (un passant n'a pas de dossier), ordonnance exigee pour un produit reglemente (EF-05-12) — l'ecran le dit **avant** d'encaisser — et verifiee par les memes regles qu'au guichet. Sortie de stock par `consommerLots`. Annulation d'une erreur de saisie qui remet **exactement** les lots sortis ; ce n'est pas un retour client (EF-07-11). Le volet assurance (tiers payant à la caisse) est livré avec P10.
 - [x] **API + front livres le 2026-10-02** — **Tableau de bord officine** : chiffre du jour depuis minuit, panier moyen, encaissements par moyen de paiement, dix produits les plus vendus sur trente jours, ruptures et lots a perimer. Les ventes annulees sont exclues de tous les agregats.
 - [ ] **Import Excel du catalogue**, avec rapport ligne par ligne — un import qui échoue en silence sur trois lignes est pire que pas d'import.
 - [~] **Approvisionnement par facture** — **premier temps livré le 2026-09-30 (API + front)** : saisie assistée, une ligne par lot avec sa propre péremption, facture attachée en justificatif, total recalculé à la frappe. **Reste l'extraction automatique**, qui devra **toujours** être relue avant enregistrement : une erreur d'OCR sur une quantité ou une péremption ne doit jamais entrer seule en stock.
 - [x] **API + front livrés le 2026-09-30** — **Alerte de péremption proche**, seuil paramétrable (`STOCK_PEREMPTION_ALERTE_JOURS`, 90 par défaut) et horizon choisi à l'écran (30/60/90/180). Les lots déjà périmés sont présentés à part : ils sont à retirer, pas à surveiller.
 
-### P7 — Paiement · M · EF-08 · ⏳ **3 sur 5** — passerelle **réelle** livrée les 8 et 9/10
+### P7 — Paiement · M · EF-08 · ⏳ **3 faites + 1 partielle sur 5** — passerelle **réelle** livrée les 8 et 9/10
 
 > Le titre disait « fournisseur simulé ». Il l'était : `payment-provider.service.ts` fabriquait une référence et n'appelait personne, et une facture ne passait à `PAYEE` que si un humain la confirmait. **Chap Chap Pay** est désormais branché pour de vrai.
 >
@@ -235,38 +244,38 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
 - [x] **Idempotence (EF-08-03)** — portée par la facture et la vente, pas par une table de tentatives : `success` est définitif et n'est jamais défait par un rappel tardif, et la prise est conditionnelle (un seul gagnant).
 - [x] **Statuts en attente et vérification (EF-08-04)** — `statutOperateur` sur la facture et sur la vente ; la relecture interroge la passerelle à la demande. **Pas de tâche de fond** : au comptoir, le pharmacien appuie quand le client dit avoir payé.
 - [x] **Aucune donnée de carte stockée (EF-08-05)** — la plateforme n'en voit jamais : le paiement se fait sur la page de l'opérateur.
-- [ ] Détail du calcul avant paiement (EF-08-01) : fait à la caisse pour l'assurance, **reste le reçu et la facture téléchargeables** (EF-08-06).
-- [ ] Remboursements totaux/partiels motivés (EF-08-07) ; rapprochement quotidien avec signalement des écarts (EF-08-08).
+- [~] Détail du calcul avant paiement (EF-08-01) : fait à la caisse pour l'assurance, **reste le reçu et la facture téléchargeables** (EF-08-06). ✅ **Vérifié le 2026-11-06** : aucune route de reçu n'existe encore.
+- [ ] Remboursements totaux/partiels motivés (EF-08-07) ; rapprochement quotidien avec signalement des écarts (EF-08-08). ✅ **Vérifié le 2026-11-06** : le remboursement d'une commande payée se fait au comptoir, hors plateforme, et le code le dit ; la clôture de caisse signale l'écart de la session, pas un rapprochement avec l'opérateur.
 
 > **La pharmacie avait un trou** : le pharmacien cochait « Orange Money » et la vente naissait `PAYEE` sans qu'un franc ait bougé. Une vente mobile naît maintenant `EN_ATTENTE`, affiche un QR que le client scanne avec son propre téléphone, et ne devient `PAYEE` qu'en portant `referenceTransaction` — deux contraintes SQL l'imposent.
 
-### P8 — Livraison + carte + annuaire · L · EF-10 · ❌ **0 sur 9**
-- [ ] Rôle `LIVREUR` ; `OrdreLivraison` créé après paiement et préparation (EF-10-01).
-- [ ] Adresse avec points de repère, instructions, position GPS (EF-10-02) ; créneaux (EF-10-03).
-- [ ] Affectation au livreur ; positions horodatées pour le **suivi du trajet** (EF-10-04/05).
-- [ ] Preuve de remise : code à usage unique ou signature (EF-10-06) ; contrôle d'identité produits sensibles (EF-10-07).
-- [ ] Échec : nouvelle tentative, retour pharmacie, remboursement (EF-10-08) ; chaîne du froid (EF-10-09) ; signalement colis (EF-10-10).
-- [ ] **Mise en concurrence des motards** (processus du 2026-09-26, voir `PARCOURS-COMMANDE-LIVRAISON.md`) : les motards des communes environnantes sont notifiés de la course, **chacun propose son prix**, et **le patient choisit**. La plateforme n'impose pas de tarif.
-- [ ] Sur validation : la pharmacie reçoit **photo, numéro et identifiant** du motard, et **vérifie à son arrivée** avant de remettre les produits.
-- [ ] Le retrait en pharmacie n'est **pas un repli** : c'est un mode de remise permanent, à égalité avec la livraison.
-- [ ] Annuaire public géolocalisé : cliniques, pharmacies, laboratoires (horaires, services, coordonnées).
+### P8 — Livraison + carte + annuaire · L · EF-10 · ⏳ **3 faites + 5 partielles sur 9** (recompté le 2026-11-06)
+- [x] ✅ **Vérifié le 2026-11-06** — Rôle `LIVREUR` (espace livreur, recrutement par l'administration) ; la **course** (`Course`, numéro `LV-…`) s'ouvre quand la commande est prête pour livraison, après paiement et préparation (EF-10-01).
+- [ ] Adresse avec points de repère, instructions, position GPS (EF-10-02) ; créneaux (EF-10-03). ✅ **Vérifié le 2026-11-06** : la course ne connaît que le quartier et la préfecture du patient.
+- [~] Affectation au livreur ; positions horodatées pour le **suivi du trajet** (EF-10-04/05). ✅ **Vérifié le 2026-11-06** : l'affectation se fait par le choix de l'offre (statuts `ATTRIBUEE`, `EN_COURS`, `LIVREE`). **Reste le suivi du trajet sur carte.**
+- [~] Preuve de remise : code à usage unique ou signature (EF-10-06) ; contrôle d'identité produits sensibles (EF-10-07). ✅ **Vérifié le 2026-11-06** : la pharmacie remet au motard, le patient déclare la réception. **Restent le code à usage unique et le contrôle d'identité à la porte.**
+- [~] Échec : nouvelle tentative, retour pharmacie, remboursement (EF-10-08) ; chaîne du froid (EF-10-09) ; signalement colis (EF-10-10). ✅ **Vérifié le 2026-11-06** : renoncer à la livraison et course « sans motard » existent. **Restent la nouvelle tentative, le retour à la pharmacie, la chaîne du froid et le signalement.**
+- [x] ✅ **Vérifié le 2026-11-06** — **Mise en concurrence des motards** (processus du 2026-09-26, voir `PARCOURS-COMMANDE-LIVRAISON.md`) : les motards des communes environnantes sont notifiés de la course, **chacun propose son prix**, et **le patient choisit**. La plateforme n'impose pas de tarif.
+- [~] Sur validation : la pharmacie reçoit **photo, numéro et identifiant** du motard, et **vérifie à son arrivée** avant de remettre les produits. ✅ **Vérifié le 2026-11-06** : nom, téléphone et QR du livreur sont connus de la pharmacie. **Reste la photo.**
+- [x] ✅ **Vérifié le 2026-11-06** — Le retrait en pharmacie n'est **pas un repli** : c'est un mode de remise permanent, à égalité avec la livraison (même poids à l'écran, aucune option présélectionnée).
+- [~] Annuaire public géolocalisé : cliniques, pharmacies, laboratoires (horaires, services, coordonnées). ✅ **Vérifié le 2026-11-06** : la page d'accueil liste les structures avec une recherche. **Restent la carte, la géolocalisation et les horaires.**
 
 ### P9 — Notifications neutres · S · EF-11 · ⏳ **1 sur 2**
 - [x] **API livrée le 2026-10-02** — **aucun contenu médical dans un message sortant** (EF-11-02). Ce n'était pas une case vide mais un **défaut en service** : le code envoyait « des analyses vous attendent », « prélèvement prévu », « vos résultats d'analyses sont disponibles », « RESULTAT CRITIQUE », « votre vaccination BCG est due ». Le contrôle vit au **point de sortie** des SMS, donc un site d'appel oublié ne peut pas fuir ; des constructeurs nommés produisent les messages. Hors production le refus **lève** ; en production il remplace par un message neutre et journalise. Un message tapé par un administrateur est refusé en **400** avec le mot fautif. SMS en repli (EF-11-03) : reste à faire.
 - [ ] Préférences de canaux et de langue (EF-11-04) ; rejeu des non délivrées (EF-11-05).
 
-### P10 — Assurance et tiers payant · L · EF-09 · ⏳ **5 faites + 4 partielles sur 9** — complété les 8 et 9/10
+### P10 — Assurance et tiers payant · L · EF-09 · ⏳ **4 faites + 4 partielles sur 9** — complété les 8 et 9/10, recompté le 2026-11-06
 
 > **L'écran d'administration** (`/admin/assurance`) : déclarer un assureur, ses règles de couverture, et rattacher une police à un assuré. L'API existait depuis le 02/10 et ne se joignait qu'en ligne de commande.
 >
 > **L'espace de l'assureur** (`/assureur`, neuvième rôle) : la compagnie se connecte elle-même. Elle voit ses assurés, ce qu'elle a pris en charge, et la situation par officine — délivré, facturé, versé, reste dû (point 5.2). **Rien de médical n'en sort** : un assureur qui lirait ce qu'on soigne pourrait refuser un contrat dessus. `ReglementAssureur` rend « payé » et « reste dû » calculables.
-- [~] **API livrée le 2026-10-02** — `Assureur` (code, mode d'échange, structure de type `ASSURANCE`) et `ContratAssurance` (police, taux de base, plafond annuel, franchise, date d'effet, date de fin, carence). **Reste les bénéficiaires** : un contrat couvre aujourd'hui un seul patient, pas ses ayants droit.
+- [~] **API livrée le 2026-10-02** — `Assureur` (code, mode d'échange, structure de type `ASSURANCE`) et `ContratAssurance` (police, taux de base, plafond annuel, franchise, date d'effet, date de fin, carence). **Reste les bénéficiaires** : un contrat couvre aujourd'hui un seul patient, pas ses ayants droit. ✅ **Vérifié le 2026-11-06** : les **contrats collectifs d'entreprise** existent (`EntrepriseAssuree`, `ContratCollectifAssurance`, `AdhesionAssurance`), chaque salarié y adhère. **Restent les ayants droit** (conjoint, enfants).
 - [~] **API livrée le 2026-10-02** — taux **par catégorie de produit** avec date d'effet, plafond par ligne, plafond annuel, franchise, carence. `RegleCouverture` ne remplace jamais la précédente : sa date d'effet décide, et le calcul retient celle en vigueur à la date de la vente. **Reste les taux par acte et par analyse**, qui supposent un référentiel d'actes (P11).
 - [x] **API + front livrés le 2026-10-02** — calcul du reste à charge **ligne par ligne**, fonction pure et testée pour elle-même. Le détail s'additionne exactement à la part de l'assureur, franchise et plafonds compris : sinon l'écran afficherait une somme qui ne tombe pas juste. La caisse l'affiche **avant** l'encaissement.
 - [ ] Autorisation préalable bloquante au-delà d'un seuil paramétrable (EF-09-05).
-- [ ] Trois modes : API, portail assureur, validation manuelle (EF-09-02) — `Assureur.modeEchange` existe, **seul `MANUEL` fonctionne** ; dossier de facturation et suivi (EF-09-06/07).
+- [~] Trois modes : API, portail assureur, validation manuelle (EF-09-02) — `Assureur.modeEchange` existe, **seul `MANUEL` fonctionne** ; dossier de facturation et suivi (EF-09-06/07). ✅ **Vérifié le 2026-11-06** : le **portail assureur** est l'espace `/assureur`, avec la situation par officine. **Reste l'échange par API.**
 - [~] Non assurés en **paiement direct** : acquis, une vente sans `avecAssurance` est intégralement payée par le client (EF-09-09). **Reste la règle de rejet après délivrance** (EF-09-08, décision D4).
-- [~] **API + front livrés le 2026-10-02** — contrôle d'éligibilité **opposable et tracé** : le patient se reconnaît par son QR au comptoir, la réponse est figée en base, jamais recalculée, et un refus porte toujours son motif (contrainte SQL). **Reste la vue de l'assureur sur ses pharmacies conventionnées** (délivré, facturé, payé, dû, écarts) — elle suppose un suivi de règlement qui n'existe pas encore.
+- [x] **API + front livrés le 2026-10-02** — contrôle d'éligibilité **opposable et tracé** : le patient se reconnaît par son QR au comptoir, la réponse est figée en base, jamais recalculée, et un refus porte toujours son motif (contrainte SQL). La vue de l'assureur sur ses pharmacies conventionnées (délivré, facturé, payé, dû) est **livrée** dans l'espace `/assureur`, avec `ReglementAssureur` (**Vérifié le 2026-11-06**).
 - [x] **API livrée le 2026-10-02** — **exclusions par catégorie de produit**. Les deux préalables ont été levés le 2026-10-01 : le catalogue accepte des articles non médicamenteux, et `CategorieProduit` est une énumération fermée. Une catégorie exclue n'a pas de taux : porter les deux serait contradictoire, et une contrainte SQL le refuse.
 - [x] **API + front livrés le 2026-10-02** — **un taux de 100 % ne couvre pas tout**. Vérifié à l'écran : un assuré à 100 % chez qui le lait est exclu voit « Total 47 000 · Pris par l'assureur − 2 000 · À encaisser 45 000 », et la ligne de lait porte « Catégorie LAIT_INFANTILE exclue par l'assureur ». Le détail est montré **avant** paiement, avec les notes disant ce qui a raboté la part de l'assureur.
 
@@ -384,8 +393,8 @@ Constatée et vérifiée le 2026-09-25. Rien ici n'est bloquant pour développer
 |---|---|---|
 | `apps/api/prisma.config.js` | Artefact de build **commité** à côté du `.ts`. Prisma le préfère et fait échouer les commandes sans `--config` explicite. | S |
 | Swagger | **2 routes pharmacien documentées sur 10.** Le CDC impose que chaque livraison référence ses exigences dans Swagger. | S |
-| CI | `actions/checkout@v4` et `setup-node@v4` ciblent Node 20, déprécié. Avertissement aujourd'hui, panne demain. | S |
-| Redis | `REDIS_URL` non configuré : la limitation de débit est **en mémoire**, donc inopérante dès qu'il y a plus d'une instance. | S |
+| CI | ~~`actions/checkout@v4` et `setup-node@v4` ciblent Node 20, déprécié.~~ ✅ **Réglé** : CI passée en Node 24 (PR #40). | — |
+| Redis | `REDIS_URL` est posé dans les deux fichiers `docker-compose` ; seul `npm run dev` tourne sans Redis (limitation en mémoire). **À vérifier sur le serveur de production.** | S |
 | E-mail | Gmail non configuré : l'OTP tombe en repli développement. Inacceptable en production. | S |
 | Référentiels | Interactions médicamenteuses **vides** en base : aucune donnée clinique n'a été inventée, et il faut une source médicale validée pour les remplir. L'import existe depuis le 03/10 (EF-12-03), mais seulement par l'API : pas encore d'écran d'administration. | import livré, **données et écran à venir** |
 | Sync hors connexion | Ne couvre que l'ASC. Le laboratoire (EF-04-11) l'attend. | M |
@@ -440,6 +449,7 @@ Hébergeur agréé santé et localisation des données (ENF-05), sauvegardes RPO
 
 | Date | Bloc | Commit / note |
 |---|---|---|
+| 2026-11-06 | tous | **Feuille de route recomptée case par case contre le code** : 66 faites, 18 partielles, 15 restantes sur 99. P6, P8 et P10 avaient avancé sans être cochés. Application mobile Android (PR #48, #49, #52), logos et photos par chemin (PR #51). |
 | 2026-09-30 | P13→P1 | **Bloc 5 de l'addendum livré (API + front)** : le patient demande un rendez-vous depuis chez lui, l'accueil oriente ce que personne ne vise, le médecin accepte en fixant l'heure — ce geste ouvre l'épisode et le rendez-vous dans la même transaction. La demande n'ouvre pas d'épisode tant qu'elle n'est pas acceptée : un épisode est une visite, et une demande n'en est pas encore une. 376 tests API. |
 | 2026-09-30 | P2 | **Bloc 4 de l'addendum livré** : le rôle `BIOLOGISTE` disparaît, le laborantin valide. Migration écrite à la main — Prisma proposait une conversion d'énumération qui **échoue** sur les comptes existants, et un `DROP COLUMN` qui aurait effacé les 4 conclusions de laboratoire. Vérifié : 2 comptes migrés, 4 conclusions préservées. `commentaireBiologiste` devient `commentaireLaboratoire`. Le compte rendu n'imprime plus « Biologiste » sous le signataire : cette qualification n'a jamais été stockée. |
 | 2026-09-30 | P1 | **Bloc 3 de l'addendum livré (API + front)** : l'accueil oriente sans date, le médecin fixe le créneau et tient son agenda, l'assistante pointe l'arrivée. `RendezVous.statut` devient une énumération — ce qui a révélé que `asc.service.ts` comptait des rendez-vous « HONORE » que personne n'écrivait jamais, compteur structurellement à zéro. Migration écrite à la main : `prisma migrate diff` proposait un DROP COLUMN qui aurait effacé les statuts. 351 tests API. |
