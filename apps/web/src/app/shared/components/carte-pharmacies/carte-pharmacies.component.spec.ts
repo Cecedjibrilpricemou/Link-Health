@@ -1,5 +1,6 @@
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import type { ComponentFixture } from '@angular/core/testing';
 import * as L from 'leaflet';
 import { vi } from 'vitest';
 import type { PharmacieCarteView } from './carte-pharmacies.component';
@@ -75,9 +76,24 @@ async function monter(pharmacies: PharmacieCarteView[]) {
 
   const fixture = TestBed.createComponent(CartePharmaciesComponent);
   fixture.componentRef.setInput('pharmacies', pharmacies);
-  fixture.detectChanges();
-  await fixture.whenStable();
+  await stabiliser(fixture);
   return fixture;
+}
+
+/**
+ * Deux passes, et non une.
+ *
+ * L'effet qui monte la carte lit le conteneur rendu par le gabarit. A la
+ * premiere passe ce conteneur n'existe pas encore : l'effet sort, puis se
+ * redeclenche quand le viewChild se resout. Une seule passe laisse l'ordre de
+ * ces deux etapes a la vitesse de la machine — vert ici, rouge sur le serveur
+ * d'integration.
+ */
+async function stabiliser(fixture: ComponentFixture<CartePharmaciesComponent>): Promise<void> {
+  for (let passe = 0; passe < 2; passe += 1) {
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
 }
 
 describe('CartePharmaciesComponent', () => {
@@ -147,8 +163,7 @@ describe('CartePharmaciesComponent', () => {
     const fixture = await monter([pharmacie('1', 9.5, -13.6)]);
 
     fixture.componentRef.setInput('pharmacies', [pharmacie('2', 9.6, -13.7)]);
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await stabiliser(fixture);
 
     expect(mocks.carte.remove).toHaveBeenCalledTimes(1);
     expect(L.map).toHaveBeenCalledTimes(2);
