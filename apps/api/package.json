@@ -15,6 +15,7 @@
     "prisma:seed:e2e": "tsx prisma/seed-e2e.ts",
     "prisma:seed:demo": "tsx prisma/seed-demo.ts",
     "demo:catalogue": "tsx scripts/semer-catalogue-demo.mts",
+    "demo:voisinages": "tsx scripts/semer-voisinages-conakry.mts",
     "prisma:seed:consentements": "tsx prisma/seed-textes-consentement.ts",
     "prisma:backfill-encryption": "tsx prisma/backfill-encryption.ts"
   },

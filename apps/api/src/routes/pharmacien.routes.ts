@@ -4,6 +4,7 @@ import * as vente from '../services/vente.service';
 import * as caisse from '../services/caisse.service';
 import type {
   HorairesOfficineView,
+  PositionOfficineView,
   ApprovisionnementView,
   LotStockView,
   PeremptionProcheView,
@@ -12,7 +13,7 @@ import type {
   SessionCaisseView,
   RapportCaisseView,
 } from '@baobaoheath/shared-types';
-import { creerApprovisionnementSchema, definirHorairesSchema } from '../validators/api.schemas';
+import { creerApprovisionnementSchema, definirHorairesSchema, definirPositionSchema } from '../validators/api.schemas';
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireOfficineRole, requireRole } from '../middlewares/rbac.middleware';
@@ -74,6 +75,20 @@ router.get('/horaires', requirePersonnelClinique, async (req: AuthRequest, res: 
 router.put('/horaires', requireTitulaire, validateBody(definirHorairesSchema), async (req: AuthRequest, res: Response) => {
   const data: HorairesOfficineView = await pharmacien.definirHorairesOfficine(req.user!.userId, req.body);
   res.json({ success: true, data, message: 'Horaires enregistres' });
+});
+
+// ── Position sur la carte ────────────────────────────────────
+// Le public se deplace jusqu'a ce marqueur : seul le titulaire le pose, comme
+// pour les horaires. La lecture reste ouverte au personnel, qui renseigne les
+// clients au telephone.
+router.get('/position', requirePersonnelClinique, async (req: AuthRequest, res: Response) => {
+  const data: PositionOfficineView = await pharmacien.getPositionOfficine(req.user!.userId);
+  res.json({ success: true, data });
+});
+
+router.put('/position', requireTitulaire, validateBody(definirPositionSchema), async (req: AuthRequest, res: Response) => {
+  const data: PositionOfficineView = await pharmacien.definirPositionOfficine(req.user!.userId, req.body);
+  res.json({ success: true, data, message: 'Position enregistree' });
 });
 
 // ── Approvisionnement et peremptions (addendum, points 1.3 et 1.4) ───

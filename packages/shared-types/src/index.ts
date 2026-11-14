@@ -4453,6 +4453,27 @@ export interface EtatOuvertureView {
   prochaine: { dansJours: number; heure: string } | null;
 }
 
+/**
+ * La position de l'officine sur la carte, telle que son titulaire l'a posee.
+ *
+ * Nulle tant qu'elle n'a pas ete posee : une officine non situee reste
+ * trouvable, elle n'apparait simplement pas sur la carte.
+ */
+export interface PositionOfficineView {
+  latitude: number | null;
+  longitude: number | null;
+  /** De quoi se reperer pendant la saisie : le nom et l'adresse declares. */
+  nom: string;
+  adresse: string | null;
+  commune: string | null;
+}
+
+/** Les deux ensemble, ou aucune des deux : une demi-position ne situe rien. */
+export interface DefinirPositionDto {
+  latitude: number | null;
+  longitude: number | null;
+}
+
 export interface HorairesOfficineView {
   horaires: HorairesView | null;
   etat: EtatOuvertureView;

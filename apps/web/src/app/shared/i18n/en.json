@@ -2231,6 +2231,7 @@
     "NAV_APPROVISIONNEMENTS": "Stock intake",
     "NAV_PEREMPTIONS": "Expiry dates",
     "NAV_HORAIRES": "Opening hours",
+    "NAV_POSITION": "My location",
     "APPRO": {
       "TITLE": "Stock intake",
       "SUB": "Record a supplier invoice: each line enters stock as a batch, with its own expiry date.",
@@ -2285,6 +2286,20 @@
       "PARTOUT": "Apply to open days",
       "NOTE": "The hours you provide are shown to people looking for your pharmacy.",
       "ENREGISTRE": "Opening hours saved."
+    },
+    "POSITION": {
+      "TITLE": "My location",
+      "SUB": "Pin the exact location of your pharmacy on the map.",
+      "CARTE_ARIA": "Map for setting the pharmacy location",
+      "COORDONNEES": "Selected coordinates",
+      "AIDE_CARTE": "Move the map to your pharmacy, then click to place the pin",
+      "UTILISER_POSITION": "Use my current location",
+      "GEOLOCALISATION_EN_COURS": "Getting your location…",
+      "GEOLOCALISATION_ERREUR": "Your location could not be determined. Allow geolocation or place the pin on the map.",
+      "POINT_INTERDIT": "This location (0, 0) cannot be saved. Move the pin.",
+      "RETIRER": "Remove location",
+      "ENREGISTREE": "Location saved.",
+      "RETIREE": "Location removed."
     },
     "NAV_CONNEXIONS": "Sign-in history",
     "NAV_AGENTS": "Staff",

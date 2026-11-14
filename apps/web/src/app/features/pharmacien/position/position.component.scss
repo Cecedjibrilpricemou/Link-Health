@@ -1,0 +1,135 @@
+@import 'leaflet/dist/leaflet.css';
+
+:host {
+  display: block;
+  --position-accent: var(--bb-primary);
+}
+
+:host-context([data-theme="dark"]) {
+  --position-accent: var(--bb-bright);
+}
+
+.bb-position {
+  max-width: 1100px;
+  margin: 0 auto;
+  font-variant-numeric: tabular-nums;
+
+  &__message {
+    color: var(--bb-text-secondary);
+    font-size: 13.5px;
+  }
+
+  &__officine {
+    margin-bottom: 14px;
+    padding: 14px 18px;
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-lg);
+    background: var(--bb-surface-card);
+    box-shadow: var(--bb-shadow-sm);
+
+    h2 {
+      margin: 0;
+      color: var(--bb-text-primary);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 5px 0 0;
+      color: var(--bb-text-secondary);
+      font-size: 13px;
+    }
+  }
+
+  &__carte {
+    width: 100%;
+    height: min(62vh, 680px);
+    min-height: 380px;
+    overflow: hidden;
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-xl);
+    background: var(--bb-surface-1);
+    box-shadow: var(--bb-shadow-sm);
+  }
+
+  &__coordonnees,
+  &__aide {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 10px 0 0;
+    color: var(--bb-text-secondary);
+    font-size: 13px;
+  }
+
+  &__coordonnees span:last-child {
+    color: var(--bb-text-primary);
+    font-weight: 700;
+  }
+
+  &__erreur {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border: 1px solid var(--bb-danger-border);
+    border-radius: var(--bb-radius);
+    background: var(--bb-danger-bg);
+    color: var(--bb-danger);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+}
+
+app-pharmacien-position .pharmacien-position__epingle {
+  border: 0;
+  background: none;
+}
+
+app-pharmacien-position .pharmacien-position__epingle-point {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  border: 2px solid var(--bb-surface-card);
+  border-radius: 50% 50% 50% 0;
+  background: var(--position-accent);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 35%);
+  transform: rotate(-45deg);
+}
+
+app-pharmacien-position .leaflet-control-zoom a,
+app-pharmacien-position .leaflet-control-attribution {
+  border-color: var(--bb-border);
+  background: var(--bb-surface-card);
+  color: var(--bb-text-primary);
+}
+
+app-pharmacien-position .leaflet-control-attribution a {
+  color: var(--position-accent);
+}
+
+@media (max-width: 600px) {
+  .bb-position {
+    &__carte {
+      height: 48vh;
+      min-height: 300px;
+    }
+
+    &__coordonnees {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    &__actions {
+      justify-content: stretch;
+    }
+  }
+}
