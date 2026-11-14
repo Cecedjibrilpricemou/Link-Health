@@ -1,6 +1,7 @@
 // shared/components/dictee — bouton micro : on parle, le texte s'ecrit.
 //
-// Moteur : la reconnaissance vocale du navigateur (Web Speech API). Rien a
+// Moteur : la reconnaissance vocale du navigateur (Web Speech API) ; dans
+// l'application Android, celle du telephone (moteur-natif.ts). Rien a
 // installer ni a payer, mais deux limites assumees :
 // - le son part au service du navigateur (Google pour Chrome, Microsoft
 //   pour Edge). Pour des symptomes, c'est une donnee de sante : le patient
@@ -12,17 +13,19 @@
 //
 // Usage : <app-dictee [(texte)]="motif" [max]="1000" />
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, input, model, signal } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { I18nService } from '../../services/i18n.service';
+import { MoteurNatif } from './moteur-natif';
 
 /** Memorise que le patient a lu l'avis (par navigateur, sans donnee personnelle). */
 export const CLE_AVIS_DICTEE = 'bb-dictee-avis-vu';
 
 // Le sous-ensemble de l'API qu'on utilise : elle n'est pas dans les types DOM.
-interface ResultatReconnaissance { isFinal: boolean; 0: { transcript: string }; }
-interface EvenementResultat { resultIndex: number; results: ArrayLike<ResultatReconnaissance>; }
-interface MoteurReconnaissance {
+export interface ResultatReconnaissance { isFinal: boolean; 0: { transcript: string }; }
+export interface EvenementResultat { resultIndex: number; results: ArrayLike<ResultatReconnaissance>; }
+export interface MoteurReconnaissance {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
@@ -33,12 +36,17 @@ interface MoteurReconnaissance {
   stop(): void;
   abort(): void;
 }
-type ConstructeurMoteur = new () => MoteurReconnaissance;
+export type ConstructeurMoteur = new () => MoteurReconnaissance;
 
 function constructeurDuNavigateur(): ConstructeurMoteur | null {
   if (typeof window === 'undefined') return null;
   const w = window as unknown as { SpeechRecognition?: ConstructeurMoteur; webkitSpeechRecognition?: ConstructeurMoteur };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+/** Dans l'application native, le moteur du telephone ; sinon celui du navigateur. */
+export function choisirMoteur(natif = Capacitor.isNativePlatform()): ConstructeurMoteur | null {
+  return natif ? MoteurNatif : constructeurDuNavigateur();
 }
 
 function lireStockage(cle: string): string | null {
@@ -76,7 +84,7 @@ export class DicteeComponent implements OnDestroy {
   readonly max = input<number | null>(null);
 
   private readonly i18n = inject(I18nService);
-  private readonly Moteur = constructeurDuNavigateur();
+  private readonly Moteur = choisirMoteur();
   private moteur: MoteurReconnaissance | null = null;
 
   protected readonly disponible = this.Moteur !== null;
