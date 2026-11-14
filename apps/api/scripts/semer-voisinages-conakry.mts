@@ -13,32 +13,58 @@
 // jamais proposer une officine de Ratoma avant qu'on elargisse a toute la
 // prefecture. Ce script remplit ce champ.
 //
-// **Ce qu'il declare, et ce qu'il ne declare pas.** Uniquement les cinq
-// communes historiques de la presqu'ile — Kaloum, Dixinn, Matam, Ratoma,
-// Matoto — dont l'enchainement est etabli : Kaloum occupe la pointe, Dixinn
-// la suit, Matam et Ratoma se partagent la largeur de la presqu'ile, Matoto
-// ferme vers l'est. Les huit communes creees depuis (Gbessia, Kagbelen,
-// Kassa, Lambanyi, Maneah, Sanoyah, Sonfonia, Tombolia) ne sont pas
-// declarees : leurs limites demandent une connaissance du terrain, et une
-// voisine inventee enverrait de vraies commandes au mauvais endroit. Elles se
-// saisissent a la main dans Administration > Geographie.
+// **D'ou vient chaque voisinage.** Rien ici n'est devine, et la provenance
+// est notee a cote de chaque ligne :
+//
+//   - la presqu'ile historique (Kaloum, Dixinn, Matam, Ratoma, Matoto) suit
+//     son enchainement connu : Kaloum a la pointe, Dixinn ensuite, Matam et
+//     Ratoma se partageant la largeur, Matoto fermant vers l'est ;
+//   - le redecoupage de 2023 a scinde Ratoma et Matoto. Une commune detachee
+//     d'une autre la touche forcement : Lambanyi et Sonfonia tiennent a
+//     Ratoma, Gbessia et Tombolia a Matoto ;
+//   - les trois dernieres viennent du terrain, declarees par le responsable
+//     du projet, qui vit a Conakry.
+//
+// **Kassa n'a aucune voisine, volontairement.** C'est une ile, dans les iles
+// de Loos. Proposer une officine qu'il faut atteindre en bateau au titre de
+// la commune voisine n'aurait aucun sens.
+//
+// Une voisine manquante fait seulement elargir un peu plus large. Une voisine
+// fausse envoie quelqu'un se promener : dans le doute, on n'ecrit pas.
 //
 // Le service tient le lien dans les deux sens : declarer A voisine de B pose
-// aussi B voisine de A.
+// aussi B voisine de A. Chaque commune porte donc ici sa liste complete —
+// l'ecriture remplace la precedente, et une liste partielle retirerait les
+// voisines posees par une autre ligne.
 import { config } from 'dotenv';
 import { prisma } from '../src/config/prisma';
 import { modifierLieu } from '../src/services/geographie.service';
 
 config();
 
-/** Qui touche qui, sur la presqu'ile. Les noms sont ceux du referentiel. */
+/** Qui touche qui. Les noms sont ceux du referentiel. */
 const VOISINAGES: Record<string, string[]> = {
+  // La presqu'ile historique.
   Kaloum: ['Dixinn'],
   Dixinn: ['Kaloum', 'Matam', 'Ratoma'],
   Matam: ['Dixinn', 'Ratoma', 'Matoto'],
-  Ratoma: ['Dixinn', 'Matam', 'Matoto'],
-  Matoto: ['Matam', 'Ratoma'],
+  Ratoma: ['Dixinn', 'Matam', 'Matoto', 'Lambanyi', 'Sonfonia'],
+  Matoto: ['Matam', 'Ratoma', 'Gbessia', 'Tombolia', 'Sanoyah'],
+  // Detachees de Ratoma au redecoupage.
+  Lambanyi: ['Ratoma'],
+  Sonfonia: ['Ratoma', 'Kagbelen'],
+  // Detachees de Matoto au redecoupage.
+  Gbessia: ['Matoto'],
+  Tombolia: ['Matoto'],
+  // Declarees depuis le terrain.
+  Kagbelen: ['Sonfonia'],
+  Sanoyah: ['Matoto', 'Maneah'],
+  Maneah: ['Sanoyah'],
+  // Kassa : une ile, aucune voisine terrestre. Voir l'entete.
 };
+
+/** Les communes dont l'absence de voisine est un choix, pas un oubli. */
+const SANS_VOISINE = ['Kassa'];
 
 async function main(): Promise<void> {
   console.log('Voisinages des communes de Conakry\n');
@@ -71,9 +97,14 @@ async function main(): Promise<void> {
     orderBy: { nom: 'asc' },
   });
   const sans = apres.filter((c) => c.voisins.length === 0).map((c) => c.nom);
+  const voulues = sans.filter((nom) => SANS_VOISINE.includes(nom));
+  const oubliees = sans.filter((nom) => !SANS_VOISINE.includes(nom));
   console.log('\n' + (apres.length - sans.length) + ' communes sur ' + apres.length + ' ont au moins une voisine.');
-  if (sans.length > 0) {
-    console.log('A saisir a la main dans Administration > Geographie : ' + sans.join(', '));
+  if (voulues.length > 0) {
+    console.log('Sans voisine a dessein (voir l entete) : ' + voulues.join(', '));
+  }
+  if (oubliees.length > 0) {
+    console.log('A saisir a la main dans Administration > Geographie : ' + oubliees.join(', '));
   }
 }
 
