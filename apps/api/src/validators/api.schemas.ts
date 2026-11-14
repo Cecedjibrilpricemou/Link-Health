@@ -371,7 +371,23 @@ export const identifiantsReglementaires = {
   lieuAutorise: z.string().trim().max(200).optional(),
 } as const;
 
-export const createStructureSchema = z.object({
+/**
+ * Le point (0, 0) est en pleine mer, au large du Ghana.
+ *
+ * C'est la valeur que produit une saisie qui n'a pas abouti : un formulaire
+ * vide coerce en zero, une geolocalisation qui echoue sans etre traitee. Une
+ * structure posee la n'est pas mal placee, elle est perdue — et personne ne
+ * comprend pourquoi. Le meme refus vaut deja pour la position qu'un titulaire
+ * pose lui-meme (`definirPositionSchema`) : les deux portes se valent.
+ */
+const pasLePointZero = (d: { latitude?: number; longitude?: number }) =>
+  !(d.latitude === 0 && d.longitude === 0);
+const messagePointZero = {
+  message: "Le point (0, 0) est en pleine mer : la position n'a pas ete relevee.",
+  path: ['latitude'],
+};
+
+const structureBase = z.object({
   nom: z.string().trim().min(2).max(160),
   // `ASSURANCE` y figure desormais : c'est la structure de l'assureur qui
   // porte son agrement de la Banque Centrale, et aucune route ne savait la
@@ -394,7 +410,9 @@ export const createStructureSchema = z.object({
   }).strict(),
 }).strict();
 
-export const createPharmacieSchema = z.object({
+export const createStructureSchema = structureBase.refine(pasLePointZero, messagePointZero);
+
+const pharmacieBase = z.object({
   nom: z.string().trim().min(2).max(160),
   idStructureParente: id.optional(),
   prefecture: z.string().trim().min(1).max(80),
@@ -414,11 +432,14 @@ export const createPharmacieSchema = z.object({
   }).strict(),
 }).strict();
 
-export const updateStructureSchema = createStructureSchema
+export const createPharmacieSchema = pharmacieBase.refine(pasLePointZero, messagePointZero);
+
+export const updateStructureSchema = structureBase
   .omit({ admin: true })
   .partial()
   .extend({ estActive: z.boolean().optional() })
-  .strict();
+  .strict()
+  .refine(pasLePointZero, messagePointZero);
 
 export const createAgentPharmacieSchema = z.object({
   telephone: phone,

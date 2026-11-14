@@ -74,6 +74,14 @@
     </div>
   }
 
+  @if (structureASituer(); as structure) {
+    <app-situer-structure-dialog
+      [structure]="structure"
+      (fermer)="fermerDialoguePosition()"
+      (positionEnregistree)="appliquerPositionStructure($event)"
+    />
+  }
+
   @if (showForm()) {
     <div class="bb-struct__form">
       <h3>{{ 'ADMIN.STRUCTURES.NEW_BTN' | translate }}</h3>
@@ -327,6 +335,12 @@
                 }
               </div>
               <p class="bb-struct__meta">{{ getTypeLabel(s.type) }} · {{ s.prefecture }}</p>
+              @if (s.latitude != null && s.longitude != null) {
+                <p class="bb-struct__position">
+                  <i class="pi pi-map-marker" aria-hidden="true"></i>
+                  <span>{{ s.latitude | number: '1.6-6' }}, {{ s.longitude | number: '1.6-6' }}</span>
+                </p>
+              }
             </div>
           </div>
           <div class="bb-struct__item-actions">
@@ -358,6 +372,11 @@
               @if (menuOuvert() === s.id) {
                 <div class="bb-struct__menu" role="menu" (click)="$event.stopPropagation()">
                   @if (s.estActive) {
+                    <button type="button" role="menuitem" data-action="situer"
+                            class="bb-struct__menu-item"
+                            (click)="situerStructure(s)">
+                      <i class="pi pi-map-marker" aria-hidden="true"></i> {{ 'ADMIN.STRUCTURES.SITUER_BTN' | translate }}
+                    </button>
                     <button type="button" role="menuitem" data-action="desactiver"
                             class="bb-struct__menu-item bb-struct__menu-item--danger"
                             (click)="demanderDesactivation(s)">

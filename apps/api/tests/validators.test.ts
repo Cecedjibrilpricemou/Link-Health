@@ -3,6 +3,7 @@ import { syncPushSchema, ussdSessionSchema, verifyLoginOtpSchema,
   proposerOffreCourseSchema, remettreAuMotardSchema, renoncerLivraisonSchema,
   createAgentStructureSchema, creerAgentAssureurSchema, creerLivreurSchema,
   createStructureSchema, createPharmacieSchema, definirPositionSchema,
+  updateStructureSchema,
 } from '../src/validators/api.schemas';
 
 describe('api.schemas', () => {
@@ -201,6 +202,14 @@ describe('filtreJournalSchema', () => {
   it('refuse le point (0, 0), qui est en pleine mer', () => {
     // C'est la valeur que produit un formulaire dont la saisie n'a pas abouti.
     expect(() => definirPositionSchema.parse({ latitude: 0, longitude: 0 })).toThrow();
+  });
+
+  it('refuse le point (0, 0) par toutes les portes qui situent une structure', () => {
+    // Le meme refus que pour la position posee par un titulaire : sans lui,
+    // une structure creee ou modifiee par l'administration peut atterrir en
+    // pleine mer au large du Ghana, sans que personne comprenne pourquoi.
+    expect(() => updateStructureSchema.parse({ latitude: 0, longitude: 0 })).toThrow();
+    expect(() => updateStructureSchema.parse({ latitude: 9.545, longitude: -13.682 })).not.toThrow();
   });
 
   it('refuse des coordonnees hors du monde', () => {

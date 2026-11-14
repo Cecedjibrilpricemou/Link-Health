@@ -7,9 +7,30 @@ import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { of } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
+import { vi } from 'vitest';
 
 import { StructuresComponent } from './structures.component';
 import { AdminService } from '../../../core/services/admin.service';
+
+const cartes = vi.hoisted(() => {
+  const carte = { setView: vi.fn(), on: vi.fn(), remove: vi.fn() };
+  const coucheTuiles = { addTo: vi.fn() };
+  const marqueur = {
+    addTo: vi.fn().mockReturnThis(),
+    on: vi.fn().mockReturnThis(),
+    setLatLng: vi.fn().mockReturnThis(),
+    getLatLng: vi.fn(() => ({ lat: 9.5, lng: -13.6 })),
+  };
+  return {
+    carte,
+    map: vi.fn(() => carte),
+    tileLayer: vi.fn(() => coucheTuiles),
+    marker: vi.fn(() => marqueur),
+    divIcon: vi.fn(() => ({})),
+  };
+});
+
+vi.mock('leaflet', () => cartes);
 
 const STRUCTURES = [
   { id: 'chu', nom: 'CHU Donka', type: 'CHU', prefecture: 'Conakry', telephone: '620000001', estActive: true, creeLe: '2026-01-01' },
@@ -49,7 +70,10 @@ const saisir = (input: HTMLInputElement | HTMLSelectElement, valeur: string) => 
 };
 
 describe('admin : page Structures', () => {
-  beforeEach(() => TestBed.resetTestingModule());
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    vi.clearAllMocks();
+  });
 
   it('ne montre plus de bouton « Désactiver » sur chaque ligne', () => {
     const { el } = monter();
@@ -73,6 +97,27 @@ describe('admin : page Structures', () => {
     expect(el.querySelector('#struct-deactivate-title')).not.toBeNull();
     el.querySelector<HTMLButtonElement>('.bb-logout-modal__btn--confirm')!.click();
     expect(appels).toEqual(['desactiver:chu']);
+  });
+
+  it('ouvre le dialogue « Situer sur la carte » depuis le menu de la ligne', () => {
+    const { el, rendre } = monter();
+    ligne(el, 'chu').querySelector<HTMLButtonElement>('.bb-struct__menu-btn')!.click();
+    rendre();
+    el.querySelector<HTMLButtonElement>('[role="menu"] [data-action="situer"]')!.click();
+    rendre();
+
+    expect(el.querySelector('#struct-situer-title')).not.toBeNull();
+    expect(el.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+
+  it('reflète les nouvelles coordonnées sur la ligne sans recharger la liste', () => {
+    const { c, el, rendre } = monter();
+
+    c.appliquerPositionStructure({ id: 'chu', latitude: 9.5123456, longitude: -13.6123456 });
+
+    const position = rendre().querySelector('.bb-struct__item[data-id="chu"] .bb-struct__position');
+    expect(position?.textContent).toContain('9.512346');
+    expect(position?.textContent).toContain('-13.612346');
   });
 
   it('propose « Réactiver » pour une structure inactive', () => {
