@@ -2,15 +2,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  PLATFORM_ID,
   ViewEncapsulation,
+  afterRenderEffect,
   computed,
-  effect,
   inject,
   input,
   viewChild,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
 import type { EtatOuvertureView } from '@baobaoheath/shared-types';
 import * as L from 'leaflet';
 import { TranslatePipe } from '../../pipes/translate.pipe';
@@ -68,7 +66,6 @@ function estLocalisable(pharmacie: PharmacieCarteView): pharmacie is PharmacieLo
   styleUrl: './carte-pharmacies.component.scss',
 })
 export class CartePharmaciesComponent {
-  private readonly plateforme = inject(PLATFORM_ID);
   private readonly i18n = inject(I18nService);
   private readonly conteneurCarte = viewChild<ElementRef<HTMLDivElement>>('conteneurCarte');
 
@@ -76,10 +73,17 @@ export class CartePharmaciesComponent {
   readonly localisables = computed(() => this.pharmacies().filter(estLocalisable));
 
   constructor() {
-    effect((onCleanup) => {
+    // `afterRenderEffect` et non `effect` : la carte a besoin de l'element du
+    // gabarit, qui n'existe pas encore quand un effet ordinaire s'execute. Un
+    // effet ordinaire sort alors sans rien faire et attend d'etre rejoue, ce
+    // qui marchait ici et echouait sur le serveur d'integration selon l'ordre
+    // des passes. Cette API-ci est faite pour attendre le DOM, et elle ne
+    // s'execute que dans un navigateur : le garde de plateforme est devenu
+    // inutile.
+    afterRenderEffect((onCleanup) => {
       const conteneur = this.conteneurCarte()?.nativeElement;
       const pharmacies = this.localisables();
-      if (!conteneur || pharmacies.length === 0 || !isPlatformBrowser(this.plateforme)) return;
+      if (!conteneur || pharmacies.length === 0) return;
 
       const carte = L.map(conteneur);
       onCleanup(() => carte.remove());

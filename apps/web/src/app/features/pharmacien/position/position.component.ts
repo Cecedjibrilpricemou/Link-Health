@@ -2,15 +2,13 @@ import {
   Component,
   ElementRef,
   OnInit,
-  PLATFORM_ID,
   ViewEncapsulation,
+  afterRenderEffect,
   computed,
-  effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import * as L from 'leaflet';
 import type { DefinirPositionDto, PositionOfficineView } from '@baobaoheath/shared-types';
@@ -40,7 +38,6 @@ export class PositionComponent implements OnInit {
   private readonly service = inject(PharmacienService);
   private readonly toastr = inject(ToastrService);
   private readonly i18n = inject(I18nService);
-  private readonly plateforme = inject(PLATFORM_ID);
   private readonly conteneurCarte = viewChild<ElementRef<HTMLDivElement>>('conteneurCarte');
 
   readonly chargement = signal(true);
@@ -78,9 +75,13 @@ export class PositionComponent implements OnInit {
   private positionInitiale: [number, number] | null = null;
 
   constructor() {
-    effect((onCleanup) => {
+    // `afterRenderEffect` et non `effect` : la carte a besoin de l'element du
+    // gabarit, qui n'existe pas encore quand un effet ordinaire s'execute.
+    // Cette API-ci attend que le DOM soit ecrit, et ne tourne que dans un
+    // navigateur : le garde de plateforme est devenu inutile.
+    afterRenderEffect((onCleanup) => {
       const conteneur = this.conteneurCarte()?.nativeElement;
-      if (!conteneur || !isPlatformBrowser(this.plateforme)) return;
+      if (!conteneur) return;
 
       const carte = L.map(conteneur);
       this.carte = carte;

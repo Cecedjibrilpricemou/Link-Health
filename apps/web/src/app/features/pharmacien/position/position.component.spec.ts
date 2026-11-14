@@ -61,10 +61,8 @@ function gestionnaire(evenement: string): ((...args: never[]) => void) | undefin
 }
 
 async function stabiliser(fixture: ComponentFixture<PositionComponent>): Promise<void> {
-  for (let passe = 0; passe < 2; passe += 1) {
-    fixture.detectChanges();
-    await fixture.whenStable();
-  }
+  fixture.detectChanges();
+  await fixture.whenStable();
 }
 
 async function monter(position: PositionOfficineView = OFFICINE) {
