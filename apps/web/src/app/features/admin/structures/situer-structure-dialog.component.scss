@@ -1,0 +1,135 @@
+@import 'leaflet/dist/leaflet.css';
+
+app-situer-structure-dialog {
+  display: contents;
+}
+
+app-situer-structure-dialog .bb-situer-modal {
+  --situer-accent: var(--bb-primary);
+
+  width: min(940px, calc(100vw - 28px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius-xl);
+  background: var(--bb-surface-card);
+  box-shadow: var(--bb-shadow-hover);
+  color: var(--bb-text-primary);
+
+  @media (max-width: 600px) {
+    padding: 16px;
+  }
+}
+
+[data-theme="dark"] app-situer-structure-dialog .bb-situer-modal {
+  --situer-accent: var(--bb-bright);
+}
+
+app-situer-structure-dialog .bb-situer-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+
+  h2 {
+    margin: 0;
+    color: var(--bb-text-primary);
+    font-family: var(--bb-font-display);
+    font-size: 19px;
+    font-weight: 800;
+  }
+
+  p {
+    margin: 5px 0 0;
+    color: var(--bb-text-secondary);
+    font-size: 13px;
+  }
+}
+
+app-situer-structure-dialog .bb-situer-modal__map {
+  width: 100%;
+  height: min(54vh, 540px);
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius-lg);
+  background: var(--bb-surface-1);
+
+  @media (max-width: 600px) {
+    height: 42vh;
+    min-height: 260px;
+  }
+}
+
+app-situer-structure-dialog .bb-situer-modal__coordinates,
+app-situer-structure-dialog .bb-situer-modal__hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 0;
+  color: var(--bb-text-secondary);
+  font-size: 13px;
+}
+
+app-situer-structure-dialog .bb-situer-modal__coordinates strong {
+  color: var(--bb-text-primary);
+  font-weight: 700;
+}
+
+app-situer-structure-dialog .bb-situer-modal__error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--bb-danger-border);
+  border-radius: var(--bb-radius);
+  background: var(--bb-danger-bg);
+  color: var(--bb-danger);
+  font-size: 13px;
+}
+
+app-situer-structure-dialog .bb-situer-modal__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+
+  .bb-situer-modal__spacer {
+    flex: 1;
+  }
+
+  @media (max-width: 600px) {
+    .bb-situer-modal__spacer {
+      display: none;
+    }
+  }
+}
+
+app-situer-structure-dialog .situer-structure__epingle {
+  border: 0;
+  background: none;
+}
+
+app-situer-structure-dialog .situer-structure__epingle-point {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  border: 2px solid var(--bb-surface-card);
+  border-radius: 50% 50% 50% 0;
+  background: var(--situer-accent);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 35%);
+  transform: rotate(-45deg);
+}
+
+app-situer-structure-dialog .leaflet-control-zoom a,
+app-situer-structure-dialog .leaflet-control-attribution {
+  border-color: var(--bb-border);
+  background: var(--bb-surface-card);
+  color: var(--bb-text-primary);
+}
+
+app-situer-structure-dialog .leaflet-control-attribution a {
+  color: var(--situer-accent);
+}

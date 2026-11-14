@@ -16,6 +16,7 @@ import type { CreationPharmacieView, CreationStructureView, StructureAdminView, 
 import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { GeographieService } from '../../../core/services/geographie.service';
 import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
+import { SituerStructureDialogComponent } from './situer-structure-dialog.component';
 
 // Contenu de la modale de confirmation : assemble cote client a partir de la
 // reponse de creation, il n'a pas d'equivalent dans une reponse d'API.
@@ -51,7 +52,8 @@ function normaliser(v: string): string {
   standalone: true,
   imports: [ListeRechercheComponent, OptionsDePipe, 
     MatFormFieldModule, MatInputModule, MatSelectModule,CommonModule, FormsModule, TranslatePipe,
-    ExportListeComponent, PiecesAgrementComponent, DossierAgrementComponent, SuggestionsLieuxComponent],
+    ExportListeComponent, PiecesAgrementComponent, DossierAgrementComponent, SuggestionsLieuxComponent,
+    SituerStructureDialogComponent],
   templateUrl: './structures.component.html',
   styleUrl: './structures.component.scss'
 })
@@ -66,6 +68,7 @@ export class StructuresComponent implements OnInit {
   isSaving          = signal(false);
   isToggling        = signal<string | null>(null); // id de la structure en cours de toggle
   confirmDesactiver = signal<StructureAdminView | null>(null); // modal confirmation
+  structureASituer = signal<StructureAdminView | null>(null);
 
   mdpAffiche = signal<MotDePasseAffiche | null>(null);
 
@@ -365,6 +368,25 @@ export class StructuresComponent implements OnInit {
   demanderDesactivation(s: StructureAdminView) {
     this.menuOuvert.set(null);
     this.confirmDesactiver.set(s);
+  }
+
+  situerStructure(s: StructureAdminView) {
+    this.menuOuvert.set(null);
+    this.structureASituer.set(s);
+  }
+
+  fermerDialoguePosition() {
+    this.structureASituer.set(null);
+  }
+
+  appliquerPositionStructure(position: { id: string; latitude: number; longitude: number }) {
+    this.structures.update((structures) =>
+      structures.map((structure) =>
+        structure.id === position.id
+          ? { ...structure, latitude: position.latitude, longitude: position.longitude }
+          : structure,
+      ),
+    );
   }
 
   annulerDesactivation() {

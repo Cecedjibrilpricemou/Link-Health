@@ -159,6 +159,7 @@
 
   &__name { font-family: var(--bb-font-display); font-size: 14.5px; font-weight: 700; color: var(--bb-text-primary); margin: 0; }
   &__meta { font-size: 12.5px; color: var(--bb-text-muted); }
+  &__position { display: flex; align-items: center; gap: 5px; margin: 3px 0 0; color: var(--bb-text-secondary); font-size: 11.5px; font-variant-numeric: tabular-nums; }
   &__agents { font-size: 12px; color: var(--str-accent); font-weight: 700; margin-top: 2px; }
   &__admin-info { font-size: 12px; color: var(--bb-text-muted); margin-top: 2px; display: flex; align-items: center; gap: 5px; }
 
