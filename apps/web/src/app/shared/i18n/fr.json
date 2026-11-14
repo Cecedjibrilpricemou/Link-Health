@@ -4071,6 +4071,14 @@
       "NOT_FOUND": "Cette pharmacie n’est pas disponible.",
       "BACK": "Retour à la recherche"
     },
+    "MAP": {
+      "TITLE": "Localisation",
+      "ARIA_LABEL": "Carte OpenStreetMap des pharmacies",
+      "OPEN_UNTIL": "Ouvert jusqu’à {{heure}}",
+      "OPEN": "Ouvert",
+      "CLOSED": "Fermé",
+      "HOURS_UNKNOWN": "Horaires non renseignés"
+    },
     "LINK_SEARCH": "Trouver un médicament"
   },
   "AGREMENT": {

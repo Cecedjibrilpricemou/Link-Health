@@ -33,6 +33,10 @@ type Officine = {
   quartier: string;
   telephone: string;
   adresse: string;
+  /** Le centre approximatif du quartier : de quoi poser un marqueur, pas
+   *  une adresse relevee sur le terrain. */
+  latitude: number;
+  longitude: number;
 };
 
 /**
@@ -41,16 +45,16 @@ type Officine = {
  * fonctionner pour de vrai.
  */
 const OFFICINES: Officine[] = [
-  { nom: 'Pharmacie du Port', prefecture: 'Conakry', commune: 'Kaloum', quartier: 'Boulbinet', telephone: '+224620100001', adresse: 'Avenue de la Republique' },
-  { nom: 'Pharmacie Kaloum Centre', prefecture: 'Conakry', commune: 'Kaloum', quartier: 'Almamya', telephone: '+224620100002', adresse: '5e Boulevard' },
-  { nom: 'Pharmacie Belle-Vue', prefecture: 'Conakry', commune: 'Dixinn', quartier: 'Belle-Vue', telephone: '+224620100003', adresse: 'Route du Niger' },
-  { nom: 'Pharmacie Donka Sante', prefecture: 'Conakry', commune: 'Dixinn', quartier: 'Hafia', telephone: '+224620100004', adresse: 'Face CHU Donka' },
-  { nom: 'Pharmacie Madina Marche', prefecture: 'Conakry', commune: 'Matam', quartier: 'Madina', telephone: '+224620100005', adresse: 'Entree du grand marche' },
-  { nom: 'Pharmacie Kipe Nord', prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipe', telephone: '+224620100006', adresse: 'Carrefour Kipe' },
-  { nom: 'Pharmacie Taouyah', prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Taouyah', telephone: '+224620100007', adresse: 'Rue principale' },
-  { nom: 'Pharmacie Matoto Gare', prefecture: 'Conakry', commune: 'Matoto', quartier: 'Gbessia', telephone: '+224620100008', adresse: 'Pres de la gare routiere' },
-  { nom: 'Pharmacie Kindia Centre', prefecture: 'Kindia', commune: 'Kindia', quartier: 'Centre', telephone: '+224620100009', adresse: 'Avenue du marche' },
-  { nom: 'Pharmacie Labe Plateau', prefecture: 'Labé', commune: 'Labé', quartier: 'Plateau', telephone: '+224620100010', adresse: 'Route de Pita' },
+  { nom: 'Pharmacie du Port', prefecture: 'Conakry', commune: 'Kaloum', quartier: 'Boulbinet', telephone: '+224620100001', adresse: 'Avenue de la Republique', latitude: 9.5098, longitude: -13.7136 },
+  { nom: 'Pharmacie Kaloum Centre', prefecture: 'Conakry', commune: 'Kaloum', quartier: 'Almamya', telephone: '+224620100002', adresse: '5e Boulevard', latitude: 9.5145, longitude: -13.7075 },
+  { nom: 'Pharmacie Belle-Vue', prefecture: 'Conakry', commune: 'Dixinn', quartier: 'Belle-Vue', telephone: '+224620100003', adresse: 'Route du Niger', latitude: 9.5452, longitude: -13.6822 },
+  { nom: 'Pharmacie Donka Sante', prefecture: 'Conakry', commune: 'Dixinn', quartier: 'Hafia', telephone: '+224620100004', adresse: 'Face CHU Donka', latitude: 9.5374, longitude: -13.6806 },
+  { nom: 'Pharmacie Madina Marche', prefecture: 'Conakry', commune: 'Matam', quartier: 'Madina', telephone: '+224620100005', adresse: 'Entree du grand marche', latitude: 9.5496, longitude: -13.6601 },
+  { nom: 'Pharmacie Kipe Nord', prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipe', telephone: '+224620100006', adresse: 'Carrefour Kipe', latitude: 9.5934, longitude: -13.6396 },
+  { nom: 'Pharmacie Taouyah', prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Taouyah', telephone: '+224620100007', adresse: 'Rue principale', latitude: 9.5747, longitude: -13.6573 },
+  { nom: 'Pharmacie Matoto Gare', prefecture: 'Conakry', commune: 'Matoto', quartier: 'Gbessia', telephone: '+224620100008', adresse: 'Pres de la gare routiere', latitude: 9.5761, longitude: -13.6077 },
+  { nom: 'Pharmacie Kindia Centre', prefecture: 'Kindia', commune: 'Kindia', quartier: 'Centre', telephone: '+224620100009', adresse: 'Avenue du marche', latitude: 10.0569, longitude: -12.8658 },
+  { nom: 'Pharmacie Labe Plateau', prefecture: 'Labé', commune: 'Labé', quartier: 'Plateau', telephone: '+224620100010', adresse: 'Route de Pita', latitude: 11.3182, longitude: -12.2833 },
 ];
 
 type Produit = {
@@ -179,6 +183,8 @@ async function main(): Promise<void> {
       quartier: officine.quartier,
       adresse: officine.adresse,
       telephone: officine.telephone,
+      latitude: officine.latitude,
+      longitude: officine.longitude,
       estActive: true,
       estPartenaire: true,
     };

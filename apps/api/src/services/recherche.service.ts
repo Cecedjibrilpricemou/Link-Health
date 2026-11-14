@@ -56,6 +56,9 @@ export interface PharmacieProduit {
   prixGnf: number;
   etatStock: EtatStock;
   declareLe: Date;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
   /** Ouvert maintenant ? Le visiteur va se deplacer. */
   ouverture: EtatOuverture;
 }
@@ -90,6 +93,9 @@ export interface PharmacieTrouvee {
   telephone: string | null;
   /** Ce qu'elle a en rayon aujourd'hui, pour savoir si la visite vaut le coup. */
   nombreProduits: number;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
   ouverture: EtatOuverture;
 }
 
@@ -120,6 +126,9 @@ export interface PharmacieDetail {
   produits: ProduitEnRayon[];
   /** Les sept jours, pour que le visiteur sache quand revenir. */
   horaires: Horaires | null;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
   ouverture: EtatOuverture;
 }
 
@@ -237,6 +246,8 @@ type LigneStock = {
     commune: string | null;
     quartier: string | null;
     telephone: string | null;
+    latitude: number | null;
+    longitude: number | null;
     horaires: unknown;
   } | null;
 };
@@ -309,6 +320,8 @@ function resumer(
       commune: structure.commune,
       quartier: structure.quartier,
       telephone: structure.telephone,
+      latitude: structure.latitude,
+      longitude: structure.longitude,
       prixGnf: prixDeVenteGnf(produit.prixUnitaireGnf, s.margeGnf),
       etatStock: etatDuStock(s.quantite, s.seuilAlerte),
       declareLe: s.modifieLe,
@@ -384,6 +397,8 @@ export async function chercherProduits(critere: CritereRecherche): Promise<Resul
                 commune: true,
                 quartier: true,
                 telephone: true,
+                latitude: true,
+                longitude: true,
                 horaires: true,
               },
             },
@@ -457,6 +472,8 @@ export async function chercherPharmacies(q: string): Promise<PharmacieTrouvee[]>
       commune: true,
       quartier: true,
       telephone: true,
+      latitude: true,
+      longitude: true,
       horaires: true,
     },
     orderBy: { nom: 'asc' },
@@ -483,6 +500,8 @@ export async function chercherPharmacies(q: string): Promise<PharmacieTrouvee[]>
     commune: o.commune,
     quartier: o.quartier,
     telephone: o.telephone,
+    latitude: o.latitude,
+    longitude: o.longitude,
     nombreProduits: parOfficine.get(o.id) ?? 0,
     ouverture: etatOuverture(horairesDepuisLaBase(o.horaires)),
   }));
@@ -510,6 +529,8 @@ export async function catalogueDe(idPharmacie: string, q?: string | null): Promi
       quartier: true,
       adresse: true,
       telephone: true,
+      latitude: true,
+      longitude: true,
       horaires: true,
     },
   });

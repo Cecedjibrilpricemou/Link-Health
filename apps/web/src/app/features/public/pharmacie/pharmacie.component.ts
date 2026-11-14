@@ -12,6 +12,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { PharmacieDetailView, ProduitEnRayonView } from '@baobaoheath/shared-types';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { PublicShellComponent } from '../../../shared/components/public-shell/public-shell.component';
+import { CartePharmaciesComponent } from '../../../shared/components/carte-pharmacies/carte-pharmacies.component';
 import { RechercheService } from '../../../core/services/recherche.service';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { PlateformeService } from '../../../shared/services/plateforme.service';
@@ -19,7 +20,7 @@ import { PlateformeService } from '../../../shared/services/plateforme.service';
 @Component({
   selector: 'app-pharmacie',
   standalone: true,
-  imports: [FormsModule, RouterLink, TranslatePipe, PublicShellComponent],
+  imports: [FormsModule, RouterLink, TranslatePipe, PublicShellComponent, CartePharmaciesComponent],
   templateUrl: './pharmacie.component.html',
   styleUrl: './pharmacie.component.scss',
 })

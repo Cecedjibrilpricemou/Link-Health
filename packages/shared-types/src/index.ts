@@ -4336,6 +4336,9 @@ export interface PharmacieProduitView {
   prixGnf: number;
   etatStock: EtatStockPublic;
   declareLe: string;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
   /** Ouvert maintenant ? Le visiteur va se deplacer. */
   ouverture: EtatOuvertureView;
 }
@@ -4375,6 +4378,9 @@ export interface PharmacieTrouveeView {
   telephone: string | null;
   /** Ce qu'elle a en rayon, pour savoir si la visite vaut le coup. */
   nombreProduits: number;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
   ouverture: EtatOuvertureView;
 }
 
@@ -4406,6 +4412,9 @@ export interface PharmacieDetailView {
   produits: ProduitEnRayonView[];
   /** Les sept jours, pour que le visiteur sache quand revenir. */
   horaires: HorairesView | null;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
   ouverture: EtatOuvertureView;
 }
 

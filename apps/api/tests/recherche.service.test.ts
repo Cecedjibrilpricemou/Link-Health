@@ -43,6 +43,7 @@ const MAINTENANT = new Date('2026-11-12T10:00:00.000Z');
 function officine(sur: Partial<{
   id: string; nom: string; prefecture: string; commune: string | null;
   quartier: string | null; telephone: string | null;
+  latitude: number | null; longitude: number | null;
 }> = {}) {
   return {
     id: 'ph-1',
@@ -51,6 +52,8 @@ function officine(sur: Partial<{
     commune: 'Dixinn',
     quartier: 'Belle-Vue',
     telephone: '620000000',
+    latitude: 9.545,
+    longitude: -13.682,
     ...sur,
   };
 }
@@ -278,6 +281,9 @@ describe('A2 : la liste des pharmacies qui ont le produit', () => {
       quartier: 'Belle-Vue',
       // Pour appeler avant de traverser la ville.
       telephone: '620000000',
+      // Pour la poser sur la carte.
+      latitude: 9.545,
+      longitude: -13.682,
       prixGnf: 11_500,
       etatStock: 'DISPONIBLE',
       declareLe: MAINTENANT,
@@ -413,6 +419,8 @@ const OFFICINE_BASE = {
   commune: 'Dixinn',
   quartier: 'Belle-Vue',
   telephone: '620000000',
+  latitude: 9.545,
+  longitude: -13.682,
 };
 
 describe('chercherPharmacies', () => {
@@ -472,6 +480,20 @@ describe('chercherPharmacies', () => {
     const trouvees = await chercherPharmacies('pricemou');
     expect(trouvees[0]?.ouverture).toEqual({ ouvert: true, fermeA: '20:00', prochaine: null });
     jest.useRealTimers();
+  });
+
+  it('une officine sans coordonnees reste trouvable', async () => {
+    // Toutes les officines ne sont pas situees. Celle-la ne pourra pas etre
+    // posee sur la carte, mais elle doit rester dans les resultats.
+    prisma.structureSante.findMany.mockResolvedValue([
+      { ...OFFICINE_BASE, latitude: null, longitude: null },
+    ]);
+    prisma.stock.groupBy.mockResolvedValue([]);
+
+    const trouvees = await chercherPharmacies('pricemou');
+    expect(trouvees).toHaveLength(1);
+    expect(trouvees[0]?.latitude).toBeNull();
+    expect(trouvees[0]?.longitude).toBeNull();
   });
 
   it('ne rend rien sur une recherche trop courte, sans interroger la base', async () => {

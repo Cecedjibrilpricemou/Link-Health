@@ -38,6 +38,8 @@ const OFFICINE: PharmacieDetailView = {
   telephone: '620000000',
   nombreProduits: 42,
   produits: [PRODUIT],
+  latitude: 9.545,
+  longitude: -13.682,
   horaires: null,
   ouverture: { ouvert: null, fermeA: null, prochaine: null },
 };
