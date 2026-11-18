@@ -48,6 +48,25 @@ describe('.env.example', () => {
     expect(exemple).not.toMatch(/Actif sauf « false »/);
   });
 
+  // Constate le 2026-11-18 : les lignes vides du fichier ne sont pas
+  // « absentes » pour le schema. `SMTP_PORT=` arrive comme chaine vide, que
+  // `coerce.number()` lit zero, et `EMAIL_EXPEDITEUR=` ne passe pas
+  // `.email()`. Un fichier recopie tel quel empechait l'API de demarrer, a
+  // cause de lignes que personne n'avait remplies. Ce test parcourt le
+  // fichier entier : toute variable optionnelle ajoutee plus tard tombe ici
+  // si elle a le meme defaut.
+  it('demarre tel quel, lignes vides comprises', () => {
+    const valeurs: Record<string, string> = {};
+    for (const ligne of exemple.split('\n')) {
+      const m = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(ligne.trim());
+      if (m) valeurs[m[1]!] = m[2]!.trim();
+    }
+    expect(Object.keys(valeurs).length).toBeGreaterThan(10);
+    // Les quatre secrets obligatoires n'ont pas de valeur utilisable dans un
+    // fichier d'exemple : seules les lignes optionnelles sont jugees ici.
+    expect(() => envSchema.parse({ ...valeurs, ...BASE })).not.toThrow();
+  });
+
   it('autorise l’émulateur Android à côté du navigateur', () => {
     const origines = (valeurExemple('ALLOWED_ORIGINS') ?? '').split(',').map((s) => s.trim());
     expect(origines).toEqual(expect.arrayContaining(['http://localhost:4200', 'http://10.0.2.2:4200']));

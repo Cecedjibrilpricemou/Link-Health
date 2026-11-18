@@ -8,6 +8,21 @@ import { z } from 'zod';
  * requise est manquante ou invalide, au lieu de crasher plus tard
  * de façon silencieuse.
  */
+
+/**
+ * Traite une variable presente mais vide comme absente.
+ *
+ * Un fichier `.env` recopie depuis `.env.example` laisse des lignes
+ * `CLE=` : la variable existe alors, et vaut la chaine vide. Un schema
+ * `.optional()` ne la voit pas comme absente et la valide quand meme —
+ * `.email()` refuse la chaine vide, `coerce.number()` la lit comme zero.
+ * L'API refusait de demarrer a cause d'une ligne que personne n'avait
+ * remplie, ce qui est exactement le contraire d'« optionnel ».
+ */
+function videCommeAbsent<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), schema);
+}
+
 export const envSchema = z.object({
   // ─── Base de données ─────────────────────────────────
   DATABASE_URL: z.string().min(1, 'DATABASE_URL est obligatoire'),
@@ -39,7 +54,26 @@ export const envSchema = z.object({
     z.array(z.string().min(1))
   ),
 
-  // ─── Email (optionnel en dev) ────────────────────────
+  // ─── Courriel (optionnel en dev) ─────────────────────
+  // `services/courriel.service.ts` prend le premier transport configure :
+  // Brevo, puis un relais SMTP quelconque, puis Gmail. L'API de Brevo sort
+  // sur le port 443, que les hebergeurs laissent ouvert, contrairement aux
+  // ports SMTP qu'ils ferment souvent contre le pourriel.
+  BREVO_API_KEY: z.string().optional(),
+  // Adresse d'expedition par defaut. Brevo refuse d'expedier depuis une
+  // adresse qu'on n'a pas validee chez lui. Les reglages de la plateforme
+  // passent devant, pour en changer sans redeployer.
+  //
+  // `videCommeAbsent` sur les deux lignes qui valident : une variable
+  // presente mais laissee vide — le cas d'un .env recopie — arrive comme
+  // une chaine vide, pas comme `undefined`. Sans cela, `.email()` echouerait
+  // et `coerce.number()` lirait 0, et l'API refuserait de demarrer a cause
+  // d'une ligne que personne n'a remplie.
+  EMAIL_EXPEDITEUR: videCommeAbsent(z.string().email().optional()),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: videCommeAbsent(z.coerce.number().int().positive().optional()),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
   GMAIL_USER: z.string().optional(),
   GMAIL_APP_PASSWORD: z.string().optional(),
 
@@ -51,7 +85,7 @@ export const envSchema = z.object({
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().positive().default(20),
 
   // ─── Redis (optionnel) ──────────────────────────────
-  REDIS_URL: z.string().url().optional(),
+  REDIS_URL: videCommeAbsent(z.string().url().optional()),
 
   // ─── Jobs ───────────────────────────────────────────
   ENABLE_JOBS: z
@@ -67,7 +101,9 @@ export const envSchema = z.object({
   FRONTEND_URL: z.string().default('http://localhost:4200'),
 
   // ─── Sentry (optionnel) ─────────────────────────────
-  SENTRY_DSN: z.string().url().optional(),
+  // `.env.example` promet « Vide = desactivee » depuis toujours ; le schema
+  // refusait la ligne vide, et l'API ne demarrait pas.
+  SENTRY_DSN: videCommeAbsent(z.string().url().optional()),
 
   // ─── OTP dev fallback ───────────────────────────────
   // Lu comme le lit `utils/otp-developpement.ts`, qui decide : **seul
