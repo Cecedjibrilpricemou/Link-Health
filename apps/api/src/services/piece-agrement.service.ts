@@ -32,22 +32,59 @@ import { TypePieceAgrement, TypeStructure } from '../config/generated/client/cli
 const DOSSIER_PIECES = path.join(process.cwd(), 'stockage-prive', 'agrements');
 
 /**
- * Ce que chaque type de structure doit produire.
+ * Les trois etablissements publics qui ont un medecin a leur tete.
  *
- * Les quatre pieces sanitaires sont celles que les controles exigent
+ * Ils sont crees par un acte de l'Etat, comme le poste et le centre de sante,
+ * mais leur direction est medicale : l'inscription a l'ordre professionnel a
+ * un sens chez eux, pas dans un poste tenu par un agent communautaire.
+ */
+const HOPITAUX_PUBLICS: readonly TypeStructure[] = [
+  TypeStructure.HOPITAL_PREF,
+  TypeStructure.HOPITAL_REG,
+  TypeStructure.CHU,
+];
+
+/**
+ * Les structures nees d'un acte de l'Etat, et non d'un agrement commercial.
+ *
+ * **Elles n'ont ni registre du commerce ni arrete d'exploitation** : l'acte
+ * qui les cree les autorise du meme geste. Leur reclamer un RCCM serait un
+ * obstacle invente, et un champ rempli au hasard pour y echapper vaut moins
+ * qu'un champ vide.
+ */
+export function estStructurePublique(type: TypeStructure | string): boolean {
+  return (
+    type === TypeStructure.POSTE
+    || type === TypeStructure.CENTRE
+    || HOPITAUX_PUBLICS.includes(type as TypeStructure)
+  );
+}
+
+/**
+ * Ce que chaque type de structure doit produire. **Toutes obligatoires.**
+ *
+ * Les quatre pieces sanitaires du prive sont celles que les controles exigent
  * reellement (campagne du 27 juillet 2026) : agrement de creation, agrement
  * d'exploitation, diplomes legalises du personnel de sante, attestations
- * d'inscription aux ordres professionnels. Aucun arrete d'application ne
- * publie de liste exhaustive — inventer les autres aurait pose des obstacles
- * que l'administration elle-meme ne pose pas.
+ * d'inscription aux ordres professionnels.
  *
- * L'assureur ne figure pas dans cette liste par oubli : il releve de la Banque
- * Centrale, pas du ministere de la Sante. Son agrement vient d'une autre
- * autorite, il n'a ni diplome ni ordre professionnel a produire.
+ * **Le public en produit aussi** (decision du 2026-11-18). Il ne l'a pas
+ * toujours fait : la table n'avait longtemps que les types prives, au motif
+ * que l'administration sait ce qu'elle cree. Mais une structure entre
+ * desormais aussi par une demande publique, ou personne ne sait qui depose,
+ * et deux portes qui n'exigent pas la meme chose finissent par servir de
+ * contournement l'une a l'autre. Ce que le public fournit :
+ *   - l'acte qui le cree, a la place des deux agrements commerciaux ;
+ *   - le diplome de son responsable ;
+ *   - pour un hopital, l'inscription a l'ordre de son directeur medical.
  *
- * Les types absents de cette table n'exigent rien. **Le defaut va vers
- * l'exemption, pas vers l'exigence** : un poste de sante public ne doit pas
- * etre bloque parce qu'un type a ete ajoute a l'enum sans etre pense ici.
+ * L'assureur reste a part : il releve de la Banque Centrale, pas du ministere
+ * de la Sante. Son agrement vient d'une autre autorite, il n'a ni diplome ni
+ * ordre professionnel a produire.
+ *
+ * Un type absent de cette table n'exige rien — il n'en reste qu'un, la
+ * pharmacie hospitaliere, qui opere sous l'autorisation de son hopital
+ * (`SOUS_AUTORISATION_DU_PARENT`).
  */
 export const PIECES_REQUISES: Readonly<Partial<Record<TypeStructure, readonly TypePieceAgrement[]>>> = {
   PHARMACIE: [
@@ -68,6 +105,32 @@ export const PIECES_REQUISES: Readonly<Partial<Record<TypeStructure, readonly Ty
     TypePieceAgrement.DIPLOME_RESPONSABLE,
     TypePieceAgrement.INSCRIPTION_ORDRE,
   ],
+  HOPITAL_PREF: [
+    TypePieceAgrement.AGREMENT_CREATION,
+    TypePieceAgrement.DIPLOME_RESPONSABLE,
+    TypePieceAgrement.INSCRIPTION_ORDRE,
+  ],
+  HOPITAL_REG: [
+    TypePieceAgrement.AGREMENT_CREATION,
+    TypePieceAgrement.DIPLOME_RESPONSABLE,
+    TypePieceAgrement.INSCRIPTION_ORDRE,
+  ],
+  CHU: [
+    TypePieceAgrement.AGREMENT_CREATION,
+    TypePieceAgrement.DIPLOME_RESPONSABLE,
+    TypePieceAgrement.INSCRIPTION_ORDRE,
+  ],
+  // Un poste et un centre sont souvent tenus par un infirmier ou un agent
+  // communautaire, que nul ordre professionnel n'inscrit : l'exiger d'eux
+  // rendrait leur creation impossible.
+  POSTE: [
+    TypePieceAgrement.AGREMENT_CREATION,
+    TypePieceAgrement.DIPLOME_RESPONSABLE,
+  ],
+  CENTRE: [
+    TypePieceAgrement.AGREMENT_CREATION,
+    TypePieceAgrement.DIPLOME_RESPONSABLE,
+  ],
   ASSURANCE: [TypePieceAgrement.AGREMENT_ASSURANCE],
 };
 
@@ -80,6 +143,21 @@ const LIBELLES: Readonly<Record<TypePieceAgrement, string>> = {
   AGREMENT_ASSURANCE: "l'agrément de la Banque Centrale",
   AUTRE: 'une pièce complémentaire',
 };
+
+/**
+ * Le libelle d'une piece, **tel que celui qui la cherche la connait**.
+ *
+ * Le meme `AGREMENT_CREATION` s'appelle « agrément de création » pour une
+ * officine et « acte de création » pour un CHU. Ce n'est pas un detail de
+ * presentation : un directeur d'hopital cherchant un « agrément » dans ses
+ * archives ne trouverait rien.
+ */
+export function libellePiece(type: TypeStructure | string, piece: TypePieceAgrement): string {
+  if (piece === TypePieceAgrement.AGREMENT_CREATION && estStructurePublique(type)) {
+    return "l'acte de création de l'établissement";
+  }
+  return LIBELLES[piece];
+}
 
 /**
  * Un type factice pour une structure qui opere **sous l'autorisation d'une
@@ -193,7 +271,7 @@ export function validerPieces(
   const manquantes = piecesRequisesPour(type).filter((p) => !vus.has(p));
   if (manquantes.length > 0) {
     throw new ValidationError(
-      `Dossier incomplet : il manque ${manquantes.map((p) => LIBELLES[p]).join(', ')}.`,
+      `Dossier incomplet : il manque ${manquantes.map((p) => libellePiece(type, p)).join(', ')}.`,
     );
   }
 
@@ -368,6 +446,24 @@ export function validerIdentifiants(
   };
 
   if (!exigeDesPieces(type)) return valides;
+
+  /**
+   * Une structure publique ne porte qu'une reference : celle de l'acte qui
+   * la cree. Ni registre du commerce, ni arrete d'exploitation — l'acte
+   * l'autorise du meme geste. Les deux champs sont **effaces** plutot que
+   * laisses tels quels : une valeur saisie par erreur ferait croire, des
+   * annees plus tard, que l'hopital possede un RCCM.
+   */
+  if (estStructurePublique(type)) {
+    valides.rccm = null;
+    valides.numeroAgrementExploitation = null;
+    if (!valides.numeroAgrementCreation) {
+      throw new ValidationError(
+        "Dossier incomplet : il manque la référence de l'acte de création de l'établissement.",
+      );
+    }
+    return valides;
+  }
 
   const manquants: string[] = [];
   if (!valides.rccm) manquants.push('le numéro RCCM');

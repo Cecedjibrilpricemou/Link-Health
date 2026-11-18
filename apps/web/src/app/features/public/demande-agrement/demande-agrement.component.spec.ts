@@ -33,7 +33,8 @@ class I18nMaquette {
 const ATTENDUES: PiecesAttenduesView[] = [
   {
     type: 'PHARMACIE',
-    estHopitalPublic: false,
+    demandable: true,
+    estPublique: false,
     pieces: [
       { type: 'AGREMENT_CREATION', libelle: "l'agrément de création" },
       { type: 'AGREMENT_EXPLOITATION', libelle: "l'agrément d'exploitation" },
@@ -43,11 +44,23 @@ const ATTENDUES: PiecesAttenduesView[] = [
   },
   {
     type: 'CHU',
-    estHopitalPublic: true,
+    demandable: true,
+    estPublique: true,
     pieces: [
       { type: 'AGREMENT_CREATION', libelle: "l'acte de création de l'établissement" },
       { type: 'DIPLOME_RESPONSABLE', libelle: 'le diplôme légalisé du responsable' },
       { type: 'INSCRIPTION_ORDRE', libelle: "l'attestation d'inscription à l'ordre professionnel" },
+    ],
+  },
+  // Le serveur rend aussi les types que l'administration cree elle-meme : le
+  // formulaire public ne doit pas les proposer.
+  {
+    type: 'POSTE',
+    demandable: false,
+    estPublique: true,
+    pieces: [
+      { type: 'AGREMENT_CREATION', libelle: "l'acte de création de l'établissement" },
+      { type: 'DIPLOME_RESPONSABLE', libelle: 'le diplôme légalisé du responsable' },
     ],
   },
 ];
@@ -134,6 +147,18 @@ function remplir(component: DemandeAgrementComponent, type = 'PHARMACIE'): void 
 describe('demande publique de rattachement', () => {
   beforeEach(() => TestBed.resetTestingModule());
 
+  /**
+   * Un poste de sante produit lui aussi un dossier, mais il ne se demande
+   * pas : l'administration le cree. Le proposer ferait deposer un dossier que
+   * l'API refuserait, apres le temps de televersement de deux PDF.
+   */
+  it('ne propose que les types qui se demandent', () => {
+    const { component } = monter();
+
+    expect(component.typesProposes()).toEqual(['PHARMACIE', 'CHU']);
+    expect(component.typesProposes()).not.toContain('POSTE');
+  });
+
   it('tient du serveur la liste des pieces et leurs libelles', () => {
     const { component } = monter();
 
@@ -147,7 +172,7 @@ describe('demande publique de rattachement', () => {
     const { component } = monter();
     component.modifierChamp('type', 'CHU');
 
-    expect(component.estHopitalPublic()).toBe(true);
+    expect(component.estPublique()).toBe(true);
     expect(component.requisesImposees()).toEqual([
       'AGREMENT_CREATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE',
     ] as TypePieceAgrement[]);

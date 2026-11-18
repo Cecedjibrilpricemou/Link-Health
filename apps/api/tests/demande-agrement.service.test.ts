@@ -238,9 +238,16 @@ describe('les types et leurs pieces', () => {
     }
   });
 
-  it("n'exige rien d'un type qui ne se demande pas ici", () => {
-    expect(service.piecesDemandeesPour('ASSURANCE')).toEqual([]);
-    expect(service.piecesDemandeesPour('POSTE')).toEqual([]);
+  /**
+   * La table des pieces est **partagee** avec la creation administrative
+   * depuis le 2026-11-18 : un poste de sante y figure, avec ses deux pieces.
+   * Ce qui l'exclut d'une demande n'est donc pas la table, c'est la liste des
+   * types demandables — et c'est elle qu'il faut eprouver.
+   */
+  it("ne se laisse pas demander un type reserve a l'administration", () => {
+    expect(service.piecesDemandeesPour('POSTE').length).toBeGreaterThan(0);
+    expect(service.TYPES_DEMANDE).not.toContain('POSTE');
+    expect(service.TYPES_DEMANDE).not.toContain('ASSURANCE');
   });
 
   it("appelle la meme piece « acte de creation » pour un CHU et « agrement de creation » pour une officine", () => {

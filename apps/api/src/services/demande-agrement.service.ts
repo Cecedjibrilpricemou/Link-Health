@@ -28,6 +28,10 @@ import {
 } from './email.service';
 import {
   ecrireFichiers,
+  estStructurePublique,
+  libellePiece,
+  PIECES_REQUISES,
+  piecesRequisesPour,
   SOUS_AUTORISATION_DU_PARENT,
   supprimerFichiers,
   validerIdentifiants,
@@ -60,105 +64,43 @@ export const TYPES_DEMANDE: readonly TypeStructure[] = [
 ];
 
 /**
- * Les trois hopitaux publics.
+ * Vrai pour les trois hopitaux publics - les seuls types publics qui se
+ * demandent ici, un poste ou un centre etant cree par l'administration
+ * elle-meme.
  *
- * Ils n'ont **ni registre du commerce ni arrete d'exploitation** : un hopital
- * prefectoral, un hopital regional ou un CHU est cree par un acte de l'Etat.
- * Leur demander un RCCM serait un obstacle invente, et le champ reste vide
- * chez eux - vide, pas faux.
+ * La regle de fond - ni registre du commerce ni arrete d'exploitation pour
+ * une structure nee d'un acte de l'Etat - vit dans le service des pieces, qui
+ * la tient pour les trois portes de creation. La garder en double ici, c'etait
+ * la laisser diverger au premier changement.
  */
-const HOPITAUX_PUBLICS: readonly TypeStructure[] = [
-  TypeStructure.HOPITAL_PREF,
-  TypeStructure.HOPITAL_REG,
-  TypeStructure.CHU,
-];
-
 export function estHopitalPublic(type: TypeStructure | string): boolean {
-  return HOPITAUX_PUBLICS.includes(type as TypeStructure);
+  return estStructurePublique(type);
 }
 
 /**
- * Les pieces exigees d'une demande. **Toutes obligatoires, aucune
- * facultative.**
+ * Ce que le formulaire doit reclamer pour ce type.
  *
- * Cette table vit ici et non dans `PIECES_REQUISES`, qui sert aux trois
- * portes de creation administrative : celles-la n'exigent rien d'un hopital
- * public, et c'est juste, l'administration sait ce qu'elle cree elle-meme.
- * **Ici, personne ne sait qui depose.** Sans piece, n'importe qui inscrirait
- * « CHU de Donka » depuis son telephone.
- *
- * L'hopital public produit trois pieces au lieu de quatre : il n'a pas
- * d'arrete d'exploitation a presenter - il est cree par un acte de l'Etat qui
- * l'autorise du meme geste. Son diplome de responsable et son inscription a
- * l'ordre restent exiges : un hopital public est dirige par un medecin inscrit
- * comme n'importe quelle clinique.
- */
-const PIECES_DEMANDE: Readonly<Record<string, readonly TypePieceAgrement[]>> = {
-  PHARMACIE: [
-    TypePieceAgrement.AGREMENT_CREATION,
-    TypePieceAgrement.AGREMENT_EXPLOITATION,
-    TypePieceAgrement.DIPLOME_RESPONSABLE,
-    TypePieceAgrement.INSCRIPTION_ORDRE,
-  ],
-  CLINIQUE: [
-    TypePieceAgrement.AGREMENT_CREATION,
-    TypePieceAgrement.AGREMENT_EXPLOITATION,
-    TypePieceAgrement.DIPLOME_RESPONSABLE,
-    TypePieceAgrement.INSCRIPTION_ORDRE,
-  ],
-  LABORATOIRE: [
-    TypePieceAgrement.AGREMENT_CREATION,
-    TypePieceAgrement.AGREMENT_EXPLOITATION,
-    TypePieceAgrement.DIPLOME_RESPONSABLE,
-    TypePieceAgrement.INSCRIPTION_ORDRE,
-  ],
-  HOPITAL_PREF: [
-    TypePieceAgrement.AGREMENT_CREATION,
-    TypePieceAgrement.DIPLOME_RESPONSABLE,
-    TypePieceAgrement.INSCRIPTION_ORDRE,
-  ],
-  HOPITAL_REG: [
-    TypePieceAgrement.AGREMENT_CREATION,
-    TypePieceAgrement.DIPLOME_RESPONSABLE,
-    TypePieceAgrement.INSCRIPTION_ORDRE,
-  ],
-  CHU: [
-    TypePieceAgrement.AGREMENT_CREATION,
-    TypePieceAgrement.DIPLOME_RESPONSABLE,
-    TypePieceAgrement.INSCRIPTION_ORDRE,
-  ],
-};
-
-/**
- * Ce que le formulaire doit reclamer pour ce type. L'ecran lit cette liste
- * plutot que de la recopier : une liste recopiee finit par mentir.
+ * **La liste vient de la table partagee**, celle qu'appliquent aussi les
+ * portes de creation administrative : une demande et une creation par
+ * l'administration exigent desormais les memes pieces. Deux listes qui ne
+ * disent pas la meme chose finissent par servir de contournement l'une a
+ * l'autre - on depose la ou l'on exige le moins.
  */
 export function piecesDemandeesPour(type: TypeStructure | string): readonly TypePieceAgrement[] {
-  return PIECES_DEMANDE[type as string] ?? [];
+  return piecesRequisesPour(type);
 }
 
+/** Reexportes pour l'ecran : le libelle et le caractere public viennent du serveur. */
+export { estStructurePublique, libellePiece };
+
 /**
- * Le libelle d'une piece, **tel que le candidat le connait**.
+ * Tous les types qui produisent un dossier, dans l'ordre de la table.
  *
- * Le meme `AGREMENT_CREATION` s'appelle « agrément de création » pour une
- * officine et « acte de création » pour un CHU. Ce n'est pas un detail de
- * presentation : un directeur d'hopital cherchant un « agrément » dans ses
- * archives ne trouverait rien.
+ * Sert la route des pieces attendues, que lisent **les deux ecrans** : le
+ * formulaire public et la creation par l'administration. Celle-ci cree aussi
+ * des postes et des centres, absents des types demandables.
  */
-export function libellePiece(type: TypeStructure | string, piece: TypePieceAgrement): string {
-  if (piece === TypePieceAgrement.AGREMENT_CREATION && estHopitalPublic(type)) {
-    return "l'acte de création de l'établissement";
-  }
-  const libelles: Readonly<Record<TypePieceAgrement, string>> = {
-    AGREMENT_CREATION: "l'agrément de création",
-    AGREMENT_EXPLOITATION: "l'agrément d'exploitation",
-    DIPLOME_RESPONSABLE: 'le diplôme légalisé du responsable',
-    INSCRIPTION_ORDRE: "l'attestation d'inscription à l'ordre professionnel",
-    AGREMENT_ASSURANCE: "l'agrément de la Banque Centrale",
-    AUTRE: 'une pièce complémentaire',
-  };
-  return libelles[piece];
-}
+export const TYPES_AVEC_DOSSIER = Object.keys(PIECES_REQUISES) as TypeStructure[];
 
 /** Ce que le candidat envoie. Les champs vides sont deja ecartes par zod. */
 export interface DemandeRecue {
@@ -228,20 +170,10 @@ export async function deposer(
   }
   const type = dto.type as TypeStructure;
 
+  // `validerIdentifiants` applique seule la regle des structures publiques :
+  // elle efface le RCCM et l'arrete d'exploitation d'un hopital, et exige la
+  // reference de l'acte qui le cree. La repeter ici l'aurait laissee diverger.
   const identifiants = validerIdentifiants(type, dto);
-  if (estHopitalPublic(type)) {
-    // Un acte de l'Etat cree l'hopital et l'autorise du meme geste : ni
-    // registre du commerce, ni arrete d'exploitation distinct. Garder une
-    // valeur saisie par erreur dans ces champs ferait croire plus tard que
-    // l'hopital en possede un.
-    identifiants.rccm = null;
-    identifiants.numeroAgrementExploitation = null;
-    if (!identifiants.numeroAgrementCreation) {
-      throw new ValidationError(
-        "Dossier incomplet : il manque la référence de l'acte de création de l'établissement.",
-      );
-    }
-  }
 
   // Une piece complementaire n'a pas sa place dans une demande, et ce n'est
   // pas un choix de confort : `corpsJsonMultipart` remplace le corps de la

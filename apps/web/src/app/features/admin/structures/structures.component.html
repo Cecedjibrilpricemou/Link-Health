@@ -172,38 +172,50 @@
         <small class="bb-struct__gps-aide">{{ 'ADMIN.STRUCTURES.GPS_AIDE' | translate }}</small>
       </div>
 
-      <!-- Le dossier reglementaire. **Il bloque** : une pharmacie
-           independante, une clinique, un laboratoire prive ou un assureur ne
-           se creent pas sans lui. Une structure publique n'a rien a produire
-           et ne voit donc rien de ce bloc. -->
+      <!-- Le dossier reglementaire. **Il bloque, et pour tous les types**
+           depuis le 2026-11-18 : une creation par l'administration exige les
+           memes pieces qu'une demande publique. Ce qui change avec le type,
+           c'est la liste - quatre pieces au prive, l'acte de creation et le
+           diplome du responsable au public - et c'est le serveur qui la
+           donne, pas cet ecran. -->
       @if (exigeUnDossier()) {
         <h4 class="bb-struct__section-label">{{ 'AGREMENT.SECTION_TITRE' | translate }}</h4>
         <p class="bb-struct__section-note">{{ 'AGREMENT.SECTION_NOTE' | translate }}</p>
 
-        <div class="bb-struct__form-grid">
-          <div class="bb-struct__field">
-            <label for="struct-rccm">{{ 'AGREMENT.RCCM_LABEL' | translate }} *</label>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-              <input matInput id="struct-rccm" maxlength="40"
-                     [(ngModel)]="newStructure.rccm"
-                     [placeholder]="'AGREMENT.RCCM_PH' | translate" />
-            </mat-form-field>
-            <small class="form-hint">{{ 'AGREMENT.RCCM_HINT' | translate }}</small>
-          </div>
+        @if (estPublique()) {
+          <!-- Nee d'un acte de l'Etat : ni registre du commerce, ni arrete
+               d'exploitation. L'acte qui la cree l'autorise du meme geste, et
+               le serveur efface ces deux champs s'ils arrivent quand meme. -->
+          <p class="bb-struct__section-note">{{ 'AGREMENT.HOPITAL_PUBLIC_NOTE' | translate }}</p>
+        }
 
-          <div class="bb-struct__field">
-            <label for="struct-lieu">{{ 'AGREMENT.LIEU_LABEL' | translate }} *</label>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-              <input matInput id="struct-lieu" maxlength="200"
-                     [(ngModel)]="newStructure.lieuAutorise"
-                     [placeholder]="'AGREMENT.LIEU_PH' | translate" />
-            </mat-form-field>
-            <small class="form-hint">{{ 'AGREMENT.LIEU_HINT' | translate }}</small>
-          </div>
+        <div class="bb-struct__form-grid">
+          @if (!estPublique()) {
+            <div class="bb-struct__field">
+              <label for="struct-rccm">{{ 'AGREMENT.RCCM_LABEL' | translate }} *</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <input matInput id="struct-rccm" maxlength="40"
+                       [(ngModel)]="newStructure.rccm"
+                       [placeholder]="'AGREMENT.RCCM_PH' | translate" />
+              </mat-form-field>
+              <small class="form-hint">{{ 'AGREMENT.RCCM_HINT' | translate }}</small>
+            </div>
+
+            <div class="bb-struct__field">
+              <label for="struct-lieu">{{ 'AGREMENT.LIEU_LABEL' | translate }} *</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <input matInput id="struct-lieu" maxlength="200"
+                       [(ngModel)]="newStructure.lieuAutorise"
+                       [placeholder]="'AGREMENT.LIEU_PH' | translate" />
+              </mat-form-field>
+              <small class="form-hint">{{ 'AGREMENT.LIEU_HINT' | translate }}</small>
+            </div>
+          }
 
           <div class="bb-struct__field">
             <label for="struct-agr-creation">
-              {{ (estAssureur() ? 'AGREMENT.BCRG_LABEL' : 'AGREMENT.CREATION_LABEL') | translate }} *
+              {{ (estPublique() ? 'AGREMENT.ACTE_CREATION_LABEL'
+                   : estAssureur() ? 'AGREMENT.BCRG_LABEL' : 'AGREMENT.CREATION_LABEL') | translate }} *
             </label>
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
               <input matInput id="struct-agr-creation" maxlength="120"
@@ -216,8 +228,9 @@
           </div>
 
           <!-- La Banque Centrale ne delivre pas d'arrete d'exploitation
-               distinct : le champ n'a pas lieu d'exister pour un assureur. -->
-          @if (!estAssureur()) {
+               distinct, et une structure publique n'en a pas non plus : le
+               champ n'a pas lieu d'exister pour eux. -->
+          @if (!estAssureur() && !estPublique()) {
             <div class="bb-struct__field">
               <label for="struct-agr-exploitation">{{ 'AGREMENT.EXPLOITATION_LABEL' | translate }} *</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
@@ -230,8 +243,12 @@
           }
         </div>
 
+        <!-- La liste et les libelles viennent du serveur : le composant ne
+             retombe sur sa table locale que si l'API n'a pas repondu. -->
         <app-pieces-agrement
           [type]="newStructure.type"
+          [requisesImposees]="requisesImposees()"
+          [libellesImposes]="libellesImposes()"
           (pieces)="pieces.set($event)"
           (complet)="piecesCompletes.set($event)" />
       }

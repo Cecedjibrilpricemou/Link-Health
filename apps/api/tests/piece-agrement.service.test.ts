@@ -30,9 +30,11 @@ jest.mock('fs', () => ({
 import { promises as fs } from 'fs';
 
 import {
-  cheminPiece, deposerPieces, dossierDe, exigeDesPieces, lirePiece, normaliserRccm,
-  PIECES_REQUISES, piecesRequisesPour, validerIdentifiants, validerPieces,
+  cheminPiece, deposerPieces, dossierDe, estStructurePublique, exigeDesPieces, libellePiece,
+  lirePiece, normaliserRccm, piecesRequisesPour, SOUS_AUTORISATION_DU_PARENT,
+  validerIdentifiants, validerPieces,
 } from '../src/services/piece-agrement.service';
+import type { TypePieceAgrement } from '../src/config/generated/client/client';
 import { estPdf, TAILLE_MAX_PIECE } from '../src/middlewares/upload.middleware';
 import { ForbiddenError, NotFoundError, ValidationError } from '../src/utils/app-error';
 import type { JwtPayload } from '../src/types/auth.types';
@@ -87,15 +89,42 @@ describe('qui doit produire un dossier', () => {
     },
   );
 
-  // **Un CHU n'a pas d'agrement prive a fournir.** Le lui demander serait un
-  // obstacle invente, et bloquerait le peuplement de la plateforme.
+  // **Le public en produit aussi, depuis le 2026-11-18.** Il n'en produisait
+  // aucun : l'administration savait ce qu'elle creait. Mais une structure
+  // entre desormais aussi par une demande publique, ou personne ne sait qui
+  // depose, et deux portes qui n'exigent pas la meme chose finissent par
+  // servir de contournement l'une a l'autre.
   it.each(['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU'])(
-    'le public (%s) n en produit aucun',
+    'le public (%s) en produit un aussi',
     (type) => {
-      expect(exigeDesPieces(type)).toBe(false);
-      expect(piecesRequisesPour(type)).toEqual([]);
+      expect(exigeDesPieces(type)).toBe(true);
+      expect(piecesRequisesPour(type)).toContain('AGREMENT_CREATION');
+      expect(piecesRequisesPour(type)).toContain('DIPLOME_RESPONSABLE');
     },
   );
+
+  // Ce qu'il ne produit **pas** : l'arrete d'exploitation, qui n'existe pas
+  // pour lui — l'acte qui le cree l'autorise du meme geste.
+  it.each(['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU'])(
+    'le public (%s) ne produit pas d arrete d exploitation',
+    (type) => {
+      expect(piecesRequisesPour(type)).not.toContain('AGREMENT_EXPLOITATION');
+    },
+  );
+
+  // Un poste ou un centre est souvent tenu par un infirmier ou un agent
+  // communautaire, que nul ordre professionnel n'inscrit. Un hopital, lui,
+  // est dirige par un medecin.
+  it('n exige l inscription a l ordre que des hopitaux, pas des postes ni des centres', () => {
+    for (const type of ['POSTE', 'CENTRE']) {
+      expect(piecesRequisesPour(type)).not.toContain('INSCRIPTION_ORDRE');
+      expect(piecesRequisesPour(type)).toHaveLength(2);
+    }
+    for (const type of ['HOPITAL_PREF', 'HOPITAL_REG', 'CHU']) {
+      expect(piecesRequisesPour(type)).toContain('INSCRIPTION_ORDRE');
+      expect(piecesRequisesPour(type)).toHaveLength(3);
+    }
+  });
 
   // Le defaut va vers l'exemption : un type ajoute a l'enum sans etre pense
   // ici ne doit pas bloquer, il doit passer.
@@ -117,10 +146,33 @@ describe('qui doit produire un dossier', () => {
     expect(piecesRequisesPour('ASSURANCE')).toEqual(['AGREMENT_ASSURANCE']);
   });
 
-  it('aucun type public ne figure dans la table', () => {
+  it('reconnait les structures nees d un acte de l Etat', () => {
     for (const type of ['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU']) {
-      expect(PIECES_REQUISES[type as keyof typeof PIECES_REQUISES]).toBeUndefined();
+      expect(estStructurePublique(type)).toBe(true);
     }
+    for (const type of ['PHARMACIE', 'CLINIQUE', 'LABORATOIRE', 'ASSURANCE']) {
+      expect(estStructurePublique(type)).toBe(false);
+    }
+  });
+
+  /**
+   * Le seul type que la table n'inscrit pas : la pharmacie d'un hopital, qui
+   * opere sous l'autorisation de celui-ci et n'a pas d'agrement propre a
+   * produire. Elle passe par `SOUS_AUTORISATION_DU_PARENT`.
+   */
+  it('n exempte que la structure qui opere sous l autorisation d une autre', () => {
+    expect(exigeDesPieces(SOUS_AUTORISATION_DU_PARENT)).toBe(false);
+    expect(piecesRequisesPour(SOUS_AUTORISATION_DU_PARENT)).toEqual([]);
+  });
+
+  /**
+   * La meme piece ne porte pas le meme nom partout : un directeur d'hopital
+   * cherchant un « agrément » dans ses archives ne trouverait rien.
+   */
+  it('nomme l acte de creation selon le type', () => {
+    expect(libellePiece('CHU', 'AGREMENT_CREATION' as TypePieceAgrement)).toContain('acte de création');
+    expect(libellePiece('POSTE', 'AGREMENT_CREATION' as TypePieceAgrement)).toContain('acte de création');
+    expect(libellePiece('PHARMACIE', 'AGREMENT_CREATION' as TypePieceAgrement)).toContain('agrément de création');
   });
 });
 
@@ -210,18 +262,42 @@ describe('les identifiants exiges', () => {
     expect(v.numeroAgrementExploitation).toBeNull();
   });
 
-  it('une structure publique n a rien a fournir', () => {
-    const v = validerIdentifiants('CHU', {});
-    expect(v).toEqual({
-      rccm: null, numeroAgrementCreation: null, numeroAgrementExploitation: null, lieuAutorise: null,
-    });
+  /**
+   * Une structure publique doit produire **une** reference : celle de l'acte
+   * qui la cree. Elle n'en produisait aucune jusqu'au 2026-11-18, quand la
+   * creation par l'administration et la demande publique ont ete alignees.
+   */
+  it('une structure publique doit fournir la reference de son acte de creation', () => {
+    expect(() => validerIdentifiants('CHU', {})).toThrow(ValidationError);
+    expect(() => validerIdentifiants('CHU', {})).toThrow(/acte de création/);
+
+    const v = validerIdentifiants('CHU', { numeroAgrementCreation: 'DECRET/2026/012' });
+    expect(v.numeroAgrementCreation).toBe('DECRET/2026/012');
   });
 
-  // Elle peut quand meme en donner : un hopital public a un RCCM si on le
-  // connait. On l'enregistre sans l'exiger.
-  it('une structure publique peut en fournir quand meme', () => {
-    expect(validerIdentifiants('CHU', { rccm: 'GN.TCC.2020.A.00001' }).rccm)
-      .toBe('GN.TCC.2020.A.00001');
+  /**
+   * Et **seulement** celle-la. Un RCCM saisi pour un hopital est efface :
+   * l'acte de l'Etat qui le cree l'autorise du meme geste, et une valeur
+   * gardee ici ferait croire des annees plus tard qu'il est immatricule au
+   * registre du commerce.
+   */
+  it('efface le RCCM et l arrete d exploitation d une structure publique', () => {
+    const v = validerIdentifiants('CHU', {
+      numeroAgrementCreation: 'DECRET/2026/012',
+      rccm: 'GN.TCC.2020.A.00001',
+      numeroAgrementExploitation: 'ARR/2026/999',
+    });
+
+    expect(v.rccm).toBeNull();
+    expect(v.numeroAgrementExploitation).toBeNull();
+  });
+
+  it('applique la meme regle au poste et au centre de sante', () => {
+    for (const type of ['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG']) {
+      expect(() => validerIdentifiants(type, {})).toThrow(/acte de création/);
+      expect(validerIdentifiants(type, { numeroAgrementCreation: 'ARR/2026/1', rccm: 'GN.TCC.2020.A.1' }).rccm)
+        .toBeNull();
+    }
   });
 });
 
@@ -262,6 +338,19 @@ describe('la validation des pieces', () => {
       .toThrow(/5 Mo/i);
   });
 
+  /**
+   * **Le message est ce que le deposant lit** : il doit nommer les pieces
+   * comme il les connait. Un sabotage l'a montre - remplacer le libelle par
+   * type par un libelle unique ne faisait echouer aucun test, alors qu'un
+   * directeur d'hopital se serait vu reclamer un « agrément de création »
+   * qu'il n'a pas, au lieu de l'acte qui le cree.
+   */
+  it('nomme les pieces manquantes selon le type, dans le message', () => {
+    expect(() => validerPieces('CHU', [])).toThrow(/acte de création/);
+    expect(() => validerPieces('POSTE', [])).toThrow(/acte de création/);
+    expect(() => validerPieces('PHARMACIE', [])).toThrow(/agrément de création/);
+  });
+
   // `AUTRE` ne dit rien de lui-meme : sans libelle, la piece est illisible
   // dans la liste du dossier.
   it('refuse une piece complementaire sans libelle', () => {
@@ -269,12 +358,18 @@ describe('la validation des pieces', () => {
       .toThrow(/libellé/i);
   });
 
+  /**
+   * Le type neutre est `SOUS_AUTORISATION_DU_PARENT`, et non un CHU : depuis
+   * que le public produit lui aussi son dossier, un CHU sans ses trois pieces
+   * est refuse avant meme qu'on regarde les pieces complementaires.
+   */
   it('accepte plusieurs pieces complementaires, chacune libellee', () => {
     const pieces = [
       { fieldname: 'AUTRE', buffer: PDF },
       { fieldname: 'AUTRE', buffer: PDF },
     ];
-    expect(validerPieces('CHU', pieces, { AUTRE: 'Plan architectural' })).toHaveLength(2);
+    expect(validerPieces(SOUS_AUTORISATION_DU_PARENT, pieces, { AUTRE: 'Plan architectural' }))
+      .toHaveLength(2);
   });
 });
 
@@ -372,8 +467,15 @@ describe('l etat du dossier', () => {
     ]);
   });
 
-  // Une structure publique est complete sans rien deposer, et c'est juste.
-  it('dit complet pour une structure publique vide', async () => {
+  /**
+   * Un hopital public vide n'est plus complet.
+   *
+   * Il l'etait tant que le public n'avait rien a produire. Depuis que les
+   * deux portes de creation exigent les memes pieces, un dossier vide se
+   * montre pour ce qu'il est — et nomme ce qui manque avec les mots de
+   * l'hopital : « l'acte de création », pas « l'agrément de création ».
+   */
+  it('dit incomplet pour un hopital public sans pieces, et nomme ce qui manque', async () => {
     prisma.structureSante.findUnique.mockResolvedValue({
       id: 'chu-1', nom: 'Hopital Donka', type: 'CHU',
       rccm: null, numeroAgrementCreation: null, numeroAgrementExploitation: null, lieuAutorise: null,
@@ -381,6 +483,22 @@ describe('l etat du dossier', () => {
     });
 
     const d = await dossierDe('chu-1');
+    expect(d.complet).toBe(false);
+    expect(d.exigeDesPieces).toBe(true);
+    expect([...d.manquantes].sort()).toEqual([
+      'AGREMENT_CREATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE',
+    ]);
+  });
+
+  /** La pharmacie d'un hopital, elle, reste complete sans rien deposer. */
+  it('dit complet pour une structure qui opere sous l autorisation d une autre', async () => {
+    prisma.structureSante.findUnique.mockResolvedValue({
+      id: 'pharma-chu', nom: 'Pharmacie de Donka', type: SOUS_AUTORISATION_DU_PARENT,
+      rccm: null, numeroAgrementCreation: null, numeroAgrementExploitation: null, lieuAutorise: null,
+      piecesAgrement: [],
+    });
+
+    const d = await dossierDe('pharma-chu');
     expect(d.complet).toBe(true);
     expect(d.exigeDesPieces).toBe(false);
   });

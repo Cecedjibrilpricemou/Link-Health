@@ -12,7 +12,8 @@ import { DossierAgrementComponent } from '../../../shared/components/dossier-agr
 import { PiecesAgrementComponent } from '../../../shared/components/pieces-agrement/pieces-agrement.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
-import type { CreationPharmacieView, CreationStructureView, StructureAdminView, TypePieceAgrement } from '@baobaoheath/shared-types';
+import type { CreationPharmacieView, CreationStructureView, PiecesAttenduesView, StructureAdminView, TypePieceAgrement } from '@baobaoheath/shared-types';
+import { DemandeAgrementService } from '../../../core/services/demande-agrement.service';
 import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { GeographieService } from '../../../core/services/geographie.service';
 import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
@@ -59,6 +60,7 @@ function normaliser(v: string): string {
 })
 export class StructuresComponent implements OnInit {
   private adminService = inject(AdminService);
+  private demandes     = inject(DemandeAgrementService);
   private toastr       = inject(ToastrService);
   private i18n         = inject(I18nService);
 
@@ -106,14 +108,71 @@ export class StructuresComponent implements OnInit {
   pieces = signal<Partial<Record<TypePieceAgrement, File>>>({});
   piecesCompletes = signal(false);
 
-  /** Les types qui doivent produire un dossier. Le public n'en produit aucun. */
-  private static readonly TYPES_PRIVES = ['PHARMACIE', 'CLINIQUE', 'LABORATOIRE', 'ASSURANCE'];
+  /**
+   * Ce que le serveur exige, par type. Vide tant qu'il n'a pas repondu.
+   *
+   * **Lue et non recopiee.** Une table ecrite ici finirait par mentir : elle
+   * n'avait longtemps que les quatre types prives, et le jour ou le serveur a
+   * exige un dossier des structures publiques, l'ecran a laisse partir des
+   * creations qu'il refusait — sur des champs que le formulaire n'affichait
+   * meme pas.
+   */
+  readonly attendues = signal<PiecesAttenduesView[]>([]);
 
-  readonly exigeUnDossier = computed(() =>
-    StructuresComponent.TYPES_PRIVES.includes(this.newStructure.type));
+  /**
+   * **Des methodes, et non des `computed`.**
+   *
+   * `newStructure` est un objet ordinaire, pas un signal : un `computed` qui
+   * le lit n'a aucune dependance reactive. Il etait donc evalue une seule
+   * fois — a l'affichage du formulaire, sur le type par defaut — puis fige
+   * pour de bon.
+   *
+   * Ce que cela produisait : choisir « Clinique » ne faisait pas apparaitre
+   * la section du dossier reglementaire, l'ecran laissait partir la
+   * creation, `identifiants()` n'envoyait rien, et le serveur la refusait
+   * par « Dossier incomplet : il manque le numero RCCM... » — des champs que
+   * le formulaire n'avait jamais montres.
+   */
+  private entreeDuType(): PiecesAttenduesView | null {
+    return this.attendues().find((a) => a.type === this.newStructure.type) ?? null;
+  }
+
+  /**
+   * Tous les types en produisent un depuis le 2026-11-18 : un poste et un
+   * centre fournissent l'acte qui les cree et le diplome de leur responsable.
+   * Seule la pharmacie d'un hopital en est dispensee, operant sous
+   * l'autorisation de celui-ci — et le serveur ne la fait pas figurer dans la
+   * liste qu'il renvoie.
+   */
+  exigeUnDossier(): boolean {
+    return (this.entreeDuType()?.pieces.length ?? 0) > 0;
+  }
+
+  /**
+   * Nee d'un acte de l'Etat : ni registre du commerce, ni arrete
+   * d'exploitation. Le serveur efface ces deux champs s'ils arrivent quand
+   * meme ; l'ecran ne les montre pas.
+   */
+  estPublique(): boolean {
+    return this.entreeDuType()?.estPublique ?? false;
+  }
+
+  /** Les pieces a reclamer, et leurs libelles, tels que le serveur les donne. */
+  requisesImposees(): readonly TypePieceAgrement[] | null {
+    const entree = this.entreeDuType();
+    return entree ? entree.pieces.map((p) => p.type) : null;
+  }
+
+  libellesImposes(): Partial<Record<TypePieceAgrement, string>> {
+    const libelles: Partial<Record<TypePieceAgrement, string>> = {};
+    for (const piece of this.entreeDuType()?.pieces ?? []) libelles[piece.type] = piece.libelle;
+    return libelles;
+  }
 
   /** L'assureur releve de la Banque Centrale : une seule reference, pas deux. */
-  readonly estAssureur = computed(() => this.newStructure.type === 'ASSURANCE');
+  estAssureur(): boolean {
+    return this.newStructure.type === 'ASSURANCE';
+  }
 
   /**
    * Le formulaire est-il envoyable ?
@@ -211,6 +270,16 @@ export class StructuresComponent implements OnInit {
     // M1 : les zones d'elargissement du referentiel, quand il est rempli.
     this.geo.chargerConfiguration().subscribe(() =>
       this.geo.nomsSuggeres('elargissement').subscribe((noms) => this.zonesReferentiel.set(noms)));
+
+    // Ce que chaque type doit produire. La liste vient du serveur, qui
+    // l'applique : une copie locale avait fini par diverger de la sienne.
+    this.demandes.piecesAttendues().subscribe({
+      next: (r) => this.attendues.set(r.data ?? []),
+      error: () => this.toastr.error(
+        this.i18n.t('AGREMENT.ERR_PIECES_ATTENDUES'),
+        this.i18n.t('ADMIN.STRUCTURES.VALIDATION_TITLE'),
+      ),
+    });
   }
 
   loadStructures() {
@@ -263,12 +332,20 @@ export class StructuresComponent implements OnInit {
     // serveur les exige aussi : ce controle evite une montee de fichiers pour
     // rien, il ne la remplace pas.
     if (this.exigeUnDossier()) {
-      const manquants = !this.newStructure.rccm.trim()
-        || !this.newStructure.lieuAutorise.trim()
-        || !this.newStructure.numeroAgrementCreation.trim()
-        || (!this.estAssureur() && !this.newStructure.numeroAgrementExploitation.trim());
-      if (manquants) {
-        this.toastr.error(this.i18n.t('AGREMENT.ERR_IDENTIFIANTS'), validationTitle); return;
+      // Une structure publique ne porte qu'une reference : celle de l'acte
+      // qui la cree. Lui reclamer un RCCM serait un obstacle invente.
+      if (this.estPublique()) {
+        if (!this.newStructure.numeroAgrementCreation.trim()) {
+          this.toastr.error(this.i18n.t('AGREMENT.ERR_ACTE_CREATION'), validationTitle); return;
+        }
+      } else {
+        const manquants = !this.newStructure.rccm.trim()
+          || !this.newStructure.lieuAutorise.trim()
+          || !this.newStructure.numeroAgrementCreation.trim()
+          || (!this.estAssureur() && !this.newStructure.numeroAgrementExploitation.trim());
+        if (manquants) {
+          this.toastr.error(this.i18n.t('AGREMENT.ERR_IDENTIFIANTS'), validationTitle); return;
+        }
       }
       if (!this.piecesCompletes()) {
         this.toastr.error(this.i18n.t('AGREMENT.ERR_PIECES'), validationTitle); return;
@@ -439,11 +516,23 @@ export class StructuresComponent implements OnInit {
   /**
    * Les identifiants reglementaires a envoyer.
    *
-   * Vides pour une structure publique : elle n'a rien a produire, et envoyer
-   * des chaines vides ferait croire a une saisie.
+   * Une seule reference pour une structure publique, les quatre pour une
+   * privee. Les champs vides partent en `undefined` et non en chaine vide :
+   * une chaine vide ferait croire a une saisie.
    */
   private identifiants(): Record<string, string | undefined> {
     if (!this.exigeUnDossier()) return {};
+
+    // Une structure publique ne porte que la reference de son acte de
+    // creation. Envoyer les autres champs ne servirait a rien : le serveur
+    // les efface, parce qu'un RCCM garde pour un CHU ferait croire des
+    // annees plus tard qu'il est immatricule au registre du commerce.
+    if (this.estPublique()) {
+      return {
+        numeroAgrementCreation: this.newStructure.numeroAgrementCreation.trim() || undefined,
+      };
+    }
+
     return {
       rccm: this.newStructure.rccm.trim() || undefined,
       numeroAgrementCreation: this.newStructure.numeroAgrementCreation.trim() || undefined,
