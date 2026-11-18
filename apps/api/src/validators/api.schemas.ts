@@ -441,6 +441,53 @@ export const updateStructureSchema = structureBase
   .strict()
   .refine(pasLePointZero, messagePointZero);
 
+/**
+ * Une demande d'agrement, telle qu'un candidat sans compte la depose.
+ *
+ * Trois differences avec `createStructureSchema`, et chacune a sa raison :
+ *   - l'adresse electronique du responsable est **obligatoire**, alors
+ *     qu'elle est facultative a la creation administrative. Ici, tout passe
+ *     par elle : l'accuse de reception, la decision, les identifiants. Sans
+ *     elle, le candidat depose dans le vide ;
+ *   - aucune coordonnee GPS n'est demandee. Le candidat n'est pas sur place
+ *     au moment du depot, et une position fausse vaut moins que pas de
+ *     position : elle se posera a la premiere connexion ;
+ *   - les references reglementaires sont toutes facultatives **ici** parce
+ *     qu'elles ne concernent pas tous les types. C'est le service qui exige
+ *     celles du type demande - un schema zod ne sait pas dire « le RCCM si
+ *     c'est une officine, l'acte de creation si c'est un CHU ».
+ */
+export const demandeAgrementSchema = z.object({
+  type: z.enum(['PHARMACIE', 'CLINIQUE', 'LABORATOIRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU']),
+  nom: z.string().trim().min(2).max(160),
+  prefecture: z.string().trim().min(1).max(80),
+  commune: z.string().trim().min(1).max(80),
+  quartier: z.string().trim().max(80).optional(),
+  adresse: z.string().trim().min(1).max(200),
+  telephone: phone,
+  rccm: z.string().trim().max(40).optional(),
+  numeroAgrementCreation: z.string().trim().max(80).optional(),
+  numeroAgrementExploitation: z.string().trim().max(80).optional(),
+  lieuAutorise: z.string().trim().max(200).optional(),
+  responsable: z.object({
+    prenom: z.string().trim().min(1).max(80),
+    nom: z.string().trim().min(1).max(80),
+    telephone: phone,
+    email: z.string().trim().toLowerCase().email().max(160),
+  }).strict(),
+}).strict();
+
+/**
+ * Le refus d'une demande.
+ *
+ * Dix caracteres au moins : « non », « refuse » ou « voir avec moi » ne disent
+ * rien au candidat, qui redeposerait le meme dossier. La borne haute laisse
+ * place a une explication reelle sans ouvrir un champ de texte libre sans fin.
+ */
+export const refusDemandeAgrementSchema = z.object({
+  motif: z.string().trim().min(10, 'Le motif doit être explicite.').max(600),
+}).strict();
+
 export const createAgentPharmacieSchema = z.object({
   telephone: phone,
   email: optionalEmail,

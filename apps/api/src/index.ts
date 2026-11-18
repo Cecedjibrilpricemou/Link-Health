@@ -43,6 +43,7 @@ import journalRoutes from './routes/journal.routes';
 import rechercheRoutes from './routes/recherche.routes';
 import compteRoutes from './routes/compte.routes';
 import rgpdRoutes from './routes/rgpd.routes';
+import demandeAgrementRoutes from './routes/demande-agrement.routes';
 import identiteRoutes from './routes/identite.routes';
 import { setupSwagger } from './config/swagger';
 import { getIdentitePlateforme } from './services/parametres.service';
@@ -122,6 +123,37 @@ const authLimiter = rateLimit({
   ...(redisClient && {
     store: new RedisStore({
       prefix: 'rl:auth:',
+      sendCommand: async (...args: string[]) => redisClient!.call(args[0], ...args.slice(1)) as any,
+    }),
+  }),
+});
+
+/**
+ * Le depot d'une demande d'agrement.
+ *
+ * **La seule porte de l'API qui ecrive en base et sur le disque sans aucun
+ * compte derriere.** Un depot accepte pese jusqu'a dix fichiers de cinq
+ * megaoctets : le limiteur general de l'API, pense pour des requetes de
+ * lecture, serait ici une invitation a remplir le disque.
+ *
+ * Dix par heure et par adresse, et non un ou deux : en Guinee, un quartier
+ * entier peut sortir par la meme adresse chez l'operateur. Trop serre, le
+ * limiteur bloquerait la deuxieme officine du quartier au lieu de l'abus.
+ * Le service refuse par ailleurs une seconde demande tant que la premiere est
+ * en cours d'examen, ce qui limite plus surement qu'un compteur d'adresses.
+ */
+const depotAgrementLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Trop de demandes déposées depuis cette connexion. Réessayez dans une heure.',
+  },
+  ...(redisClient && {
+    store: new RedisStore({
+      prefix: 'rl:agrement:',
       sendCommand: async (...args: string[]) => redisClient!.call(args[0], ...args.slice(1)) as any,
     }),
   }),
@@ -255,6 +287,11 @@ app.use('/api/v1/geographie', geographieRoutes);
 app.use('/api/v1/journal', journalRoutes);
 app.use('/api/v1/comptes', compteRoutes);
 app.use('/api/v1/demandes-rgpd', rgpdRoutes);
+// Le limiteur serre ne couvre que le depot public, poste sur ce chemin exact.
+// Monte sur le routeur entier, il aurait aussi compte les consultations de
+// l'administration, qui ouvre des dizaines de dossiers dans une matinee.
+app.post('/api/v1/demandes-agrement', depotAgrementLimiter);
+app.use('/api/v1/demandes-agrement', demandeAgrementRoutes);
 app.use('/api/v1/identites', identiteRoutes);
 
 // Route 404
