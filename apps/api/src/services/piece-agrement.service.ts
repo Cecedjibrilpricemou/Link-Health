@@ -278,6 +278,65 @@ export function validerPieces(
   return validees;
 }
 
+/**
+ * La structure dont cet utilisateur repond, ou `null` s'il n'en repond
+ * d'aucune.
+ *
+ * **Deux roles en repondent, et il a fallu les distinguer finement.**
+ * L'administrateur de structure, d'abord. Le **titulaire** d'une officine
+ * ensuite : depuis que la validation d'une demande fait de lui un
+ * `PHARMACIEN` et non un administrateur, c'est lui qui doit pouvoir
+ * renouveler l'agrement de sa pharmacie - un agrement expire, et personne
+ * d'autre sur place ne peut le redeposer.
+ *
+ * Mais **tous les agents d'une officine portent ce meme role** : l'adjoint,
+ * le preparateur, le caissier. Seul le profil les distingue. Ouvrir sur le
+ * role seul aurait donne au caissier le diplome du titulaire, son numero
+ * d'inscription a l'ordre et l'adresse exacte du local. D'ou le controle sur
+ * `estResponsable`, et non sur le role.
+ */
+async function structureDontIlRepond(user: JwtPayload): Promise<string | null> {
+  if (user.role === 'ADMIN_STRUCTURE') {
+    const compte = await prisma.utilisateur.findUnique({
+      where: { id: user.userId },
+      select: { idStructure: true },
+    });
+    return compte?.idStructure ?? null;
+  }
+
+  if (user.role === 'PHARMACIEN') {
+    const profil = await prisma.pharmacienProfile.findUnique({
+      where: { idUtilisateur: user.userId },
+      select: { estResponsable: true, idStructure: true },
+    });
+    return profil?.estResponsable ? profil.idStructure ?? null : null;
+  }
+
+  return null;
+}
+
+/**
+ * La structure dont l'appelant repond, nommee, pour un client qui n'en
+ * connait pas l'identifiant.
+ *
+ * L'espace d'administration apprend le sien par `GET /admin-structure/stats`.
+ * **Le titulaire d'une officine n'a pas cet ecran** : son espace est celui du
+ * pharmacien, qui ne parle jamais de structure. Plutot que de lui ouvrir des
+ * statistiques dont il n'a que faire, cette route ne rend que ce qu'il faut
+ * pour ouvrir son dossier : un identifiant et un nom a afficher.
+ */
+export async function maStructure(user: JwtPayload): Promise<{ id: string; nom: string }> {
+  const id = await structureDontIlRepond(user);
+  if (!id) throw new ForbiddenError('Accès réservé');
+
+  const structure = await prisma.structureSante.findUnique({
+    where: { id },
+    select: { id: true, nom: true },
+  });
+  if (!structure) throw new NotFoundError('Structure introuvable');
+  return structure;
+}
+
 /** Le chemin d'une piece, sans jamais pouvoir sortir du dossier prive. */
 export function cheminPiece(nom: string): string {
   if (!/^[A-Za-z0-9_-]+\.pdf$/.test(nom)) throw new NotFoundError('Pièce introuvable');
@@ -363,6 +422,28 @@ export async function dossierDe(idStructure: string) {
 }
 
 /**
+ * Le dossier d'une structure, **pour qui en repond**.
+ *
+ * `dossierDe` ne verifiait aucun perimetre : la route etait ouverte a tout
+ * administrateur de structure, qui pouvait donc lire le dossier d'une autre -
+ * son RCCM, ses numeros d'agrement, la liste de ses pieces. Les fichiers
+ * restaient hors de portee, mais pas ce qui les decrit. En ouvrant la route
+ * aux titulaires d'officine, le trou serait devenu un annuaire des
+ * concurrents.
+ *
+ * Une structure dont on ne repond pas se traite comme une structure inconnue :
+ * rien ne doit confirmer qu'elle existe.
+ */
+export async function dossierPour(user: JwtPayload, idStructure: string) {
+  const national = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN_NATIONAL';
+  if (!national) {
+    const sienne = await structureDontIlRepond(user);
+    if (!sienne || sienne !== idStructure) throw new NotFoundError('Structure introuvable');
+  }
+  return dossierDe(idStructure);
+}
+
+/**
  * Le contenu d'une piece, pour qui a le droit de la lire.
  *
  * **Seules l'administration nationale et la structure elle-meme.** Un agrement
@@ -379,16 +460,14 @@ export async function lirePiece(user: JwtPayload, idPiece: string): Promise<{ fi
 
   const national = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN_NATIONAL';
   if (!national) {
-    if (user.role !== 'ADMIN_STRUCTURE') throw new ForbiddenError('Accès réservé');
-    const compte = await prisma.utilisateur.findUnique({
-      where: { id: user.userId },
-      select: { idStructure: true },
-    });
-    // Une piece d'une autre structure se traite comme une piece inconnue :
-    // rien ne doit confirmer qu'elle existe.
-    if (!compte?.idStructure || compte.idStructure !== piece.idStructure) {
-      throw new NotFoundError('Pièce introuvable');
-    }
+    const sienne = await structureDontIlRepond(user);
+    // Deux refus distincts, et la nuance compte. Qui ne repond d'aucune
+    // structure - un medecin, un patient, le caissier d'une officine - se
+    // voit refuser l'acces : il n'a aucun titre a etre la. Qui en repond
+    // d'une autre recoit « introuvable » : rien ne doit lui confirmer que
+    // cette piece existe.
+    if (sienne === null) throw new ForbiddenError('Accès réservé');
+    if (sienne !== piece.idStructure) throw new NotFoundError('Pièce introuvable');
   }
 
   try {
@@ -513,12 +592,8 @@ export async function deposerPieces(
 
   const national = user.role === 'SUPER_ADMIN' || user.role === 'ADMIN_NATIONAL';
   if (!national) {
-    if (user.role !== 'ADMIN_STRUCTURE') throw new ForbiddenError('Accès réservé');
-    const compte = await prisma.utilisateur.findUnique({
-      where: { id: user.userId },
-      select: { idStructure: true },
-    });
-    if (!compte?.idStructure || compte.idStructure !== idStructure) {
+    const sienne = await structureDontIlRepond(user);
+    if (!sienne || sienne !== idStructure) {
       throw new ForbiddenError('Vous ne pouvez déposer des pièces que pour votre structure');
     }
   }

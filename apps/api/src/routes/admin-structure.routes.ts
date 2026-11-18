@@ -135,9 +135,28 @@ router.get('/stats', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, re
 // fichier vit dans `stockage-prive/`, jamais sous `uploads/` qui est servi
 // sans authentification, et chaque lecture est journalisee.
 
-/** L'etat du dossier : ce qui est depose, ce qui manque. */
-router.get('/structures/:id/dossier', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL', 'ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
-  const data = await piecesAgrement.dossierDe(req.params['id'] as string);
+/**
+ * La structure dont l'appelant repond, pour ouvrir son dossier.
+ *
+ * Le titulaire d'une officine n'a pas d'espace d'administration de structure :
+ * sans cette route, son ecran ne saurait pas quel dossier demander.
+ */
+router.get('/mon-dossier/structure', requireRole('ADMIN_STRUCTURE', 'PHARMACIEN'), async (req: AuthRequest, res: Response) => {
+  const data = await piecesAgrement.maStructure(req.user!);
+  res.json({ success: true, data });
+});
+
+/**
+ * L'etat du dossier : ce qui est depose, ce qui manque.
+ *
+ * Ouverte au `PHARMACIEN` depuis que le titulaire d'une officine porte ce
+ * role et non celui d'administrateur de structure : c'est lui qui renouvelle
+ * son agrement. Le service verifie qu'il s'agit bien **de sa** structure, et
+ * que le demandeur est le titulaire - l'adjoint et le caissier portent le
+ * meme role que lui.
+ */
+router.get('/structures/:id/dossier', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL', 'ADMIN_STRUCTURE', 'PHARMACIEN'), async (req: AuthRequest, res: Response) => {
+  const data = await piecesAgrement.dossierPour(req.user!, req.params['id'] as string);
   res.json({ success: true, data });
 });
 
@@ -149,7 +168,7 @@ router.get('/structures/:id/dossier', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL
  * renouvellement periodique. Le perimetre est verifie dans le service : un
  * administrateur de structure ne depose que pour la sienne.
  */
-router.post('/structures/:id/pieces', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL', 'ADMIN_STRUCTURE'), recevoirPiecesAgrement, async (req: AuthRequest, res: Response) => {
+router.post('/structures/:id/pieces', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL', 'ADMIN_STRUCTURE', 'PHARMACIEN'), recevoirPiecesAgrement, async (req: AuthRequest, res: Response) => {
   const fichiers = (req.files ?? []) as piecesAgrement.FichierRecu[];
   const libelles = (req.body ?? {}) as Record<string, string | undefined>;
   const data = await piecesAgrement.deposerPieces(req.user!, req.params['id'] as string, fichiers, libelles);
@@ -157,7 +176,7 @@ router.post('/structures/:id/pieces', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL
 });
 
 /** Le contenu d'une piece. Jamais une URL devinable : une route gardee. */
-router.get('/pieces/:id', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL', 'ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
+router.get('/pieces/:id', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL', 'ADMIN_STRUCTURE', 'PHARMACIEN'), async (req: AuthRequest, res: Response) => {
   const { contenu } = await piecesAgrement.lirePiece(req.user!, req.params['id'] as string);
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Cache-Control', 'no-store, private');
