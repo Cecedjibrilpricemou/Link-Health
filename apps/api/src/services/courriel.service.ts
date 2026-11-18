@@ -56,6 +56,17 @@ export type Transport = 'brevo' | 'smtp' | 'gmail';
 const vide = (v: string | undefined): boolean => !v || v.trim() === '';
 
 /**
+ * Le reglage « emailExpediteur » des parametres de la plateforme porte un
+ * nom trompeur : il a longtemps servi de **nom affiche**, pas d'adresse.
+ * On y trouve « OmniCare ». Pris pour une adresse, il part tel quel chez
+ * Brevo, qui refuse l'envoi — et plus personne ne recoit son code de
+ * connexion. Seules les valeurs qui ressemblent vraiment a une adresse sont
+ * retenues ; les autres sont ignorees au profit du reglage suivant.
+ */
+const ressembleAUneAdresse = (v: string | undefined): boolean =>
+  !vide(v) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v!.trim());
+
+/**
  * Le premier transport configure gagne. Rien de configure rend `null` : a
  * l'appelant de le dire clairement plutot que d'echouer sur un envoi.
  */
@@ -80,7 +91,7 @@ export function adresseExpediteur(
   if (transport === 'gmail') return config.GMAIL_USER?.trim() || null;
   const candidats = [reglageEnBase, config.EMAIL_EXPEDITEUR, config.GMAIL_USER];
   for (const c of candidats) {
-    if (!vide(c)) return c!.trim();
+    if (ressembleAUneAdresse(c)) return c!.trim();
   }
   return null;
 }

@@ -87,6 +87,27 @@ describe('courriel : adresse d expedition', () => {
     expect(adresseExpediteur(undefined, {}, 'brevo')).toBeNull();
     expect(adresseExpediteur('  ', {}, 'smtp')).toBeNull();
   });
+
+  // Constate le 2026-11-18 sur la base de developpement : le reglage
+  // « emailExpediteur » contenait « OmniCare ». Il a longtemps servi de nom
+  // affiche, pas d'adresse. Pris pour une adresse, il partait tel quel chez
+  // Brevo, qui refusait l'envoi : plus aucun code de connexion ne partait,
+  // et l'ecran n'affichait qu'un « l'envoi du code OTP a echoue ».
+  it.each([
+    ['un nom de plateforme', 'OmniCare'],
+    ['un libelle avec espace', 'Omni Care'],
+    ['une adresse sans domaine', 'omnicare@'],
+    ['une adresse sans point', 'omnicare@localhost'],
+    ['une adresse avec un espace', 'omni care@sante.gn'],
+  ])('ignore un reglage qui est %s, et prend la variable d environnement', (_titre, reglage) => {
+    expect(adresseExpediteur(reglage, { EMAIL_EXPEDITEUR: 'service@sante.gn' }, 'brevo')).toBe(
+      'service@sante.gn',
+    );
+  });
+
+  it("n invente aucune adresse quand le reglage n'en est pas une et qu'il n'y a pas de repli", () => {
+    expect(adresseExpediteur('OmniCare', {}, 'brevo')).toBeNull();
+  });
 });
 
 describe('courriel : diagnostic des refus de Brevo', () => {
