@@ -338,11 +338,20 @@ describe('creerStructureAvecAdmin : commune et quartier', () => {
     prisma.utilisateur.create.mockResolvedValue({ id: 'admin-1', telephone: '+224620000099', email: 'admin@exemple.test', prenom: 'Awa', nom: 'Bah', role: 'ADMIN_STRUCTURE' });
 
     // La suite (compte administrateur, e-mail) ne concerne pas ce test.
+    //
+    // Le dossier accompagne la creation depuis le 2026-11-18 : un centre de
+    // sante produit l'acte qui le cree et le diplome de son responsable,
+    // comme n'importe quelle structure. Sans eux, rien ne serait ecrit et ce
+    // test ne verifierait plus la commune mais le refus.
     await creerStructureAvecAdmin({
       nom: 'Centre de sante de Kipe', type: 'CENTRE', prefecture: 'Conakry',
       commune: '  Ratoma ', quartier: '   ',
+      numeroAgrementCreation: 'ARR/2026/MSHP/0001',
       admin: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000099', email: 'admin@exemple.test' },
-    }).catch(() => undefined);
+    }, [
+      { fieldname: 'AGREMENT_CREATION', buffer: PDF },
+      { fieldname: 'DIPLOME_RESPONSABLE', buffer: PDF },
+    ]).catch(() => undefined);
 
     expect(prisma.structureSante.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ commune: 'Ratoma', quartier: null }),

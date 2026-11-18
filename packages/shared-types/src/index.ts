@@ -1728,14 +1728,23 @@ export interface PieceExigeeView {
 /**
  * GET /demandes-agrement/pieces-attendues
  *
- * Une entree par type demandable. **L'ecran lit cette liste au lieu de la
- * recopier** : une liste recopiee finit par mentir le jour ou l'administration
- * exige une piece de plus.
+ * Une entree par type qui produit un dossier. **Les deux ecrans lisent cette
+ * liste au lieu de la recopier** - le formulaire public et la creation par
+ * l'administration : une liste recopiee finit par mentir le jour ou
+ * l'administration exige une piece de plus.
  */
 export interface PiecesAttenduesView {
   type: string;
-  /** Vrai pour HOPITAL_PREF, HOPITAL_REG et CHU : ni RCCM ni arrete d'exploitation. */
-  estHopitalPublic: boolean;
+  /**
+   * Faux pour un poste, un centre et un assureur : l'administration les cree
+   * elle-meme, ils ne se demandent pas par le formulaire public.
+   */
+  demandable: boolean;
+  /**
+   * Nee d'un acte de l'Etat : **ni RCCM ni arrete d'exploitation**. L'ecran
+   * masque ces deux champs, le serveur les efface s'ils arrivent quand meme.
+   */
+  estPublique: boolean;
   pieces: PieceExigeeView[];
 }
 

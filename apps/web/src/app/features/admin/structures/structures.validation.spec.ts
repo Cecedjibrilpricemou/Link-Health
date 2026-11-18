@@ -1,21 +1,31 @@
 // Ce que la creation d'une structure exige, type par type.
 //
-// **Le constat.** Un formulaire rempli au complet pour un centre de sante se
+// **Deux defauts ont mene a ce fichier.**
+//
+// Le premier : un formulaire rempli au complet pour un centre de sante se
 // voyait refuse par « Nom et prefecture sont obligatoires » — alors que le nom
 // et la prefecture etaient la. Ce qui manquait etait la commune, que la
-// condition teste mais que le message ne nomme pas. On cherche au mauvais
-// endroit, longtemps.
+// condition teste mais que le message ne nommait pas.
 //
-// Les neuf types y passent : un controle ajoute pour les structures privees
-// ne doit pas bloquer un poste de sante, et l'inverse non plus.
+// Le second, plus grave : `exigeUnDossier` etait un `computed` qui lisait
+// `newStructure.type`, une propriete ordinaire. Sans dependance reactive, il
+// etait evalue une fois a l'affichage puis fige. Choisir « Clinique » ne
+// faisait donc pas apparaitre le dossier reglementaire, l'ecran laissait
+// partir la creation, et le serveur la refusait sur des champs que le
+// formulaire n'avait jamais montres.
+//
+// Les neuf types y passent : un controle ajoute pour les uns ne doit pas
+// bloquer les autres.
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { of } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import { vi } from 'vitest';
+import type { PiecesAttenduesView, TypePieceAgrement } from '@baobaoheath/shared-types';
 
 import { StructuresComponent } from './structures.component';
 import { AdminService } from '../../../core/services/admin.service';
+import { DemandeAgrementService } from '../../../core/services/demande-agrement.service';
 import fr from '../../../shared/i18n/fr.json';
 import en from '../../../shared/i18n/en.json';
 
@@ -43,8 +53,34 @@ const TYPES = [
   'CLINIQUE', 'PHARMACIE', 'LABORATOIRE', 'ASSURANCE',
 ] as const;
 
-/** Ceux qui doivent produire un dossier reglementaire. */
-const PRIVES = ['PHARMACIE', 'CLINIQUE', 'LABORATOIRE', 'ASSURANCE'];
+/** Nees d'un acte de l'Etat : ni RCCM ni arrete d'exploitation. */
+const PUBLICS = ['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU'];
+
+const QUATRE: TypePieceAgrement[] = [
+  'AGREMENT_CREATION', 'AGREMENT_EXPLOITATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE',
+];
+const TROIS: TypePieceAgrement[] = ['AGREMENT_CREATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE'];
+const DEUX: TypePieceAgrement[] = ['AGREMENT_CREATION', 'DIPLOME_RESPONSABLE'];
+
+/** Ce que l'API rend : la table du serveur, pour les neuf types. */
+const PIECES_PAR_TYPE: Record<string, TypePieceAgrement[]> = {
+  PHARMACIE: QUATRE, CLINIQUE: QUATRE, LABORATOIRE: QUATRE,
+  HOPITAL_PREF: TROIS, HOPITAL_REG: TROIS, CHU: TROIS,
+  POSTE: DEUX, CENTRE: DEUX,
+  ASSURANCE: ['AGREMENT_ASSURANCE'],
+};
+
+const ATTENDUES: PiecesAttenduesView[] = TYPES.map((type) => ({
+  type,
+  demandable: !['POSTE', 'CENTRE', 'ASSURANCE'].includes(type),
+  estPublique: PUBLICS.includes(type),
+  pieces: PIECES_PAR_TYPE[type]!.map((piece) => ({
+    type: piece,
+    libelle: PUBLICS.includes(type) && piece === 'AGREMENT_CREATION'
+      ? "l'acte de création de l'établissement"
+      : `libellé de ${piece}`,
+  })),
+}));
 
 function monter() {
   const erreurs: string[] = [];
@@ -76,6 +112,10 @@ function monter() {
     providers: [
       provideZonelessChangeDetection(),
       { provide: AdminService, useValue: admin },
+      {
+        provide: DemandeAgrementService,
+        useValue: { piecesAttendues: () => of({ success: true, data: ATTENDUES }) },
+      },
       {
         provide: ToastrService,
         useValue: {
@@ -113,12 +153,13 @@ function remplir(component: StructuresComponent, type: string): void {
     },
   };
 
-  if (PRIVES.includes(type)) {
-    component.pieces.set({
-      AGREMENT_CREATION: new File(['%PDF-1.4'], 'creation.pdf', { type: 'application/pdf' }),
-    });
-    component.piecesCompletes.set(true);
+  // Toutes les pieces du type, puisque toutes sont obligatoires.
+  const fichiers: Partial<Record<TypePieceAgrement, File>> = {};
+  for (const piece of PIECES_PAR_TYPE[type] ?? []) {
+    fichiers[piece] = new File(['%PDF-1.4'], `${piece}.pdf`, { type: 'application/pdf' });
   }
+  component.pieces.set(fichiers);
+  component.piecesCompletes.set(true);
 }
 
 describe('creation d une structure : ce qui est exige, type par type', () => {
@@ -126,8 +167,6 @@ describe('creation d une structure : ce qui est exige, type par type', () => {
 
   /**
    * Le message doit nommer **tous** les champs que la condition teste.
-   *
-   * C'est le defaut d'origine : la commune etait exigee sans etre nommee.
    * Verifie sur le catalogue reel, pas sur une cle.
    */
   it('nomme la commune dans le message, puisqu elle est exigee', () => {
@@ -136,13 +175,49 @@ describe('creation d une structure : ce qui est exige, type par type', () => {
 
     expect(texteFr.toLowerCase()).toContain('commune');
     expect(texteEn.toLowerCase()).toContain('commune');
-    // Les deux autres champs testes restent nommes.
     expect(texteFr.toLowerCase()).toContain('nom');
     expect(texteFr.toLowerCase()).toContain('préfecture');
   });
 
+  /**
+   * Le defaut du `computed` fige. Ce test lit la valeur **avant** de changer
+   * de type, exactement comme le gabarit en s'affichant.
+   */
+  it('voit le changement de type apres le premier affichage', () => {
+    const { component } = monter();
+
+    // Ce que fait le gabarit en s'affichant, avec le type par defaut.
+    expect(component.estPublique()).toBe(true);
+    expect(component.estAssureur()).toBe(false);
+
+    component.newStructure.type = 'CLINIQUE';
+    expect(component.estPublique()).toBe(false);
+    expect(component.exigeUnDossier()).toBe(true);
+
+    component.newStructure.type = 'ASSURANCE';
+    expect(component.estAssureur()).toBe(true);
+    expect(component.estPublique()).toBe(false);
+  });
+
+  it("refuse lui-meme une clinique sans dossier, apres un changement de type", () => {
+    const { component, erreurs, envois } = monter();
+
+    expect(component.estPublique()).toBe(true);
+
+    remplir(component, 'CLINIQUE');
+    component.newStructure.rccm = '';
+    component.newStructure.lieuAutorise = '';
+    component.newStructure.numeroAgrementCreation = '';
+    component.newStructure.numeroAgrementExploitation = '';
+
+    component.creerStructure();
+
+    expect(envois).toEqual([]);
+    expect(erreurs.length).toBe(1);
+  });
+
   for (const type of TYPES) {
-    const prive = PRIVES.includes(type);
+    const publique = PUBLICS.includes(type);
 
     it(`cree un ${type} quand le formulaire est complet`, () => {
       const { component, erreurs, envois } = monter();
@@ -167,34 +242,66 @@ describe('creation d une structure : ce qui est exige, type par type', () => {
       expect(erreurs[0]!.toLowerCase()).toContain('commune');
     });
 
-    it(`n'exige un dossier reglementaire d'un ${type} que s'il est prive`, () => {
+    /**
+     * **Tous les types produisent un dossier** depuis le 2026-11-18 : la
+     * creation par l'administration exige les memes pieces que la demande
+     * publique. Deux portes qui n'exigent pas la meme chose finissent par
+     * servir de contournement l'une a l'autre.
+     */
+    it(`exige un dossier d'un ${type}`, () => {
       const { component } = monter();
       remplir(component, type);
 
-      expect(component.exigeUnDossier()).toBe(prive);
+      expect(component.exigeUnDossier()).toBe(true);
+      expect(component.requisesImposees()).toEqual(PIECES_PAR_TYPE[type]);
     });
 
-    if (!prive) {
-      it(`cree un ${type} sans aucune piece ni numero d'agrement`, () => {
-        const { component, erreurs, envois } = monter();
+    it(`refuse un ${type} dont le dossier est incomplet`, () => {
+      const { component, erreurs, envois } = monter();
+      remplir(component, type);
+      component.piecesCompletes.set(false);
+
+      component.creerStructure();
+
+      expect(envois).toEqual([]);
+      expect(erreurs.length).toBe(1);
+    });
+
+    if (publique) {
+      it(`n'envoie ni RCCM ni arrete d'exploitation pour un ${type}`, () => {
+        const { component, envois } = monter();
         remplir(component, type);
-        component.newStructure.rccm = '';
-        component.newStructure.numeroAgrementCreation = '';
-        component.newStructure.numeroAgrementExploitation = '';
-        component.newStructure.lieuAutorise = '';
-        component.pieces.set({});
-        component.piecesCompletes.set(false);
 
         component.creerStructure();
 
-        expect(erreurs).toEqual([]);
-        expect(envois.length).toBe(1);
+        const payload = envois[0]!.payload;
+        expect(payload['rccm']).toBeUndefined();
+        expect(payload['numeroAgrementExploitation']).toBeUndefined();
+        expect(payload['numeroAgrementCreation']).toBe('ARR/2026/01');
       });
-    } else {
-      it(`refuse un ${type} dont le dossier est incomplet`, () => {
+
+      it(`refuse un ${type} sans la reference de son acte de creation`, () => {
         const { component, erreurs, envois } = monter();
         remplir(component, type);
-        component.piecesCompletes.set(false);
+        component.newStructure.numeroAgrementCreation = '';
+
+        component.creerStructure();
+
+        expect(envois).toEqual([]);
+        expect(erreurs.length).toBe(1);
+      });
+
+      it(`nomme « acte de creation » la piece attendue d'un ${type}`, () => {
+        const { component } = monter();
+        remplir(component, type);
+
+        expect(component.libellesImposes()['AGREMENT_CREATION']).toContain('acte de création');
+      });
+    } else {
+      it(`exige le RCCM d'un ${type}`, () => {
+        const { component, erreurs, envois } = monter();
+        remplir(component, type);
+        component.newStructure.rccm = '';
 
         component.creerStructure();
 

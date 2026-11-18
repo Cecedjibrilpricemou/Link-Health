@@ -93,8 +93,17 @@ export class DemandeAgrementComponent implements OnInit {
   readonly erreur = signal<string | null>(null);
   readonly envoi = signal(false);
 
-  /** Les types proposes, dans l'ordre ou le serveur les donne. */
-  readonly typesProposes = computed(() => this.attendues().map((a) => a.type));
+  /**
+   * Les types proposes, dans l'ordre ou le serveur les donne.
+   *
+   * La liste recue couvre **tous** les types qui produisent un dossier, y
+   * compris ceux que l'administration cree elle-meme - un poste, un centre,
+   * un assureur. Seuls les types demandables figurent ici : proposer les
+   * autres ferait deposer un dossier que l'API refuserait.
+   */
+  readonly typesProposes = computed(() =>
+    this.attendues().filter((a) => a.demandable).map((a) => a.type),
+  );
 
   private readonly entreeDuType = computed(
     () => this.attendues().find((a) => a.type === this.formulaire().type) ?? null,
@@ -108,7 +117,7 @@ export class DemandeAgrementComponent implements OnInit {
    * distinct. Les lui demander serait un obstacle invente, et le serveur
    * efface de toute facon ces deux champs chez eux.
    */
-  readonly estHopitalPublic = computed(() => this.entreeDuType()?.estHopitalPublic ?? false);
+  readonly estPublique = computed(() => this.entreeDuType()?.estPublique ?? false);
 
   /**
    * Les pieces a reclamer, telles que le serveur les exige.
@@ -142,7 +151,7 @@ export class DemandeAgrementComponent implements OnInit {
       f.nom, f.prefecture, f.commune, f.adresse, f.telephone,
       r.prenom, r.nom, r.telephone,
     ];
-    const reglementaires = this.estHopitalPublic()
+    const reglementaires = this.estPublique()
       ? [f.numeroAgrementCreation]
       : [f.rccm, f.numeroAgrementCreation, f.numeroAgrementExploitation, f.lieuAutorise];
     return [...communs, ...reglementaires].every((v) => v.trim().length > 0) && emailValide;
@@ -200,7 +209,7 @@ export class DemandeAgrementComponent implements OnInit {
   private aEnvoyer(): DepotDemandeDto {
     const f = this.formulaire();
     const texte = (v: string): string | undefined => (v.trim() ? v.trim() : undefined);
-    const hopital = this.estHopitalPublic();
+    const hopital = this.estPublique();
 
     return {
       type: f.type,

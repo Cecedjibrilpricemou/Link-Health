@@ -91,7 +91,7 @@
         <section class="demande-agrement__section" aria-labelledby="demande-agrement-title">
           <h2 id="demande-agrement-title">{{ 'AGREMENT.SECTION_TITRE' | translate }}</h2>
 
-          @if (estHopitalPublic()) {
+          @if (estPublique()) {
             <!-- Un hopital public est cree par un acte de l'Etat : ni registre
                  du commerce, ni arrete d'exploitation a produire. Le serveur
                  efface ces deux champs chez lui ; l'ecran ne les montre pas. -->
@@ -99,7 +99,7 @@
           }
 
           <div class="demande-agrement__grid">
-            @if (!estHopitalPublic()) {
+            @if (!estPublique()) {
               <label class="demande-agrement__field" for="demande-rccm">
                 <span>{{ 'AGREMENT.RCCM_LABEL' | translate }} *</span>
                 <input id="demande-rccm" name="rccm" required maxlength="40"
@@ -109,13 +109,13 @@
             }
             <label class="demande-agrement__field" for="demande-creation">
               <span>
-                {{ (estHopitalPublic() ? 'AGREMENT.ACTE_CREATION_LABEL' : 'AGREMENT.CREATION_LABEL') | translate }} *
+                {{ (estPublique() ? 'AGREMENT.ACTE_CREATION_LABEL' : 'AGREMENT.CREATION_LABEL') | translate }} *
               </span>
               <input id="demande-creation" name="numeroAgrementCreation" required maxlength="80"
                      [ngModel]="formulaire().numeroAgrementCreation"
                      (ngModelChange)="modifierChamp('numeroAgrementCreation', $event)" />
             </label>
-            @if (!estHopitalPublic()) {
+            @if (!estPublique()) {
               <label class="demande-agrement__field" for="demande-exploitation">
                 <span>{{ 'AGREMENT.EXPLOITATION_LABEL' | translate }} *</span>
                 <input id="demande-exploitation" name="numeroAgrementExploitation" required maxlength="80"

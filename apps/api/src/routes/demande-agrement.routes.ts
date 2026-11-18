@@ -35,9 +35,13 @@ const router = Router();
  * l'administration exigera une piece de plus. Elle vient donc d'ici.
  */
 router.get('/pieces-attendues', (_req: Request, res: Response) => {
-  const data = service.TYPES_DEMANDE.map((type) => ({
+  const data = service.TYPES_AVEC_DOSSIER.map((type) => ({
     type,
-    estHopitalPublic: service.estHopitalPublic(type),
+    // Tous les types qui produisent un dossier sont la, pas seulement ceux
+    // qui se demandent : l'ecran d'administration cree aussi des postes et
+    // des centres, et doit lire la meme liste que le formulaire public.
+    demandable: service.TYPES_DEMANDE.includes(type),
+    estPublique: service.estStructurePublique(type),
     pieces: service.piecesDemandeesPour(type).map((piece) => ({
       type: piece,
       libelle: service.libellePiece(type, piece),
