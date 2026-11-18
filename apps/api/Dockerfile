@@ -14,6 +14,18 @@ FROM deps AS build
 COPY tsconfig.base.json ./
 COPY apps/api apps/api
 COPY packages/shared-types packages/shared-types
+
+# `prisma generate` ne lit que le schema : il n'ouvre aucune connexion. Mais
+# prisma.config.ts resout `env('DATABASE_URL')` des son chargement, et echoue
+# si la variable manque — ce qui est toujours le cas pendant un build, ou
+# l'environnement d'execution n'existe pas encore. Une adresse de facade
+# suffit donc ici.
+#
+# C'est un ARG et non un ENV : il vaut pour les instructions de cette etape
+# et ne subsiste pas dans l'image. L'adresse reelle est fournie a l'execution
+# par docker-compose, y compris pour le service `migrate`, qui part de cette
+# meme etape.
+ARG DATABASE_URL="postgresql://build:build@localhost:5432/build"
 RUN npm run prisma:generate --workspace=apps/api
 RUN npm run build --workspace=apps/api
 
