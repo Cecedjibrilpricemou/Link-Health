@@ -1710,6 +1710,108 @@ export interface DossierAgrementView {
   pieces: PieceAgrementView[];
 }
 
+/** L'etat d'une demande d'agrement, du depot a la decision. */
+export type StatutDemandeAgrement = 'RECUE' | 'EN_ANALYSE' | 'VALIDEE' | 'REFUSEE';
+
+/** Une piece exigee, et le nom sous lequel le candidat la connait. */
+export interface PieceExigeeView {
+  type: TypePieceAgrement;
+  /**
+   * Le libelle vient du serveur et non de l'ecran : la meme piece s'appelle
+   * « agrément de création » pour une officine et « acte de création » pour un
+   * CHU. Un directeur d'hopital cherchant un « agrément » dans ses archives ne
+   * trouverait rien.
+   */
+  libelle: string;
+}
+
+/**
+ * GET /demandes-agrement/pieces-attendues
+ *
+ * Une entree par type demandable. **L'ecran lit cette liste au lieu de la
+ * recopier** : une liste recopiee finit par mentir le jour ou l'administration
+ * exige une piece de plus.
+ */
+export interface PiecesAttenduesView {
+  type: string;
+  /** Vrai pour HOPITAL_PREF, HOPITAL_REG et CHU : ni RCCM ni arrete d'exploitation. */
+  estHopitalPublic: boolean;
+  pieces: PieceExigeeView[];
+}
+
+/**
+ * POST /demandes-agrement
+ *
+ * Le numero de dossier est la seule reference que possede un candidat sans
+ * compte : il est genere par l'API, jamais par l'ecran.
+ */
+export interface DepotDemandeView {
+  numero: string;
+  statut: StatutDemandeAgrement;
+  deposeLe: HorodatageApi;
+}
+
+/** GET /demandes-agrement — de quoi trier, pas de quoi instruire. */
+export interface DemandeAgrementListeView {
+  id: string;
+  numero: string;
+  statut: StatutDemandeAgrement;
+  type: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  telephone: string;
+  deposeLe: HorodatageApi;
+  /** Prenom et nom reunis : la liste n'a pas de colonne pour les separer. */
+  responsable: string;
+  nombrePieces: number;
+}
+
+/** Une piece du dossier, telle que l'ecran d'examen l'affiche. */
+export interface PieceDemandeView {
+  id: string;
+  type: TypePieceAgrement;
+  /** Jamais nul ici : a defaut de libelle saisi, le serveur replie sur le sien. */
+  libelle: string;
+  taille: number;
+  deposeLe: HorodatageApi;
+}
+
+/** GET /demandes-agrement/:id — le dossier complet, pour decider. */
+export interface DemandeAgrementView {
+  id: string;
+  numero: string;
+  statut: StatutDemandeAgrement;
+  type: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  adresse: string | null;
+  telephone: string;
+  rccm: string | null;
+  numeroAgrementCreation: string | null;
+  numeroAgrementExploitation: string | null;
+  lieuAutorise: string | null;
+  estHopitalPublic: boolean;
+  responsable: {
+    prenom: string;
+    nom: string;
+    telephone: string;
+    email: string;
+  };
+  pieces: PieceDemandeView[];
+  /** Recalcule a chaque lecture : un dossier ancien doit se montrer incomplet. */
+  manquantes: PieceExigeeView[];
+  complet: boolean;
+  motifRefus: string | null;
+  examineLe: HorodatageApi | null;
+  examinePar: string | null;
+  idStructureCreee: string | null;
+  deposeLe: HorodatageApi;
+}
+
 /**
  * Les identifiants reglementaires, a la creation.
  *

@@ -413,6 +413,7 @@ model Utilisateur {
   finsAdhesionEnregistrees  AdhesionAssurance[]      @relation("FinsAdhesion")
   personnesAssureesSaisies  PersonneAssuree[]        @relation("PersonnesAssureesSaisies")
   piecesAgrementDeposees    PieceAgrement[]          @relation("PiecesAgrementDeposees")
+  demandesAgrementExaminees DemandeAgrement[]        @relation("DemandesAgrementExaminees")
   controlesEligibilite      ControleEligibilite[]    @relation("ControlesEligibilite")
   syncEvents                SyncEvent[]
   syncMutations             SyncMutation[]
@@ -796,12 +797,12 @@ model StructureSante {
   ///
   /// **Nul n'est pas ferme** : une officine qui n'a rien saisi ne doit pas
   /// apparaitre close, elle n'a simplement rien dit. Saisi par le titulaire.
-  horaires                 Json?
+  horaires Json?
 
-  telephone                String?
-  photoUrl                 String?
-  estActive                Boolean               @default(true)
-  brisDeGlace              BrisDeGlace[]
+  telephone   String?
+  photoUrl    String?
+  estActive   Boolean       @default(true)
+  brisDeGlace BrisDeGlace[]
 
   /// Immatriculation au registre du commerce (APIP). Elle identifie l'entite
   /// juridique ; elle **n'autorise aucune activite sanitaire**. Une societe
@@ -828,6 +829,11 @@ model StructureSante {
 
   piecesAgrement PieceAgrement[]
 
+  /// La demande d'agrement dont cette structure est issue, s'il y en a une.
+  /// Les structures publiques et celles creees a la main par l'administration
+  /// n'en ont pas : le champ est vide, il n'est pas faux.
+  demandeAgrement DemandeAgrement? @relation("StructureIssueDemande")
+
   creeLe DateTime @default(now())
 
   utilisateurs          Utilisateur[]
@@ -851,7 +857,8 @@ model StructureSante {
   @@map("structures")
 }
 
-/// Une piece justificative deposee pour une structure privee.
+/// Une piece justificative, deposee pour une structure deja inscrite ou pour
+/// une demande d'agrement qui n'en est pas encore une.
 ///
 /// Le fichier vit dans `stockage-prive/agrements/`, **jamais sous `uploads/`**
 /// qui est servi sans authentification : un agrement porte le nom du
@@ -869,17 +876,113 @@ model PieceAgrement {
   /// de lui-meme ; facultatif ailleurs.
   libelle String?
 
-  idStructure String
-  structure   StructureSante @relation(fields: [idStructure], references: [id], onDelete: Cascade)
+  /// Une piece pend soit d'une structure inscrite, soit d'une demande en cours
+  /// d'examen. Les deux champs sont donc facultatifs, et valider une demande
+  /// remplit `idStructure` **sans deplacer le moindre fichier** : la piece
+  /// deposee par le candidat devient la piece de la structure creee.
+  idStructure String?
+  structure   StructureSante?  @relation(fields: [idStructure], references: [id], onDelete: Cascade)
+  idDemande   String?
+  demande     DemandeAgrement? @relation(fields: [idDemande], references: [id], onDelete: Cascade)
   idDeposePar String?
-  deposePar   Utilisateur?   @relation("PiecesAgrementDeposees", fields: [idDeposePar], references: [id], onDelete: SetNull)
+  deposePar   Utilisateur?     @relation("PiecesAgrementDeposees", fields: [idDeposePar], references: [id], onDelete: SetNull)
 
   deposeLe DateTime @default(now())
 
   /// Une seule piece vivante par type et par structure : redeposer remplace.
   /// `AUTRE` echappe a la regle, sinon on ne pourrait en deposer qu'une.
   @@index([idStructure, type])
+  @@index([idDemande, type])
   @@map("pieces_agrement")
+}
+
+/// L'etat d'une demande d'agrement, du depot a la decision.
+///
+/// `EN_ANALYSE` n'est pas decoratif : il separe le dossier que personne n'a
+/// ouvert de celui qu'un agent instruit. Sans lui, deux agents travaillent le
+/// meme dossier sans le savoir, et un candidat qui appelle s'entend repondre
+/// que son dossier « est en attente » alors qu'il est sur un bureau.
+enum StatutDemandeAgrement {
+  RECUE
+  EN_ANALYSE
+  VALIDEE
+  REFUSEE
+}
+
+/// La demande par laquelle un etablissement sollicite son rattachement a la
+/// plateforme, avant d'exister comme `StructureSante`.
+///
+/// **Pourquoi une table a part, et non une structure en attente.** Une demande
+/// refusee doit rester consultable sans jamais apparaitre dans une recherche
+/// de pharmacie, ni compter dans une statistique, ni recevoir une commande.
+/// Une `StructureSante` munie d'un drapeau « validee » aurait fuite par la
+/// premiere requete qui oublie le filtre - et il y en a une trentaine. Ici
+/// l'oubli n'est pas possible.
+///
+/// Les champs de lieu sont du texte, comme dans `StructureSante` : le
+/// referentiel geographique sert a proposer les bons choix a l'ecran, il n'est
+/// pas une cle etrangere. La demande garde donc ce que le candidat a saisi,
+/// meme si une commune est renommee entre le depot et la decision.
+model DemandeAgrement {
+  id String @id @default(cuid())
+
+  /// Numero de dossier communique au candidat, de la forme `DA-2026-0001`.
+  /// Genere par l'API, unique en base : c'est la seule reference qu'il
+  /// possede pour nous rappeler, et deux dossiers homonymes seraient
+  /// impossibles a departager au telephone.
+  numero String                @unique
+  statut StatutDemandeAgrement @default(RECUE)
+
+  type       TypeStructure
+  nom        String
+  prefecture String
+  commune    String?
+  quartier   String?
+  adresse    String?
+  telephone  String
+
+  /// Les references administratives, toutes facultatives en base parce
+  /// qu'aucune ne concerne tous les types. Un hopital prefectoral, un hopital
+  /// regional ou un CHU est cree par un acte de l'Etat : il n'a ni registre du
+  /// commerce ni arrete d'exploitation a produire. C'est l'API qui exige ce
+  /// que le type demande, le schema se garde d'imposer un tronc commun qui
+  /// n'existe pas.
+  rccm                       String?
+  numeroAgrementCreation     String?
+  numeroAgrementExploitation String?
+  lieuAutorise               String?
+
+  /// La personne qui repond du dossier. **Aucun compte n'est cree au depot** :
+  /// ouvrir un acces sur un dossier que personne n'a lu offrirait la
+  /// plateforme a quiconque sait remplir un formulaire. Le compte nait de la
+  /// validation, pas de la demande.
+  responsablePrenom    String
+  responsableNom       String
+  responsableTelephone String
+  responsableEmail     String
+
+  pieces PieceAgrement[]
+
+  /// Remplie a la validation. Le lien dans ce sens permet de retrouver
+  /// l'origine d'une structure des annees plus tard, quand se pose la question
+  /// de savoir sur quelles pieces elle a ete admise.
+  idStructureCreee String?         @unique
+  structureCreee   StructureSante? @relation("StructureIssueDemande", fields: [idStructureCreee], references: [id], onDelete: SetNull)
+
+  /// Obligatoire pour un refus - impose par l'API, pas par le schema, qui ne
+  /// sait pas conditionner une colonne a la valeur d'une autre. Un candidat a
+  /// le droit de savoir ce qui manque a son dossier, sinon il le redepose
+  /// identique.
+  motifRefus String?
+
+  idExaminePar String?
+  examinePar   Utilisateur? @relation("DemandesAgrementExaminees", fields: [idExaminePar], references: [id], onDelete: SetNull)
+  examineLe    DateTime?
+
+  deposeLe DateTime @default(now())
+
+  @@index([statut, deposeLe])
+  @@map("demandes_agrement")
 }
 
 /// Le degre de confiance dans l'identite d'un patient (EF-01-04).

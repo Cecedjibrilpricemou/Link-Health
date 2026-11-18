@@ -20,10 +20,18 @@ import { TranslatePipe } from '../../pipes/translate.pipe';
 import { refusLocal, tailleLisible } from './piece-agrement.util';
 
 /**
- * Ce que chaque type doit produire. **Copie assumée de la table du serveur**,
- * qui reste seul juge : l'écran ne peut pas deviner une règle qu'il
- * n'appliquerait qu'à moitié, mais il doit savoir quoi demander avant
- * d'envoyer quoi que ce soit.
+ * Ce que chaque type doit produire, **pour les écrans d'administration
+ * seulement**.
+ *
+ * Copie assumée de la table du serveur, qui reste seul juge : l'écran ne peut
+ * pas deviner une règle qu'il n'appliquerait qu'à moitié, mais il doit savoir
+ * quoi demander avant d'envoyer quoi que ce soit.
+ *
+ * **Elle ne connaît pas les hôpitaux publics**, et c'est juste ici : à la
+ * création administrative, l'administration sait ce qu'elle crée et n'a rien à
+ * produire. Une demande d'agrément, elle, vient de n'importe qui : le serveur
+ * en exige trois pièces, et le formulaire public reçoit donc sa liste par
+ * `requisesImposees` plutôt que de la lire ici.
  */
 const PIECES_PAR_TYPE: Readonly<Record<string, readonly TypePieceAgrement[]>> = {
   PHARMACIE: ['AGREMENT_CREATION', 'AGREMENT_EXPLOITATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE'],
@@ -56,9 +64,30 @@ export class PiecesAgrementComponent {
   readonly choisies = signal<Partial<Record<TypePieceAgrement, File>>>({});
   readonly refus = signal<Partial<Record<TypePieceAgrement, string>>>({});
 
-  readonly requises = computed<readonly TypePieceAgrement[]>(() =>
-    this.sousAutoriteDuParent() ? [] : (PIECES_PAR_TYPE[this.type()] ?? []),
-  );
+  /**
+   * La liste des pièces exigées, imposée par l'appelant.
+   *
+   * Le formulaire public de demande d'agrément la tient du serveur, et elle
+   * prime alors sur la table locale : celle-ci ne connaît pas les hôpitaux
+   * publics, dont l'API exige pourtant trois pièces. Laissée nulle — le cas
+   * des écrans d'administration —, la table locale continue de décider.
+   */
+  readonly requisesImposees = input<readonly TypePieceAgrement[] | null>(null);
+
+  /**
+   * Les libellés venus du serveur, par type de pièce.
+   *
+   * La même pièce ne porte pas le même nom partout : `AGREMENT_CREATION` est
+   * « l'agrément de création » d'une officine et « l'acte de création » d'un
+   * CHU. Un directeur d'hôpital cherchant un « agrément » dans ses archives
+   * ne trouverait rien. À défaut, le catalogue de traduction reprend la main.
+   */
+  readonly libellesImposes = input<Readonly<Partial<Record<TypePieceAgrement, string>>>>({});
+
+  readonly requises = computed<readonly TypePieceAgrement[]>(() => {
+    if (this.sousAutoriteDuParent()) return [];
+    return this.requisesImposees() ?? PIECES_PAR_TYPE[this.type()] ?? [];
+  });
 
   readonly exigeDesPieces = computed(() => this.requises().length > 0);
 
@@ -75,6 +104,11 @@ export class PiecesAgrementComponent {
     effect(() => {
       this.type();
       this.sousAutoriteDuParent();
+      // La liste imposée arrive du serveur, donc après le premier affichage.
+      // Sans cette lecture, l'effet ne se rejouerait pas quand elle arrive et
+      // `complet` resterait à vrai — calculé sur une liste encore vide. Le
+      // parent croirait son dossier complet sans une seule pièce.
+      this.requisesImposees();
       this.choisies.set({});
       this.refus.set({});
       this.pieces.emit({});
@@ -93,6 +127,11 @@ export class PiecesAgrementComponent {
 
   refusDe(piece: TypePieceAgrement): string | null {
     return this.refus()[piece] ?? null;
+  }
+
+  /** Le libellé du serveur, ou rien — le gabarit retombe alors sur le catalogue. */
+  libelleImpose(piece: TypePieceAgrement): string | null {
+    return this.libellesImposes()[piece] ?? null;
   }
 
   choisir(piece: TypePieceAgrement, evenement: Event) {

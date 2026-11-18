@@ -98,6 +98,8 @@ export class AdminLayoutComponent {
       roles: ['ADMIN_STRUCTURE', 'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'] },
     { labelKey: 'ADMIN.NAV_STRUCTURES', icon: 'pi-building',  route: '/admin/structures',
       roles: ['ADMIN_NATIONAL', 'SUPER_ADMIN'] },
+    { labelKey: 'ADMIN.NAV_AGREMENT_REQUESTS', icon: 'pi-file-check', route: '/admin/demandes-agrement',
+      roles: ['ADMIN_NATIONAL', 'SUPER_ADMIN'] },
     { labelKey: 'ADMIN.NAV_EXPORT',     icon: 'pi-download', route: '/admin/export',
       roles: ['ADMIN_STRUCTURE', 'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'] },
     { labelKey: 'ADMIN.NAV_COMPTES',   icon: 'pi-users',     route: '/admin/comptes',

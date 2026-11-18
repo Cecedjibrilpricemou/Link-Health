@@ -252,6 +252,174 @@ export async function envoyerEmailAdminStructure(dto: {
     });
 }
 
+// ── Courriels d'une demande d'agrément ───────────────────────────
+/**
+ * L'ossature commune aux courriels d'agrement : en-tete, corps, pied.
+ *
+ * Elle existe parce que les deux courriels qui suivent ne different que par
+ * trois phrases. Les ecrire deux fois en entier aurait garanti qu'ils
+ * divergent au premier changement de couleur.
+ */
+function gabaritAgrement(dto: {
+    nom: string;
+    slogan: string;
+    titre: string;
+    salutation: string;
+    corps: string;
+}): string {
+    return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${dto.titre}</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0B2618 0%,#1B5E35 100%);padding:40px 40px 30px;text-align:center;">
+              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px;">${dto.nom}</h1>
+              <p style="color:rgba(255,255,255,0.7);margin:6px 0 0;font-size:13px;">${dto.slogan}</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px;">
+              <h2 style="color:#1B5E35;font-size:20px;margin:0 0 16px;font-weight:700;">${dto.salutation}</h2>
+              ${dto.corps}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+              <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">
+                Ce message vous est adressé automatiquement par ${dto.nom}.<br>
+                Vous pouvez y répondre : votre réponse nous parviendra.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * L'accusé de réception d'une demande d'agrément.
+ *
+ * **Le numéro de dossier est la seule chose utile de ce courriel.** Le
+ * candidat n'a aucun compte sur la plateforme et ne peut donc rien y suivre :
+ * ce numéro est tout ce qu'il possède pour se faire reconnaître quand il
+ * rappellera. Un accusé qui ne le porterait pas ne servirait à rien.
+ *
+ * Aucune promesse de délai : l'examen dépend de l'administration, pas de nous.
+ */
+export async function envoyerAccuseDemandeAgrement(dto: {
+    destinataire: string;
+    prenomNom: string;
+    nomStructure: string;
+    numero: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: `Demande reçue - ${dto.numero}`,
+        salutation: `Votre demande est bien arrivée, ${dto.prenomNom}`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                Nous avons reçu la demande de rattachement de <strong>${dto.nomStructure}</strong>
+                à la plateforme ${nom}, accompagnée de ses pièces justificatives.
+              </p>
+
+              <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px 20px;margin:0 0 24px;text-align:center;">
+                <span style="color:#15803d;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Numéro de dossier</span><br>
+                <strong style="color:#15803d;font-size:22px;font-family:monospace;letter-spacing:2px;">${dto.numero}</strong>
+              </div>
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                Conservez ce numéro : c'est la référence de votre dossier, à rappeler
+                dans tout échange à son sujet.
+              </p>
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0;">
+                Votre dossier va être examiné. Vous recevrez notre décision à cette
+                même adresse. Si votre demande est acceptée, ce courriel sera suivi de
+                vos identifiants de connexion.
+              </p>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Demande reçue - dossier ${dto.numero}`,
+        html,
+    });
+}
+
+/**
+ * Le refus d'une demande, avec son motif.
+ *
+ * **Le motif n'est pas une politesse : sans lui, le candidat redépose un
+ * dossier identique**, et personne n'y gagne. Il est obligatoire côté API
+ * pour cette raison.
+ *
+ * Il n'y a pas de courriel d'acceptation ici : une demande acceptée fait
+ * naître un compte, et `envoyerEmailAdminStructure` annonce déjà cette
+ * naissance avec les identifiants. Deux courriels coup sur coup diraient deux
+ * fois la même chose.
+ */
+export async function envoyerRefusDemandeAgrement(dto: {
+    destinataire: string;
+    prenomNom: string;
+    nomStructure: string;
+    numero: string;
+    motif: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: `Décision sur le dossier ${dto.numero}`,
+        salutation: `Bonjour ${dto.prenomNom},`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                La demande de rattachement de <strong>${dto.nomStructure}</strong>
+                (dossier <strong>${dto.numero}</strong>) n'a pas été retenue en l'état.
+              </p>
+
+              <div style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;padding:14px 18px;margin:0 0 24px;">
+                <p style="margin:0 0 6px;color:#92400e;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Motif</p>
+                <p style="margin:0;color:#92400e;font-size:14px;line-height:1.6;">${dto.motif}</p>
+              </div>
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0;">
+                Vous pouvez déposer une nouvelle demande une fois ce point corrigé.
+                Rappelez le numéro ci-dessus si vous souhaitez des précisions.
+              </p>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Décision sur votre dossier ${dto.numero}`,
+        html,
+    });
+}
+
 // ── Email de bienvenue pour un agent (ASC, Médecin, Pharmacien) ───
 export async function envoyerEmailAgent(dto: {
     destinataire: string;
