@@ -285,6 +285,13 @@
           @if (adminEmail.invalid && (adminEmail.dirty || adminEmail.touched)) { <small id="struct-admin-email-msg" class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
         </div>
       </div>
+      <!-- Un bouton grise sans explication laisse chercher : la raison du
+           blocage s'affiche a cote de lui, pas seulement en haut du dossier. -->
+      @if (raisonBlocage(); as raison) {
+        <p class="bb-struct__blocage" role="status">
+          <i class="pi pi-info-circle" aria-hidden="true"></i> {{ raison }}
+        </p>
+      }
       <div class="bb-struct__form-actions">
         <button class="bb-struct__cancel-btn" (click)="showForm.set(false)">{{ 'COMMON.CANCEL' | translate }}</button>
         <button class="bb-struct__save-btn" (click)="creerStructure()" [disabled]="!peutEnvoyer()">

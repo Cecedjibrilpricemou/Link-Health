@@ -2058,6 +2058,8 @@
       "EMAIL_ADMIN_PH": "Ex: admin@structure.gn",
       "CREATING": "Création...",
       "CREATE_BTN": "Créer la structure",
+      "BLOCAGE_COMMUNE": "Renseignez la commune pour pouvoir créer la structure.",
+      "BLOCAGE_PIECES": "Joignez les piéces du dossier réglementaire pour pouvoir créer la structure ({{jointes}} sur {{total}} jointes).",
       "INACTIVE_BADGE": "Désactivée",
       "ACTIVE_BADGE": "Active",
       "USER_COUNT": "{{count}} utilisateur(s)",
