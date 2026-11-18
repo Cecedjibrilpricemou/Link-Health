@@ -24,6 +24,14 @@ export const ADMIN_ROUTES: Routes = [
           import('./structures/structures.component').then(m => m.StructuresComponent)
       },
       {
+        path: 'demandes-agrement',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN_NATIONAL', 'SUPER_ADMIN'] },
+        loadComponent: () =>
+          import('./demandes-agrement/demandes-agrement.component')
+            .then(m => m.DemandesAgrementComponent)
+      },
+      {
         path: 'export',
         canActivate: [roleGuard],
         data: { roles: ['ADMIN_STRUCTURE', 'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'] },

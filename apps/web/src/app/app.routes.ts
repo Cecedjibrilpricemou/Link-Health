@@ -19,6 +19,14 @@ export const routes: Routes = [
       import('./features/public/recherche/recherche.component').then(m => m.RechercheComponent)
   },
 
+  // ── Demande publique de rattachement d'une structure ────────────────
+  {
+    path: 'demande-agrement',
+    loadComponent: () =>
+      import('./features/public/demande-agrement/demande-agrement.component')
+        .then(m => m.DemandeAgrementComponent)
+  },
+
   // ── Page publique d'une officine (A3) ───────────────────────────────
   {
     path: 'pharmacie/:id',

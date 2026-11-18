@@ -1,0 +1,212 @@
+<!-- Maquette non raccordée : le branchement viendra après. -->
+<app-public-shell>
+  <header class="pub-hero">
+    <span class="pub-tag">{{ 'PUBLIC.STRUCTURE_REQUEST.TAG' | translate }}</span>
+    <h1 class="pub-hero__title">
+      {{ 'PUBLIC.STRUCTURE_REQUEST.TITLE_A' | translate }}
+      <span class="pub-hero__accent">{{ 'PUBLIC.STRUCTURE_REQUEST.TITLE_B' | translate }}</span>
+    </h1>
+    <p class="pub-hero__lead">{{ 'PUBLIC.STRUCTURE_REQUEST.LEAD' | translate }}</p>
+  </header>
+
+  <section class="pub-section demande-agrement" aria-live="polite">
+    <div class="pub-draft demande-agrement__notice" role="note">
+      <i class="pi pi-info-circle" aria-hidden="true"></i>
+      <span>
+        <strong>{{ 'PUBLIC.STRUCTURE_REQUEST.MOCK_NOTICE_TITLE' | translate }}</strong>
+        {{ 'PUBLIC.STRUCTURE_REQUEST.MOCK_NOTICE' | translate }}
+      </span>
+    </div>
+
+    @if (confirmation(); as numero) {
+      <section class="demande-agrement__confirmation" aria-labelledby="demande-confirmation-title">
+        <span class="demande-agrement__confirmation-icon" aria-hidden="true">
+          <i class="pi pi-check-circle"></i>
+        </span>
+        <h2 id="demande-confirmation-title">{{ 'PUBLIC.STRUCTURE_REQUEST.CONFIRM_TITLE' | translate }}</h2>
+        <p>{{ 'PUBLIC.STRUCTURE_REQUEST.CONFIRM_TEXT' | translate: { numero: numero } }}</p>
+        <strong class="demande-agrement__numero">{{ numero }}</strong>
+        <p class="demande-agrement__warning">{{ 'PUBLIC.STRUCTURE_REQUEST.NOT_SENT' | translate }}</p>
+      </section>
+    } @else {
+      <form class="demande-agrement__form" (ngSubmit)="envoyer()">
+        <section class="demande-agrement__section" aria-labelledby="demande-type-title">
+          <h2 id="demande-type-title">{{ 'PUBLIC.STRUCTURE_REQUEST.ESTABLISHMENT' | translate }}</h2>
+          <div class="demande-agrement__grid">
+            <label class="demande-agrement__field" for="demande-type">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.TYPE' | translate }} *</span>
+              <select id="demande-type" name="type" [ngModel]="formulaire().type"
+                      (ngModelChange)="modifierChamp('type', $event)">
+                <option value="PHARMACIE">{{ 'PUBLIC.STRUCTURE_REQUEST.TYPE_PHARMACIE' | translate }}</option>
+                <option value="CLINIQUE">{{ 'PUBLIC.STRUCTURE_REQUEST.TYPE_CLINIQUE' | translate }}</option>
+                <option value="LABORATOIRE">{{ 'PUBLIC.STRUCTURE_REQUEST.TYPE_LABORATOIRE' | translate }}</option>
+              </select>
+            </label>
+            <label class="demande-agrement__field" for="demande-nom">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.NAME' | translate }} *</span>
+              <input id="demande-nom" name="nom" required [ngModel]="formulaire().nom"
+                     (ngModelChange)="modifierChamp('nom', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-prefecture">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.PREFECTURE' | translate }} *</span>
+              <select id="demande-prefecture" name="prefecture" required
+                      [ngModel]="formulaire().prefecture"
+                      (ngModelChange)="changerPrefecture($event)">
+                <option value="">{{ 'PUBLIC.SEARCH.CHOOSE' | translate }}</option>
+                @for (prefecture of prefectures; track prefecture) {
+                  <option [value]="prefecture">{{ prefecture }}</option>
+                }
+              </select>
+            </label>
+            <label class="demande-agrement__field" for="demande-commune">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.COMMUNE' | translate }} *</span>
+              <select id="demande-commune" name="commune" required
+                      [disabled]="communes().length === 0"
+                      [ngModel]="formulaire().commune"
+                      (ngModelChange)="modifierChamp('commune', $event)">
+                <option value="">{{ 'PUBLIC.SEARCH.CHOOSE' | translate }}</option>
+                @for (commune of communes(); track commune) {
+                  <option [value]="commune">{{ commune }}</option>
+                }
+              </select>
+            </label>
+            <label class="demande-agrement__field" for="demande-quartier">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.QUARTIER' | translate }} *</span>
+              <input id="demande-quartier" name="quartier" required [ngModel]="formulaire().quartier"
+                     (ngModelChange)="modifierChamp('quartier', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-adresse">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.ADDRESS' | translate }} *</span>
+              <input id="demande-adresse" name="adresse" required [ngModel]="formulaire().adresse"
+                     (ngModelChange)="modifierChamp('adresse', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-telephone">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.PHONE' | translate }} *</span>
+              <input id="demande-telephone" name="telephone" type="tel" required
+                     [ngModel]="formulaire().telephone"
+                     (ngModelChange)="modifierChamp('telephone', $event)" />
+            </label>
+          </div>
+        </section>
+
+        <section class="demande-agrement__section" aria-labelledby="demande-agrement-title">
+          <h2 id="demande-agrement-title">{{ 'AGREMENT.SECTION_TITRE' | translate }}</h2>
+          <div class="demande-agrement__grid">
+            <label class="demande-agrement__field" for="demande-rccm">
+              <span>{{ 'AGREMENT.RCCM_LABEL' | translate }} *</span>
+              <input id="demande-rccm" name="rccm" required maxlength="40"
+                     [ngModel]="formulaire().rccm"
+                     (ngModelChange)="modifierChamp('rccm', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-creation">
+              <span>{{ 'AGREMENT.CREATION_LABEL' | translate }} *</span>
+              <input id="demande-creation" name="numeroAgrementCreation" required maxlength="120"
+                     [ngModel]="formulaire().numeroAgrementCreation"
+                     (ngModelChange)="modifierChamp('numeroAgrementCreation', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-exploitation">
+              <span>{{ 'AGREMENT.EXPLOITATION_LABEL' | translate }} *</span>
+              <input id="demande-exploitation" name="numeroAgrementExploitation" required maxlength="120"
+                     [ngModel]="formulaire().numeroAgrementExploitation"
+                     (ngModelChange)="modifierChamp('numeroAgrementExploitation', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-lieu">
+              <span>{{ 'AGREMENT.LIEU_LABEL' | translate }} *</span>
+              <input id="demande-lieu" name="lieuAutorise" required maxlength="200"
+                     [ngModel]="formulaire().lieuAutorise"
+                     (ngModelChange)="modifierChamp('lieuAutorise', $event)" />
+            </label>
+          </div>
+        </section>
+
+        <section class="demande-agrement__section" aria-labelledby="demande-responsable-title">
+          <h2 id="demande-responsable-title">{{ 'PUBLIC.STRUCTURE_REQUEST.RESPONSIBLE' | translate }}</h2>
+          <div class="demande-agrement__grid">
+            <label class="demande-agrement__field" for="demande-prenom">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.FIRST_NAME' | translate }} *</span>
+              <input id="demande-prenom" name="responsablePrenom" required
+                     [ngModel]="formulaire().responsable.prenom"
+                     (ngModelChange)="modifierResponsable('prenom', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-responsable-nom">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.LAST_NAME' | translate }} *</span>
+              <input id="demande-responsable-nom" name="responsableNom" required
+                     [ngModel]="formulaire().responsable.nom"
+                     (ngModelChange)="modifierResponsable('nom', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-responsable-telephone">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.PHONE' | translate }} *</span>
+              <input id="demande-responsable-telephone" name="responsableTelephone" type="tel" required
+                     [ngModel]="formulaire().responsable.telephone"
+                     (ngModelChange)="modifierResponsable('telephone', $event)" />
+            </label>
+            <label class="demande-agrement__field" for="demande-email">
+              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.EMAIL' | translate }} *</span>
+              <input id="demande-email" name="responsableEmail" type="email" required
+                     [ngModel]="formulaire().responsable.email"
+                     (ngModelChange)="modifierResponsable('email', $event)" />
+            </label>
+          </div>
+        </section>
+
+        <section class="demande-agrement__section" aria-labelledby="demande-pieces-title">
+          <h2 id="demande-pieces-title">{{ 'PUBLIC.STRUCTURE_REQUEST.PIECES_TITLE' | translate }}</h2>
+          <p class="demande-agrement__hint">{{ 'PUBLIC.STRUCTURE_REQUEST.PIECES_NOTE' | translate }}</p>
+          <app-pieces-agrement
+            [type]="formulaire().type"
+            (pieces)="pieces.set($event)"
+            (complet)="piecesCompletes.set($event)"
+          />
+
+          <div class="demande-agrement__autres">
+            <h3>{{ 'AGREMENT.DOSSIER.COMPLEMENTAIRES' | translate }}</h3>
+            <p class="demande-agrement__hint">{{ 'AGREMENT.PIECE.AUTRE_AIDE' | translate }}</p>
+            @for (piece of piecesAutres(); track piece.id) {
+              <div class="demande-agrement__autre-deposee">
+                <span>
+                  <strong>{{ piece.libelle }}</strong>
+                  <small>{{ piece.fichier.name }}</small>
+                </span>
+                <button matButton type="button" class="demande-agrement__remove"
+                        (click)="retirerPieceAutre(piece.id)">
+                  {{ 'PUBLIC.STRUCTURE_REQUEST.REMOVE' | translate }}
+                </button>
+              </div>
+            }
+            <div class="demande-agrement__autre-form">
+              <label class="demande-agrement__field" for="demande-autre-libelle">
+                <span>{{ 'AGREMENT.DOSSIER.LIBELLE_PH' | translate }}</span>
+                <input id="demande-autre-libelle" name="autreLibelle" maxlength="120"
+                       [ngModel]="libelleAutre()" (ngModelChange)="libelleAutre.set($event)" />
+              </label>
+              <label class="demande-agrement__field demande-agrement__field--file" for="demande-autre-fichier">
+                <span>{{ 'PUBLIC.STRUCTURE_REQUEST.OTHER_FILE' | translate }}</span>
+                <input id="demande-autre-fichier" type="file" accept="application/pdf,.pdf"
+                       (change)="choisirFichierAutre($event)" />
+              </label>
+              @if (fichierAutre(); as fichier) {
+                <small class="demande-agrement__selected-file">{{ fichier.name }}</small>
+              }
+              @if (erreurAutre(); as erreur) {
+                <small class="demande-agrement__error" role="alert">{{ erreur | translate }}</small>
+              }
+              <button matButton type="button" class="pub-btn pub-btn--ghost"
+                      (click)="ajouterPieceAutre()">
+                <i class="pi pi-plus" aria-hidden="true"></i>
+                {{ 'AGREMENT.DOSSIER.AJOUTER' | translate }}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <footer class="demande-agrement__actions">
+          <button matButton="filled" type="submit" class="pub-btn pub-btn--primary"
+                  [disabled]="!peutEnvoyer()">
+            <i class="pi pi-send" aria-hidden="true"></i>
+            {{ 'PUBLIC.STRUCTURE_REQUEST.SUBMIT' | translate }}
+          </button>
+        </footer>
+      </form>
+    }
+  </section>
+</app-public-shell>

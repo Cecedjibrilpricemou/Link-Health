@@ -1,0 +1,198 @@
+<!-- Maquette non raccordée : le branchement viendra après. -->
+<main class="bb-demandes">
+  <header class="bb-page-head">
+    <div class="bb-page-head__text">
+      <span class="bb-page-head__tag">
+        <i class="pi pi-building" aria-hidden="true"></i>
+        {{ 'ADMIN.ROLE' | translate }}
+      </span>
+      <h1 class="bb-page-head__title">{{ 'ADMIN.AGREMENT_REQUESTS.TITLE' | translate }}</h1>
+      <p class="bb-page-head__sub">{{ 'ADMIN.AGREMENT_REQUESTS.SUBTITLE' | translate }}</p>
+    </div>
+  </header>
+
+  <p class="bb-demandes__notice" role="note">
+    <i class="pi pi-info-circle" aria-hidden="true"></i>
+    {{ 'ADMIN.AGREMENT_REQUESTS.MOCK_NOTICE' | translate }}
+  </p>
+
+  <div class="bb-demandes__tools">
+    <label class="bb-demandes__filter">
+      <span>{{ 'ADMIN.AGREMENT_REQUESTS.FILTER' | translate }}</span>
+      <select [value]="filtreEtat()" (change)="filtreEtat.set($any($event.target).value)">
+        @for (etat of etats; track etat) {
+          <option [value]="etat">{{ ('ADMIN.AGREMENT_REQUESTS.STATE_' + etat) | translate }}</option>
+        }
+      </select>
+    </label>
+    <span class="bb-demandes__count" role="status" aria-live="polite">
+      {{ 'ADMIN.AGREMENT_REQUESTS.COUNT' | translate: { nombre: demandesFiltrees().length } }}
+    </span>
+  </div>
+
+  @if (demandesFiltrees().length === 0) {
+    <div class="bb-demandes__empty">
+      <i class="pi pi-inbox" aria-hidden="true"></i>
+      <p>{{ 'ADMIN.AGREMENT_REQUESTS.EMPTY' | translate }}</p>
+    </div>
+  } @else {
+    <div class="bb-demandes__list">
+      @for (demande of demandesFiltrees(); track demande.id) {
+        <article class="bb-demandes__item" [attr.data-id]="demande.id">
+          <div class="bb-demandes__identity">
+            <span class="bb-demandes__icon" aria-hidden="true">
+              <i class="pi" [class.pi-plus-circle]="demande.type === 'PHARMACIE'"
+                 [class.pi-heart]="demande.type === 'CLINIQUE'"
+                 [class.pi-search-plus]="demande.type === 'LABORATOIRE'"></i>
+            </span>
+            <div class="bb-demandes__main">
+              <div class="bb-demandes__name-line">
+                <h2>{{ demande.nom }}</h2>
+                <span class="bb-demandes__state" [attr.data-state]="demande.etat">
+                  {{ ('ADMIN.AGREMENT_REQUESTS.STATE_' + demande.etat) | translate }}
+                </span>
+              </div>
+              <p class="bb-demandes__meta">
+                {{ ('PUBLIC.STRUCTURE_REQUEST.TYPE_' + demande.type) | translate }}
+                · {{ demande.commune }} · {{ demande.recueLe | date: 'dd/MM/yyyy' }}
+              </p>
+              <small class="bb-demandes__number">{{ demande.numero }}</small>
+            </div>
+          </div>
+
+          <div class="bb-demandes__menu-wrap">
+            <button type="button" matButton class="bb-demandes__menu-button"
+                    aria-haspopup="menu" [attr.aria-expanded]="menuOuvert() === demande.id"
+                    [attr.aria-label]="('ADMIN.AGREMENT_REQUESTS.ACTIONS' | translate) + ' — ' + demande.nom"
+                    (click)="basculerMenu(demande.id, $event)">
+              <i class="pi pi-ellipsis-v" aria-hidden="true"></i>
+            </button>
+            @if (menuOuvert() === demande.id) {
+              <div class="bb-demandes__menu" role="menu" (click)="$event.stopPropagation()">
+                <button type="button" role="menuitem" class="bb-demandes__menu-item"
+                        (click)="ouvrirDemande(demande.id)">
+                  <i class="pi pi-folder-open" aria-hidden="true"></i>
+                  {{ 'ADMIN.AGREMENT_REQUESTS.OPEN' | translate }}
+                </button>
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+
+  @if (demandeOuverte(); as demande) {
+    <div class="bb-demandes__overlay" (click)="fermerDialogue()">
+      <section class="bb-demandes__modal" role="dialog" aria-modal="true"
+               aria-labelledby="demande-detail-title" (click)="$event.stopPropagation()">
+        <header class="bb-demandes__modal-head">
+          <div>
+            <p class="bb-demandes__number">{{ demande.numero }}</p>
+            <h2 id="demande-detail-title">{{ demande.nom }}</h2>
+            <p class="bb-demandes__meta">
+              {{ ('PUBLIC.STRUCTURE_REQUEST.TYPE_' + demande.type) | translate }}
+              · {{ demande.commune }} · {{ demande.recueLe | date: 'dd/MM/yyyy' }}
+            </p>
+          </div>
+          <button type="button" matButton class="bb-demandes__close"
+                  [attr.aria-label]="'ADMIN.AGREMENT_REQUESTS.CLOSE' | translate"
+                  (click)="fermerDialogue()">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </header>
+
+        <div class="bb-demandes__detail">
+          <section>
+            <h3>{{ 'ADMIN.AGREMENT_REQUESTS.ESTABLISHMENT' | translate }}</h3>
+            <dl class="bb-demandes__facts">
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.PREFECTURE' | translate }}</dt><dd>{{ demande.prefecture }}</dd></div>
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.COMMUNE' | translate }}</dt><dd>{{ demande.commune }}</dd></div>
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.QUARTIER' | translate }}</dt><dd>{{ demande.quartier }}</dd></div>
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.ADDRESS' | translate }}</dt><dd>{{ demande.adresse }}</dd></div>
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.PHONE' | translate }}</dt><dd>{{ demande.telephone }}</dd></div>
+              <div><dt>{{ 'AGREMENT.RCCM_LABEL' | translate }}</dt><dd>{{ demande.rccm }}</dd></div>
+              <div><dt>{{ 'AGREMENT.CREATION_LABEL' | translate }}</dt><dd>{{ demande.numeroAgrementCreation }}</dd></div>
+              <div><dt>{{ 'AGREMENT.EXPLOITATION_LABEL' | translate }}</dt><dd>{{ demande.numeroAgrementExploitation }}</dd></div>
+              <div><dt>{{ 'AGREMENT.LIEU_LABEL' | translate }}</dt><dd>{{ demande.lieuAutorise }}</dd></div>
+            </dl>
+          </section>
+
+          <section>
+            <h3>{{ 'PUBLIC.STRUCTURE_REQUEST.RESPONSIBLE' | translate }}</h3>
+            <dl class="bb-demandes__facts">
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.FIRST_NAME' | translate }}</dt><dd>{{ demande.responsable.prenom }}</dd></div>
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.LAST_NAME' | translate }}</dt><dd>{{ demande.responsable.nom }}</dd></div>
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.PHONE' | translate }}</dt><dd>{{ demande.responsable.telephone }}</dd></div>
+              <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.EMAIL' | translate }}</dt><dd>{{ demande.responsable.email }}</dd></div>
+            </dl>
+          </section>
+
+          <section>
+            <h3>{{ 'ADMIN.AGREMENT_REQUESTS.PIECES' | translate }}</h3>
+            <ul class="bb-demandes__pieces">
+              @for (piece of demande.pieces; track piece.id) {
+                <li>
+                  <span class="bb-demandes__piece-icon"><i class="pi pi-file-pdf" aria-hidden="true"></i></span>
+                  <span class="bb-demandes__piece-text">
+                    <strong>{{ piece.type === 'AUTRE' ? piece.libelle : ('AGREMENT.PIECE.' + piece.type | translate) }}</strong>
+                    <small>{{ piece.nomFichier }}</small>
+                  </span>
+                  <button type="button" matButton class="bb-demandes__view-piece"
+                          (click)="consulterPiece(piece)">
+                    <i class="pi pi-eye" aria-hidden="true"></i>
+                    {{ 'ADMIN.AGREMENT_REQUESTS.VIEW_PIECE' | translate }}
+                  </button>
+                </li>
+              }
+            </ul>
+            @if (pieceEnApercu(); as piece) {
+              <div class="bb-demandes__preview" aria-live="polite">
+                <i class="pi pi-file-pdf" aria-hidden="true"></i>
+                <strong>{{ piece.nomFichier }}</strong>
+                <span>{{ 'ADMIN.AGREMENT_REQUESTS.PREVIEW_MOCK' | translate }}</span>
+              </div>
+            }
+          </section>
+        </div>
+
+        <footer class="bb-demandes__actions">
+          <span class="bb-demandes__current-state">
+            {{ 'ADMIN.AGREMENT_REQUESTS.CURRENT_STATE' | translate }}
+            <strong>{{ ('ADMIN.AGREMENT_REQUESTS.STATE_' + demande.etat) | translate }}</strong>
+          </span>
+          <div class="bb-demandes__action-buttons">
+            <button type="button" matButton (click)="mettreEnAnalyse()">
+              <i class="pi pi-search" aria-hidden="true"></i>
+              {{ 'ADMIN.AGREMENT_REQUESTS.MARK_ANALYSIS' | translate }}
+            </button>
+            <button type="button" matButton="filled" class="bb-demandes__validate"
+                    (click)="valider()">
+              <i class="pi pi-check" aria-hidden="true"></i>
+              {{ 'ADMIN.AGREMENT_REQUESTS.VALIDATE' | translate }}
+            </button>
+            <button type="button" matButton class="bb-demandes__refuse"
+                    (click)="ouvrirSaisieMotif()">
+              <i class="pi pi-ban" aria-hidden="true"></i>
+              {{ 'ADMIN.AGREMENT_REQUESTS.REFUSE' | translate }}
+            </button>
+          </div>
+          @if (saisieMotifOuverte()) {
+            <div class="bb-demandes__reason">
+              <label for="demande-motif">{{ 'ADMIN.AGREMENT_REQUESTS.REASON' | translate }} *</label>
+              <textarea id="demande-motif" rows="3" [ngModel]="motifRefus()"
+                        (ngModelChange)="motifRefus.set($event)"></textarea>
+              @if (erreurMotif()) {
+                <small role="alert">{{ 'ADMIN.AGREMENT_REQUESTS.REASON_REQUIRED' | translate }}</small>
+              }
+              <button type="button" matButton="filled" class="bb-demandes__confirm-refusal"
+                      [disabled]="!motifRefus().trim()" (click)="refuser()">
+                {{ 'ADMIN.AGREMENT_REQUESTS.CONFIRM_REFUSAL' | translate }}
+              </button>
+            </div>
+          }
+        </footer>
+      </section>
+    </div>
+  }
+</main>
