@@ -51,6 +51,30 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD obligatoire}
 
+  # Joue les migrations, puis s'arrete. L'API ne demarre qu'apres sa reussite.
+  #
+  # L'image de production ne contient pas la CLI prisma : elle en est retiree
+  # a dessein (voir apps/api/Dockerfile). Les migrations etaient donc jouees
+  # depuis le runner de la CI, ce qui obligeait a rendre la base joignable
+  # depuis l'exterieur. Ce service les joue depuis le serveur lui-meme, en
+  # reutilisant la cible `build` de la meme image, ou la CLI est presente.
+  # L'image de production reste mince, et un deploiement n'a plus besoin de
+  # rien d'autre que ce fichier.
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      target: build
+    working_dir: /repo/apps/api
+    command: ['npx', 'prisma', 'migrate', 'deploy', '--config', 'prisma.config.ts']
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-keneya}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obligatoire}@postgres:5432/${POSTGRES_DB:-keneya}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Une migration qui echoue doit arreter le deploiement, pas boucler.
+    restart: 'no'
+
   api:
     build:
       context: ..
@@ -68,9 +92,27 @@ services:
       DB_ENCRYPTION_KEY: ${DB_ENCRYPTION_KEY:?DB_ENCRYPTION_KEY obligatoire}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS obligatoire (https://...)}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL obligatoire (https://...)}
-      # Sans e-mail, aucun professionnel ne recoit son code OTP : obligatoire.
-      GMAIL_USER: ${GMAIL_USER:?GMAIL_USER obligatoire}
-      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:?GMAIL_APP_PASSWORD obligatoire}
+      # Deux mandataires devant l'API : le proxy du serveur, puis le nginx du
+      # service web. Sans ce compte, `req.ip` vaut la meme adresse pour tous
+      # les visiteurs : la limite de debit devient commune a tous, et les
+      # journaux d'acces perdent l'adresse reelle du client.
+      TRUST_PROXY: ${TRUST_PROXY:-2}
+      # Sans expediteur, aucun professionnel ne recoit son code a usage
+      # unique, et l'API refuse la connexion plutot que de reveler le code :
+      # la cle Brevo et l'adresse d'expedition sont donc obligatoires.
+      # Le relais SMTP et Gmail restent des replis facultatifs, dans cet
+      # ordre de priorite (voir services/courriel.service.ts).
+      BREVO_API_KEY: ${BREVO_API_KEY:?BREVO_API_KEY obligatoire}
+      # Doit etre une adresse validee chez Brevo, sur un domaine authentifie :
+      # Brevo refuse d'expedier depuis une adresse qu'il ne connait pas.
+      EMAIL_EXPEDITEUR: ${EMAIL_EXPEDITEUR:?EMAIL_EXPEDITEUR obligatoire}
+      EMAIL_REPONSE: ${EMAIL_REPONSE:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      GMAIL_USER: ${GMAIL_USER:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       USSD_HMAC_KEY: ${USSD_HMAC_KEY:-}
@@ -84,16 +126,29 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # Une API qui demarre sur un schema non migre repond des erreurs que
+      # personne ne relie a la cause : mieux vaut qu'elle ne demarre pas.
+      migrate:
+        condition: service_completed_successfully
 
   web:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
-    # Le seul point d'entree. Mettre un terminal TLS (reverse proxy, equilibreur)
-    # devant : les cookies `Secure` de la production exigent HTTPS.
+    # Le seul point d'entree. Un terminal TLS doit se trouver devant : les
+    # cookies `Secure` de la production exigent HTTPS. Avec Dokploy, c'est
+    # Traefik, qui joint ce service par le reseau Docker — pas par un port
+    # publie.
+    #
+    # D'ou la publication sur 127.0.0.1 seulement : sur un serveur, un
+    # `8080:8080` ordinaire ouvrirait le site en clair sur l'adresse
+    # publique, a cote du HTTPS et sans que rien ne le signale. Ici le port
+    # ne sert qu'a verifier depuis le serveur meme, ou par un tunnel SSH.
     ports:
-      - '${WEB_PORT:-8080}:8080'
+      - '127.0.0.1:${WEB_PORT:-8080}:8080'
+    expose:
+      - '8080'
     depends_on:
       - api
 

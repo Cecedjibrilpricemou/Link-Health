@@ -10,39 +10,57 @@
 </header>
 
 @if (isLoading()) {
-  <div class="bb-stats">
-    @for (i of [1,2,3,4,5,6]; track i) { <div class="bb-skeleton" style="height:78px;border-radius:18px"></div> }
+  <div class="bb-labo-groupes" aria-busy="true">
+    <div class="bb-stats bb-labo-stats--4">
+      @for (i of [1,2,3,4]; track i) { <div class="bb-skeleton" style="height:78px;border-radius:18px"></div> }
+    </div>
+    <div class="bb-stats bb-labo-stats--3">
+      @for (i of [1,2,3]; track i) { <div class="bb-skeleton" style="height:78px;border-radius:18px"></div> }
+    </div>
   </div>
 } @else if (data(); as d) {
-  <div class="bb-stats">
-    <a class="bb-stat bb-stat--info bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'TRANSMISE' }">
-      <span class="bb-stat__icon"><i class="pi pi-inbox"></i></span>
-      <div><div class="bb-stat__value">{{ d.aRecevoir }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_A_RECEVOIR' | translate }}</div></div>
-    </a>
-    <a class="bb-stat bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'RECUE' }">
-      <span class="bb-stat__icon"><i class="pi pi-calendar"></i></span>
-      <div><div class="bb-stat__value">{{ d.aPrelever }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_A_PRELEVER' | translate }}</div></div>
-    </a>
-    <a class="bb-stat bb-stat--warning bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'EN_ANALYSE' }">
-      <span class="bb-stat__icon"><i class="pi pi-hourglass"></i></span>
-      <div><div class="bb-stat__value">{{ d.enAnalyse }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_EN_ANALYSE' | translate }}</div></div>
-    </a>
-    <div class="bb-stat bb-stat--primary">
-      <span class="bb-stat__icon"><i class="pi pi-verified"></i></span>
-      <div><div class="bb-stat__value">{{ d.aValider }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_A_VALIDER' | translate }}</div></div>
-    </div>
-    <div class="bb-stat" [class.bb-stat--danger]="d.urgentes > 0">
-      <span class="bb-stat__icon"><i class="pi pi-exclamation-triangle"></i></span>
-      <div><div class="bb-stat__value">{{ d.urgentes }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_URGENTES' | translate }}</div></div>
-    </div>
-    <div class="bb-stat" [class.bb-stat--danger]="d.critiquesNonAccusees > 0">
-      <span class="bb-stat__icon"><i class="pi pi-bell"></i></span>
-      <div><div class="bb-stat__value">{{ d.critiquesNonAccusees }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_CRITIQUES' | translate }}</div></div>
-    </div>
-    <div class="bb-stat">
-      <span class="bb-stat__icon"><i class="pi pi-check-circle"></i></span>
-      <div><div class="bb-stat__value">{{ d.valideesDuJour }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_VALIDEES_JOUR' | translate }}</div></div>
-    </div>
+  <div class="bb-labo-groupes">
+    <!-- Le circuit d'une demande, dans l'ordre du travail. -->
+    <section class="bb-labo-groupe" aria-labelledby="labo-groupe-circuit">
+      <h2 id="labo-groupe-circuit" class="bb-labo-groupe__titre">{{ 'LABO.DASH.GROUPE_CIRCUIT' | translate }}</h2>
+      <div class="bb-stats bb-labo-stats--4">
+        <a class="bb-stat bb-stat--info bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'TRANSMISE' }">
+          <span class="bb-stat__icon"><i class="pi pi-inbox"></i></span>
+          <div><div class="bb-stat__value">{{ d.aRecevoir }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_A_RECEVOIR' | translate }}</div></div>
+        </a>
+        <a class="bb-stat bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'RECUE' }">
+          <span class="bb-stat__icon"><i class="pi pi-calendar"></i></span>
+          <div><div class="bb-stat__value">{{ d.aPrelever }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_A_PRELEVER' | translate }}</div></div>
+        </a>
+        <a class="bb-stat bb-stat--warning bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'EN_ANALYSE' }">
+          <span class="bb-stat__icon"><i class="pi pi-hourglass"></i></span>
+          <div><div class="bb-stat__value">{{ d.enAnalyse }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_EN_ANALYSE' | translate }}</div></div>
+        </a>
+        <div class="bb-stat bb-stat--primary">
+          <span class="bb-stat__icon"><i class="pi pi-verified"></i></span>
+          <div><div class="bb-stat__value">{{ d.aValider }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_A_VALIDER' | translate }}</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ce qui demande une action, et le bilan de la journee. -->
+    <section class="bb-labo-groupe" aria-labelledby="labo-groupe-attention">
+      <h2 id="labo-groupe-attention" class="bb-labo-groupe__titre">{{ 'LABO.DASH.GROUPE_ATTENTION' | translate }}</h2>
+      <div class="bb-stats bb-labo-stats--3">
+        <div class="bb-stat" [class.bb-stat--danger]="d.urgentes > 0">
+          <span class="bb-stat__icon"><i class="pi pi-exclamation-triangle"></i></span>
+          <div><div class="bb-stat__value">{{ d.urgentes }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_URGENTES' | translate }}</div></div>
+        </div>
+        <div class="bb-stat" [class.bb-stat--danger]="d.critiquesNonAccusees > 0">
+          <span class="bb-stat__icon"><i class="pi pi-bell"></i></span>
+          <div><div class="bb-stat__value">{{ d.critiquesNonAccusees }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_CRITIQUES' | translate }}</div></div>
+        </div>
+        <div class="bb-stat">
+          <span class="bb-stat__icon"><i class="pi pi-check-circle"></i></span>
+          <div><div class="bb-stat__value">{{ d.valideesDuJour }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_VALIDEES_JOUR' | translate }}</div></div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div class="bb-hop-sections">
