@@ -29,7 +29,25 @@ const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * pas seulement qu'il gene.
  */
 const EXCEPTIONS = [
-  // Aucune exception en cours.
+  {
+    ghsa: 'GHSA-fc5q-39xc-vjpf',
+    paquet: 'picomatch',
+    reexamen: '2026-12-31',
+    motif:
+      "ReDoS par extglobs repetes a branche unique, CVSS 7.5. Aucun " +
+      "correctif amont : l'avis couvre <=4.0.7, soit toutes les versions " +
+      "publiees a ce jour. picomatch n'arrive ici que par l'outillage de " +
+      "developpement et de construction — jest, vitest, vite, " +
+      "@angular/build, @parcel/watcher, node-gyp — et ne figure ni dans le " +
+      "bundle servi du site ni dans le JavaScript compile de l'API. Les " +
+      "motifs glob qu'il evalue sont ecrits dans les fichiers de " +
+      "configuration du depot, jamais recus d'un utilisateur : le deni de " +
+      "service n'est pas atteignable depuis l'exterieur. Le correctif que " +
+      "propose npm audit est une retrogradation de @angular/cli en 16.2.0, " +
+      "incompatible avec Angular 21.",
+  },
+
+  // Historique.
   //
   // Le 04/11/2026, @angular/build et @angular/cli 21.2.29 ont ferme les 17 avis
   // toleres jusque-la, tous dans l'outillage de developpement et de

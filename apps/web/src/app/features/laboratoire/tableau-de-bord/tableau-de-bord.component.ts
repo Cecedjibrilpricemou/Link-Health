@@ -16,6 +16,7 @@ import { statutDemandeClasse, urgenceClasse } from '../../hopital/hopital.utils'
   standalone: true,
   imports: [RouterLink, DatePipe, MatButtonModule, TranslatePipe],
   templateUrl: './tableau-de-bord.component.html',
+  styleUrl: './tableau-de-bord.component.scss',
 })
 export class LaboTableauDeBordComponent implements OnInit {
   private labo   = inject(LaboratoireService);
