@@ -29,25 +29,18 @@ const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * pas seulement qu'il gene.
  */
 const EXCEPTIONS = [
-  {
-    ghsa: 'GHSA-fc5q-39xc-vjpf',
-    paquet: 'picomatch',
-    reexamen: '2026-12-31',
-    motif:
-      "ReDoS par extglobs repetes a branche unique, CVSS 7.5. Aucun " +
-      "correctif amont : l'avis couvre <=4.0.7, soit toutes les versions " +
-      "publiees a ce jour. picomatch n'arrive ici que par l'outillage de " +
-      "developpement et de construction — jest, vitest, vite, " +
-      "@angular/build, @parcel/watcher, node-gyp — et ne figure ni dans le " +
-      "bundle servi du site ni dans le JavaScript compile de l'API. Les " +
-      "motifs glob qu'il evalue sont ecrits dans les fichiers de " +
-      "configuration du depot, jamais recus d'un utilisateur : le deni de " +
-      "service n'est pas atteignable depuis l'exterieur. Le correctif que " +
-      "propose npm audit est une retrogradation de @angular/cli en 16.2.0, " +
-      "incompatible avec Angular 21.",
-  },
+  // Aucune exception en cours : tout avis high ou critical fait echouer la CI.
 
   // Historique.
+  //
+  // Le 18/11/2026, l'exception picomatch (GHSA-fc5q-39xc-vjpf, ReDoS par
+  // extglobs, CVSS 7.5) est retiree : le portillon la signalait comme
+  // obsolete, l'avis n'apparait plus dans l'audit, et l'arbre ne porte plus
+  // que picomatch 4.0.4 et 2.3.2 — les versions corrigees de la famille
+  // d'avis ReDoS sur les extglobs. Elle etait toleree parce que picomatch
+  // n'arrive ici que par l'outillage de developpement et de construction, et
+  // n'evalue que des motifs ecrits dans les fichiers de configuration du
+  // depot, jamais recus d'un utilisateur.
   //
   // Le 04/11/2026, @angular/build et @angular/cli 21.2.29 ont ferme les 17 avis
   // toleres jusque-la, tous dans l'outillage de developpement et de
