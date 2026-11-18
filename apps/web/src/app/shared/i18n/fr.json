@@ -2068,7 +2068,7 @@
       "TYPE_CHU": "CHU",
       "TYPE_CLINIQUE": "Clinique Privée",
       "TYPE_PHARMACIE": "Pharmacie Privée",
-      "ERR_VALIDATION_STRUCT": "Nom et préfecture sont obligatoires.",
+      "ERR_VALIDATION_STRUCT": "Le nom, la préfecture et la commune sont obligatoires.",
       "ERR_VALIDATION_ADMIN": "Prénom, nom, téléphone et email du responsable sont obligatoires.",
       "VALIDATION_TITLE": "Validation",
       "SUCCESS_EMAIL_SENT": "Les identifiants ont aussi été envoyés par email à {{email}}",

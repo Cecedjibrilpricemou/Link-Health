@@ -1500,7 +1500,7 @@
       "TYPE_CHU": "University Hospital",
       "TYPE_CLINIQUE": "Private Clinic",
       "TYPE_PHARMACIE": "Private Pharmacy",
-      "ERR_VALIDATION_STRUCT": "Name and prefecture are required.",
+      "ERR_VALIDATION_STRUCT": "The name, the prefecture and the commune are required.",
       "ERR_VALIDATION_ADMIN": "First name, last name, phone number and email of the manager are required.",
       "VALIDATION_TITLE": "Validation",
       "SUCCESS_EMAIL_SENT": "Credentials have also been sent by email to {{email}}",
