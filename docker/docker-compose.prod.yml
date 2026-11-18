@@ -92,6 +92,11 @@ services:
       DB_ENCRYPTION_KEY: ${DB_ENCRYPTION_KEY:?DB_ENCRYPTION_KEY obligatoire}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS obligatoire (https://...)}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL obligatoire (https://...)}
+      # Deux mandataires devant l'API : le proxy du serveur, puis le nginx du
+      # service web. Sans ce compte, `req.ip` vaut la meme adresse pour tous
+      # les visiteurs : la limite de debit devient commune a tous, et les
+      # journaux d'acces perdent l'adresse reelle du client.
+      TRUST_PROXY: ${TRUST_PROXY:-2}
       # Sans expediteur, aucun professionnel ne recoit son code a usage
       # unique, et l'API refuse la connexion plutot que de reveler le code :
       # la cle Brevo et l'adresse d'expedition sont donc obligatoires.

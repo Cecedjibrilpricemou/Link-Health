@@ -88,6 +88,15 @@ export const envSchema = z.object({
   RATE_LIMIT_API_MAX: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().positive().default(20),
 
+  // ─── Mandataires devant l'API ───────────────────────
+  // Le nombre de mandataires qui ajoutent une entree a `X-Forwarded-For`.
+  // Derriere Traefik puis le nginx du site : 2. En developpement, l'API est
+  // jointe directement : 0, et l'en-tete est alors ignore — ce qui est le
+  // bon comportement, puisque n'importe qui pourrait l'envoyer.
+  //
+  // Une valeur trop haute ferait retenir une adresse fournie par le client.
+  TRUST_PROXY: videCommeAbsent(z.coerce.number().int().min(0).max(10).default(0)),
+
   // ─── Redis (optionnel) ──────────────────────────────
   REDIS_URL: videCommeAbsent(z.string().url().optional()),
 

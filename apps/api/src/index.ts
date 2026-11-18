@@ -74,6 +74,27 @@ process.on('unhandledRejection', (reason) => {
 
 const app = express();
 
+// Combien de mandataires se trouvent devant l'API, et donc combien d'entrees
+// de `X-Forwarded-For` viennent d'eux. En production : Traefik, puis le nginx
+// qui sert le site — deux.
+//
+// Sans ce reglage, Express ignore l'en-tete et `req.ip` vaut l'adresse du
+// dernier mandataire, la meme pour tout le monde. Trois consequences, toutes
+// constatees au premier deploiement :
+//   - la limite de debit compte les requetes de tous les visiteurs sur un
+//     seul compteur : quelques officines qui travaillent ensemble se
+//     bloquent mutuellement ;
+//   - le journal des connexions et le journal d'audit enregistrent l'adresse
+//     du mandataire, ce qui vide la tracabilite des acces aux dossiers ;
+//   - le filtrage USSD par adresse compare la mauvaise adresse.
+//
+// Un nombre, et non `true` : Express remonte alors exactement ce nombre
+// d'entrees depuis la fin de l'en-tete. Une adresse ajoutee par le client
+// lui-meme se retrouve avant celles des mandataires et n'est jamais retenue,
+// donc l'usurpation echoue. `true` ferait confiance a la premiere entree,
+// celle que le client controle.
+app.set('trust proxy', env.TRUST_PROXY);
+
 // Shared Redis client (rate limiting + cache)
 if (env.REDIS_URL) {
   initRedis(env.REDIS_URL);
