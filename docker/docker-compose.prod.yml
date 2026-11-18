@@ -121,6 +121,18 @@ services:
       CHAPCHAP_HMAC_KEY: ${CHAPCHAP_HMAC_KEY:-}
       CHAPCHAP_CALLBACK_URL: ${CHAPCHAP_CALLBACK_URL:-}
     # Pas de `ports` : l'API n'est joignable que par le proxy nginx du service web.
+    #
+    # Les fichiers televerses ne vivent **pas** dans le conteneur : sans ces
+    # deux volumes, chaque redeploiement les effacait tous. Les avatars et les
+    # logos se reparent en les reposant ; les pieces d'agrement, non — elles
+    # sont la preuve sur laquelle une structure a ete admise, et le candidat
+    # n'a aucun moyen de les redeposer apres validation.
+    volumes:
+      # `stockage-prive/` n'est jamais servi en statique : chaque lecture
+      # passe par une route gardee et journalisee.
+      - api_stockage_prive:/repo/apps/api/stockage-prive
+      # `uploads/` est servi sans authentification : avatars, logos, photos.
+      - api_uploads:/repo/apps/api/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -155,3 +167,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  api_stockage_prive:
+  api_uploads:

@@ -84,4 +84,52 @@ describe('docker/docker-compose.prod.yml', () => {
   it("donne a l'API l'adresse Redis avec son mot de passe", () => {
     expect(service('api')).toMatch(/REDIS_URL:\s*redis:\/\/:\$\{REDIS_PASSWORD/);
   });
+
+  /**
+   * **Le defaut que ce test ferme.** Le service `api` n'avait aucun volume :
+   * les fichiers televerses vivaient dans le conteneur, et **chaque
+   * redeploiement les effacait**. Les avatars et les logos se reparent en les
+   * reposant. Les pieces d'agrement, non : elles sont la preuve sur laquelle
+   * une structure a ete admise, et le candidat n'a aucun moyen de les
+   * redeposer une fois son dossier valide.
+   *
+   * Invisible en developpement, ou le disque est celui de la machine.
+   */
+  it("conserve les fichiers televerses d'un deploiement a l'autre", () => {
+    const api = service('api');
+    expect(api).toMatch(/api_stockage_prive:\/repo\/apps\/api\/stockage-prive/);
+    expect(api).toMatch(/api_uploads:\/repo\/apps\/api\/uploads/);
+
+    // Un volume nomme non declare fait echouer `docker compose up`.
+    const declares = compose.match(/\nvolumes:\n([\s\S]*)$/)?.[1] ?? '';
+    expect(declares).toMatch(/^\s+api_stockage_prive:/m);
+    expect(declares).toMatch(/^\s+api_uploads:/m);
+  });
+});
+
+/**
+ * Les deux dossiers doivent exister dans l'image **avant** le changement de
+ * proprietaire.
+ *
+ * Docker, montant un volume vide sur un dossier qui existe dans l'image, en
+ * reprend le proprietaire. Sur un dossier absent, il le cree pour `root` — et
+ * l'API, qui tourne en `node`, ne peut plus y ecrire. Le premier
+ * televersement echouerait sur un refus de permission, en production
+ * seulement.
+ */
+describe('apps/api/Dockerfile', () => {
+  const dockerfile = readFileSync(join(__dirname, '..', 'Dockerfile'), 'utf8').replace(/\r\n/g, '\n');
+
+  it('cree les deux dossiers de fichiers avant de changer leur proprietaire', () => {
+    const mkdir = dockerfile.indexOf('mkdir -p /repo/apps/api/uploads');
+    const chown = dockerfile.indexOf('chown -R node:node /repo');
+
+    expect(mkdir).toBeGreaterThan(-1);
+    expect(dockerfile).toMatch(/mkdir -p .*stockage-prive\/agrements/);
+    expect(chown).toBeGreaterThan(mkdir);
+  });
+
+  it("n'execute pas l'API en root", () => {
+    expect(dockerfile).toMatch(/\nUSER node\n/);
+  });
 });

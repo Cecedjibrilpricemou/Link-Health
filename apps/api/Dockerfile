@@ -68,6 +68,15 @@ COPY apps/api/prisma ./prisma
 # du TypeScript — n'a pas a etre embarque.
 COPY --from=build /repo/packages/shared-types/dist /repo/node_modules/@baobaoheath/shared-types
 
+# Les deux dossiers de fichiers sont crees ici, vides, **avant** le `chown`.
+#
+# Ils recoivent un volume en production. Docker, montant un volume vide sur un
+# dossier qui existe dans l'image, en reprend le proprietaire ; sur un dossier
+# absent, il le cree pour `root`, et l'API - qui tourne en `node` - ne peut
+# plus y ecrire. Le premier televersement echouerait alors sur un refus de
+# permission, en production seulement.
+RUN mkdir -p /repo/apps/api/uploads /repo/apps/api/stockage-prive/agrements
+
 RUN chown -R node:node /repo
 USER node
 
