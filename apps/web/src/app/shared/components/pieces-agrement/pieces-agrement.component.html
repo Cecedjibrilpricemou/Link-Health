@@ -20,7 +20,12 @@
     @for (p of requises(); track p) {
       <div class="bb-pieces__ligne" [class.bb-pieces__ligne--ok]="nomDe(p)">
         <div class="bb-pieces__texte">
-          <span class="bb-pieces__nom">{{ 'AGREMENT.PIECE.' + p | translate }} *</span>
+          <!-- Le libellé du serveur d'abord : la même pièce s'appelle
+               « agrément de création » pour une officine et « acte de création »
+               pour un CHU. Sans lui, le catalogue reprend la main. -->
+          <span class="bb-pieces__nom">
+            {{ libelleImpose(p) ?? ('AGREMENT.PIECE.' + p | translate) }} *
+          </span>
           <small class="bb-pieces__detail">{{ 'AGREMENT.PIECE.' + p + '_AIDE' | translate }}</small>
 
           @if (nomDe(p)) {

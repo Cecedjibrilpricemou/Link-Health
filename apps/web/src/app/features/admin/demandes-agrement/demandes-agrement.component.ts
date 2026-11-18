@@ -1,153 +1,39 @@
-// Maquette non raccordée : le branchement viendra après.
-import { Component, HostListener, computed, signal } from '@angular/core';
+// L'examen des demandes de rattachement, cote administration nationale.
+//
+// **Une decision ne se reprend pas.** Valider cree la structure et le compte
+// de son responsable ; refuser envoie un motif au candidat. Le serveur refuse
+// de revenir sur un dossier deja decide, et cet ecran n'offre donc plus
+// d'action sur lui - plutot que de proposer un bouton qui echouerait.
+//
+// Le filtre par etat est applique **par le serveur** : filtrer une liste deja
+// recue reviendrait a trier ce qu'on a sous la main en croyant trier tout.
+import {
+  Component,
+  HostListener,
+  type OnDestroy,
+  type OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import type { TypePieceAgrement } from '@baobaoheath/shared-types';
+import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
+import type {
+  DemandeAgrementListeView,
+  DemandeAgrementView,
+  PieceDemandeView,
+  StatutDemandeAgrement,
+} from '@baobaoheath/shared-types';
 
+import { AdminService } from '../../../core/services/admin.service';
+import { DemandeAgrementService } from '../../../core/services/demande-agrement.service';
+import { I18nService } from '../../../shared/services/i18n.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
-type TypeEtablissement = 'PHARMACIE' | 'CLINIQUE' | 'LABORATOIRE';
-type EtatDemande = 'RECUE' | 'EN_ANALYSE' | 'VALIDEE' | 'REFUSEE';
-
-interface PieceDemande {
-  id: string;
-  type: TypePieceAgrement;
-  nomFichier: string;
-  libelle?: string;
-}
-
-interface DemandeRattachement {
-  id: string;
-  numero: string;
-  type: TypeEtablissement;
-  nom: string;
-  prefecture: string;
-  commune: string;
-  quartier: string;
-  adresse: string;
-  telephone: string;
-  recueLe: string;
-  etat: EtatDemande;
-  rccm: string;
-  numeroAgrementCreation: string;
-  numeroAgrementExploitation: string;
-  lieuAutorise: string;
-  responsable: {
-    prenom: string;
-    nom: string;
-    telephone: string;
-    email: string;
-  };
-  pieces: PieceDemande[];
-}
-
-const TYPES_PIECES: readonly TypePieceAgrement[] = [
-  'AGREMENT_CREATION',
-  'AGREMENT_EXPLOITATION',
-  'DIPLOME_RESPONSABLE',
-  'INSCRIPTION_ORDRE',
-];
-
-function creerPieces(prefixe: string, autres: string[] = []): PieceDemande[] {
-  const pieces = TYPES_PIECES.map((type) => ({
-    id: `${prefixe}-${type}`,
-    type,
-    nomFichier: `${prefixe}-${type.toLowerCase()}.pdf`,
-  }));
-  return [
-    ...pieces,
-    ...autres.map((libelle, index) => ({
-      id: `${prefixe}-autre-${index + 1}`,
-      type: 'AUTRE' as const,
-      nomFichier: `${prefixe}-complement-${index + 1}.pdf`,
-      libelle,
-    })),
-  ];
-}
-
-const DEMANDES_INITIALES: DemandeRattachement[] = [
-  {
-    id: 'demande-001', numero: 'DA-2026-0041', type: 'PHARMACIE',
-    nom: 'Pharmacie du Marché', prefecture: 'Conakry', commune: 'Matam',
-    quartier: 'Madina', adresse: 'Avenue de la République', telephone: '+224620000101',
-    recueLe: '2026-11-12', etat: 'RECUE', rccm: 'GN.TCC.2026.A.041',
-    numeroAgrementCreation: 'ARR/2026/041', numeroAgrementExploitation: 'ARR/2026/141',
-    lieuAutorise: 'Madina, Matam',
-    responsable: { prenom: 'Mamadou', nom: 'Barry', telephone: '+224620000102', email: 'm.barry@example.gn' },
-    pieces: creerPieces('marche', ['Plan des locaux']),
-  },
-  {
-    id: 'demande-002', numero: 'DA-2026-0040', type: 'CLINIQUE',
-    nom: 'Clinique La Colombe', prefecture: 'Conakry', commune: 'Dixinn',
-    quartier: 'Belle-Vue', adresse: 'Rue de Dixinn', telephone: '+224620000201',
-    recueLe: '2026-11-10', etat: 'EN_ANALYSE', rccm: 'GN.TCC.2026.A.040',
-    numeroAgrementCreation: 'ARR/2026/040', numeroAgrementExploitation: 'ARR/2026/140',
-    lieuAutorise: 'Belle-Vue, Dixinn',
-    responsable: { prenom: 'Fatoumata', nom: 'Camara', telephone: '+224620000202', email: 'f.camara@example.gn' },
-    pieces: creerPieces('colombe'),
-  },
-  {
-    id: 'demande-003', numero: 'DA-2026-0039', type: 'LABORATOIRE',
-    nom: 'Laboratoire Kankan Bio', prefecture: 'Kankan', commune: 'Kankan-Centre',
-    quartier: 'Centre', adresse: 'Route de Siguiri', telephone: '+224620000301',
-    recueLe: '2026-11-08', etat: 'VALIDEE', rccm: 'GN.TCC.2026.A.039',
-    numeroAgrementCreation: 'ARR/2026/039', numeroAgrementExploitation: 'ARR/2026/139',
-    lieuAutorise: 'Kankan-Centre',
-    responsable: { prenom: 'Ibrahima', nom: 'Keita', telephone: '+224620000302', email: 'i.keita@example.gn' },
-    pieces: creerPieces('kankan'),
-  },
-  {
-    id: 'demande-004', numero: 'DA-2026-0038', type: 'PHARMACIE',
-    nom: 'Pharmacie du Fleuve', prefecture: 'Kindia', commune: 'Kindia-Centre',
-    quartier: 'Manquepas', adresse: 'Rue du Fleuve', telephone: '+224620000401',
-    recueLe: '2026-11-06', etat: 'REFUSEE', rccm: 'GN.TCC.2026.A.038',
-    numeroAgrementCreation: 'ARR/2026/038', numeroAgrementExploitation: 'ARR/2026/138',
-    lieuAutorise: 'Manquepas, Kindia',
-    responsable: { prenom: 'Aissatou', nom: 'Diallo', telephone: '+224620000402', email: 'a.diallo@example.gn' },
-    pieces: creerPieces('fleuve', ['Attestation complémentaire']),
-  },
-  {
-    id: 'demande-005', numero: 'DA-2026-0037', type: 'CLINIQUE',
-    nom: 'Clinique Nongo Santé', prefecture: 'Conakry', commune: 'Ratoma',
-    quartier: 'Nongo', adresse: 'Carrefour Nongo', telephone: '+224620000501',
-    recueLe: '2026-11-04', etat: 'RECUE', rccm: 'GN.TCC.2026.A.037',
-    numeroAgrementCreation: 'ARR/2026/037', numeroAgrementExploitation: 'ARR/2026/137',
-    lieuAutorise: 'Nongo, Ratoma',
-    responsable: { prenom: 'Mariam', nom: 'Soumah', telephone: '+224620000502', email: 'm.soumah@example.gn' },
-    pieces: creerPieces('nongo'),
-  },
-  {
-    id: 'demande-006', numero: 'DA-2026-0036', type: 'LABORATOIRE',
-    nom: 'Laboratoire Mamou Analyses', prefecture: 'Mamou', commune: 'Mamou-Centre',
-    quartier: 'Boulbinet', adresse: 'Avenue de la Gare', telephone: '+224620000601',
-    recueLe: '2026-11-02', etat: 'EN_ANALYSE', rccm: 'GN.TCC.2026.A.036',
-    numeroAgrementCreation: 'ARR/2026/036', numeroAgrementExploitation: 'ARR/2026/136',
-    lieuAutorise: 'Mamou-Centre',
-    responsable: { prenom: 'Alpha', nom: 'Sow', telephone: '+224620000602', email: 'a.sow@example.gn' },
-    pieces: creerPieces('mamou', ['Liste des équipements', 'Plan du laboratoire']),
-  },
-  {
-    id: 'demande-007', numero: 'DA-2026-0035', type: 'PHARMACIE',
-    nom: 'Pharmacie Belle-Vue', prefecture: 'Conakry', commune: 'Dixinn',
-    quartier: 'Belle-Vue', adresse: 'Route du Niger', telephone: '+224620000701',
-    recueLe: '2026-10-30', etat: 'VALIDEE', rccm: 'GN.TCC.2026.A.035',
-    numeroAgrementCreation: 'ARR/2026/035', numeroAgrementExploitation: 'ARR/2026/135',
-    lieuAutorise: 'Belle-Vue, Dixinn',
-    responsable: { prenom: 'Boubacar', nom: 'Bah', telephone: '+224620000702', email: 'b.bah@example.gn' },
-    pieces: creerPieces('bellevue'),
-  },
-  {
-    id: 'demande-008', numero: 'DA-2026-0034', type: 'CLINIQUE',
-    nom: 'Clinique de Coyah', prefecture: 'Coyah', commune: 'Coyah-Centre',
-    quartier: 'Sanoyah', adresse: 'Route nationale', telephone: '+224620000801',
-    recueLe: '2026-10-28', etat: 'REFUSEE', rccm: 'GN.TCC.2026.A.034',
-    numeroAgrementCreation: 'ARR/2026/034', numeroAgrementExploitation: 'ARR/2026/134',
-    lieuAutorise: 'Coyah-Centre',
-    responsable: { prenom: 'Hawa', nom: 'Kaba', telephone: '+224620000802', email: 'h.kaba@example.gn' },
-    pieces: creerPieces('coyah'),
-  },
-];
+/** Le motif exige par le serveur : dix caracteres au moins. */
+const MOTIF_MINIMUM = 10;
 
 @Component({
   selector: 'app-demandes-agrement',
@@ -156,61 +42,136 @@ const DEMANDES_INITIALES: DemandeRattachement[] = [
   templateUrl: './demandes-agrement.component.html',
   styleUrl: './demandes-agrement.component.scss',
 })
-export class DemandesAgrementComponent {
-  readonly etats: readonly (EtatDemande | 'TOUTES')[] = [
+export class DemandesAgrementComponent implements OnInit, OnDestroy {
+  private readonly service = inject(DemandeAgrementService);
+  private readonly admin = inject(AdminService);
+  private readonly i18n = inject(I18nService);
+  private readonly sanitizer = inject(DomSanitizer);
+
+  readonly etats: readonly (StatutDemandeAgrement | 'TOUTES')[] = [
     'TOUTES',
     'RECUE',
     'EN_ANALYSE',
     'VALIDEE',
     'REFUSEE',
   ];
-  readonly demandes = signal<DemandeRattachement[]>(DEMANDES_INITIALES);
-  readonly filtreEtat = signal<EtatDemande | 'TOUTES'>('TOUTES');
+
+  readonly demandes = signal<DemandeAgrementListeView[]>([]);
+  readonly filtreEtat = signal<StatutDemandeAgrement | 'TOUTES'>('TOUTES');
+  readonly chargement = signal(false);
+  readonly erreur = signal<string | null>(null);
+  readonly succes = signal<string | null>(null);
+
   readonly menuOuvert = signal<string | null>(null);
-  readonly demandeOuverteId = signal<string | null>(null);
-  readonly pieceEnApercu = signal<PieceDemande | null>(null);
+  readonly demandeOuverte = signal<DemandeAgrementView | null>(null);
+  readonly action = signal(false);
+
   readonly saisieMotifOuverte = signal(false);
   readonly motifRefus = signal('');
   readonly erreurMotif = signal(false);
 
-  readonly demandesFiltrees = computed(() => {
-    const filtre = this.filtreEtat();
-    return this.demandes().filter((demande) => filtre === 'TOUTES' || demande.etat === filtre);
+  /** L'apercu d'une piece, charge par une requete authentifiee. */
+  readonly apercu = signal<{ libelle: string; url: SafeResourceUrl } | null>(null);
+  private urlApercu: string | null = null;
+
+  /** Un dossier decide ne se reprend pas : plus aucune action sur lui. */
+  readonly decidable = computed(() => {
+    const statut = this.demandeOuverte()?.statut;
+    return statut === 'RECUE' || statut === 'EN_ANALYSE';
   });
 
-  readonly demandeOuverte = computed(() =>
-    this.demandes().find((demande) => demande.id === this.demandeOuverteId()) ?? null,
-  );
+  readonly motifSuffisant = computed(() => this.motifRefus().trim().length >= MOTIF_MINIMUM);
+
+  ngOnInit(): void {
+    this.charger();
+  }
+
+  ngOnDestroy(): void {
+    this.libererApercu();
+  }
+
+  charger(): void {
+    this.chargement.set(true);
+    this.erreur.set(null);
+    this.service.lister(this.filtreEtat()).subscribe({
+      next: (r) => {
+        this.demandes.set(r.data ?? []);
+        this.chargement.set(false);
+      },
+      error: (e: unknown) => {
+        this.chargement.set(false);
+        this.erreur.set(this.message(e, 'ADMIN.AGREMENT_REQUESTS.LOAD_ERROR'));
+      },
+    });
+  }
+
+  /** Changer de filtre recharge : le serveur sait ce qu'il n'a pas envoye. */
+  changerFiltre(valeur: string): void {
+    this.filtreEtat.set(valeur as StatutDemandeAgrement | 'TOUTES');
+    this.charger();
+  }
 
   basculerMenu(id: string, evenement?: Event): void {
     evenement?.stopPropagation();
-    this.menuOuvert.update((ouvert) => ouvert === id ? null : id);
+    this.menuOuvert.update((ouvert) => (ouvert === id ? null : id));
   }
 
+  /**
+   * Ouvrir un dossier le charge entierement.
+   *
+   * La liste ne porte pas les pieces ni les references reglementaires : elle
+   * sert a trier, pas a instruire. Un agent qui decide doit voir le dossier
+   * tel qu'il est au moment ou il decide.
+   */
   ouvrirDemande(id: string): void {
     this.menuOuvert.set(null);
-    this.demandeOuverteId.set(id);
-    this.pieceEnApercu.set(null);
-    this.saisieMotifOuverte.set(false);
-    this.motifRefus.set('');
-    this.erreurMotif.set(false);
+    this.reinitialiserDialogue();
+    this.service.detail(id).subscribe({
+      next: (r) => this.demandeOuverte.set(r.data ?? null),
+      error: (e: unknown) => this.erreur.set(this.message(e, 'ADMIN.AGREMENT_REQUESTS.LOAD_ERROR')),
+    });
   }
 
   fermerDialogue(): void {
-    this.demandeOuverteId.set(null);
-    this.pieceEnApercu.set(null);
+    this.demandeOuverte.set(null);
+    this.reinitialiserDialogue();
   }
 
-  consulterPiece(piece: PieceDemande): void {
-    this.pieceEnApercu.set(piece);
+  /**
+   * Afficher une piece.
+   *
+   * Par une requete authentifiee et non par un lien : le fichier vit dans le
+   * stockage prive, et aucune URL ne doit pouvoir etre devinee. L'adresse
+   * temporaire fabriquee ici est liberee des qu'on en change - dix agrements
+   * de cinq megaoctets laisses en memoire se voient.
+   */
+  consulterPiece(piece: PieceDemandeView): void {
+    this.libererApercu();
+    this.admin.piece(piece.id).subscribe({
+      next: (blob) => {
+        this.urlApercu = URL.createObjectURL(blob);
+        this.apercu.set({
+          libelle: piece.libelle,
+          // L'adresse est un `blob:` que nous venons de creer a partir d'une
+          // reponse de notre propre API : rien d'exterieur n'entre ici.
+          url: this.sanitizer.bypassSecurityTrustResourceUrl(this.urlApercu),
+        });
+      },
+      error: (e: unknown) => this.erreur.set(this.message(e, 'ADMIN.AGREMENT_REQUESTS.PIECE_ERROR')),
+    });
+  }
+
+  /** Refermer l'apercu libere l'adresse temporaire et la memoire du fichier. */
+  fermerApercu(): void {
+    this.libererApercu();
   }
 
   mettreEnAnalyse(): void {
-    this.changerEtat('EN_ANALYSE');
+    this.decider((id) => this.service.mettreEnAnalyse(id), 'ADMIN.AGREMENT_REQUESTS.DONE_ANALYSIS');
   }
 
   valider(): void {
-    this.changerEtat('VALIDEE');
+    this.decider((id) => this.service.valider(id), 'ADMIN.AGREMENT_REQUESTS.DONE_VALIDATED');
   }
 
   ouvrirSaisieMotif(): void {
@@ -219,19 +180,69 @@ export class DemandesAgrementComponent {
   }
 
   refuser(): void {
-    if (!this.motifRefus().trim()) {
+    if (!this.motifSuffisant()) {
       this.erreurMotif.set(true);
       return;
     }
-    this.changerEtat('REFUSEE');
+    const motif = this.motifRefus().trim();
+    this.decider((id) => this.service.refuser(id, motif), 'ADMIN.AGREMENT_REQUESTS.DONE_REFUSED');
   }
 
-  private changerEtat(etat: EtatDemande): void {
-    const id = this.demandeOuverteId();
-    if (!id) return;
-    this.demandes.update((demandes) =>
-      demandes.map((demande) => demande.id === id ? { ...demande, etat } : demande),
-    );
+  /**
+   * Une decision : on l'envoie, on reprend le dossier **tel que le serveur le
+   * rend**, et on rafraichit la liste.
+   *
+   * Ne pas relire le dossier laisserait a l'ecran l'etat d'avant la decision,
+   * et l'agent proposerait une seconde action sur un dossier deja clos.
+   */
+  private decider(
+    envoyer: (id: string) => ReturnType<DemandeAgrementService['valider']>,
+    cleSucces: string,
+  ): void {
+    const dossier = this.demandeOuverte();
+    if (!dossier || this.action()) return;
+
+    this.action.set(true);
+    this.erreur.set(null);
+    this.succes.set(null);
+
+    envoyer(dossier.id).subscribe({
+      next: (r) => {
+        this.action.set(false);
+        this.demandeOuverte.set(r.data ?? null);
+        this.saisieMotifOuverte.set(false);
+        this.motifRefus.set('');
+        this.erreurMotif.set(false);
+        this.succes.set(this.i18n.t(cleSucces, { numero: dossier.numero }));
+        this.charger();
+      },
+      error: (e: unknown) => {
+        this.action.set(false);
+        this.erreur.set(this.message(e, 'ADMIN.AGREMENT_REQUESTS.DECISION_ERROR'));
+      },
+    });
+  }
+
+  private reinitialiserDialogue(): void {
+    this.libererApercu();
+    this.saisieMotifOuverte.set(false);
+    this.motifRefus.set('');
+    this.erreurMotif.set(false);
+    this.succes.set(null);
+  }
+
+  private libererApercu(): void {
+    if (this.urlApercu) {
+      URL.revokeObjectURL(this.urlApercu);
+      this.urlApercu = null;
+    }
+    this.apercu.set(null);
+  }
+
+  /** Le message du serveur s'il en donne un : il est deja ecrit pour l'agent. */
+  private message(e: unknown, cleDefaut: string): string {
+    const erreur = e as { error?: { error?: string; message?: string } } | null;
+    return erreur?.error?.error ?? erreur?.error?.message ?? this.i18n.t(cleDefaut);
   }
 
   @HostListener('document:click')
