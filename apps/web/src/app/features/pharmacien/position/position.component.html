@@ -1,0 +1,92 @@
+<div class="bb-position">
+  <header class="bb-page-head">
+    <div class="bb-page-head__text">
+      <span class="bb-page-head__tag">
+        <i class="pi pi-map-marker" aria-hidden="true"></i> {{ 'PHARMACIEN.ROLE' | translate }}
+      </span>
+      <h1 class="bb-page-head__title">{{ 'PHARMACIEN.POSITION.TITLE' | translate }}</h1>
+      <p class="bb-page-head__sub">{{ 'PHARMACIEN.POSITION.SUB' | translate }}</p>
+    </div>
+  </header>
+
+  @if (chargement()) {
+    <p class="bb-position__message" role="status">{{ 'COMMON.LOADING' | translate }}</p>
+  } @else {
+    @if (officine(); as pharmacie) {
+      <section class="bb-position__officine" aria-labelledby="position-officine-nom">
+        <h2 id="position-officine-nom">{{ pharmacie.nom }}</h2>
+        @if (pharmacie.adresse) {
+          <p>{{ pharmacie.adresse }}</p>
+        }
+        @if (pharmacie.commune) {
+          <p>{{ pharmacie.commune }}</p>
+        }
+      </section>
+    }
+
+    <div
+      #conteneurCarte
+      class="bb-position__carte"
+      role="application"
+      [attr.aria-label]="'PHARMACIEN.POSITION.CARTE_ARIA' | translate"
+    ></div>
+
+    @if (coordonneesAffichees(); as coordonnees) {
+      <p class="bb-position__coordonnees">
+        <span>{{ 'PHARMACIEN.POSITION.COORDONNEES' | translate }}</span>
+        <span>Lat. {{ coordonnees.latitude }} · Lon. {{ coordonnees.longitude }}</span>
+      </p>
+    } @else {
+      <p class="bb-position__aide">{{ 'PHARMACIEN.POSITION.AIDE_CARTE' | translate }}</p>
+    }
+
+    @if (pointInterdit()) {
+      <p class="bb-position__erreur" role="alert">
+        {{ 'PHARMACIEN.POSITION.POINT_INTERDIT' | translate }}
+      </p>
+    }
+    @if (erreurGeolocalisation()) {
+      <p class="bb-position__erreur" role="alert">{{ erreurGeolocalisation() }}</p>
+    }
+
+    <div class="bb-position__actions">
+      <button
+        matButton
+        type="button"
+        [disabled]="localisationEnCours() || enregistrement()"
+        (click)="utiliserPositionActuelle()"
+      >
+        <i class="pi pi-crosshairs" aria-hidden="true"></i>
+        {{
+          (localisationEnCours()
+            ? 'PHARMACIEN.POSITION.GEOLOCALISATION_EN_COURS'
+            : 'PHARMACIEN.POSITION.UTILISER_POSITION')
+            | translate
+        }}
+      </button>
+      @if (positionEnregistree()) {
+        <button
+          matButton
+          type="button"
+          [disabled]="enregistrement()"
+          (click)="retirerPosition()"
+        >
+          <i class="pi pi-trash" aria-hidden="true"></i>
+          {{ 'PHARMACIEN.POSITION.RETIRER' | translate }}
+        </button>
+      }
+      <button
+        matButton="filled"
+        type="button"
+        [disabled]="!peutEnregistrer()"
+        (click)="enregistrer()"
+      >
+        <i class="pi pi-save" aria-hidden="true"></i>
+        {{
+          (enregistrement() ? 'COMMON.SAVING' : 'COMMON.SAVE')
+            | translate
+        }}
+      </button>
+    </div>
+  }
+</div>

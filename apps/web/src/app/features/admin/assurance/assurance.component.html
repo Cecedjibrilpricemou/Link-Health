@@ -163,9 +163,12 @@
                       <mat-hint>{{ 'ADMIN.ASSURANCE.AGENT_EMAIL_HINT' | translate }}</mat-hint>
                     </mat-form-field>
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                      <mat-label>{{ 'ADMIN.ASSURANCE.AGENT_PREFECTURE' | translate }}</mat-label>
-                      <input matInput required [(ngModel)]="nouvelAgentAssureur.prefecture" name="agentPrefecture" autocomplete="address-level1" />
+                      <mat-label>{{ geo.libelle('elargissement') }}</mat-label>
+                      <!-- R9 : les zones du referentiel sont proposees ; le texte libre reste accepte. -->
+                      <input matInput required [(ngModel)]="nouvelAgentAssureur.prefecture" name="agentPrefecture" autocomplete="off"
+                             id="agent-prefecture" list="agent-liste-zones" maxlength="80" />
                     </mat-form-field>
+                    <app-suggestions-lieux idListe="agent-liste-zones" role="elargissement" />
                   </div>
                   <div class="bb-assu__actions">
                     <button class="bb-assu__btn bb-assu__btn--plat" type="button"

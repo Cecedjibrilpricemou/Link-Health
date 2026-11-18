@@ -14,6 +14,9 @@ import type {
   IdentitePatientView,
   NiveauIdentite,
   VerifierIdentiteDto,
+  CorrigerIdentiteDto,
+  CorrectionIdentiteView,
+  DemandeCorrectionIdentiteView,
   PresenceDuJourView,
   CreateDemandeAnalyseDto,
   CreateEpisodeDto,
@@ -186,6 +189,28 @@ export class HopitalService {
 
   verifierIdentite(id: string, dto: VerifierIdentiteDto): Observable<ApiResponse<IdentitePatientView>> {
     return this.api.post<ApiResponse<IdentitePatientView>>(`/identites/${id}/verifier`, dto);
+  }
+
+  /** R15 : corriger sexe, date de naissance, prenom ou nom, avec un motif. */
+  corrigerIdentite(id: string, dto: CorrigerIdentiteDto): Observable<ApiResponse<IdentitePatientView>> {
+    return this.api.post<ApiResponse<IdentitePatientView>>(`/identites/${id}/corriger`, dto);
+  }
+
+  corrections(id: string): Observable<ApiResponse<CorrectionIdentiteView[]>> {
+    return this.api.get<ApiResponse<CorrectionIdentiteView[]>>(`/identites/${id}/corrections`);
+  }
+
+  /** R15 : les demandes de correction envoyees par les patients du perimetre. */
+  demandesCorrection(): Observable<ApiResponse<DemandeCorrectionIdentiteView[]>> {
+    return this.api.get<ApiResponse<DemandeCorrectionIdentiteView[]>>('/identites/demandes-correction');
+  }
+
+  accepterDemandeCorrection(id: string, motif: string): Observable<ApiResponse<DemandeCorrectionIdentiteView>> {
+    return this.api.post<ApiResponse<DemandeCorrectionIdentiteView>>(`/identites/demandes-correction/${id}/accepter`, { motif });
+  }
+
+  refuserDemandeCorrection(id: string, reponse: string): Observable<ApiResponse<DemandeCorrectionIdentiteView>> {
+    return this.api.post<ApiResponse<DemandeCorrectionIdentiteView>>(`/identites/demandes-correction/${id}/refuser`, { reponse });
   }
 
   /**

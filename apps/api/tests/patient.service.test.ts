@@ -128,13 +128,16 @@ describe('updateMyProfile', () => {
 
     expect(tx.utilisateur.update).not.toHaveBeenCalled();
     expect(tx.patientProfile.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { idUtilisateur: 'u1' },
+      where: { id: 'p1' },
       data: { allergies: ['Arachide'], village: 'Foulaya' },
     }));
   });
 
   it('met a jour l identite et le profil dans la meme transaction', async () => {
     prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p1' });
+    prisma.utilisateur.findUnique.mockResolvedValue({
+      prenom: 'Aw', nom: 'Diallo', patientProfile: { idFusionneDans: null, niveauIdentite: 'PROVISOIRE' },
+    });
     const tx = {
       utilisateur: { update: jest.fn().mockResolvedValue({}) },
       patientProfile: { update: jest.fn().mockResolvedValue({ id: 'p1' }) },
@@ -145,6 +148,85 @@ describe('updateMyProfile', () => {
 
     expect(tx.utilisateur.update).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { prenom: 'Awa' } });
     expect(tx.patientProfile.update).toHaveBeenCalledWith(expect.objectContaining({ data: { groupeSanguin: 'O+' } }));
+  });
+
+  // R15 : une fois verifiee sur piece, l'identite ne se reecrit plus sans trace.
+  describe('nom fige apres verification', () => {
+    const tx = () => ({
+      utilisateur: { update: jest.fn().mockResolvedValue({}) },
+      patientProfile: { update: jest.fn().mockResolvedValue({ id: 'p1' }) },
+    });
+    const verifie = (etat: Record<string, unknown> = {}) => prisma.utilisateur.findUnique.mockResolvedValue({
+      prenom: 'Awa', nom: 'Diallo', patientProfile: { idFusionneDans: null, niveauIdentite: 'VERIFIEE' }, ...etat,
+    });
+
+    it('refuse un autre nom, sans rien ecrire, et dit ou s adresser', async () => {
+      prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p1' });
+      verifie();
+
+      await expect(updateMyProfile('u1', { nom: 'Camara' })).rejects.toThrow("adressez-vous a l'accueil");
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('laisse passer le meme nom renvoye avec le reste du formulaire', async () => {
+      prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p1' });
+      verifie();
+      const t = tx();
+      prisma.$transaction.mockImplementation(async (fn: (x: unknown) => unknown) => fn(t));
+
+      await updateMyProfile('u1', { prenom: 'Awa', nom: 'Diallo', groupeSanguin: 'A+' });
+
+      expect(t.patientProfile.update).toHaveBeenCalled();
+    });
+
+    it('laisse le patient provisoire corriger son nom lui-meme', async () => {
+      prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p1' });
+      verifie({ patientProfile: { idFusionneDans: null, niveauIdentite: 'PROVISOIRE' } });
+      const t = tx();
+      prisma.$transaction.mockImplementation(async (fn: (x: unknown) => unknown) => fn(t));
+
+      await updateMyProfile('u1', { nom: 'Camara' });
+
+      expect(t.utilisateur.update).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { nom: 'Camara' } });
+    });
+
+    // Le dossier absorbe n'est plus le sien : meme provisoire, le nom passe par l'accueil.
+    it('fige le nom d un dossier absorbe par une fusion, meme provisoire', async () => {
+      prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p-absorbe', idFusionneDans: 'p-principal' });
+      verifie({ patientProfile: { idFusionneDans: 'p-principal', niveauIdentite: 'PROVISOIRE' } });
+
+      await expect(updateMyProfile('u1', { prenom: 'Aissatou' })).rejects.toBeInstanceOf(ForbiddenError);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  // Apres une fusion, le patient lit le dossier principal : il doit y ecrire.
+  it('ecrit dans le dossier principal apres une fusion', async () => {
+    prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p-absorbe', idFusionneDans: 'p-principal' });
+    const t = {
+      utilisateur: { update: jest.fn() },
+      patientProfile: { update: jest.fn().mockResolvedValue({ id: 'p-principal' }) },
+    };
+    prisma.$transaction.mockImplementation(async (fn: (x: unknown) => unknown) => fn(t));
+
+    await updateMyProfile('u1', { allergies: ['Arachide'] });
+
+    expect(t.patientProfile.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'p-principal' } }));
+  });
+
+  it('vide un champ quand le patient l efface, et accepte une liste vide', async () => {
+    prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p1' });
+    const t = {
+      utilisateur: { update: jest.fn() },
+      patientProfile: { update: jest.fn().mockResolvedValue({ id: 'p1' }) },
+    };
+    prisma.$transaction.mockImplementation(async (fn: (x: unknown) => unknown) => fn(t));
+
+    await updateMyProfile('u1', { groupeSanguin: '', urgenceTelephone: '', urgenceNom: ' ', allergies: [] });
+
+    expect(t.patientProfile.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { groupeSanguin: null, urgenceNom: null, urgenceTelephone: null, allergies: [] },
+    }));
   });
 });
 

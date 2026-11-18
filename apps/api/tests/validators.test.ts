@@ -2,6 +2,8 @@ import { syncPushSchema, ussdSessionSchema, verifyLoginOtpSchema,
   choisirOffreCourseSchema, confirmerReceptionCourseSchema, filtreJournalSchema,
   proposerOffreCourseSchema, remettreAuMotardSchema, renoncerLivraisonSchema,
   createAgentStructureSchema, creerAgentAssureurSchema, creerLivreurSchema,
+  createStructureSchema, createPharmacieSchema, definirPositionSchema,
+  updateStructureSchema,
 } from '../src/validators/api.schemas';
 
 describe('api.schemas', () => {
@@ -54,6 +56,32 @@ describe('api.schemas', () => {
       prenom: 'Awa', nom: 'Bah', telephone: '+224620000001',
       quartier: 'Donka', prefecture: 'Conakry',
     })).not.toHaveProperty('email');
+  });
+
+  it('refuse la structure sans commune et une latitude hors bornes', () => {
+    expect(() => createStructureSchema.parse({
+      nom: 'Centre',
+      type: 'CENTRE',
+      prefecture: 'Conakry',
+      commune: '',
+      admin: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000001', email: 'awa@example.com' },
+    })).toThrow();
+    expect(() => createStructureSchema.parse({
+      nom: 'Centre',
+      type: 'CENTRE',
+      prefecture: 'Conakry',
+      commune: 'Ratoma',
+      latitude: 95,
+      admin: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000001', email: 'awa@example.com' },
+    })).toThrow();
+  });
+
+  it('accepte une pharmacie sans commune', () => {
+    expect(createPharmacieSchema.parse({
+      nom: 'Pharmacie Test',
+      prefecture: 'Conakry',
+      pharmacien: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000001', email: 'awa@example.com' },
+    })).toMatchObject({ prefecture: 'Conakry' });
   });
 });
 
@@ -148,5 +176,44 @@ describe('filtreJournalSchema', () => {
       parTiers: 'true', page: '2', limit: '20',
     };
     expect(() => filtreJournalSchema.parse(complet)).not.toThrow();
+  });
+  // ── Position d'une officine ─────────────────────────────
+  it('accepte une position du monde entier, pas seulement du pays installe', () => {
+    // La plateforme vise plusieurs pays : une borne nationale ferait echouer
+    // la saisie le jour de l'ouverture du suivant.
+    for (const point of [
+      { latitude: 9.545, longitude: -13.682 },   // Conakry
+      { latitude: 5.345, longitude: -4.024 },    // Abidjan
+      { latitude: -1.286, longitude: 36.817 },   // Nairobi
+    ]) {
+      expect(() => definirPositionSchema.parse(point)).not.toThrow();
+    }
+  });
+
+  it('accepte le retrait de la position', () => {
+    expect(() => definirPositionSchema.parse({ latitude: null, longitude: null })).not.toThrow();
+  });
+
+  it('refuse une demi-position', () => {
+    expect(() => definirPositionSchema.parse({ latitude: 9.545, longitude: null })).toThrow();
+    expect(() => definirPositionSchema.parse({ latitude: null, longitude: -13.682 })).toThrow();
+  });
+
+  it('refuse le point (0, 0), qui est en pleine mer', () => {
+    // C'est la valeur que produit un formulaire dont la saisie n'a pas abouti.
+    expect(() => definirPositionSchema.parse({ latitude: 0, longitude: 0 })).toThrow();
+  });
+
+  it('refuse le point (0, 0) par toutes les portes qui situent une structure', () => {
+    // Le meme refus que pour la position posee par un titulaire : sans lui,
+    // une structure creee ou modifiee par l'administration peut atterrir en
+    // pleine mer au large du Ghana, sans que personne comprenne pourquoi.
+    expect(() => updateStructureSchema.parse({ latitude: 0, longitude: 0 })).toThrow();
+    expect(() => updateStructureSchema.parse({ latitude: 9.545, longitude: -13.682 })).not.toThrow();
+  });
+
+  it('refuse des coordonnees hors du monde', () => {
+    expect(() => definirPositionSchema.parse({ latitude: 91, longitude: 0 })).toThrow();
+    expect(() => definirPositionSchema.parse({ latitude: 0, longitude: 181 })).toThrow();
   });
 });

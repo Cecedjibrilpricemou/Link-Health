@@ -13,6 +13,10 @@ import {
   desactiverProduitOfficine,
   scanPatient,
   verifierOrdonnance,
+  getHorairesOfficine,
+  definirHorairesOfficine,
+  getPositionOfficine,
+  definirPositionOfficine,
 } from '../src/services/pharmacien.service';
 import { ForbiddenError, NotFoundError, ValidationError } from '../src/utils/app-error';
 
@@ -28,6 +32,7 @@ jest.mock('../src/config/prisma', () => ({
     // P6-b : l'acte de delivrance, nominatif, qui porte la quantite remise.
     acteDelivrance: { create: jest.fn(), aggregate: jest.fn() },
     mouvementStock: { create: jest.fn() },
+    structureSante: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
     $transaction: jest.fn(),
   },
 }));
@@ -45,6 +50,7 @@ const { prisma } = jest.requireMock('../src/config/prisma') as {
     lotStock: { findMany: jest.Mock; findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
     acteDelivrance: { create: jest.Mock; aggregate: jest.Mock };
     mouvementStock: { create: jest.Mock };
+    structureSante: { findUniqueOrThrow: jest.Mock; update: jest.Mock };
     $transaction: jest.Mock;
   };
 };
@@ -713,5 +719,139 @@ describe('catalogues', () => {
 
     await expect(desactiverProduitOfficine('ph-u', 'local-1')).rejects.toBeInstanceOf(ValidationError);
     expect(prisma.medicament.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+// ── Horaires d'ouverture ─────────────────────────────────────────
+//
+// Le calcul de l'etat est eprouve dans horaires.test.ts. Ce qui se verifie
+// ici est ce que le service ajoute : qui a le droit d'ecrire, ce qu'il refuse
+// d'enregistrer, et le fait que rien n'est invente a la lecture.
+describe('horaires de l officine', () => {
+  const SEMAINE = {
+    '1': { ouvre: '08:00', ferme: '20:00' },
+    '0': null,
+  };
+
+  it('rend les horaires lus en base', async () => {
+    pharmacienValide();
+    prisma.structureSante.findUniqueOrThrow.mockResolvedValue({ horaires: SEMAINE });
+
+    const vue = await getHorairesOfficine('ph-u');
+    expect(vue.horaires).toEqual(SEMAINE);
+  });
+
+  it('ne dit ni ouvert ni ferme quand rien n est saisi', async () => {
+    // Une officine qui n'a rien rempli ne doit pas apparaitre close.
+    pharmacienValide();
+    prisma.structureSante.findUniqueOrThrow.mockResolvedValue({ horaires: null });
+
+    const vue = await getHorairesOfficine('ph-u');
+    expect(vue.horaires).toBeNull();
+    expect(vue.etat.ouvert).toBeNull();
+  });
+
+  it('ecarte une forme inattendue venue de la base', async () => {
+    pharmacienValide();
+    prisma.structureSante.findUniqueOrThrow.mockResolvedValue({ horaires: 'de 8h a 20h' });
+
+    expect((await getHorairesOfficine('ph-u')).horaires).toBeNull();
+  });
+
+  it('le titulaire enregistre ses horaires', async () => {
+    titulaireValide();
+    prisma.structureSante.update.mockResolvedValue({ horaires: SEMAINE });
+
+    const vue = await definirHorairesOfficine('ph-u', { horaires: SEMAINE });
+    expect(prisma.structureSante.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { horaires: SEMAINE } }),
+    );
+    expect(vue.horaires).toEqual(SEMAINE);
+  });
+
+  it('refuse un pharmacien qui n est pas titulaire', async () => {
+    // Annoncer au public que l'officine est ouverte engage l'etablissement.
+    pharmacienValide();
+
+    await expect(definirHorairesOfficine('ph-u', { horaires: SEMAINE }))
+      .rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.structureSante.update).not.toHaveBeenCalled();
+  });
+
+  it('refuse une fermeture qui precede l ouverture, sans rien ecrire', async () => {
+    titulaireValide();
+
+    await expect(
+      definirHorairesOfficine('ph-u', { horaires: { '2': { ouvre: '20:00', ferme: '08:00' } } }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(prisma.structureSante.update).not.toHaveBeenCalled();
+  });
+});
+
+// ── Position sur la carte ────────────────────────────────────
+//
+// Le marqueur envoie des gens a une adresse. Ce qui se verifie ici : qui a le
+// droit de le poser, et le refus d'une demi-position, qui ne situe rien.
+describe('position de l officine', () => {
+  const OFFICINE = { nom: 'Pharmacie Pricemou', adresse: 'Route du Niger', commune: 'Dixinn' };
+  const BELLE_VUE = { latitude: 9.545, longitude: -13.682 };
+
+  it('rend la position posee, avec de quoi se reperer', async () => {
+    pharmacienValide();
+    prisma.structureSante.findUniqueOrThrow.mockResolvedValue({ ...OFFICINE, ...BELLE_VUE });
+
+    const vue = await getPositionOfficine('ph-u');
+    expect(vue).toEqual({ ...OFFICINE, ...BELLE_VUE });
+  });
+
+  it('rend une position nulle pour une officine jamais situee', async () => {
+    // Elle reste trouvable : elle n'apparait simplement pas sur la carte.
+    pharmacienValide();
+    prisma.structureSante.findUniqueOrThrow.mockResolvedValue({
+      ...OFFICINE, latitude: null, longitude: null,
+    });
+
+    const vue = await getPositionOfficine('ph-u');
+    expect(vue.latitude).toBeNull();
+    expect(vue.longitude).toBeNull();
+  });
+
+  it('le titulaire pose son officine sur la carte', async () => {
+    titulaireValide();
+    prisma.structureSante.update.mockResolvedValue({ ...OFFICINE, ...BELLE_VUE });
+
+    const vue = await definirPositionOfficine('ph-u', BELLE_VUE);
+    expect(prisma.structureSante.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: BELLE_VUE }),
+    );
+    expect(vue.latitude).toBe(9.545);
+  });
+
+  it('le titulaire peut retirer la position', async () => {
+    titulaireValide();
+    prisma.structureSante.update.mockResolvedValue({ ...OFFICINE, latitude: null, longitude: null });
+
+    await definirPositionOfficine('ph-u', { latitude: null, longitude: null });
+    expect(prisma.structureSante.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { latitude: null, longitude: null } }),
+    );
+  });
+
+  it('refuse un pharmacien qui n est pas titulaire', async () => {
+    pharmacienValide();
+
+    await expect(definirPositionOfficine('ph-u', BELLE_VUE)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.structureSante.update).not.toHaveBeenCalled();
+  });
+
+  it('refuse une demi-position, sans rien ecrire', async () => {
+    // Une latitude seule ne situe rien, et laisserait l'officine a moitie
+    // posee sur la carte.
+    titulaireValide();
+
+    await expect(
+      definirPositionOfficine('ph-u', { latitude: 9.545, longitude: null }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(prisma.structureSante.update).not.toHaveBeenCalled();
   });
 });

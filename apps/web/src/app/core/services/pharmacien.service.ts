@@ -5,6 +5,10 @@ import { ApiService } from './api.service';
 import { PharmacieStock, MedicamentInfo, OrdonnanceDelivrance, DelivrancePayload } from '../models/pharmacien.model';
 import { ApiResponse } from '../models/api.model';
 import type {
+  DefinirHorairesDto,
+  DefinirPositionDto,
+  HorairesOfficineView,
+  PositionOfficineView,
   CommandeView,
   AnnulerVenteDto,
   CreateProduitOfficineDto,
@@ -132,6 +136,26 @@ export class PharmacienService {
 
   getApprovisionnements(): Observable<ApiResponse<ApprovisionnementView[]>> {
     return this.api.get<ApiResponse<ApprovisionnementView[]>>('/pharmacien/approvisionnements');
+  }
+
+  /** Les horaires de l'officine, avec l'etat d'ouverture du moment. */
+  getHoraires(): Observable<ApiResponse<HorairesOfficineView>> {
+    return this.api.get<ApiResponse<HorairesOfficineView>>('/pharmacien/horaires');
+  }
+
+  /** Reserve au titulaire : le public s'en sert pour se deplacer. */
+  definirHoraires(dto: DefinirHorairesDto): Observable<ApiResponse<HorairesOfficineView>> {
+    return this.api.put<ApiResponse<HorairesOfficineView>>('/pharmacien/horaires', dto);
+  }
+
+  /** La position de l'officine sur la carte, et de quoi se reperer. */
+  getPosition(): Observable<ApiResponse<PositionOfficineView>> {
+    return this.api.get<ApiResponse<PositionOfficineView>>('/pharmacien/position');
+  }
+
+  /** Reserve au titulaire : ce marqueur envoie des gens a une adresse. */
+  definirPosition(dto: DefinirPositionDto): Observable<ApiResponse<PositionOfficineView>> {
+    return this.api.put<ApiResponse<PositionOfficineView>>('/pharmacien/position', dto);
   }
 
   /** Les lots qui approchent de leur date, ou l'ont depassee. */

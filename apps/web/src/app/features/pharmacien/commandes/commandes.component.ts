@@ -16,6 +16,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
 import type { CommandeView } from '@baobaoheath/shared-types';
 import { CourseService } from '../../../core/services/course.service';
+import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { PharmacienService } from '../../../core/services/pharmacien.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { QrScannerComponent } from '../../../shared/components/qr-scanner/qr-scanner.component';
@@ -25,7 +26,7 @@ import { I18nService } from '../../../shared/services/i18n.service';
 @Component({
   selector: 'app-pharmacien-commandes',
   standalone: true,
-  imports: [CommonModule, TranslatePipe, ExportListeComponent, QrScannerComponent],
+  imports: [CommonModule, TranslatePipe, ExportListeComponent, QrScannerComponent, AvatarComponent],
   templateUrl: './commandes.component.html',
   styleUrl: './commandes.component.scss',
 })
@@ -126,6 +127,11 @@ export class PharmacienCommandesComponent implements OnInit {
 
   montant(gnf: number | null | undefined): string {
     return gnf == null ? '—' : new Intl.NumberFormat('fr-FR').format(gnf);
+  }
+
+  /** Les initiales du motard, quand il n'a pas mis de photo. */
+  initiales(prenom: string, nom: string): string {
+    return `${prenom.trim().charAt(0)}${nom.trim().charAt(0)}`.toUpperCase();
   }
 
   /** Un geste de la machine a etats, avec son message de reussite. */

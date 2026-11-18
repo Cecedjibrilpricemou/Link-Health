@@ -2,6 +2,10 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
+  AdressePatientView,
+  DefinirAdresseDto,
+  DemandeCorrectionIdentiteView,
+  DemanderCorrectionIdentiteDto,
   CommandeView,
   FactureView,
   ModeRemise,
@@ -54,6 +58,24 @@ export class PatientService {
 
   updateMe(payload: PatientUpdatePayload): Observable<ApiResponse<Patient>> {
     return this.api.put<ApiResponse<Patient>>('/patients/me', payload);
+  }
+
+  /** M3 : l'adresse qui decide a quelles pharmacies part son ordonnance, et ou livrer. */
+  monAdresse(): Observable<ApiResponse<AdressePatientView>> {
+    return this.api.get<ApiResponse<AdressePatientView>>('/patients/me/adresse');
+  }
+
+  definirAdresse(dto: DefinirAdresseDto): Observable<ApiResponse<AdressePatientView>> {
+    return this.api.put<ApiResponse<AdressePatientView>>('/patients/me/adresse', dto);
+  }
+
+  /** R15 : le patient demande une correction de son identite ; l'accueil decide. */
+  mesDemandesCorrection(): Observable<ApiResponse<DemandeCorrectionIdentiteView[]>> {
+    return this.api.get<ApiResponse<DemandeCorrectionIdentiteView[]>>('/patients/me/demandes-correction');
+  }
+
+  demanderCorrection(dto: DemanderCorrectionIdentiteDto): Observable<ApiResponse<DemandeCorrectionIdentiteView>> {
+    return this.api.post<ApiResponse<DemandeCorrectionIdentiteView>>('/patients/me/demandes-correction', dto);
   }
 
   /** Le code PIN qui ouvre le dossier par USSD ; le mot de passe du compte est exige. */

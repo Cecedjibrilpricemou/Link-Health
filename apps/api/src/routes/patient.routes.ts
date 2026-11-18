@@ -23,11 +23,16 @@ import { requireRole } from '../middlewares/rbac.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import {
   createPatientSchema,
+  definirAdresseSchema,
   definirPinUssdSchema,
   updatePatientSchema,
   updateStructurePrefereeSchema,
 } from '../validators/api.schemas';
 import * as ussd from '../services/ussd.service';
+import * as adresse from '../services/patient-adresse.service';
+import * as demandeCorrection from '../services/demande-correction.service';
+import type { AdressePatientView, DemandeCorrectionIdentiteView } from '@baobaoheath/shared-types';
+import { demanderCorrectionIdentiteSchema } from '../validators/api.schemas';
 
 const router = Router();
 
@@ -37,6 +42,29 @@ router.get('/me', authenticate, requireRole('PATIENT'), getMyProfileController);
 router.put('/me', authenticate, requireRole('PATIENT'), validateBody(updatePatientSchema), updateMyProfileController);
 router.put('/me/structure', authenticate, requireRole('PATIENT'), validateBody(updateStructurePrefereeSchema), updateStructurePrefereeController);
 router.get('/me/export', authenticate, requireRole('PATIENT'), exportDossierController);
+
+// M3 : l'adresse qui decide a quelles pharmacies part son ordonnance, et ou
+// le motard livre. La position GPS n'y entre qu'avec son accord.
+router.get('/me/adresse', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  const data: AdressePatientView = await adresse.monAdresse(req.user!.userId);
+  res.json({ success: true, data });
+});
+
+router.put('/me/adresse', authenticate, requireRole('PATIENT'), validateBody(definirAdresseSchema), async (req: AuthRequest, res: Response) => {
+  const data: AdressePatientView = await adresse.definirAdresse(req.user!.userId, req.body);
+  res.json({ success: true, data, message: 'Adresse enregistree' });
+});
+
+// R15 : le patient demande la correction de son identite ; l'accueil decide.
+router.post('/me/demandes-correction', authenticate, requireRole('PATIENT'), validateBody(demanderCorrectionIdentiteSchema), async (req: AuthRequest, res: Response) => {
+  const data: DemandeCorrectionIdentiteView = await demandeCorrection.demanderCorrection(req.user!.userId, req.body);
+  res.status(201).json({ success: true, data, message: "Demande envoyee a l'accueil" });
+});
+
+router.get('/me/demandes-correction', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  const data: DemandeCorrectionIdentiteView[] = await demandeCorrection.mesDemandes(req.user!.userId);
+  res.json({ success: true, data });
+});
 
 // Le code PIN qui ouvre le dossier par USSD. Le mot de passe du compte est
 // exige : une session laissee ouverte ne doit pas suffire a le poser.

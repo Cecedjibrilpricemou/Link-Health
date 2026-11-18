@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   CategorieProduit, ConsentScope, MotifBrisDeGlace, NiveauIdentite, Role, StatutDemandeRgpd, TypeDemandeRgpd, TypePieceIdentite,
 } from '../config/generated/client/client';
+import { ADRESSE_HTTP, cheminTeleverse } from '../utils/chemin-media';
 
 const optionalEmail = z.string().email().optional().or(z.literal('').transform(() => undefined));
 const phone = z.string().trim().min(6).max(30);
@@ -10,6 +11,20 @@ const id = z.string().trim().min(1);
 const jetonCarte = z.string().trim().min(20).max(128).regex(/^[A-Za-z0-9_-]+$/, 'Carte d’assurance illisible');
 const positiveInt = z.coerce.number().int().positive();
 const nonNegativeInt = z.coerce.number().int().min(0);
+
+/**
+ * Photo de profil : le chemin d'un avatar televerse, ou une adresse http(s).
+ * Le chemin est ce que renvoie le televersement (voir utils/chemin-media).
+ */
+const photoProfil = z.string().trim().max(500).refine(
+  (v) => cheminTeleverse('avatars').test(v) || ADRESSE_HTTP.test(v),
+  'Photo invalide : téléversez une image',
+);
+/** Logo : vide, le chemin d'un logo televerse, ou une adresse http(s). */
+const logoOuVide = z.string().trim().max(300).refine(
+  (v) => v === '' || cheminTeleverse('logos').test(v) || ADRESSE_HTTP.test(v),
+  'Logo invalide : téléversez une image',
+);
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
@@ -58,7 +73,17 @@ export const updateProfileSchema = z.object({
   nom: z.string().trim().min(1).max(80).optional(),
   email: optionalEmail,
   telephone: phone.optional(),
-  photoUrl: z.string().trim().url().max(500).optional(),
+  photoUrl: photoProfil.optional(),
+}).strict();
+
+// Changement de numero : mot de passe actuel, puis code envoye au nouveau numero.
+export const demanderChangementTelephoneSchema = z.object({
+  nouveauTelephone: phone,
+  motDePasse: z.string().min(1).max(128),
+}).strict();
+
+export const confirmerChangementTelephoneSchema = z.object({
+  code: z.string().trim().regex(/^\d{6}$/, 'Code a six chiffres'),
 }).strict();
 
 export const createPatientSchema = z.object({
@@ -82,10 +107,49 @@ export const updatePatientSchema = createPatientSchema
   .omit({ telephone: true, motDePasse: true, dateNaissance: true, sexe: true, prefecture: true })
   .extend({
     langue: z.string().trim().min(2).max(10).optional(),
-    photoUrl: z.string().url().optional(),
+    photoUrl: photoProfil.optional(),
+    // Une chaine vide efface le contact d'urgence : un numero qui n'est plus
+    // le bon ne doit pas rester faute de pouvoir le retirer.
+    urgenceTelephone: z.union([phone, z.literal('')]).optional(),
   })
   .partial()
   .strict();
+
+// M3 : l'adresse du patient. La position et son effacement s'excluent : on
+// ne peut pas a la fois donner et retirer sa position.
+export const definirAdresseSchema = z.object({
+  // R8 : en demenageant, le patient change aussi de prefecture.
+  prefecture: z.string().trim().min(1).max(80).optional(),
+  commune: z.string().trim().min(1).max(80),
+  quartier: z.string().trim().min(1).max(80),
+  pointRepere: z.string().trim().max(200).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  effacerPosition: z.boolean().optional(),
+}).strict().refine(
+  (d) => !(d.effacerPosition && (d.latitude !== undefined || d.longitude !== undefined)),
+  { message: 'Donner et effacer sa position en meme temps n a pas de sens', path: ['effacerPosition'] },
+);
+
+// M1 : referentiel geographique generique (administration).
+export const creerLieuGeoSchema = z.object({
+  niveau: z.string().trim().min(1).max(30),
+  nom: z.string().trim().min(1).max(80),
+  idParent: id.optional(),
+}).strict();
+
+/** R7 : le nom propage aux adresses ; memes bornes qu'a la creation. */
+export const renommerLieuGeoSchema = z.object({
+  nom: z.string().trim().min(1).max(80),
+}).strict();
+
+export const modifierLieuGeoSchema = z.object({
+  /** Identifiants des lieux limitrophes, du meme niveau. */
+  voisins: z.array(id).max(30).optional(),
+  aValider: z.boolean().optional(),
+}).strict().refine((d) => d.voisins !== undefined || d.aValider !== undefined, {
+  message: 'Rien a modifier',
+});
 
 export const updateStructurePrefereeSchema = z.object({
   idStructure: id.nullable().optional(),
@@ -307,7 +371,23 @@ export const identifiantsReglementaires = {
   lieuAutorise: z.string().trim().max(200).optional(),
 } as const;
 
-export const createStructureSchema = z.object({
+/**
+ * Le point (0, 0) est en pleine mer, au large du Ghana.
+ *
+ * C'est la valeur que produit une saisie qui n'a pas abouti : un formulaire
+ * vide coerce en zero, une geolocalisation qui echoue sans etre traitee. Une
+ * structure posee la n'est pas mal placee, elle est perdue — et personne ne
+ * comprend pourquoi. Le meme refus vaut deja pour la position qu'un titulaire
+ * pose lui-meme (`definirPositionSchema`) : les deux portes se valent.
+ */
+const pasLePointZero = (d: { latitude?: number; longitude?: number }) =>
+  !(d.latitude === 0 && d.longitude === 0);
+const messagePointZero = {
+  message: "Le point (0, 0) est en pleine mer : la position n'a pas ete relevee.",
+  path: ['latitude'],
+};
+
+const structureBase = z.object({
   nom: z.string().trim().min(2).max(160),
   // `ASSURANCE` y figure desormais : c'est la structure de l'assureur qui
   // porte son agrement de la Banque Centrale, et aucune route ne savait la
@@ -315,10 +395,12 @@ export const createStructureSchema = z.object({
   // elle a sa propre porte, qui cree aussi son pharmacien titulaire.
   type: z.enum(['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE', 'LABORATOIRE', 'ASSURANCE']),
   prefecture: z.string().trim().min(1).max(80),
+  commune: z.string().trim().min(1).max(80),
+  quartier: z.string().trim().max(80).optional(),
   ...identifiantsReglementaires,
   adresse: z.string().trim().max(200).optional(),
-  latitude: z.coerce.number().optional(),
-  longitude: z.coerce.number().optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
   telephone: phone.optional(),
   admin: z.object({
     prenom: z.string().trim().min(1).max(80),
@@ -328,14 +410,18 @@ export const createStructureSchema = z.object({
   }).strict(),
 }).strict();
 
-export const createPharmacieSchema = z.object({
+export const createStructureSchema = structureBase.refine(pasLePointZero, messagePointZero);
+
+const pharmacieBase = z.object({
   nom: z.string().trim().min(2).max(160),
   idStructureParente: id.optional(),
   prefecture: z.string().trim().min(1).max(80),
+  commune: z.string().trim().min(1).max(80).optional(),
+  quartier: z.string().trim().max(80).optional(),
   ...identifiantsReglementaires,
   adresse: z.string().trim().max(200).optional(),
-  latitude: z.coerce.number().optional(),
-  longitude: z.coerce.number().optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
   telephone: phone.optional(),
   pharmacien: z.object({
     prenom: z.string().trim().min(1).max(80),
@@ -346,11 +432,14 @@ export const createPharmacieSchema = z.object({
   }).strict(),
 }).strict();
 
-export const updateStructureSchema = createStructureSchema
+export const createPharmacieSchema = pharmacieBase.refine(pasLePointZero, messagePointZero);
+
+export const updateStructureSchema = structureBase
   .omit({ admin: true })
   .partial()
   .extend({ estActive: z.boolean().optional() })
-  .strict();
+  .strict()
+  .refine(pasLePointZero, messagePointZero);
 
 export const createAgentPharmacieSchema = z.object({
   telephone: phone,
@@ -694,7 +783,7 @@ export const updateParametresSystemeSchema = z.object({
     nom: z.string().trim().min(2).max(60),
     nomCourt: z.string().trim().max(20).regex(/^[A-Za-z0-9 .-]*$/, 'Lettres non accentuées et chiffres uniquement (SMS)'),
     slogan: texteCourt,
-    logoUrl: urlOuVide,
+    logoUrl: logoOuVide,
     adresse: z.string().trim().max(200),
     ville: texteCourt,
     pays: texteCourt,
@@ -746,6 +835,36 @@ export const updateParametresSystemeSchema = z.object({
       'MEDICAMENT', 'LAIT_INFANTILE', 'COMPLEMENT_ALIMENTAIRE', 'COSMETIQUE',
       'HYGIENE', 'PARAPHARMACIE', 'DISPOSITIF_MEDICAL', 'AUTRE',
     ])).max(8),
+  }).partial().strict().optional(),
+
+  // M5 : delai avant d'ouvrir un appel sans preneur a toute la prefecture.
+  zones: z.object({
+    delaiElargissementCommandeMinutes: z.coerce.number().int().min(1).max(1440),
+    delaiElargissementCourseMinutes: z.coerce.number().int().min(1).max(1440),
+    // R1 : au-dela, l'appel s'arrete (sans pharmacie, sans motard).
+    delaiFinalCommandeMinutes: z.coerce.number().int().min(3).max(4320),
+    delaiFinalCourseMinutes: z.coerce.number().int().min(3).max(4320),
+  }).partial().strict().optional(),
+
+  // M1 : le pays de l'installation et son decoupage administratif. La
+  // coherence d'ensemble (niveau d'elargissement plus large que le niveau de
+  // base) se verifie apres fusion, dans le service.
+  pays: z.object({
+    code: z.string().trim().regex(/^[A-Z]{2}$/, 'Code pays ISO a deux lettres majuscules'),
+    nom: z.string().trim().min(1).max(80),
+    indicatifTelephone: z.string().trim().regex(/^\+\d{1,4}$/, 'Indicatif de la forme +224'),
+    // R14 : de 6 a 12 chiffres selon les pays (UIT : 15 au plus, indicatif compris).
+    longueurNumero: z.coerce.number().int().min(6).max(12),
+    niveaux: z.array(z.object({
+      code: z.string().trim().regex(/^[a-z][a-z0-9_]{1,29}$/, 'Code en minuscules, sans espace'),
+      libelles: z.object({
+        fr: z.string().trim().min(1).max(40),
+        en: z.string().trim().min(1).max(40).optional(),
+        pt: z.string().trim().min(1).max(40).optional(),
+      }).strict(),
+    }).strict()).min(2).max(6),
+    niveauBase: z.string().trim().min(1).max(30),
+    niveauElargissement: z.string().trim().min(1).max(30),
   }).partial().strict().optional(),
 }).strict();
 
@@ -1112,6 +1231,32 @@ export const noterTraitsSchema = z.object({
   nomMere: z.string().trim().min(2).max(120).optional(),
 }).strict();
 
+// R15 : le patient demande une correction ; l'accueil l'accepte ou la refuse.
+export const demanderCorrectionIdentiteSchema = z.object({
+  prenom: z.string().trim().min(1).max(80).optional(),
+  nom: z.string().trim().min(1).max(80).optional(),
+  sexe: z.enum(['M', 'F']).optional(),
+  dateNaissance: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date AAAA-MM-JJ').optional(),
+  justification: z.string().trim().min(10).max(500),
+}).strict();
+
+export const accepterDemandeCorrectionSchema = z.object({
+  motif: z.string().trim().min(10).max(500),
+}).strict();
+
+export const refuserDemandeCorrectionSchema = z.object({
+  reponse: z.string().trim().min(10).max(500),
+}).strict();
+
+// R15 : correction tracee de l'identite par l'accueil ou l'administration.
+export const corrigerIdentiteSchema = z.object({
+  prenom: z.string().trim().min(1).max(80).optional(),
+  nom: z.string().trim().min(1).max(80).optional(),
+  sexe: z.enum(['M', 'F']).optional(),
+  dateNaissance: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date AAAA-MM-JJ').optional(),
+  motif: z.string().trim().min(10).max(500),
+}).strict();
+
 export const filtreIdentitesSchema = z.object({
   q: z.string().trim().min(1).max(100).optional(),
   niveau: z.nativeEnum(NiveauIdentite).optional(),
@@ -1122,6 +1267,13 @@ export const verifierOrdreSchema = z.object({
   numeroOrdre: z.string().trim().min(3, {
     message: "Saisissez le numero tel qu'il figure au registre de l'ordre.",
   }).max(60),
+}).strict();
+
+// Correction du nom d'un compte professionnel par l'administration.
+export const corrigerNomCompteSchema = z.object({
+  prenom: z.string().trim().min(1).max(80).optional(),
+  nom: z.string().trim().min(1).max(80).optional(),
+  motif: z.string().trim().min(10).max(500),
 }).strict();
 
 // --- Bris de glace (EF-02-06) ---------------------------------------
@@ -1262,6 +1414,8 @@ export const creerLivreurSchema = z.object({
   telephone: z.string().trim().min(6).max(30),
   quartier: z.string().trim().min(1).max(120),
   prefecture: z.string().trim().min(1).max(120),
+  /** Commune de travail : la zone des courses qu'il recoit (utils/zone.ts). */
+  commune: z.string().trim().min(1).max(120).optional(),
 }).strict();
 
 export const activiteLivreurSchema = z.object({
@@ -1285,3 +1439,62 @@ export const importerReferentielSchema = z.object({
   contenu: z.string().min(1).max(2_000_000),
   simulation: z.boolean().optional(),
 }).strict();
+
+// M4 : disponibilite et zone du motard. La limite de 5 communes est appliquee
+// par le service, apres retrait des doublons et de la commune du motard.
+export const definirEnServiceSchema = z.object({ enService: z.boolean() }).strict();
+export const definirCommunesDesserviesSchema = z.object({ communes: z.array(z.string().trim().min(1).max(80)).max(20) }).strict();
+
+// A1 : recherche publique de produits. Deux lettres au minimum, parce qu'une
+// seule ramenerait la moitie du catalogue.
+//
+// **La zone est facultative** : exiger de la choisir avant de pouvoir taper
+// arretait net quelqu'un qui voulait juste savoir ou trouver du paracetamol.
+// Sans elle, on cherche dans tout le pays et chaque pharmacie dit ou elle est.
+export const rechercheProduitsSchema = z.object({
+  q: z.string().trim().min(2).max(60),
+  prefecture: z.string().trim().max(80).optional(),
+  commune: z.string().trim().max(80).optional(),
+});
+
+// A3 : le rayon d'une officine. `q` n'est pas obligatoire — on arrive souvent
+// ici depuis la recherche d'un produit, et on veut alors le retrouver sans
+// parcourir deux cents lignes.
+export const cataloguePharmacieSchema = z.object({
+  q: z.string().trim().max(60).optional(),
+});
+
+// Horaires d'une officine : un creneau par jour, ou rien. Les heures sont
+// validees ici dans leur forme ; la coherence (fermeture apres ouverture) est
+// verifiee par le service, qui sait nommer les jours fautifs.
+const heureDuJour = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'heure attendue au format HH:MM');
+
+export const definirHorairesSchema = z.object({
+  horaires: z.record(
+    z.enum(['0', '1', '2', '3', '4', '5', '6']),
+    z.object({ ouvre: heureDuJour, ferme: heureDuJour }).nullable(),
+  ),
+});
+
+/**
+ * La position d'une officine sur la carte.
+ *
+ * Les bornes sont celles du monde, pas celles du pays installe : la
+ * plateforme vise plusieurs pays, et une borne nationale ferait echouer la
+ * saisie le jour de l'ouverture du suivant.
+ *
+ * Le point (0, 0) est refuse. Il est en pleine mer, et c'est la valeur que
+ * produit un formulaire dont la saisie n'a pas abouti : l'accepter poserait
+ * un marqueur au large du Ghana sans que personne comprenne pourquoi.
+ */
+export const definirPositionSchema = z.object({
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+})
+  .strict()
+  .refine((d) => (d.latitude === null) === (d.longitude === null), {
+    message: 'La latitude et la longitude vont ensemble : les deux, ou aucune.',
+  })
+  .refine((d) => !(d.latitude === 0 && d.longitude === 0), {
+    message: 'Le point (0, 0) est en pleine mer : la position n\'a pas ete relevee.',
+  });

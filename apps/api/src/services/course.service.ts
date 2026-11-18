@@ -20,6 +20,9 @@ import { estStructureOfficinale } from '../utils/officine.util';
 import { assertTransition as assertCommandeTransition } from './commande.transitions';
 import { notifierSansBloquer } from './notification.service';
 import { prochainNumero } from './numero.service';
+import { voisinsDe } from './geographie.service';
+import { dansLesZones, filtrePrefecture, filtreZone, filtreZones, memePrefecture, zonesDuLivreur } from '../utils/zone';
+import { lirePosition } from '../utils/coordonnees';
 
 export type CourseTransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -128,6 +131,8 @@ const COURSE_LIVREUR_ASSIGNED_SELECT = {
               patient: {
                 select: {
                   utilisateur: { select: { prenom: true, nom: true, telephone: true } },
+                  // M3 : ou livrer. Rendu seulement pendant la course (voir plus bas).
+                  commune: true, quartier: true, pointRepere: true, position: true,
                 },
               },
             },
@@ -140,8 +145,17 @@ const COURSE_LIVREUR_ASSIGNED_SELECT = {
 
 type CourseLivreurAssignedPayload = Prisma.CourseGetPayload<{ select: typeof COURSE_LIVREUR_ASSIGNED_SELECT }>;
 
+/**
+ * M3 : l'adresse du patient n'est utile au motard que le temps de livrer. Avant
+ * l'attribution, il n'a pas la course ; apres la livraison ou l'annulation, il
+ * n'a plus a savoir ou habite le patient.
+ */
+const STATUTS_ADRESSE_VISIBLE: StatutCourse[] = [StatutCourse.ATTRIBUEE, StatutCourse.EN_COURS];
+
 function versCourseLivreurView(course: CourseLivreurAssignedPayload): CourseLivreurView {
-  const patient = course.commande.ordonnance.consultation?.patient.utilisateur;
+  const dossier = course.commande.ordonnance.consultation?.patient;
+  const patient = dossier?.utilisateur;
+  const adresseVisible = !!course.idLivreur && !!dossier && STATUTS_ADRESSE_VISIBLE.includes(course.statut);
   return {
     id: course.id,
     numero: course.numero,
@@ -157,6 +171,18 @@ function versCourseLivreurView(course: CourseLivreurAssignedPayload): CourseLivr
     pharmacie: course.commande.pharmacie,
     ...(course.idLivreur && patient
       ? { patient: { prenom: patient.prenom, nom: patient.nom, telephone: patient.telephone } }
+      : {}),
+    ...(adresseVisible && dossier
+      ? {
+          adresseLivraison: {
+            commune: dossier.commune ?? null,
+            quartier: dossier.quartier ?? null,
+            pointRepere: dossier.pointRepere ?? null,
+            // R4 : la position est stockee chiffree, en « lat,lng ».
+            latitude: lirePosition(dossier.position)?.latitude ?? null,
+            longitude: lirePosition(dossier.position)?.longitude ?? null,
+          },
+        }
       : {}),
   };
 }
@@ -197,6 +223,9 @@ async function profilLivreur(userId: string, actifObligatoire: boolean) {
       qrCode: true,
       quartier: true,
       prefecture: true,
+      commune: true,
+      communesDesservies: true,
+      enService: true,
       estActif: true,
       utilisateur: { select: { role: true } },
     },
@@ -238,19 +267,257 @@ async function obtenirCourseView(
   return versCourseView(course);
 }
 
+/**
+ * Les motards de la zone d'une course, en filtre Prisma : sa propre commune
+ * (ou son quartier pour un compte ancien), ou une commune qu'il dessert dans
+ * la meme prefecture.
+ */
+function livreursDeLaZone(course: { prefecture: string; commune: string | null; quartier: string }) {
+  return [
+    filtreZone(course),
+    ...(course.commune?.trim()
+      ? [{ AND: [
+          { prefecture: { equals: course.prefecture.trim(), mode: 'insensitive' as const } },
+          { communesDesservies: { has: course.commune.trim() } },
+        ] }]
+      : []),
+  ];
+}
+
+/** Le nom d'un lieu tel qu'on le compare : sans casse ni espaces autour. */
+const cleLieu = (s: string | null | undefined) => (s ?? '').trim().toLocaleLowerCase('fr');
+
+/**
+ * M1-C : les motards des communes voisines, dans la prefecture de la course —
+ * qu'ils y habitent ou qu'ils les desservent. Les noms comparent sans casse.
+ */
+function livreursDesVoisines(prefecture: string, voisines: string[]) {
+  const dansPrefecture = { prefecture: { equals: prefecture.trim(), mode: 'insensitive' as const } };
+  const variantes = [...new Set([...voisines, ...voisines.map(cleLieu)])];
+  return [
+    { ...dansPrefecture, commune: { in: voisines, mode: 'insensitive' as const } },
+    { ...dansPrefecture, communesDesservies: { hasSome: variantes } },
+  ];
+}
+
+/** Les communes d'un motard, telles que comparees aux voisines figees sur une course. */
+function communesDuLivreur(profile: { commune: string | null; communesDesservies: string[] }): string[] {
+  return [profile.commune, ...profile.communesDesservies].map(cleLieu).filter((c) => !!c);
+}
+
+async function notifierElargissement(
+  destinataires: { utilisateur: { id: string } }[],
+  course: { numero: string; commune: string | null; quartier: string },
+  idCourse: string,
+  aQui: string,
+) {
+  await Promise.all(destinataires.map(({ utilisateur }) => notifierSansBloquer({
+    idUtilisateur: utilisateur.id,
+    type: 'COURSE_OUVERTE',
+    titre: 'Course sans motard dans sa commune',
+    contenu: `La course ${course.numero} a ${course.commune ?? course.quartier} n'a recu aucune offre : elle est ouverte ${aQui}.`,
+    lienAction: '/livreur/courses',
+    metadonnees: { idCourse, numero: course.numero, quartier: course.quartier, elargie: true },
+  })));
+}
+
+/**
+ * La course passe a l'etape suivante, et seuls les motards en service qui
+ * n'avaient pas ete prevenus le sont. Renvoie leur nombre.
+ *
+ * 1. **Les communes voisines** (M1-C), sautee si la commune n'a pas de
+ *    voisine connue ou si personne de plus n'y est en service.
+ * 2. **Toute la prefecture** (M5).
+ *
+ * Chaque ecriture est conditionnelle (`voisinesLe: null`, `elargieLe: null`) :
+ * deux passages du job ne previennent pas deux fois les memes motards.
+ */
+export async function elargirCourse(idCourse: string): Promise<number> {
+  const course = await prisma.course.findUnique({
+    where: { id: idCourse },
+    select: {
+      id: true, numero: true, statut: true, elargieLe: true, voisinesLe: true, communesVoisines: true,
+      prefecture: true, commune: true, quartier: true,
+    },
+  });
+  if (!course || course.statut !== StatutCourse.APPEL_OFFRES || course.elargieLe) return 0;
+  if (!course.prefecture.trim()) return 0;
+
+  const enService = { estActif: true, enService: true, utilisateur: { role: Role.LIVREUR, estActif: true } };
+  // Ceux de la zone ont ete prevenus a l'ouverture ; ceux des voisines, a la premiere etape.
+  const dejaPrevenus = [
+    ...livreursDeLaZone(course),
+    ...(course.voisinesLe ? livreursDesVoisines(course.prefecture, course.communesVoisines) : []),
+  ];
+
+  if (!course.voisinesLe) {
+    const voisines = await voisinsDe(course.prefecture, course.commune);
+    if (voisines.length > 0) {
+      const nouveaux = await prisma.livreurProfile.findMany({
+        where: { ...enService, OR: livreursDesVoisines(course.prefecture, voisines), NOT: { OR: dejaPrevenus } },
+        select: { utilisateur: { select: { id: true } } },
+      });
+      if (nouveaux.length > 0) {
+        const marque = await prisma.course.updateMany({
+          where: { id: idCourse, statut: StatutCourse.APPEL_OFFRES, voisinesLe: null, elargieLe: null },
+          data: { voisinesLe: new Date(), communesVoisines: voisines.map(cleLieu) },
+        });
+        if (marque.count !== 1) return 0;
+        await notifierElargissement(nouveaux, course, idCourse, 'aux communes voisines');
+        return nouveaux.length;
+      }
+    }
+  }
+
+  const marque = await prisma.course.updateMany({
+    where: { id: idCourse, statut: StatutCourse.APPEL_OFFRES, elargieLe: null },
+    data: { elargieLe: new Date() },
+  });
+  if (marque.count !== 1) return 0;
+
+  const nouveaux = await prisma.livreurProfile.findMany({
+    where: {
+      ...enService,
+      ...filtrePrefecture(course.prefecture),
+      NOT: { OR: dejaPrevenus },
+    },
+    select: { utilisateur: { select: { id: true } } },
+  });
+  await notifierElargissement(nouveaux, course, idCourse, 'a toute la prefecture');
+  return nouveaux.length;
+}
+
+/** Le job : les courses restees sans aucune offre au-dela du delai s'elargissent. */
+export async function elargirCoursesEnAttente(
+  delaiMinutes: number,
+  maintenant = new Date(),
+): Promise<{ elargies: number }> {
+  const limite = new Date(maintenant.getTime() - delaiMinutes * 60_000);
+  const enAttente = await prisma.course.findMany({
+    where: {
+      statut: StatutCourse.APPEL_OFFRES,
+      elargieLe: null,
+      // Chaque etape a son propre delai : depuis l'ouverture tant que la
+      // course est dans sa commune, depuis l'ouverture aux voisines ensuite.
+      // R1 : l'ouverture de l'appel en cours, remise a l'heure par une relance.
+      OR: [
+        { voisinesLe: null, ouverteLe: { lte: limite } },
+        { voisinesLe: { lte: limite } },
+      ],
+      // Des offres attendent le choix du patient : elargir n'apporterait rien.
+      offres: { none: {} },
+    },
+    select: { id: true },
+    orderBy: { ouverteLe: 'asc' },
+    take: 100,
+  });
+  // Ne compte que les courses effectivement portees a de nouveaux motards.
+  let elargies = 0;
+  for (const { id } of enAttente) {
+    if ((await elargirCourse(id)) > 0) elargies++;
+  }
+  return { elargies };
+}
+
+/**
+ * R1 : une course restee sans aucune offre au-dela du delai final passe
+ * « sans motard ». La commande reste prete pour la livraison : c'est le
+ * patient qui choisit de relancer la recherche ou d'aller la chercher.
+ * Une course qui a recu des offres attend son choix, elle n'expire pas.
+ * Conditionnel : une offre arrivee a la meme seconde garde la course ouverte.
+ */
+export async function conclureCoursesExpirees(
+  delaiFinalMinutes: number,
+  maintenant = new Date(),
+): Promise<{ conclues: number }> {
+  const limite = new Date(maintenant.getTime() - delaiFinalMinutes * 60_000);
+  const sansOffre = { statut: StatutCourse.APPEL_OFFRES, offres: { none: {} } };
+  const expirees = await prisma.course.findMany({
+    where: { ...sansOffre, ouverteLe: { lte: limite } },
+    select: { id: true },
+    orderBy: { ouverteLe: 'asc' },
+    take: 100,
+  });
+  let conclues = 0;
+  for (const { id } of expirees) {
+    const conclue = await prisma.course.updateMany({
+      where: { id, ...sansOffre },
+      data: { statut: StatutCourse.SANS_MOTARD },
+    });
+    if (conclue.count !== 1) continue;
+    conclues++;
+    await avertirSansMotard(id);
+  }
+  return { conclues };
+}
+
+/** Le patient choisit la suite ; l'officine sait que personne ne viendra pour l'instant. */
+async function avertirSansMotard(idCourse: string): Promise<void> {
+  try {
+    const course = await prisma.course.findUnique({
+      where: { id: idCourse },
+      select: {
+        numero: true,
+        commande: {
+          select: {
+            idPharmacie: true,
+            ordonnance: { select: { consultation: { select: { patient: { select: { idUtilisateur: true } } } } } },
+          },
+        },
+      },
+    });
+    if (!course) throw new NotFoundError('Course introuvable pour la notification');
+    const idPatient = course.commande.ordonnance.consultation?.patient.idUtilisateur;
+    if (idPatient) {
+      await notifierSansBloquer({
+        idUtilisateur: idPatient,
+        type: 'COURSE_SANS_MOTARD',
+        titre: 'Aucun livreur disponible pour le moment',
+        contenu: `Aucun livreur n'a propose la course ${course.numero}. Vous pouvez relancer la recherche ou aller chercher votre commande a la pharmacie.`,
+        lienAction: '/patient/commandes',
+        metadonnees: { idCourse, numero: course.numero },
+      });
+    }
+    const idPharmacie = course.commande.idPharmacie;
+    if (!idPharmacie) return;
+    const pharmaciens = await prisma.utilisateur.findMany({
+      where: { idStructure: idPharmacie, role: Role.PHARMACIEN, estActif: true },
+      select: { id: true },
+    });
+    await Promise.all(pharmaciens.map(({ id }) => notifierSansBloquer({
+      idUtilisateur: id,
+      type: 'COURSE_SANS_MOTARD',
+      titre: 'Course sans livreur',
+      contenu: `Aucun livreur n'a propose la course ${course.numero}. Le patient choisit de relancer ou de venir la chercher.`,
+      lienAction: '/pharmacien/commandes',
+      metadonnees: { idCourse, numero: course.numero },
+    })));
+  } catch (error: unknown) {
+    logger.warn('[COURSE] notification sans motard impossible', {
+      idCourse,
+      erreur: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 /** Notifie les destinataires sans faire echouer l'action metier. */
 export async function notifierLivreursCourse(idCourse: string): Promise<void> {
   try {
     const course = await prisma.course.findUnique({
       where: { id: idCourse },
-      select: { numero: true, quartier: true, prefecture: true },
+      select: { numero: true, quartier: true, prefecture: true, commune: true },
     });
     if (!course) throw new NotFoundError('Course non trouvee pour la notification');
     const destinataires = await prisma.livreurProfile.findMany({
       where: {
         estActif: true,
-        quartier: course.quartier,
-        prefecture: course.prefecture,
+        // Seul un motard en service est prevenu : celui qui ne travaille pas
+        // aujourd'hui laisserait l'appel sans reponse (voir livreur-zone).
+        enService: true,
+        // La commune de la course, pas tout le pays : un motard de Coyah ne
+        // vient pas livrer a Ratoma (voir utils/zone.ts). Sa propre commune,
+        // ou une commune qu'il dessert dans la meme prefecture.
+        OR: livreursDeLaZone(course),
         utilisateur: { role: Role.LIVREUR, estActif: true },
       },
       select: { utilisateur: { select: { id: true } } },
@@ -259,7 +526,7 @@ export async function notifierLivreursCourse(idCourse: string): Promise<void> {
       idUtilisateur: utilisateur.id,
       type: 'COURSE_OUVERTE',
       titre: 'Nouvelle course dans votre zone',
-      contenu: `La course ${course.numero} est ouverte dans le quartier ${course.quartier}.`,
+      contenu: `La course ${course.numero} est ouverte a ${course.commune ?? course.quartier}.`,
       lienAction: '/livreur/courses',
       metadonnees: { idCourse, numero: course.numero, quartier: course.quartier },
     })));
@@ -365,10 +632,11 @@ export async function ouvrirCourse(
       statut: true,
       modeRemise: true,
       quartierRecherche: true,
+      communeRecherche: true,
       ordonnance: {
         select: {
           consultation: {
-            select: { patient: { select: { prefecture: true } } },
+            select: { patient: { select: { prefecture: true, commune: true } } },
           },
         },
       },
@@ -391,12 +659,16 @@ export async function ouvrirCourse(
     throw new ValidationError('Le quartier et la prefecture du patient sont requis pour ouvrir la course');
   }
 
+  // La commune figee sur la commande ; a defaut, celle du patient.
+  const commune = (commande.communeRecherche ?? commande.ordonnance.consultation?.patient.commune ?? '').trim() || null;
+
   const course = await tx.course.create({
     data: {
       numero: await prochainNumero('LV', tx),
       idCommande,
       quartier,
       prefecture,
+      commune,
     },
     select: { id: true, statut: true },
   });
@@ -410,8 +682,18 @@ export async function coursesOuvertesPour(user: JwtPayload): Promise<CourseLivre
   const courses = await prisma.course.findMany({
     where: {
       statut: StatutCourse.APPEL_OFFRES,
-      quartier: profile.quartier,
-      prefecture: profile.prefecture,
+      OR: [
+        // Sa commune et celles qu'il dessert.
+        ...(filtreZones(zonesDuLivreur(profile)).OR as Record<string, unknown>[]),
+        // Et les courses elargies a toute sa prefecture (M5).
+        { elargieLe: { not: null }, ...filtrePrefecture(profile.prefecture) },
+        // Et celles ouvertes a ses communes en tant que voisines (M1-C).
+        {
+          voisinesLe: { not: null },
+          communesVoisines: { hasSome: communesDuLivreur(profile) },
+          ...filtrePrefecture(profile.prefecture),
+        },
+      ],
     },
     select: COURSE_LIVREUR_OPEN_SELECT,
     orderBy: { creeeLe: 'asc' },
@@ -452,6 +734,10 @@ export async function proposer(
 ): Promise<OffreCourseView> {
   exigerRole(user, Role.LIVREUR);
   const profile = await profilLivreur(user.userId, true);
+  // Une offre engage a venir : hors service, on ne s'engage a rien.
+  if (!profile.enService) {
+    throw new ForbiddenError('Passez en service pour proposer une offre');
+  }
   if (!Number.isInteger(offre.prixGnf) || offre.prixGnf <= 0) {
     throw new ValidationError('Le prix doit etre un entier positif');
   }
@@ -473,10 +759,14 @@ export async function proposer(
 
     const course = await tx.course.findUnique({
       where: { id: idCourse },
-      select: { quartier: true, prefecture: true },
+      select: { quartier: true, prefecture: true, commune: true, elargieLe: true, voisinesLe: true, communesVoisines: true },
     });
     if (!course) throw new NotFoundError('Course non trouvee');
-    if (course.quartier !== profile.quartier || course.prefecture !== profile.prefecture) {
+    const ouverteAuxVoisines = !!course.voisinesLe
+      && communesDuLivreur(profile).some((c) => course.communesVoisines.includes(c));
+    const dansSaZone = dansLesZones(course, zonesDuLivreur(profile))
+      || (memePrefecture(course, profile) && (!!course.elargieLe || ouverteAuxVoisines));
+    if (!dansSaZone) {
       throw new ForbiddenError('Cette course est hors de votre zone');
     }
 
@@ -664,6 +954,47 @@ export async function declarerRecu(user: JwtPayload, idCourse: string): Promise<
     if (majCommande.count !== 1) throw new ConflictError('La commande ne peut pas etre cloturee dans son etat actuel');
     return obtenirCourseView(tx, idCourse);
   });
+}
+
+/**
+ * R1 : apres le delai final, le patient relance la recherche d'un livreur.
+ * L'appel repart de zero : sa commune d'abord, puis les elargissements, avec
+ * des delais comptes depuis la relance.
+ */
+export async function relancerCourse(user: JwtPayload, idCourse: string): Promise<CourseView> {
+  exigerRole(user, Role.PATIENT);
+  const vue = await prisma.$transaction(async (tx) => {
+    const course = await tx.course.findUnique({
+      where: { id: idCourse },
+      select: { id: true, statut: true, idCommande: true },
+    });
+    if (!course) throw new NotFoundError('Course non trouvee');
+    const commande = await commandeDuPatient(tx, user, course.idCommande);
+    if (course.statut !== StatutCourse.SANS_MOTARD) {
+      throw new ConflictError('Seule une course sans livreur peut etre relancee');
+    }
+    // Repassee au retrait, la commande n'attend plus de livreur.
+    if (commande.statut !== StatutCommande.PRETE_POUR_LIVRAISON) {
+      throw new ConflictError("La commande n'attend plus de livraison");
+    }
+    assertTransitionCourse(course.statut, StatutCourse.APPEL_OFFRES);
+
+    const relancee = await tx.course.updateMany({
+      where: { id: idCourse, statut: StatutCourse.SANS_MOTARD },
+      data: {
+        statut: StatutCourse.APPEL_OFFRES,
+        ouverteLe: new Date(),
+        voisinesLe: null,
+        communesVoisines: [],
+        elargieLe: null,
+      },
+    });
+    if (relancee.count !== 1) throw new ConflictError('La course a change avant la relance');
+    return obtenirCourseView(tx, idCourse);
+  });
+  // Hors transaction : un echec d'envoi ne doit pas annuler la relance.
+  await notifierLivreursCourse(idCourse);
+  return vue;
 }
 
 /** Le patient peut repasser au retrait tant que les produits ne sont pas partis. */

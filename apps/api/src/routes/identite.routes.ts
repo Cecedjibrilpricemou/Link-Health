@@ -5,12 +5,14 @@ import { validateBody, validateQuery } from '../middlewares/validate.middleware'
 import * as identite from '../services/identite.service';
 import * as doublon from '../services/doublon.service';
 import * as fusion from '../services/fusion.service';
+import * as demandeCorrection from '../services/demande-correction.service';
 import {
-  annulerFusionSchema, filtreIdentitesSchema, fusionnerSchema, noterTraitsSchema,
+  accepterDemandeCorrectionSchema, refuserDemandeCorrectionSchema,
+  annulerFusionSchema, corrigerIdentiteSchema, filtreIdentitesSchema, fusionnerSchema, noterTraitsSchema,
   verifierIdentiteSchema,
 } from '../validators/api.schemas';
 import type {
-  IdentitePatientView, MotifRefusFusion, NiveauIdentite,
+  DemandeCorrectionIdentiteView, IdentitePatientView, MotifRefusFusion, NiveauIdentite,
 } from '@baobaoheath/shared-types';
 
 /**
@@ -178,6 +180,42 @@ router.post('/:id/verifier', validateBody(verifierIdentiteSchema), async (req: A
 router.post('/:id/traits', validateBody(noterTraitsSchema), async (req: AuthRequest, res: Response) => {
   const data = await identite.noterTraits(req.user!, req.params['id'] as string, req.body);
   res.json({ success: true, data, message: 'Traits distinctifs enregistres.' });
+});
+
+/**
+ * R15 : corriger le sexe, la date de naissance, le prenom ou le nom, avec un
+ * motif. Chaque trait corrige garde son ancienne valeur et son auteur.
+ */
+router.post('/:id/corriger', validateBody(corrigerIdentiteSchema), async (req: AuthRequest, res: Response) => {
+  const data = await identite.corrigerIdentite(req.user!, req.params['id'] as string, req.body);
+  res.json({ success: true, data, message: `Identite de ${data.nomComplet} corrigee.` });
+});
+
+/**
+ * R15 : les demandes de correction envoyees par les patients.
+ *
+ * Le patient ne corrige pas lui-meme une identite : il demande, l'accueil
+ * decide. Accepter passe par la correction tracee ci-dessus ; refuser exige
+ * une reponse que le patient lira.
+ */
+router.get('/demandes-correction', async (req: AuthRequest, res: Response) => {
+  const data: DemandeCorrectionIdentiteView[] = await demandeCorrection.demandesEnAttente(req.user!);
+  res.json({ success: true, data });
+});
+
+router.post('/demandes-correction/:id/accepter', validateBody(accepterDemandeCorrectionSchema), async (req: AuthRequest, res: Response) => {
+  const data = await demandeCorrection.accepterDemande(req.user!, req.params['id'] as string, req.body);
+  res.json({ success: true, data, message: 'Demande acceptee : identite corrigee.' });
+});
+
+router.post('/demandes-correction/:id/refuser', validateBody(refuserDemandeCorrectionSchema), async (req: AuthRequest, res: Response) => {
+  const data = await demandeCorrection.refuserDemande(req.user!, req.params['id'] as string, req.body);
+  res.json({ success: true, data, message: 'Demande refusee. Le patient est prevenu.' });
+});
+
+router.get('/:id/corrections', async (req: AuthRequest, res: Response) => {
+  const data = await identite.historiqueCorrections(req.user!, req.params['id'] as string);
+  res.json({ success: true, data });
 });
 
 export default router;

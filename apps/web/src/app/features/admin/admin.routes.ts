@@ -78,6 +78,15 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./journal/journal.component').then(m => m.JournalComponent)
       },
+      // M1 : le referentiel geographique vaut pour toute l'installation ;
+      // l'API ne l'ouvre en ecriture qu'a l'administration nationale.
+      {
+        path: 'geographie',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN_NATIONAL', 'SUPER_ADMIN'] },
+        loadComponent: () =>
+          import('./geographie/geographie.component').then(m => m.GeographieComponent)
+      },
       {
         path: 'bris-de-glace',
         canActivate: [roleGuard],

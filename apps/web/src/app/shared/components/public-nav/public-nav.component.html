@@ -7,6 +7,7 @@
   <div class="pub-nav__links">
     <a routerLink="/" fragment="how" class="pub-nav__link" [class.pub-nav__link--active]="sectionActive() === 'how'">{{ 'LANDING.NAV_HOW' | translate }}</a>
     <a routerLink="/" fragment="structures" class="pub-nav__link" [class.pub-nav__link--active]="sectionActive() === 'structures'">{{ 'LANDING.NAV_STRUCTURES' | translate }}</a>
+    <a routerLink="/recherche" routerLinkActive="pub-nav__link--active" class="pub-nav__link">{{ 'PUBLIC.LINK_SEARCH' | translate }}</a>
     <a routerLink="/professionnels" routerLinkActive="pub-nav__link--active" class="pub-nav__link">{{ 'PUBLIC.NAV_PROS' | translate }}</a>
     <a routerLink="/securite" routerLinkActive="pub-nav__link--active" class="pub-nav__link">{{ 'PUBLIC.NAV_SECURITY' | translate }}</a>
     <a routerLink="/a-propos" routerLinkActive="pub-nav__link--active" class="pub-nav__link">{{ 'PUBLIC.LINK_ABOUT' | translate }}</a>
@@ -36,6 +37,7 @@
       <div class="pub-nav__menu-links">
         <a routerLink="/" fragment="how" class="pub-nav__menu-link" (click)="fermer()"><i class="pi pi-question-circle" aria-hidden="true"></i> {{ 'LANDING.NAV_HOW' | translate }}</a>
         <a routerLink="/" fragment="structures" class="pub-nav__menu-link" (click)="fermer()"><i class="pi pi-map-marker" aria-hidden="true"></i> {{ 'LANDING.NAV_STRUCTURES' | translate }}</a>
+        <a routerLink="/recherche" routerLinkActive="pub-nav__menu-link--active" class="pub-nav__menu-link" (click)="fermer()"><i class="pi pi-search" aria-hidden="true"></i> {{ 'PUBLIC.LINK_SEARCH' | translate }}</a>
         <a routerLink="/professionnels" routerLinkActive="pub-nav__menu-link--active" class="pub-nav__menu-link" (click)="fermer()"><i class="pi pi-id-card" aria-hidden="true"></i> {{ 'PUBLIC.LINK_PROS' | translate }}</a>
         <a routerLink="/securite" routerLinkActive="pub-nav__menu-link--active" class="pub-nav__menu-link" (click)="fermer()"><i class="pi pi-shield" aria-hidden="true"></i> {{ 'PUBLIC.LINK_SECURITY' | translate }}</a>
         <a routerLink="/a-propos" routerLinkActive="pub-nav__menu-link--active" class="pub-nav__menu-link" (click)="fermer()"><i class="pi pi-info-circle" aria-hidden="true"></i> {{ 'PUBLIC.LINK_ABOUT' | translate }}</a>

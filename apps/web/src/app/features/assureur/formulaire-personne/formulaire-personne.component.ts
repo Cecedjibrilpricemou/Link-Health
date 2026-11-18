@@ -8,7 +8,7 @@
 // une creation, `modifications()` pour une mise a jour, et `photo()`.
 //
 // Chaque champ est un signal : l'application est zoneless.
-import { Component, OnDestroy, computed, effect, input, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -22,6 +22,8 @@ import type {
 } from '@baobaoheath/shared-types';
 
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
+import { GeographieService } from '../../../core/services/geographie.service';
 
 /** Les pieces acceptees, dans l'ordre ou on les rencontre au guichet. */
 const TYPES_PIECE: TypePieceIdentite[] = [
@@ -39,11 +41,14 @@ function jour(valeur: string | Date | null | undefined): string {
 @Component({
   selector: 'app-formulaire-personne',
   standalone: true,
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslatePipe],
+  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslatePipe, SuggestionsLieuxComponent],
   templateUrl: './formulaire-personne.component.html',
   styleUrl: './formulaire-personne.component.scss',
 })
 export class FormulairePersonneComponent implements OnDestroy {
+  /** R9 : le nom du niveau (« Prefecture », « LGA »...) et ses lieux viennent du pays installe. */
+  readonly geo = inject(GeographieService);
+
   /** La fiche a modifier ; absente pour une nouvelle personne. */
   initial = input<PersonneAssureeView | null>(null);
   /** L'image de la photo deja enregistree (URL d'objet), s'il y en a une. */

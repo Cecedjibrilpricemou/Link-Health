@@ -83,6 +83,29 @@ const rgpd = require('../src/routes/rgpd.routes').default as { stack: Couche[] }
 const privacy = require('../src/routes/privacy.routes').default as { stack: Couche[] };
 const identites = require('../src/routes/identite.routes').default as { stack: Couche[] };
 const adminStructure = require('../src/routes/admin-structure.routes').default as { stack: Couche[] };
+const consultations = require('../src/routes/consultation.routes').default as { stack: Couche[] };
+const courses = require('../src/routes/course.routes').default as { stack: Couche[] };
+
+describe('disponibilite et zone du motard (M4)', () => {
+  it('les trois routes ne sont ouvertes qu au livreur', () => {
+    expect(rolesPour(courses, 'get', '/livreur/profil')).toEqual(['LIVREUR']);
+    expect(rolesPour(courses, 'put', '/livreur/service')).toEqual(['LIVREUR']);
+    expect(rolesPour(courses, 'put', '/livreur/communes')).toEqual(['LIVREUR']);
+  });
+});
+const paiements = require('../src/routes/paiement.routes').default as { stack: Couche[] };
+
+describe('compte rendu de consultation (EF-05-03)', () => {
+  it('ouvert au patient et aux soignants, ferme a l administration et au comptoir', () => {
+    expect(rolesPour(consultations, 'get', '/:id/compte-rendu')).toEqual(['PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN']);
+  });
+
+  describe('recu de paiement', () => {
+    it('est reserve au patient', () => {
+      expect(rolesPour(paiements, 'get', '/factures/:id/recu')).toEqual(['PATIENT']);
+    });
+  });
+});
 
 describe('creation des pharmacies hospitalieres', () => {
   it('est ouverte a l administrateur de structure et au super-admin', () => {
@@ -423,6 +446,26 @@ describe('l import des referentiels est reserve a l administration nationale', (
   it('les deux routes existent bien', () => {
     expect(rolesPour(referentiels, 'post', '/:type/import')).not.toBeNull();
     expect(rolesPour(referentiels, 'get', '/:type/colonnes')).not.toBeNull();
+  });
+});
+
+// -- M1 : referentiel geographique. Lire est public, ecrire est national. --
+describe('referentiel geographique', () => {
+  const geographie = require('../src/routes/geographie.routes').default as { stack: Couche[] };
+
+  // Des noms de lieux ne revelent rien, et l'inscription s'en sert avant connexion.
+  it.each([['get', '/configuration'], ['get', '/lieux']])('%s %s est publique', (methode, chemin) => {
+    expect(rolesPour(geographie, methode, chemin)).toEqual([]);
+  });
+
+  // Un voisinage faux enverrait des appels au mauvais endroit, partout.
+  it.each([
+    ['post', '/lieux'],
+    ['put', '/lieux/:id'],
+    ['post', '/jeu-de-depart'],
+    ['get', '/hors-referentiel'],
+  ])('%s %s n est ouverte qu a ADMIN_NATIONAL et SUPER_ADMIN', (methode, chemin) => {
+    expect([...(rolesPour(geographie, methode, chemin) ?? [])].sort()).toEqual(['ADMIN_NATIONAL', 'SUPER_ADMIN']);
   });
 });
 

@@ -70,9 +70,11 @@
         <mat-hint>{{ 'ASSUREUR.PERSONNE.TELEPHONE_AIDE' | translate }}</mat-hint>
       </mat-form-field>
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ 'ASSUREUR.PERSONNE.PREFECTURE' | translate }} *</mat-label>
-        <input matInput maxlength="80" [(ngModel)]="prefecture" />
+        <mat-label>{{ geo.libelle('elargissement') }} *</mat-label>
+        <!-- R9 : les zones du referentiel sont proposees ; le texte libre reste accepte. -->
+        <input matInput id="personne-prefecture" maxlength="80" autocomplete="off" list="personne-liste-zones" [(ngModel)]="prefecture" />
       </mat-form-field>
+      <app-suggestions-lieux idListe="personne-liste-zones" role="elargissement" />
     }
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-fp__large">
       <mat-label>{{ 'ASSUREUR.PERSONNE.ADRESSE' | translate }}</mat-label>

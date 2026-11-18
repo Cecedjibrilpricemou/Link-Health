@@ -3,13 +3,17 @@ import { prisma } from '../config/prisma';
 import { peremptionLaPlusProche } from './approvisionnement.service';
 import { consommerLots } from './approvisionnement.service';
 import { enregistrerMouvementStock } from './mouvement-stock.service';
-import { Role, StatutOrdonnance, TypeActeDelivrance, TypeStructure } from '../config/generated/client/client';
+import { Prisma, Role, StatutOrdonnance, TypeActeDelivrance, TypeStructure } from '../config/generated/client/client';
 import { notifierSansBloquer } from './notification.service';
 import { hashPassword } from '../utils/password.utils';
 import { assertMotDePasseConforme } from '../utils/politique-mot-de-passe';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { estStructureOfficinale, filtreStructuresOfficinales } from '../utils/officine.util';
+import { empreinteCatalogue } from '../utils/catalogue';
+import { etatOuverture, horairesDepuisLaBase, joursInvalides } from '../utils/horaires';
+import type { Horaires } from '../utils/horaires';
 import { getValeursParametres } from './parametres.service';
+import type { DefinirPositionDto, HorairesOfficineView, PositionOfficineView } from '@baobaoheath/shared-types';
 import {
   contientProduitReglemente,
   estExpiree,
@@ -928,6 +932,9 @@ export async function creerProduitOfficine(
     const cree = await tx.medicament.create({
       data: {
         libelle: dto.libelle.trim(),
+        // A1 : sans cette empreinte, l'article de l'officine serait absent de
+        // la recherche publique des qu'on l'ecrit sans ses accents.
+        rechercheTexte: empreinteCatalogue({ libelle: dto.libelle }),
         categorie: dto.categorie,
         prixUnitaireGnf: dto.prixUnitaireGnf,
         estActif: true,
@@ -964,7 +971,12 @@ export async function modifierProduitOfficine(
     const produit = await tx.medicament.updateMany({
       where: { id: idMedicament, idStructure: pharmacien.idStructure, estActif: true },
       data: {
-        ...(dto.libelle !== undefined ? { libelle: dto.libelle.trim() } : {}),
+        ...(dto.libelle !== undefined
+          ? {
+              libelle: dto.libelle.trim(),
+              rechercheTexte: empreinteCatalogue({ libelle: dto.libelle }),
+            }
+          : {}),
         ...(dto.categorie !== undefined ? { categorie: dto.categorie } : {}),
         ...(dto.prixUnitaireGnf !== undefined ? { prixUnitaireGnf: dto.prixUnitaireGnf } : {}),
       },
@@ -1230,4 +1242,101 @@ export async function trouverPharmaciesProches(prefecture: string) {
     where: { ...filtreStructuresOfficinales(), prefecture, estActive: true },
     select: { id: true, nom: true, adresse: true, telephone: true, latitude: true, longitude: true },
   });
+}
+
+// ── Horaires d'ouverture (saisie par le titulaire) ──────────────────
+
+/**
+ * Les horaires de l'officine, avec l'etat du moment.
+ *
+ * L'etat est calcule ici et non dans le navigateur : une seule horloge fait
+ * foi, celle du serveur, qui est dans le fuseau du pays installe.
+ */
+export async function getHorairesOfficine(pharmacienId: string): Promise<HorairesOfficineView> {
+  const pharmacien = await getPharmacienAvecStructure(pharmacienId);
+  const structure = await prisma.structureSante.findUniqueOrThrow({
+    where: { id: pharmacien.idStructure as string },
+    select: { horaires: true },
+  });
+  const horaires = horairesDepuisLaBase(structure.horaires);
+  return { horaires, etat: etatOuverture(horaires) };
+}
+
+/**
+ * Le titulaire enregistre ses horaires.
+ *
+ * Reserve au titulaire, comme le catalogue et l'approvisionnement : annoncer
+ * au public que l'officine est ouverte engage l'etablissement, et un client
+ * qui se deplace pour rien ne revient pas.
+ */
+export async function definirHorairesOfficine(
+  pharmacienId: string,
+  dto: { horaires: Horaires },
+): Promise<HorairesOfficineView> {
+  const pharmacien = await getPharmacienAvecStructure(pharmacienId);
+  if (pharmacien.pharmacienProfile?.roleOfficine !== 'TITULAIRE') {
+    throw new ForbiddenError('Seul le titulaire peut definir les horaires de son officine');
+  }
+
+  const fautifs = joursInvalides(dto.horaires);
+  if (fautifs.length > 0) {
+    // Une fermeture avant l'ouverture afficherait l'officine close toute la
+    // journee, sans que personne comprenne pourquoi.
+    throw new ValidationError(
+      "L'heure de fermeture doit suivre l'heure d'ouverture (jours : " + fautifs.join(', ') + ')',
+    );
+  }
+
+  const structure = await prisma.structureSante.update({
+    where: { id: pharmacien.idStructure as string },
+    // Prisma attend sa propre forme de JSON ; nos horaires sont deja
+    // valides par le schema Zod et par `joursInvalides`.
+    data: { horaires: dto.horaires as unknown as Prisma.InputJsonObject },
+    select: { horaires: true },
+  });
+  const horaires = horairesDepuisLaBase(structure.horaires);
+  return { horaires, etat: etatOuverture(horaires) };
+}
+
+
+// ── Position sur la carte (posee par le titulaire) ──────────────────────
+
+/** Ce que l'officine declare d'elle-meme, position comprise. */
+export async function getPositionOfficine(pharmacienId: string): Promise<PositionOfficineView> {
+  const pharmacien = await getPharmacienAvecStructure(pharmacienId);
+  const structure = await prisma.structureSante.findUniqueOrThrow({
+    where: { id: pharmacien.idStructure as string },
+    select: { nom: true, adresse: true, commune: true, latitude: true, longitude: true },
+  });
+  return structure;
+}
+
+/**
+ * Le titulaire pose son officine sur la carte.
+ *
+ * Reserve au titulaire, comme les horaires : la position envoie des gens a
+ * une adresse. Un marqueur pose de travers fait traverser la ville pour rien,
+ * et c'est l'officine qui en paie le prix.
+ */
+export async function definirPositionOfficine(
+  pharmacienId: string,
+  dto: DefinirPositionDto,
+): Promise<PositionOfficineView> {
+  const pharmacien = await getPharmacienAvecStructure(pharmacienId);
+  if (pharmacien.pharmacienProfile?.roleOfficine !== 'TITULAIRE') {
+    throw new ForbiddenError('Seul le titulaire peut situer son officine sur la carte');
+  }
+
+  // Les deux ensemble ou aucune : une demi-position ne situe rien, et le
+  // schema l'a deja refuse. Ici on protege le service appele directement.
+  if ((dto.latitude === null) !== (dto.longitude === null)) {
+    throw new ValidationError('La latitude et la longitude vont ensemble : les deux, ou aucune.');
+  }
+
+  const structure = await prisma.structureSante.update({
+    where: { id: pharmacien.idStructure as string },
+    data: { latitude: dto.latitude, longitude: dto.longitude },
+    select: { nom: true, adresse: true, commune: true, latitude: true, longitude: true },
+  });
+  return structure;
 }

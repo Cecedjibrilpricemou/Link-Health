@@ -1,0 +1,102 @@
+<div class="bb-hor">
+  <header class="bb-page-head">
+    <div class="bb-page-head__text">
+      <span class="bb-page-head__tag">
+        <i class="pi pi-clock" aria-hidden="true"></i> {{ 'PHARMACIEN.ROLE' | translate }}
+      </span>
+      <h1 class="bb-page-head__title">{{ 'PHARMACIEN.HORAIRES.TITLE' | translate }}</h1>
+      <p class="bb-page-head__sub">{{ 'PHARMACIEN.HORAIRES.SUB' | translate }}</p>
+    </div>
+  </header>
+
+  @if (chargement()) {
+    <p class="bb-hor__message" role="status">{{ 'COMMON.LOADING' | translate }}</p>
+  } @else {
+    @if (etat(); as e) {
+      <p class="bb-hor__etat" [class.bb-hor__etat--ouvert]="e.ouvert === true">
+        @if (e.ouvert === true) {
+          <i class="pi pi-check-circle" aria-hidden="true"></i>
+          {{ 'PHARMACIEN.HORAIRES.ETAT_OUVERT' | translate: { heure: e.fermeA ?? '' } }}
+        } @else if (e.ouvert === false) {
+          <i class="pi pi-times-circle" aria-hidden="true"></i>
+          {{ 'PHARMACIEN.HORAIRES.ETAT_FERME' | translate }}
+        } @else {
+          <i class="pi pi-info-circle" aria-hidden="true"></i>
+          {{ 'PHARMACIEN.HORAIRES.ETAT_INCONNU' | translate }}
+        }
+      </p>
+    }
+
+    <form class="bb-hor__form" (ngSubmit)="enregistrer()">
+      <ul class="bb-hor__jours">
+        @for (ligne of lignes(); track ligne.cle) {
+          <li class="bb-hor__jour" [class.bb-hor__jour--ferme]="!ligne.ouvert">
+            <label class="bb-hor__bascule">
+              <input
+                type="checkbox"
+                [ngModel]="ligne.ouvert"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="majJour(ligne.cle, 'ouvert', $event)"
+              />
+              <span class="bb-hor__nom">{{ ligne.nom | translate }}</span>
+            </label>
+
+            @if (ligne.ouvert) {
+              <div class="bb-hor__creneau">
+                <label [attr.for]="'ouvre-' + ligne.cle" class="bb-hor__etiquette">
+                  {{ 'PHARMACIEN.HORAIRES.DE' | translate }}
+                </label>
+                <input
+                  [id]="'ouvre-' + ligne.cle"
+                  type="time"
+                  [ngModel]="ligne.ouvre"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="majJour(ligne.cle, 'ouvre', $event)"
+                />
+                <label [attr.for]="'ferme-' + ligne.cle" class="bb-hor__etiquette">
+                  {{ 'PHARMACIEN.HORAIRES.A' | translate }}
+                </label>
+                <input
+                  [id]="'ferme-' + ligne.cle"
+                  type="time"
+                  [ngModel]="ligne.ferme"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="majJour(ligne.cle, 'ferme', $event)"
+                />
+              </div>
+            } @else {
+              <span class="bb-hor__clos">{{ 'PHARMACIEN.HORAIRES.FERME' | translate }}</span>
+            }
+          </li>
+        }
+      </ul>
+
+      @if (joursFautifs().length > 0) {
+        <p class="bb-hor__erreur" role="alert">
+          {{ 'PHARMACIEN.HORAIRES.ERREUR_CRENEAU' | translate }}
+        </p>
+      }
+
+      @if (aucunJourOuvert()) {
+        <p class="bb-hor__avis">{{ 'PHARMACIEN.HORAIRES.AUCUN_JOUR' | translate }}</p>
+      }
+
+      <div class="bb-hor__actions">
+        <button matButton type="button" (click)="appliquerPartout()">
+          <i class="pi pi-copy" aria-hidden="true"></i>
+          {{ 'PHARMACIEN.HORAIRES.PARTOUT' | translate }}
+        </button>
+        <button
+          type="submit"
+          matButton="filled"
+          [disabled]="enregistrement() || joursFautifs().length > 0"
+        >
+          <i class="pi pi-save" aria-hidden="true"></i>
+          {{ (enregistrement() ? 'COMMON.SAVING' : 'COMMON.SAVE') | translate }}
+        </button>
+      </div>
+
+      <p class="bb-hor__note">{{ 'PHARMACIEN.HORAIRES.NOTE' | translate }}</p>
+    </form>
+  }
+</div>

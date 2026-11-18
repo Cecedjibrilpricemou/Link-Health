@@ -51,6 +51,11 @@
           <span [class]="'bb-badge bb-badge--' + getStatutVariante(consultation()!.statut)">{{ getStatutLabel(consultation()!.statut) }}</span>
           <span class="bb-detail__date">{{ formatDate(consultation()!.consulteeLE) }}</span>
         </div>
+        <!-- Rendu par l'API, filigrane « NON SIGNE » tant qu'un medecin n'a pas valide. -->
+        <button type="button" class="bb-detail__ordo-print bb-detail__cr-print" (click)="imprimerCompteRendu()">
+          <i class="pi pi-print" aria-hidden="true"></i>
+          {{ 'ASC.CONSULTATION_DETAIL.PRINT_REPORT' | translate }}
+        </button>
         @if (!isConsultationTerminee()) {
           <button
             class="bb-detail__close-btn"

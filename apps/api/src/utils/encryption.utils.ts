@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'crypto';
 
 // AES-256-GCM field-level encryption for sensitive medical/PII columns.
 // Encrypted values are tagged with PREFIX so decryptField can tell them
@@ -49,6 +49,42 @@ export function decryptField(value: string | null | undefined): string | null | 
   const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 
   return plaintext.toString('utf8');
+}
+
+// ── Empreinte de recherche (« blind index ») ─────────────────────────
+//
+// Un champ chiffre ne se compare plus en base : AES-GCM tire un vecteur
+// aleatoire a chaque ecriture, deux « Fatoumata Conde » n'ont pas le meme
+// chiffre. Or la detection de doublons cherche les dossiers qui partagent le
+// nom de la mere. L'empreinte rend cette egalite possible sans rien reveler :
+// un HMAC de la valeur normalisee, sous une cle derivee de DB_ENCRYPTION_KEY
+// (jamais la cle de chiffrement elle-meme). Sans la cle, une empreinte ne se
+// retourne pas, et deux bases ne se recoupent pas.
+//
+// Normalisee comme le fait la detection de doublons : sans accents, sans
+// casse, espaces resserres. « Fatoumata  CONDÉ » et « fatoumata conde » ont
+// la meme empreinte.
+const PREFIXE_EMPREINTE = 'emp:v1:';
+let cleEmpreinte: Buffer | undefined;
+
+function getCleEmpreinte(): Buffer {
+  if (!cleEmpreinte) {
+    cleEmpreinte = createHmac('sha256', getKey()).update('keneya:empreinte-recherche:v1').digest();
+  }
+  return cleEmpreinte;
+}
+
+export function normaliserPourEmpreinte(valeur: string): string {
+  // \p{M} : les signes diacritiques que NFD a detaches des lettres.
+  return valeur.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/** Null pour une valeur vide : rien a rapprocher. */
+export function empreinteRecherche(valeur: string | null | undefined): string | null {
+  if (typeof valeur !== 'string') return null;
+  const normalisee = normaliserPourEmpreinte(valeur);
+  if (!normalisee) return null;
+  return PREFIXE_EMPREINTE + createHmac('sha256', getCleEmpreinte()).update(normalisee, 'utf8').digest('hex');
 }
 
 export function encryptArray(values: string[]): string[];

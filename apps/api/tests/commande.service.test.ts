@@ -9,12 +9,17 @@
 import {
   choisirModeRemise,
   commandesDeLaPharmacie,
+  conclureCommandesExpirees,
+  elargirCommande,
+  elargirCommandesEnAttente,
   lancerRecherchePharmacie,
-  pharmaciesDuQuartier,
+  pharmaciesDeLaZone,
   repondreDisponibilite,
   retirerPriseEnCharge,
+  toutesOntRefuse,
 } from '../src/services/commande.service';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../src/utils/app-error';
+import { CHAMPS_RECHERCHE, filtreZone } from '../src/utils/zone';
 
 jest.mock('../src/config/prisma', () => ({
   prisma: {
@@ -28,6 +33,9 @@ jest.mock('../src/config/prisma', () => ({
 }));
 jest.mock('../src/services/numero.service', () => ({ prochainNumero: jest.fn() }));
 jest.mock('../src/services/notification.service', () => ({ notifierSansBloquer: jest.fn() }));
+// M1-C : les voisines viennent du referentiel ; aucune par defaut, chaque test precise.
+jest.mock('../src/services/geographie.service', () => ({ voisinsDe: jest.fn() }));
+const { voisinsDe } = jest.requireMock('../src/services/geographie.service') as { voisinsDe: jest.Mock };
 
 const { prisma } = jest.requireMock('../src/config/prisma') as {
   prisma: {
@@ -47,7 +55,8 @@ const PATIENT = { userId: 'u-pat', role: 'PATIENT' } as never;
 
 const NOUNIE = {
   id: 'ph-nounie', nom: 'Pharmacie Nounie',
-  type: 'PHARMACIE', estActive: true, estPartenaire: true, quartier: 'Kipé',
+  type: 'PHARMACIE', estActive: true, estPartenaire: true,
+  prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé',
 };
 
 function pharmacienDe(structure: Record<string, unknown> = NOUNIE) {
@@ -62,7 +71,7 @@ function ordonnanceSignee(etat: Record<string, unknown> = {}) {
     lignes: [{ id: 'l1' }],
     consultation: {
       idMedecinValideur: 'u-med',
-      patient: { quartier: 'Kipé', utilisateur: { id: 'u-pat' } },
+      patient: { prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé', utilisateur: { id: 'u-pat' } },
     },
     ...etat,
   });
@@ -81,7 +90,8 @@ function ordonnanceSignee(etat: Record<string, unknown> = {}) {
 function commandeRelue(etat: Record<string, unknown> = {}) {
   return {
     id: 'cmd-1', numero: 'CM-2026-000001', statut: 'RECHERCHE_PHARMACIE',
-    quartierRecherche: 'Kipé', idPharmacie: null, modeRemise: null,
+    quartierRecherche: 'Kipé', prefectureRecherche: 'Conakry', communeRecherche: 'Ratoma',
+    idPharmacie: null, modeRemise: null,
     creeLe: new Date('2026-10-09T08:00:00Z'),
     reponses: [],
     pharmacie: null,
@@ -110,6 +120,7 @@ function commandeRelue(etat: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  voisinsDe.mockResolvedValue([]);
   prochainNumero.mockResolvedValue('CM-2026-000001');
   notifierSansBloquer.mockResolvedValue(undefined);
   prisma.commande.create.mockResolvedValue({ id: 'cmd-1', numero: 'CM-2026-000001' });
@@ -119,27 +130,73 @@ beforeEach(() => {
 });
 afterEach(() => jest.resetAllMocks());
 
-// ── Périmètre de l'appel ─────────────────────────────────────────────
-describe('pharmaciesDuQuartier', () => {
-  it('ne retient que les partenaires actives du quartier', async () => {
-    prisma.structureSante.findMany.mockResolvedValue([NOUNIE]);
+// R5 : l'epuisement se juge par identifiant, pas par nombre de refus.
+describe('toutesOntRefuse', () => {
+  const non = (idStructure: string) => ({ idStructure, aTousLesProduits: false });
+  const oui = (idStructure: string) => ({ idStructure, aTousLesProduits: true });
+  const A = { id: 'a' }, B = { id: 'b' }, C = { id: 'c' };
 
-    await pharmaciesDuQuartier('Kipé');
+  it('vrai quand chaque sollicitee a dit non', () => {
+    expect(toutesOntRefuse([A, B], [non('a'), non('b')])).toBe(true);
+  });
+
+  it('faux tant qu une sollicitee n a pas repondu, meme avec autant de refus', () => {
+    expect(toutesOntRefuse([A, B], [non('a'), non('ancienne')])).toBe(false);
+  });
+
+  it('faux avec plus de refus que de sollicitees si l une manque', () => {
+    expect(toutesOntRefuse([A, B, C], [non('a'), non('b'), non('x'), non('y')])).toBe(false);
+  });
+
+  it('un oui n est pas un refus', () => {
+    expect(toutesOntRefuse([A, B], [non('a'), oui('b')])).toBe(false);
+  });
+
+  it('les refus de pharmacies qui ne sont plus appelees sont ignores', () => {
+    expect(toutesOntRefuse([B], [non('a'), non('b')])).toBe(true);
+  });
+
+  it('sans sollicitee, rien n est epuise', () => {
+    expect(toutesOntRefuse([], [non('a')])).toBe(false);
+  });
+});
+
+// ── Périmètre de l'appel ─────────────────────────────────────────────
+describe('pharmaciesDeLaZone', () => {
+  // La commune, dans sa prefecture : la pharmacie du quartier voisin est
+  // sollicitee, celle d'une autre ville ne l'est jamais (utils/zone.ts).
+  it('ne retient que les partenaires actives de la commune du patient', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([NOUNIE]);
+    const lieu = { prefecture: 'Conakry', commune: 'Ratoma', quartier: 'Kipé' };
+
+    await pharmaciesDeLaZone(lieu);
 
     expect(prisma.structureSante.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: {
         type: 'PHARMACIE',
         estActive: true,
         estPartenaire: true,
-        quartier: 'Kipé',
+        ...filtreZone(lieu),
       },
     }));
   });
 
-  // Sans quartier, elargir serait deviner : on solliciterait des pharmacies
+  // Une commande creee avant la prefecture de recherche : comparee par le
+  // seul quartier, comme a sa creation, plutot que de ne plus rien trouver.
+  it('ancienne commande sans préfecture : cherche par le quartier, comme avant', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([NOUNIE]);
+
+    await pharmaciesDeLaZone({ quartier: 'Kipé' });
+
+    expect(prisma.structureSante.findMany.mock.calls[0][0].where.quartier)
+      .toEqual({ equals: 'Kipé', mode: 'insensitive' });
+  });
+
+  // Sans lieu, elargir serait deviner : on solliciterait des pharmacies
   // qui n'ont aucune raison d'etre concernees.
-  it('ne cherche nulle part quand le patient n a pas de quartier', async () => {
-    expect(await pharmaciesDuQuartier(null)).toEqual([]);
+  it('ne cherche nulle part quand le patient n a ni commune ni quartier', async () => {
+    expect(await pharmaciesDeLaZone({ prefecture: 'Conakry' })).toEqual([]);
+    expect(await pharmaciesDeLaZone({})).toEqual([]);
     expect(prisma.structureSante.findMany).not.toHaveBeenCalled();
   });
 
@@ -160,14 +217,17 @@ describe('pharmaciesDuQuartier', () => {
 
 // ── Lancement ────────────────────────────────────────────────────────
 describe('lancerRecherchePharmacie', () => {
-  it('ouvre l appel sur le quartier du patient', async () => {
+  it('ouvre l appel sur la commune du patient, et la fige sur la commande', async () => {
     ordonnanceSignee();
     prisma.structureSante.findMany.mockResolvedValue([NOUNIE, { id: 'ph-2', nom: 'Pharmacie 2' }]);
 
     await lancerRecherchePharmacie('ord-1');
 
     expect(prisma.commande.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ statut: 'RECHERCHE_PHARMACIE', quartierRecherche: 'Kipé' }),
+      data: expect.objectContaining({
+        statut: 'RECHERCHE_PHARMACIE',
+        quartierRecherche: 'Kipé', prefectureRecherche: 'Conakry', communeRecherche: 'Ratoma',
+      }),
     }));
   });
 
@@ -254,38 +314,108 @@ describe('repondreDisponibilite', () => {
     expect(prisma.commande.updateMany).not.toHaveBeenCalled();
   });
 
-  // Quand toutes les sollicitees ont refuse, il n'y a plus rien a attendre.
+  // Quand toutes les sollicitees ont refuse et que la prefecture n'a
+  // personne de plus (M5), il n'y a plus rien a attendre.
   it('conclut sans pharmacie quand toutes ont refuse', async () => {
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
     prisma.commande.findUnique.mockResolvedValue(
-      commandeRelue({ reponses: [{ idStructure: 'ph-1', aTousLesProduits: false,
+      commandeRelue({ reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
         repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
     );
 
     await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
 
-    expect(prisma.commande.update).toHaveBeenCalledWith(expect.objectContaining({
+    // R2 : conditionnel au statut, comme l'attribution.
+    expect(prisma.commande.updateMany).toHaveBeenCalledWith({
+      where: { id: 'cmd-1', statut: 'RECHERCHE_PHARMACIE' },
       data: { statut: 'SANS_PHARMACIE' },
-    }));
+    });
+    expect(notifierSansBloquer.mock.calls.map((c) => c[0].type)).toContain('COMMANDE_SANS_PHARMACIE');
+  });
+
+  // R2 : une pharmacie a pris la commande a la meme seconde. La conclusion ne
+  // touche rien, et personne n'est averti d'une indisponibilite fausse.
+  it('ne conclut pas une commande prise entre-temps', async () => {
+    prisma.commande.updateMany
+      .mockResolvedValueOnce({ count: 1 })   // elargissement (prefecture, personne de plus)
+      .mockResolvedValueOnce({ count: 0 });  // conclusion : le statut a change
+    prisma.commande.findUnique.mockResolvedValue(
+      commandeRelue({ reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
+        repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
+    );
+
+    await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
+
+    expect(notifierSansBloquer.mock.calls.map((c) => c[0].type)).not.toContain('COMMANDE_SANS_PHARMACIE');
+  });
+
+  // R3 : le job elargit au meme moment que le dernier refus. Ce refus ne doit
+  // pas conclure : de nouvelles pharmacies viennent d'etre prevenues.
+  it('ne conclut pas quand un autre passage vient d elargir', async () => {
+    prisma.commande.updateMany.mockResolvedValue({ count: 0 });
+    prisma.commande.findUnique.mockResolvedValue(
+      commandeRelue({ reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
+        repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
+    );
+
+    await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
+
+    // Une seule ecriture tentee : l'elargissement, perdu au profit du job.
+    expect(prisma.commande.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.commande.updateMany.mock.calls[0][0].data).toEqual({ elargieLe: expect.any(Date) });
+    expect(notifierSansBloquer.mock.calls.map((c) => c[0].type)).not.toContain('COMMANDE_SANS_PHARMACIE');
   });
 
   it('attend encore si une sollicitee n a pas repondu', async () => {
     prisma.structureSante.findMany.mockResolvedValue([NOUNIE, { id: 'ph-2', nom: 'Pharmacie 2' }]);
     prisma.commande.findUnique.mockResolvedValue(
-      commandeRelue({ reponses: [{ idStructure: 'ph-1', aTousLesProduits: false,
+      commandeRelue({ reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
         repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }] })
     );
 
     await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
 
-    expect(prisma.commande.update).not.toHaveBeenCalled();
+    // Ni elargissement ni conclusion : ph-2 peut encore repondre.
+    expect(prisma.commande.updateMany).not.toHaveBeenCalled();
+  });
+
+  // R5 : une pharmacie qui a refuse puis a quitte l'appel (desactivee, plus
+  // partenaire) garde sa reponse en base. Elle ne doit pas compter pour une
+  // sollicitee qui n'a jamais repondu.
+  it('n est pas trompe par le refus d une pharmacie qui n est plus appelee', async () => {
+    prisma.structureSante.findMany.mockResolvedValue([NOUNIE, { id: 'ph-2', nom: 'Pharmacie 2' }]);
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ reponses: [
+      { idStructure: 'ph-nounie', aTousLesProduits: false, repondueLe: new Date(), structure: { nom: 'Pharmacie Nounie' } },
+      { idStructure: 'ph-partie', aTousLesProduits: false, repondueLe: new Date(), structure: { nom: 'Pharmacie partie' } },
+    ] }));
+
+    await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
+
+    expect(prisma.commande.updateMany).not.toHaveBeenCalled();
+    expect(notifierSansBloquer.mock.calls.map((c) => c[0].type)).not.toContain('COMMANDE_SANS_PHARMACIE');
   });
 
   // ── Habilitation ──────────────────────────────────────────────────
 
-  it('refuse une pharmacie d un autre quartier', async () => {
-    pharmacienDe({ ...NOUNIE, quartier: 'Matoto' });
+  it('refuse une pharmacie d une autre commune', async () => {
+    pharmacienDe({ ...NOUNIE, commune: 'Matoto' });
 
     await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('refuse une pharmacie d une autre prefecture, meme avec une commune du meme nom', async () => {
+    pharmacienDe({ ...NOUNIE, prefecture: 'Kankan' });
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  // Le defaut d'avant : le quartier exact. La pharmacie d'a cote, dans la
+  // meme commune, n'etait jamais sollicitee.
+  it('accepte une pharmacie de la meme commune, dans un autre quartier', async () => {
+    pharmacienDe({ ...NOUNIE, quartier: 'Taouyah' });
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).resolves.toBeDefined();
   });
 
   // Seules les conventionnees sont sollicitees : repondre suppose l'etre.
@@ -385,7 +515,7 @@ describe('choisirModeRemise', () => {
 
 // ── File du comptoir ─────────────────────────────────────────────────
 describe('commandesDeLaPharmacie', () => {
-  it('montre les appels du quartier non refuses, et ce qu elle a pris', async () => {
+  it('montre les appels de sa commune non refuses, et ce qu elle a pris', async () => {
     pharmacienDe();
     prisma.commande.findMany.mockResolvedValue([]);
 
@@ -394,11 +524,360 @@ describe('commandesDeLaPharmacie', () => {
     const { where } = prisma.commande.findMany.mock.calls[0][0];
     expect(where.OR[0]).toEqual(expect.objectContaining({
       statut: 'RECHERCHE_PHARMACIE',
-      quartierRecherche: 'Kipé',
+      // La zone de la pharmacie, comparee a celle figee sur la commande ; les
+      // commandes anterieures, sans prefecture, restent visibles.
+      ...filtreZone(NOUNIE, CHAMPS_RECHERCHE, { prefectureFacultative: true }),
       // Une pharmacie qui a deja dit non ne doit pas revoir l'appel.
       reponses: { none: { idStructure: 'ph-nounie', aTousLesProduits: false } },
     }));
-    expect(where.OR[1]).toEqual({ idPharmacie: 'ph-nounie' });
+    expect(where.OR).toContainEqual({ idPharmacie: 'ph-nounie' });
+  });
+
+  // M5 : un appel elargi se voit dans toute la prefecture, pas au-dela.
+  it('montre aussi les appels elargis de sa prefecture, sauf ceux qu elle a refuses', async () => {
+    pharmacienDe();
+    prisma.commande.findMany.mockResolvedValue([]);
+
+    await commandesDeLaPharmacie(PHARMACIEN);
+
+    const { where } = prisma.commande.findMany.mock.calls[0][0];
+    expect(where.OR).toContainEqual({
+      statut: 'RECHERCHE_PHARMACIE',
+      elargieLe: { not: null },
+      prefectureRecherche: { equals: 'Conakry', mode: 'insensitive' },
+      reponses: { none: { idStructure: 'ph-nounie', aTousLesProduits: false } },
+    });
+  });
+});
+
+// ── M1-C : commune, puis communes voisines, puis prefecture ──────────
+describe('elargissement aux communes voisines', () => {
+  const DIXINN = { ...NOUNIE, id: 'ph-dixinn', nom: 'Pharmacie Dixinn', commune: 'Dixinn', quartier: 'Donka' };
+  const MATOTO = { ...NOUNIE, id: 'ph-matoto', nom: 'Pharmacie Matoto', commune: 'Matoto', quartier: 'Gbessia' };
+  // Trois recherches : les voisines (filtre `in`), la commune (Ratoma), la prefecture.
+  const parEtape = ({ where }: { where: unknown }) => {
+    const j = JSON.stringify(where);
+    if (j.includes('"in":')) return Promise.resolve([DIXINN]);
+    if (j.includes('Ratoma')) return Promise.resolve([NOUNIE]);
+    return Promise.resolve([NOUNIE, DIXINN, MATOTO]);
+  };
+  const appelees = () => prisma.utilisateur.findMany.mock.calls.map((c) => c[0].where.idStructure.in);
+
+  it('au lancement, sans partenaire dans la commune, appelle d abord les voisines', async () => {
+    ordonnanceSignee();
+    voisinsDe.mockResolvedValue(['Dixinn']);
+    prisma.structureSante.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([DIXINN]);
+
+    await lancerRecherchePharmacie('ord-1');
+
+    expect(voisinsDe).toHaveBeenCalledWith('Conakry', 'Ratoma');
+    expect(prisma.commande.create.mock.calls[0][0].data).toMatchObject({
+      statut: 'RECHERCHE_PHARMACIE', voisinesLe: expect.any(Date), communesVoisines: ['dixinn'], elargieLe: null,
+    });
+    // La recherche des voisines compare sans casse.
+    expect(prisma.structureSante.findMany.mock.calls[1][0].where.commune).toEqual({ in: ['Dixinn'], mode: 'insensitive' });
+  });
+
+  it('au lancement, voisines vides : directement toute la prefecture, comme avant', async () => {
+    ordonnanceSignee();
+    voisinsDe.mockResolvedValue(['Dixinn']);
+    prisma.structureSante.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([MATOTO]);
+
+    await lancerRecherchePharmacie('ord-1');
+
+    expect(prisma.commande.create.mock.calls[0][0].data).toMatchObject({
+      voisinesLe: null, communesVoisines: [], elargieLe: expect.any(Date),
+    });
+  });
+
+  it('premiere etape : n appelle que les voisines, et fige leur liste', async () => {
+    voisinsDe.mockResolvedValue(['Dixinn']);
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+    prisma.structureSante.findMany.mockImplementation(parEtape);
+    prisma.utilisateur.findMany.mockResolvedValue([{ id: 'u-dixinn' }]);
+
+    expect(await elargirCommande('cmd-1')).toBe(1);
+
+    expect(prisma.commande.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.commande.updateMany).toHaveBeenCalledWith({
+      where: { id: 'cmd-1', statut: 'RECHERCHE_PHARMACIE', voisinesLe: null, elargieLe: null },
+      data: { voisinesLe: expect.any(Date), communesVoisines: ['dixinn'] },
+    });
+    expect(appelees()).toEqual([['ph-dixinn']]);
+  });
+
+  it('des voisines sans personne de plus : l etape est sautee, la prefecture est ouverte', async () => {
+    voisinsDe.mockResolvedValue(['Kaloum']);
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+    prisma.structureSante.findMany.mockImplementation(({ where }) => {
+      const j = JSON.stringify(where);
+      if (j.includes('"in":')) return Promise.resolve([]);
+      return parEtape({ where });
+    });
+
+    await elargirCommande('cmd-1');
+
+    expect(prisma.commande.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.commande.updateMany.mock.calls[0][0].data).toEqual({ elargieLe: expect.any(Date) });
+  });
+
+  it('seconde etape : la prefecture, sans rappeler ni la commune ni les voisines', async () => {
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ voisinesLe: new Date(), communesVoisines: ['dixinn'] }));
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+    prisma.structureSante.findMany.mockImplementation(parEtape);
+
+    await elargirCommande('cmd-1');
+
+    // Le referentiel n'est plus consulte : la premiere etape est passee.
+    expect(voisinsDe).not.toHaveBeenCalled();
+    expect(prisma.commande.updateMany.mock.calls[0][0].data).toEqual({ elargieLe: expect.any(Date) });
+    expect(appelees()).toEqual([['ph-matoto']]);
+  });
+
+  it('quand la commune et les voisines ont toutes refuse, passe aussitot a la prefecture', async () => {
+    pharmacienDe();
+    prisma.reponsePharmacie.upsert.mockResolvedValue({});
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+    prisma.structureSante.findMany.mockImplementation(parEtape);
+    const refus = (idStructure: string) => ({ idStructure, aTousLesProduits: false, repondueLe: new Date(), structure: { nom: idStructure } });
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({
+      voisinesLe: new Date(), communesVoisines: ['dixinn'], reponses: [refus('ph-nounie'), refus('ph-dixinn')],
+    }));
+
+    await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
+
+    expect(prisma.commande.updateMany.mock.calls[0][0].data).toEqual({ elargieLe: expect.any(Date) });
+    expect(prisma.commande.update).not.toHaveBeenCalled();
+  });
+
+  it('une pharmacie voisine peut repondre une fois l appel ouvert aux voisines, pas avant', async () => {
+    pharmacienDe(DIXINN);
+    prisma.structureSante.findMany.mockImplementation(parEtape);
+    prisma.reponsePharmacie.upsert.mockResolvedValue({});
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ voisinesLe: new Date(), communesVoisines: ['dixinn'] }));
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).resolves.toBeDefined();
+  });
+
+  it('une commune non voisine reste refusee a cette etape', async () => {
+    pharmacienDe(MATOTO);
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ voisinesLe: new Date(), communesVoisines: ['dixinn'] }));
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('une voisine du meme nom dans une autre prefecture reste refusee', async () => {
+    pharmacienDe({ ...DIXINN, prefecture: 'Kindia' });
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ voisinesLe: new Date(), communesVoisines: ['dixinn'] }));
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('la file du comptoir montre les appels ouverts a sa commune comme voisine', async () => {
+    pharmacienDe(DIXINN);
+    prisma.commande.findMany.mockResolvedValue([]);
+
+    await commandesDeLaPharmacie(PHARMACIEN);
+
+    const { where } = prisma.commande.findMany.mock.calls[0][0];
+    expect(where.OR).toContainEqual({
+      statut: 'RECHERCHE_PHARMACIE',
+      voisinesLe: { not: null },
+      communesVoisines: { has: 'dixinn' },
+      prefectureRecherche: { equals: 'Conakry', mode: 'insensitive' },
+      reponses: { none: { idStructure: 'ph-dixinn', aTousLesProduits: false } },
+    });
+  });
+});
+
+// ── M5 : l'appel s'etend a la prefecture ─────────────────────────────
+describe('elargissement a la prefecture', () => {
+  const MATOTO = { id: 'ph-matoto', nom: 'Pharmacie Matoto', prefecture: 'Conakry', commune: 'Matoto' };
+  // La commune (le filtre nomme Ratoma) : Nounie seule. La prefecture : Nounie et Matoto.
+  const communeOuPrefecture = ({ where }: { where: unknown }) =>
+    Promise.resolve(JSON.stringify(where).includes('Ratoma') ? [NOUNIE] : [NOUNIE, MATOTO]);
+
+  it('au lancement, sans partenaire dans la commune, appelle toute la prefecture', async () => {
+    ordonnanceSignee();
+    // 1er appel : la commune (vide) ; 2e : la prefecture.
+    prisma.structureSante.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([MATOTO]);
+    prisma.utilisateur.findMany.mockResolvedValue([{ id: 'u-matoto' }]);
+
+    await lancerRecherchePharmacie('ord-1');
+
+    expect(prisma.commande.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ statut: 'RECHERCHE_PHARMACIE', elargieLe: expect.any(Date) }),
+    }));
+    expect(prisma.structureSante.findMany.mock.calls[1][0].where.prefecture)
+      .toEqual({ equals: 'Conakry', mode: 'insensitive' });
+    const appel = notifierSansBloquer.mock.calls.find((c) => c[0].type === 'COMMANDE_A_SERVIR');
+    expect(appel?.[0]).toMatchObject({ idUtilisateur: 'u-matoto' });
+    expect(appel?.[0].contenu).toContain('aucune pharmacie de sa commune');
+  });
+
+  it('au lancement, une commune servie n est pas elargie', async () => {
+    ordonnanceSignee();
+    prisma.structureSante.findMany.mockResolvedValue([NOUNIE]);
+
+    await lancerRecherchePharmacie('ord-1');
+
+    expect(prisma.commande.create.mock.calls[0][0].data.elargieLe).toBeNull();
+    expect(prisma.structureSante.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('quand toute la commune refuse, appelle les autres pharmacies de la prefecture', async () => {
+    pharmacienDe();
+    prisma.reponsePharmacie.upsert.mockResolvedValue({});
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({
+      reponses: [{ idStructure: 'ph-nounie', aTousLesProduits: false,
+        repondueLe: new Date('2026-10-09T09:00:00Z'), structure: { nom: 'Pharmacie Nounie' } }],
+    }));
+    prisma.structureSante.findMany.mockImplementation(communeOuPrefecture);
+    prisma.utilisateur.findMany.mockResolvedValue([{ id: 'u-matoto' }]);
+
+    await repondreDisponibilite(PHARMACIEN, 'cmd-1', false);
+
+    expect(prisma.commande.updateMany).toHaveBeenCalledWith({
+      where: { id: 'cmd-1', statut: 'RECHERCHE_PHARMACIE', elargieLe: null },
+      data: { elargieLe: expect.any(Date) },
+    });
+    // Seule Matoto est appelee : Nounie l'etait deja, et a refuse.
+    expect(prisma.utilisateur.findMany.mock.calls[0][0].where.idStructure.in).toEqual(['ph-matoto']);
+    expect(prisma.commande.update).not.toHaveBeenCalled();
+  });
+
+  it('un second passage simultane ne previent personne une seconde fois', async () => {
+    prisma.commande.updateMany.mockResolvedValue({ count: 0 });
+    prisma.structureSante.findMany.mockImplementation(communeOuPrefecture);
+
+    // -1 : un autre passage a elargi ; l'appel continue (R3).
+    expect(await elargirCommande('cmd-1')).toBe(-1);
+    expect(notifierSansBloquer).not.toHaveBeenCalled();
+    // Personne n'est meme recherche a prevenir : le verrou a ete perdu avant.
+    expect(prisma.utilisateur.findMany).not.toHaveBeenCalled();
+  });
+
+  it('n elargit pas une commande deja elargie ou deja prise', async () => {
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ elargieLe: new Date() }));
+    expect(await elargirCommande('cmd-1')).toBe(0);
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ statut: 'ATTRIBUEE' }));
+    expect(await elargirCommande('cmd-1')).toBe(0);
+    expect(prisma.commande.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('une pharmacie de la prefecture peut repondre a un appel elargi, pas a un appel de commune', async () => {
+    pharmacienDe({ ...NOUNIE, id: 'ph-matoto', commune: 'Matoto' });
+    prisma.structureSante.findMany.mockResolvedValue([NOUNIE]);
+    prisma.reponsePharmacie.upsert.mockResolvedValue({});
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ elargieLe: new Date() }));
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).resolves.toBeDefined();
+  });
+
+  it('meme elargi, refuse une pharmacie d une autre prefecture', async () => {
+    pharmacienDe({ ...NOUNIE, prefecture: 'Kankan' });
+    prisma.commande.findUnique.mockResolvedValue(commandeRelue({ elargieLe: new Date() }));
+
+    await expect(repondreDisponibilite(PHARMACIEN, 'cmd-1', true)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('le job ne prend que les appels plus vieux que le delai, et compte ceux portes plus loin', async () => {
+    const maintenant = new Date('2026-11-11T12:00:00Z');
+    prisma.commande.findMany.mockResolvedValue([{ id: 'cmd-1' }]);
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+    prisma.structureSante.findMany.mockImplementation(communeOuPrefecture);
+
+    const res = await elargirCommandesEnAttente(10, maintenant);
+
+    expect(prisma.commande.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        statut: 'RECHERCHE_PHARMACIE',
+        elargieLe: null,
+        prefectureRecherche: { not: null },
+        // Depuis la creation dans la commune, depuis l'ouverture aux voisines ensuite (M1-C).
+        OR: [
+          { voisinesLe: null, creeLe: { lte: new Date('2026-11-11T11:50:00Z') } },
+          { voisinesLe: { lte: new Date('2026-11-11T11:50:00Z') } },
+        ],
+      },
+    }));
+    expect(res).toEqual({ elargies: 1 });
+  });
+
+  it('le job ne compte pas un appel que la prefecture ne peut pas porter plus loin', async () => {
+    prisma.commande.findMany.mockResolvedValue([{ id: 'cmd-1' }]);
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+    prisma.structureSante.findMany.mockResolvedValue([NOUNIE]);
+
+    expect(await elargirCommandesEnAttente(10)).toEqual({ elargies: 0 });
+  });
+});
+
+// ── Le motard au comptoir ────────────────────────────────────────────
+describe('le motard attribue, vu par la pharmacie', () => {
+  const MOTARD = { prenom: 'Ibrahima', nom: 'Keita', telephone: '620100016', photoUrl: '/uploads/avatars/motard.jpg' };
+
+  function commandeEnLivraison(statutCourse: string, idPharmacie = 'ph-nounie', utilisateur: unknown = MOTARD) {
+    return commandeRelue({
+      statut: 'PRETE_POUR_LIVRAISON', modeRemise: 'LIVRAISON', idPharmacie,
+      courses: [{ id: 'course-1', statut: statutCourse, livreur: utilisateur ? { utilisateur } : null }],
+    });
+  }
+
+  async function vuParLaPharmacie(commande: unknown) {
+    pharmacienDe();
+    prisma.commande.findMany.mockResolvedValue([commande]);
+    const [vue] = await commandesDeLaPharmacie(PHARMACIEN);
+    return vue;
+  }
+
+  it('montre photo, nom et telephone du motard choisi a la pharmacie qui remet le colis', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('ATTRIBUEE'));
+    expect(vue.livreur).toEqual(MOTARD);
+  });
+
+  it('le montre encore pendant la course', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('EN_COURS'));
+    expect(vue.livreur?.prenom).toBe('Ibrahima');
+  });
+
+  it('rend une photo absente comme null, sans casser la vue', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('ATTRIBUEE', 'ph-nounie', { ...MOTARD, photoUrl: null }));
+    expect(vue.livreur?.photoUrl).toBeNull();
+  });
+
+  it('ne montre personne tant que le patient n a pas choisi de motard', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('APPEL_OFFRES', 'ph-nounie', null));
+    expect(vue).not.toHaveProperty('livreur');
+  });
+
+  it('ne montre plus un motard dont l attribution a ete retiree', async () => {
+    // La course est revenue en appel d'offres : celui qui etait choisi ne
+    // viendra pas, meme si son profil est encore rattache.
+    const vue = await vuParLaPharmacie(commandeEnLivraison('APPEL_OFFRES'));
+    expect(vue).not.toHaveProperty('livreur');
+  });
+
+  it('ne montre pas le motard a une autre pharmacie', async () => {
+    const vue = await vuParLaPharmacie(commandeEnLivraison('ATTRIBUEE', 'ph-autre'));
+    expect(vue).not.toHaveProperty('livreur');
+  });
+
+  it('demande les champs du motard a la base, et seulement ceux-la', async () => {
+    pharmacienDe();
+    prisma.commande.findMany.mockResolvedValue([]);
+    await commandesDeLaPharmacie(PHARMACIEN);
+    const { include } = prisma.commande.findMany.mock.calls[0][0];
+    expect(include.courses.select.livreur).toEqual({
+      select: { utilisateur: { select: { prenom: true, nom: true, telephone: true, photoUrl: true } } },
+    });
   });
 });
 
@@ -441,5 +920,44 @@ describe('notification de l appel', () => {
 
     const appels = notifierSansBloquer.mock.calls.filter((c) => c[0].type === 'COMMANDE_A_SERVIR');
     expect(appels).toHaveLength(0);
+  });
+});
+
+// R1 : un appel sans preneur s'arrete au delai final au lieu d'attendre sans fin.
+describe('delai final de l appel', () => {
+  const MAINTENANT = new Date('2026-11-12T10:00:00Z');
+
+  beforeEach(() => {
+    prisma.commande.findMany.mockResolvedValue([{ id: 'cmd-1' }]);
+    prisma.commande.updateMany.mockResolvedValue({ count: 1 });
+  });
+
+  it('ne prend que les appels encore ouverts plus vieux que le delai', async () => {
+    await conclureCommandesExpirees(60, MAINTENANT);
+
+    expect(prisma.commande.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { statut: 'RECHERCHE_PHARMACIE', creeLe: { lte: new Date('2026-11-12T09:00:00Z') } },
+    }));
+  });
+
+  it('conclut sans pharmacie et dit au patient que personne n a confirme a temps', async () => {
+    const res = await conclureCommandesExpirees(60, MAINTENANT);
+
+    expect(prisma.commande.updateMany).toHaveBeenCalledWith({
+      where: { id: 'cmd-1', statut: 'RECHERCHE_PHARMACIE' },
+      data: { statut: 'SANS_PHARMACIE' },
+    });
+    expect(res).toEqual({ conclues: 1 });
+    const avis = notifierSansBloquer.mock.calls.map((c) => c[0]).filter((n) => n.type === 'COMMANDE_SANS_PHARMACIE');
+    expect(avis.length).toBeGreaterThan(0);
+    // Certaines n'ont pas repondu : on ne pretend pas qu'elles ont toutes refuse.
+    expect(avis[0].contenu).toContain("n'a confirme la totalite dans le delai");
+  });
+
+  it('laisse a la pharmacie une commande prise a la meme seconde', async () => {
+    prisma.commande.updateMany.mockResolvedValue({ count: 0 });
+
+    expect(await conclureCommandesExpirees(60, MAINTENANT)).toEqual({ conclues: 0 });
+    expect(notifierSansBloquer).not.toHaveBeenCalled();
   });
 });

@@ -24,6 +24,89 @@
     <span>{{ 'HOPITAL.IDENTITES.NOTE' | translate }}</span>
   </div>
 
+  <!-- R15 : les demandes de correction envoyees par les patients. Le
+       patient demande, l'agent decide : accepter applique la correction
+       tracee, refuser exige une reponse que le patient lira. -->
+  @if (demandes().length > 0) {
+    <mat-card class="identites-demandes" id="identites-demandes">
+      <h2 class="identites-demandes__titre">
+        <mat-icon fontSet="pi" fontIcon="pi-inbox" aria-hidden="true"></mat-icon>
+        {{ 'HOPITAL.IDENTITES.DEMANDES_TITRE' | translate:{ n: demandes().length } }}
+      </h2>
+      <p class="identites-demandes__aide">{{ 'HOPITAL.IDENTITES.DEMANDES_AIDE' | translate }}</p>
+      <ul class="identites-demandes__liste">
+        @for (d of demandes(); track d.id) {
+          <li class="identites-demandes__item">
+            <div class="identites-demandes__corps">
+              <span class="identites-table__nom">{{ d.patient?.prenom }} {{ d.patient?.nom }}</span>
+              <ul class="identites-demandes__traits">
+                @for (t of traitsDemandes(d); track t.cle) {
+                  <li>
+                    <strong>{{ t.cle | translate }}</strong> :
+                    <span class="identites-corrections__avant">{{ t.avant }}</span>
+                    <mat-icon fontSet="pi" fontIcon="pi-arrow-right" aria-hidden="true"></mat-icon>
+                    <span>{{ t.apres }}</span>
+                  </li>
+                }
+              </ul>
+              <small class="identites-corrections__qui">
+                {{ d.creeLe | date:'dd/MM/yyyy HH:mm' }} · « {{ d.justification }} »
+              </small>
+            </div>
+            <div class="identites-demandes__actions">
+              <button mat-stroked-button (click)="ouvrirDecision(d, 'ACCEPTER')">
+                {{ 'HOPITAL.IDENTITES.DEMANDE_ACCEPTER' | translate }}
+              </button>
+              <button mat-button class="identites-demandes__refuser" (click)="ouvrirDecision(d, 'REFUSER')">
+                {{ 'HOPITAL.IDENTITES.DEMANDE_REFUSER' | translate }}
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+    </mat-card>
+  }
+
+  @if (decision(); as dec) {
+    <div class="identites-boite" role="dialog" aria-modal="true" aria-labelledby="identites-decision-titre">
+      <mat-card class="identites-boite__carte">
+        <h2 id="identites-decision-titre">
+          {{ (dec.choix === 'ACCEPTER' ? 'HOPITAL.IDENTITES.DEMANDE_ACCEPTER_TITRE' : 'HOPITAL.IDENTITES.DEMANDE_REFUSER_TITRE')
+             | translate:{ nom: (dec.demande.patient?.prenom ?? '') + ' ' + (dec.demande.patient?.nom ?? '') } }}
+        </h2>
+        <p class="identites-boite__engagement">
+          {{ (dec.choix === 'ACCEPTER' ? 'HOPITAL.IDENTITES.DEMANDE_ACCEPTER_AIDE' : 'HOPITAL.IDENTITES.DEMANDE_REFUSER_AIDE')
+             | translate }}
+        </p>
+        <mat-form-field appearance="outline" class="identites-boite__motif">
+          <mat-label>
+            {{ (dec.choix === 'ACCEPTER' ? 'HOPITAL.IDENTITES.CORRIGER_MOTIF' : 'HOPITAL.IDENTITES.DEMANDE_REPONSE') | translate }}
+          </mat-label>
+          <textarea matInput rows="2" id="identites-decision-texte" [ngModel]="texteDecision()"
+                    (ngModelChange)="texteDecision.set($event)"></textarea>
+          <mat-hint>{{ 'HOPITAL.IDENTITES.CORRIGER_MOTIF_AIDE' | translate:{ n: motifMin } }}</mat-hint>
+        </mat-form-field>
+
+        @if (erreur()) {
+          <div class="identites-erreur" role="alert">
+            <mat-icon fontSet="pi" fontIcon="pi-exclamation-triangle" aria-hidden="true"></mat-icon>
+            <span>{{ erreur() }}</span>
+          </div>
+        }
+
+        <div class="identites-boite__actions">
+          <button mat-stroked-button (click)="fermerDecision()" [disabled]="enCours()">
+            {{ 'HOPITAL.IDENTITES.CANCEL' | translate }}
+          </button>
+          <button mat-flat-button [color]="dec.choix === 'ACCEPTER' ? 'primary' : 'warn'" id="identites-decision-confirmer"
+                  (click)="confirmerDecision()" [disabled]="!peutDecider()">
+            {{ (dec.choix === 'ACCEPTER' ? 'HOPITAL.IDENTITES.DEMANDE_ACCEPTER' : 'HOPITAL.IDENTITES.DEMANDE_REFUSER') | translate }}
+          </button>
+        </div>
+      </mat-card>
+    </div>
+  }
+
   <mat-card class="identites-filtres">
     <div class="identites-filtres__grille">
       <mat-form-field appearance="outline">
@@ -146,11 +229,94 @@
                   <mat-icon fontSet="pi" fontIcon="pi-history" aria-hidden="true"></mat-icon>
                   {{ 'HOPITAL.IDENTITES.FUSION_HISTORIQUE' | translate }}
                 </button>
+                <!-- R15 : corriger une erreur de saisie, avec un motif et une trace. -->
+                <button mat-button class="identites-table__doublons" (click)="ouvrirCorrection(p)">
+                  <mat-icon fontSet="pi" fontIcon="pi-pencil" aria-hidden="true"></mat-icon>
+                  {{ 'HOPITAL.IDENTITES.CORRIGER' | translate }}
+                </button>
               </td>
             </tr>
           }
         </tbody>
       </table>
+    </div>
+  }
+
+  <!-- R15 : la correction. Elle ne verifie rien : elle corrige une erreur
+       de saisie, et chaque trait garde son ancienne valeur et son auteur. -->
+  @if (aCorriger(); as p) {
+    <div class="identites-boite" role="dialog" aria-modal="true" aria-labelledby="identites-corriger-titre">
+      <mat-card class="identites-boite__carte">
+        <h2 id="identites-corriger-titre">{{ 'HOPITAL.IDENTITES.CORRIGER_TITRE' | translate:{ nom: p.nomComplet } }}</h2>
+        <p class="identites-boite__engagement">{{ 'HOPITAL.IDENTITES.CORRIGER_AIDE' | translate }}</p>
+
+        <div class="identites-boite__grille">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'HOPITAL.IDENTITES.CORRIGER_PRENOM' | translate }}</mat-label>
+            <input matInput [ngModel]="corPrenom()" (ngModelChange)="corPrenom.set($event)" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'HOPITAL.IDENTITES.CORRIGER_NOM' | translate }}</mat-label>
+            <input matInput [ngModel]="corNom()" (ngModelChange)="corNom.set($event)" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'HOPITAL.IDENTITES.CORRIGER_SEXE' | translate }}</mat-label>
+            <mat-select [ngModel]="corSexe()" (ngModelChange)="corSexe.set($event)">
+              <mat-option value="F">{{ 'HOPITAL.IDENTITES.SEXE_F' | translate }}</mat-option>
+              <mat-option value="M">{{ 'HOPITAL.IDENTITES.SEXE_M' | translate }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'HOPITAL.IDENTITES.CORRIGER_NAISSANCE' | translate }}</mat-label>
+            <input matInput type="date" [max]="aujourdhui" [ngModel]="corNaissance()" (ngModelChange)="corNaissance.set($event)" />
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="identites-boite__motif">
+          <mat-label>{{ 'HOPITAL.IDENTITES.CORRIGER_MOTIF' | translate }}</mat-label>
+          <textarea matInput rows="2" [ngModel]="corMotif()" (ngModelChange)="corMotif.set($event)"></textarea>
+          <mat-hint>{{ 'HOPITAL.IDENTITES.CORRIGER_MOTIF_AIDE' | translate:{ n: motifMin } }}</mat-hint>
+        </mat-form-field>
+
+        @if (corrections().length > 0) {
+          <section class="identites-corrections" aria-labelledby="identites-corrections-titre">
+            <h3 id="identites-corrections-titre">{{ 'HOPITAL.IDENTITES.CORRECTIONS_PASSEES' | translate }}</h3>
+            <ul>
+              @for (c of corrections(); track c.id) {
+                <li>
+                  <strong>{{ 'HOPITAL.IDENTITES.CHAMP_' + c.champ | translate }}</strong> :
+                  <span class="identites-corrections__avant">{{ c.ancienneValeur }}</span>
+                  <mat-icon fontSet="pi" fontIcon="pi-arrow-right" aria-hidden="true"></mat-icon>
+                  <span>{{ c.nouvelleValeur }}</span>
+                  <small class="identites-corrections__qui">
+                    {{ c.creeLe | date:'dd/MM/yyyy HH:mm' }} ·
+                    {{ c.auteur ?? ('HOPITAL.IDENTITES.AUTEUR_PARTI' | translate) }} · {{ c.motif }}
+                  </small>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (erreur()) {
+          <div class="identites-erreur" role="alert">
+            <mat-icon fontSet="pi" fontIcon="pi-exclamation-triangle" aria-hidden="true"></mat-icon>
+            <span>{{ erreur() }}</span>
+          </div>
+        }
+
+        <div class="identites-boite__actions">
+          <button mat-stroked-button (click)="fermerCorrection()" [disabled]="enCours()">
+            {{ 'HOPITAL.IDENTITES.CANCEL' | translate }}
+          </button>
+          <button mat-flat-button color="primary" (click)="confirmerCorrection()" [disabled]="!peutCorriger()">
+            {{ 'HOPITAL.IDENTITES.CORRIGER_CONFIRMER' | translate }}
+          </button>
+        </div>
+      </mat-card>
     </div>
   }
 

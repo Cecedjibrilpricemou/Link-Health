@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { Response, Router } from 'express';
+import { documentConsultation } from '../services/consultation-document.service';
 import {
   createConsultationController,
   getConsultationByIdController,
@@ -10,7 +11,7 @@ import {
   alertesPrescriptionController,
   createReferralController,
 } from '../controllers/consultation.controller';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/rbac.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import {
@@ -29,6 +30,14 @@ router.use(authenticate);
 router.get('/', requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'ADMIN_STRUCTURE'), getConsultationsController);
 router.post('/', requireRole('ASC', 'ASC_SUPERVISOR'), validateBody(createConsultationSchema), createConsultationController);
 router.get('/:id', requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'ADMIN_STRUCTURE'), getConsultationByIdController);
+// Compte rendu imprimable (EF-05-03) : le patient pour son dossier, les
+// soignants pour reprendre le suivi. Pas l'administration de la structure :
+// elle gere, elle ne soigne pas. Le perimetre exact (le patient ses propres
+// consultations, l'ASC les siennes...) est juge par la consultation elle-meme.
+router.get('/:id/compte-rendu', requireRole('PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN'), async (req: AuthRequest, res: Response) => {
+  const html = await documentConsultation(req.user!, req.params['id'] as string);
+  res.type('html').send(html);
+});
 // Les constantes se relevent aussi en consultation hospitaliere : le medecin
 // qui mene l'entretien prend la tension, il ne la fait pas prendre par un
 // agent communautaire absent.

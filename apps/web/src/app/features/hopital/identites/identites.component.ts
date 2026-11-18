@@ -21,8 +21,8 @@ import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type {
-  CandidatDoublonView, FusionView, IdentitePatientView, NiveauIdentite,
-  TypePieceIdentite,
+  CandidatDoublonView, CorrectionIdentiteView, CorrigerIdentiteDto, DemandeCorrectionIdentiteView, FusionView, IdentitePatientView,
+  NiveauIdentite, TypePieceIdentite,
 } from '@baobaoheath/shared-types';
 import { HopitalService } from '../../../core/services/hopital.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -46,6 +46,11 @@ const NUMERO_MIN = 3;
  */
 const MOTIF_MIN = 10;
 const LIEU_MIN = 2;
+
+/** Une date de naissance telle qu'on la lit sur une piece : AAAA-MM-JJ, sans heure. */
+function jourDe(date: string | Date): string {
+  return new Date(date).toISOString().slice(0, 10);
+}
 
 @Component({
   selector: 'app-identites',
@@ -137,6 +142,7 @@ export class IdentitesComponent implements OnInit {
 
   ngOnInit() {
     this.charger();
+    this.chargerDemandes();
   }
 
   /** Charge a la demande : dix lignes affichees ne doivent pas faire dix requetes. */
@@ -331,6 +337,82 @@ export class IdentitesComponent implements OnInit {
     this.cible.set(null);
   }
 
+  // ── La correction (R15) ────────────────────────────────────────────
+  //
+  // Une erreur de saisie a l'admission restait pour toujours : un enfant ne
+  // en 2020 enregistre en 2002 recevait des doses d'adulte. L'agent corrige
+  // ici, avec un motif ; chaque trait garde son ancienne valeur et son
+  // auteur. Corriger n'est pas verifier : le niveau d'identite ne bouge pas.
+  aCorriger = signal<IdentitePatientView | null>(null);
+  corPrenom = signal('');
+  corNom = signal('');
+  corSexe = signal('');
+  corNaissance = signal('');
+  corMotif = signal('');
+  corrections = signal<CorrectionIdentiteView[]>([]);
+  /** Une date de naissance ne peut pas etre dans le futur. */
+  readonly aujourdhui = new Date().toISOString().slice(0, 10);
+
+  /** Seuls les traits modifies partent ; sans aucun, rien a confirmer. */
+  private correctionDemandee = computed<CorrigerIdentiteDto | null>(() => {
+    const p = this.aCorriger();
+    if (!p) return null;
+    const dto: CorrigerIdentiteDto = { motif: this.corMotif().trim() };
+    const prenom = this.corPrenom().trim();
+    const nom = this.corNom().trim();
+    if (prenom && prenom !== p.prenom) dto.prenom = prenom;
+    if (nom && nom !== p.nom) dto.nom = nom;
+    if (this.corSexe() && this.corSexe() !== p.sexe) dto.sexe = this.corSexe() as 'M' | 'F';
+    if (this.corNaissance() && this.corNaissance() !== jourDe(p.dateNaissance)) {
+      dto.dateNaissance = this.corNaissance();
+    }
+    return dto.prenom || dto.nom || dto.sexe || dto.dateNaissance ? dto : null;
+  });
+
+  peutCorriger = computed(() =>
+    !!this.correctionDemandee() && this.corMotif().trim().length >= MOTIF_MIN && !this.enCours());
+
+  ouvrirCorrection(p: IdentitePatientView) {
+    this.aCorriger.set(p);
+    this.corPrenom.set(p.prenom);
+    this.corNom.set(p.nom);
+    this.corSexe.set(p.sexe);
+    this.corNaissance.set(jourDe(p.dateNaissance));
+    this.corMotif.set('');
+    this.corrections.set([]);
+    this.erreur.set('');
+    this.hopital.corrections(p.id).subscribe({
+      next: (res) => this.corrections.set(res.data ?? []),
+      error: () => this.corrections.set([]),
+    });
+  }
+
+  fermerCorrection() {
+    this.aCorriger.set(null);
+  }
+
+  confirmerCorrection() {
+    const p = this.aCorriger();
+    const dto = this.correctionDemandee();
+    if (!p || !dto || !this.peutCorriger()) return;
+
+    this.enCours.set(true);
+    this.erreur.set('');
+    this.hopital.corrigerIdentite(p.id, dto).subscribe({
+      next: (res) => {
+        this.enCours.set(false);
+        this.aCorriger.set(null);
+        this.succes.set(this.i18n.t('HOPITAL.IDENTITES.CORRIGEE_MSG', { nom: res.data?.nomComplet ?? '' }));
+        setTimeout(() => this.succes.set(''), 8000);
+        this.charger();
+      },
+      error: (err) => {
+        this.enCours.set(false);
+        this.erreur.set(this.messageDe(err, 'HOPITAL.IDENTITES.ERR_CORRECTION'));
+      },
+    });
+  }
+
   confirmer() {
     const p = this.cible();
     if (!p || !this.peutVerifier()) return;
@@ -356,6 +438,78 @@ export class IdentitesComponent implements OnInit {
       error: (err) => {
         this.enCours.set(false);
         this.erreur.set(this.messageDe(err, 'HOPITAL.IDENTITES.ERR_VERIFICATION'));
+      },
+    });
+  }
+
+  // ── Les demandes des patients (R15) ────────────────────────────────
+  //
+  // Le patient ne corrige pas lui-meme son identite : il demande, avec sa
+  // raison. L'agent accepte (la correction tracee s'applique, avec ce qu'il a
+  // verifie comme motif) ou refuse en disant au patient quoi faire.
+  demandes = signal<DemandeCorrectionIdentiteView[]>([]);
+  decision = signal<{ demande: DemandeCorrectionIdentiteView; choix: 'ACCEPTER' | 'REFUSER' } | null>(null);
+  texteDecision = signal('');
+
+  peutDecider = computed(() =>
+    !!this.decision() && this.texteDecision().trim().length >= MOTIF_MIN && !this.enCours());
+
+  chargerDemandes() {
+    this.hopital.demandesCorrection().subscribe({
+      next: (res) => this.demandes.set(res.data ?? []),
+      error: () => this.demandes.set([]),
+    });
+  }
+
+  /** Ce que le patient demande, a cote de ce que le dossier porte. */
+  traitsDemandes(d: DemandeCorrectionIdentiteView): { cle: string; avant: string; apres: string }[] {
+    const p = d.patient;
+    const traits: { cle: string; avant: string; apres: string }[] = [];
+    if (d.demande.prenom) traits.push({ cle: 'HOPITAL.IDENTITES.CORRIGER_PRENOM', avant: p?.prenom ?? '—', apres: d.demande.prenom });
+    if (d.demande.nom) traits.push({ cle: 'HOPITAL.IDENTITES.CORRIGER_NOM', avant: p?.nom ?? '—', apres: d.demande.nom });
+    if (d.demande.sexe) traits.push({ cle: 'HOPITAL.IDENTITES.CORRIGER_SEXE', avant: p?.sexe ?? '—', apres: d.demande.sexe });
+    if (d.demande.dateNaissance) {
+      traits.push({ cle: 'HOPITAL.IDENTITES.CORRIGER_NAISSANCE', avant: p?.dateNaissance ?? '—', apres: d.demande.dateNaissance });
+    }
+    return traits;
+  }
+
+  ouvrirDecision(demande: DemandeCorrectionIdentiteView, choix: 'ACCEPTER' | 'REFUSER') {
+    this.decision.set({ demande, choix });
+    this.texteDecision.set('');
+    this.erreur.set('');
+  }
+
+  fermerDecision() {
+    this.decision.set(null);
+  }
+
+  confirmerDecision() {
+    const dec = this.decision();
+    if (!dec || !this.peutDecider()) return;
+    const texte = this.texteDecision().trim();
+    const requete = dec.choix === 'ACCEPTER'
+      ? this.hopital.accepterDemandeCorrection(dec.demande.id, texte)
+      : this.hopital.refuserDemandeCorrection(dec.demande.id, texte);
+
+    this.enCours.set(true);
+    this.erreur.set('');
+    requete.subscribe({
+      next: () => {
+        this.enCours.set(false);
+        this.decision.set(null);
+        this.demandes.update((l) => l.filter((d) => d.id !== dec.demande.id));
+        this.succes.set(this.i18n.t(dec.choix === 'ACCEPTER'
+          ? 'HOPITAL.IDENTITES.DEMANDE_ACCEPTEE_MSG'
+          : 'HOPITAL.IDENTITES.DEMANDE_REFUSEE_MSG'));
+        setTimeout(() => this.succes.set(''), 8000);
+        if (dec.choix === 'ACCEPTER') this.charger();
+      },
+      error: (err) => {
+        this.enCours.set(false);
+        this.erreur.set(this.messageDe(err, 'HOPITAL.IDENTITES.ERR_DEMANDE'));
+        // Deja traitee par un collegue : la liste a change.
+        this.chargerDemandes();
       },
     });
   }

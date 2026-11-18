@@ -12,6 +12,14 @@ import type { CreerLivreurDto, LivreurAdminView } from '@baobaoheath/shared-type
 import { LivreurAdminService } from '../../../core/services/livreur-admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { GeographieService } from '../../../core/services/geographie.service';
+import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
+
+type FormulaireLivreur = Required<CreerLivreurDto>;
+
+function formulaireVide(): FormulaireLivreur {
+  return { prenom: '', nom: '', telephone: '', quartier: '', commune: '', prefecture: '' };
+}
 
 @Component({
   selector: 'app-admin-livreurs',
@@ -27,6 +35,7 @@ import { I18nService } from '../../../shared/services/i18n.service';
     MatInputModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
+    SuggestionsLieuxComponent,
   ],
   templateUrl: './livreurs.component.html',
   styleUrl: './livreurs.component.scss',
@@ -34,6 +43,8 @@ import { I18nService } from '../../../shared/services/i18n.service';
 export class LivreursComponent implements OnInit {
   private readonly service = inject(LivreurAdminService);
   private readonly i18n = inject(I18nService);
+  /** M1 : « Commune », « LGA »... selon le pays installe. */
+  readonly geo = inject(GeographieService);
 
   readonly livreurs = signal<LivreurAdminView[]>([]);
   readonly chargement = signal(true);
@@ -43,13 +54,9 @@ export class LivreursComponent implements OnInit {
   readonly succes = signal('');
   readonly creation = signal<{ livreur: LivreurAdminView; motDePasseTemporaire: string } | null>(null);
 
-  readonly formulaire = signal<CreerLivreurDto>({
-    prenom: '',
-    nom: '',
-    telephone: '',
-    quartier: '',
-    prefecture: '',
-  });
+  // Tous les champs sont exiges ici : la commune est la zone qui decide
+  // quelles courses le livreur voit et recoit.
+  readonly formulaire = signal<FormulaireLivreur>(formulaireVide());
 
   constructor(iconRegistry: MatIconRegistry) {
     iconRegistry.registerFontClassAlias('pi', 'pi');
@@ -57,6 +64,7 @@ export class LivreursComponent implements OnInit {
 
   ngOnInit(): void {
     this.charger();
+    this.geo.chargerConfiguration().subscribe();
   }
 
   charger(): void {
@@ -74,7 +82,7 @@ export class LivreursComponent implements OnInit {
     });
   }
 
-  modifier(champ: keyof CreerLivreurDto, valeur: string): void {
+  modifier(champ: keyof FormulaireLivreur, valeur: string): void {
     this.formulaire.update((form) => ({ ...form, [champ]: valeur }));
   }
 
@@ -95,6 +103,7 @@ export class LivreursComponent implements OnInit {
       nom: form.nom.trim(),
       telephone: form.telephone.trim(),
       quartier: form.quartier.trim(),
+      commune: form.commune.trim(),
       prefecture: form.prefecture.trim(),
     };
     this.service.creer(dto).subscribe({
@@ -109,7 +118,7 @@ export class LivreursComponent implements OnInit {
         this.succes.set(this.i18n.t('ADMIN.LIVREURS.SUCCES_CREATION', {
           nom: `${data.livreur.prenom} ${data.livreur.nom}`,
         }));
-        this.formulaire.set({ prenom: '', nom: '', telephone: '', quartier: '', prefecture: '' });
+        this.formulaire.set(formulaireVide());
         this.charger();
       },
       error: (error: unknown) => {

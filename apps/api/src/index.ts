@@ -38,7 +38,9 @@ import laboratoireRoutes from './routes/laboratoire.routes';
 import resultatsRoutes from './routes/resultats.routes';
 import assuranceRoutes from './routes/assurance.routes';
 import referentielRoutes from './routes/referentiel.routes';
+import geographieRoutes from './routes/geographie.routes';
 import journalRoutes from './routes/journal.routes';
+import rechercheRoutes from './routes/recherche.routes';
 import compteRoutes from './routes/compte.routes';
 import rgpdRoutes from './routes/rgpd.routes';
 import identiteRoutes from './routes/identite.routes';
@@ -52,6 +54,7 @@ import { auditRequest } from './services/audit.service';
 import { startBackgroundJobs } from './services/job.service';
 import { globalErrorHandler } from './middlewares/error.middleware';
 import { requestContextMiddleware } from './middlewares/request-context.middleware';
+import { entetesFichiersPublics, OPTIONS_FICHIERS_PUBLICS } from './middlewares/fichiers-publics.middleware';
 import { createServer } from 'http';
 import { initSocketServer } from './realtime/socket.server';
 
@@ -132,13 +135,12 @@ app.use('/api/v1/webhooks', webhookChapChapRoutes);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Fichiers uploadés (photos de profil) — servis sur une origine différente du
-// front (localhost:4200 vs localhost:3000), donc CORP explicite requis sinon
-// helmet() bloque le chargement de l'image côté navigateur.
-app.use('/uploads', (_req: Request, res: Response, next) => {
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-}, express.static(path.join(process.cwd(), 'uploads')));
+// Fichiers uploadés : en-têtes de sécurité dans middlewares/fichiers-publics.
+app.use(
+  '/uploads',
+  entetesFichiersPublics,
+  express.static(path.join(process.cwd(), 'uploads'), OPTIONS_FICHIERS_PUBLICS),
+);
 
 app.use('/api/v1', apiLimiter);
 
@@ -221,11 +223,14 @@ app.use('/api/v1/ussd', ussdRoutes);
 app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/v1/parametres', parametresRoutes);
+// A1 : sans authentification, comme /parametres/publics.
+app.use('/api/v1/recherche', rechercheRoutes);
 app.use('/api/v1/hopital', hopitalRoutes);
 app.use('/api/v1/laboratoire', laboratoireRoutes);
 app.use('/api/v1/resultats', resultatsRoutes);
 app.use('/api/v1/assurance', assuranceRoutes);
 app.use('/api/v1/referentiels', referentielRoutes);
+app.use('/api/v1/geographie', geographieRoutes);
 app.use('/api/v1/journal', journalRoutes);
 app.use('/api/v1/comptes', compteRoutes);
 app.use('/api/v1/demandes-rgpd', rgpdRoutes);

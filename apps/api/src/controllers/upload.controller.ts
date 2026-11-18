@@ -31,7 +31,8 @@ export async function uploadAvatarController(req: AuthRequest, res: Response): P
     throw new ValidationError("Image illisible ou corrompue.");
   }
 
-  const url = `${req.protocol}://${req.get('host')}${AVATARS_PUBLIC_PATH}/${filename}`;
+  // Le chemin seul, sans l'hote qui a recu le fichier : voir utils/chemin-media.
+  const url = `${AVATARS_PUBLIC_PATH}/${filename}`;
   res.status(200).json({ success: true, data: { url } });
 }
 
@@ -87,7 +88,7 @@ export async function uploadLogoController(req: AuthRequest, res: Response): Pro
     throw new ValidationError('Image illisible ou corrompue.');
   }
 
-  const logoUrl = `${req.protocol}://${req.get('host')}${LOGOS_PUBLIC_PATH}/${filename}`;
+  const logoUrl = `${LOGOS_PUBLIC_PATH}/${filename}`;
   const data: IdentitePlateformeView = await modifierLogo(req.user!.userId, logoUrl);
   res.status(200).json({ success: true, data });
 }

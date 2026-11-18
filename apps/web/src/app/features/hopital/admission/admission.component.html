@@ -167,10 +167,13 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ 'HOPITAL.ADMISSION.NEW_PREFECTURE' | translate }} <span class="bb-req" aria-hidden="true">*</span></mat-label>
+          <mat-label>{{ geo.libelle('elargissement') }} <span class="bb-req" aria-hidden="true">*</span></mat-label>
           <i matPrefix class="pi pi-map-marker" aria-hidden="true"></i>
-          <input matInput [(ngModel)]="nouveau.prefecture" name="prefecture" autocomplete="off" />
+          <!-- R9 : les zones du referentiel sont proposees ; le texte libre reste accepte. -->
+          <input matInput id="admission-prefecture" [(ngModel)]="nouveau.prefecture" name="prefecture" autocomplete="off"
+                 list="admission-liste-zones" maxlength="80" />
         </mat-form-field>
+        <app-suggestions-lieux idListe="admission-liste-zones" role="elargissement" />
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>{{ 'HOPITAL.ADMISSION.NEW_SOUS_PREFECTURE' | translate }}</mat-label>

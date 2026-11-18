@@ -1,5 +1,5 @@
 // features/patient/profil/profil.component.ts
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -14,6 +14,8 @@ import { I18nService } from '../../../shared/services/i18n.service';
 import { Patient } from '../../../core/models/patient.model';
 import type { StructureView } from '@baobaoheath/shared-types';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import { AdressePatientComponent } from './adresse/adresse.component';
+import { DemandeCorrectionComponent, IdentiteActuelle } from './demande-correction/demande-correction.component';
 import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 
 const TAILLE_MAX_PHOTO = 3 * 1024 * 1024;
@@ -25,7 +27,7 @@ const TYPES_PHOTO_ACCEPTES = ['image/jpeg', 'image/png', 'image/webp'];
   imports: [ListeRechercheComponent, OptionsDePipe, 
     MatFormFieldModule, MatInputModule, MatSelectModule,
     CommonModule, FormsModule, RouterLink,
-    TranslatePipe, AvatarComponent
+    TranslatePipe, AvatarComponent, AdressePatientComponent, DemandeCorrectionComponent
   ],
   templateUrl: './profil.component.html',
   styleUrl: './profil.component.scss'
@@ -71,7 +73,7 @@ export class ProfilComponent implements OnInit {
         if (response.success && response.data) {
           const data = response.data;
           this.profil.set(data);
-          this.formData = { ...data };
+          this.formData = this.formulaireDe(data);
           this.idStructureSelectionnee = data.idStructurePreferee ?? '';
         }
         this.isLoading.set(false);
@@ -94,7 +96,31 @@ export class ProfilComponent implements OnInit {
     });
   }
 
-  enableEdit() { this.formData = { ...this.profil() }; this.editMode.set(true); }
+  enableEdit() { this.formData = this.formulaireDe(this.profil()); this.editMode.set(true); }
+
+  /**
+   * R15 : une fois l'identite verifiee sur piece, le nom est celui que
+   * l'agent a lu. Le patient le voit, mais la correction passe par l'accueil.
+   */
+  nomVerrouille = computed(() => this.profil()?.niveauIdentite === 'VERIFIEE');
+
+  /** R15 : l'identite actuelle, point de depart d'une demande de correction. */
+  identiteActuelle = computed<IdentiteActuelle | null>(() => {
+    const p = this.profil();
+    if (!p) return null;
+    return {
+      prenom: p.utilisateur?.prenom ?? p.prenom ?? '',
+      nom: p.utilisateur?.nom ?? p.nom ?? '',
+      sexe: p.sexe ?? '',
+      dateNaissance: p.dateNaissance ? String(p.dateNaissance).slice(0, 10) : '',
+    };
+  });
+
+  /** /patients/me imbrique le nom sous `utilisateur` : le formulaire le veut a plat. */
+  private formulaireDe(p: Patient | null): Partial<Patient> {
+    if (!p) return {};
+    return { ...p, prenom: p.utilisateur?.prenom ?? p.prenom, nom: p.utilisateur?.nom ?? p.nom };
+  }
   cancelEdit() { this.editMode.set(false); this.errorMessage.set(''); }
 
   private toArray(value: unknown): string[] | undefined {
@@ -109,12 +135,16 @@ export class ProfilComponent implements OnInit {
     // updatePatientSchema — telephone/dateNaissance/sexe are read-only here).
     // Sending the raw fetched object back (including nulls and unknown keys)
     // makes the strict Zod schema reject the whole request.
+    //
+    // Le groupe sanguin et les listes partent toujours, meme vides : vider un
+    // champ est une reponse (« aucune allergie connue »), pas un oubli. Le
+    // nom ne part pas quand il est verrouille (R15).
     return {
-      ...(f.prenom && { prenom: f.prenom }),
-      ...(f.nom && { nom: f.nom }),
-      ...(f.groupeSanguin && { groupeSanguin: f.groupeSanguin }),
-      ...(this.toArray(f.allergies)?.length && { allergies: this.toArray(f.allergies) }),
-      ...(this.toArray(f.maladiesChroniques)?.length && { maladiesChroniques: this.toArray(f.maladiesChroniques) }),
+      ...(!this.nomVerrouille() && f.prenom && { prenom: f.prenom }),
+      ...(!this.nomVerrouille() && f.nom && { nom: f.nom }),
+      groupeSanguin: f.groupeSanguin ?? '',
+      allergies: this.toArray(f.allergies) ?? [],
+      maladiesChroniques: this.toArray(f.maladiesChroniques) ?? [],
     };
   }
 

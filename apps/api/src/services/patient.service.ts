@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { Role, SyncOperation } from '../config/generated/client/client';
+import { NiveauIdentite, Role, SyncOperation } from '../config/generated/client/client';
 import { prisma } from '../config/prisma';
 import { JwtPayload } from '../types/auth.types';
 import { CreatePatientDto, PatientFilters, UpdatePatientDto } from '../types/patient.types';
@@ -8,7 +8,7 @@ import { hashPassword } from '../utils/password.utils';
 import { assertCanAccessPatient, buildPatientWhereForUser } from './access-control.service';
 import { recordSyncEvent } from './sync.service';
 import { initialiserConsentementsParDefaut } from './privacy.service';
-import { ConflictError, NotFoundError, ValidationError } from '../utils/app-error';
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 
 export async function createPatient(dto: CreatePatientDto) {
   const existing = await prisma.utilisateur.findUnique({ where: { telephone: dto.telephone } });
@@ -210,11 +210,57 @@ export async function getMyProfile(userId: string) {
   return patient;
 }
 
-// ── AMÉLIORATION : $transaction pour garantir la cohérence ──
-export async function updateMyProfile(userId: string, dto: UpdatePatientDto) {
-  const patient = await prisma.patientProfile.findUnique({ where: { idUtilisateur: userId } });
-  if (!patient) throw new NotFoundError('Profil patient non trouve');
+/**
+ * Le patient peut-il changer lui-meme son prenom ou son nom ?
+ *
+ * Tant que son identite est provisoire, oui : c'est lui qui la declare. Une
+ * fois verifiee sur piece, non : le nom est celui que l'agent a lu, et le
+ * changer sans trace annulerait la verification. Il passe alors par
+ * l'accueil, qui corrige avec un motif (R15). Un dossier absorbe par une
+ * fusion n'est plus le sien : la meme porte.
+ *
+ * Exportee : `PUT /auth/profile` change aussi le nom, et doit tenir la meme regle.
+ */
+export async function assertNomModifiableParLePatient(
+  userId: string,
+  souhait: { prenom?: string; nom?: string },
+): Promise<void> {
+  if (!souhait.prenom && !souhait.nom) return;
+  const actuel = await prisma.utilisateur.findUnique({
+    where: { id: userId },
+    select: { prenom: true, nom: true, patientProfile: { select: { idFusionneDans: true, niveauIdentite: true } } },
+  });
+  if (!actuel?.patientProfile) return;
+  const change = (souhait.prenom && souhait.prenom.trim() !== actuel.prenom)
+    || (souhait.nom && souhait.nom.trim() !== actuel.nom);
+  if (!change) return;
 
+  if (actuel.patientProfile.idFusionneDans || actuel.patientProfile.niveauIdentite === NiveauIdentite.VERIFIEE) {
+    throw new ForbiddenError(
+      "Votre identite a ete verifiee sur piece : pour corriger votre nom, adressez-vous a l'accueil de votre structure"
+    );
+  }
+}
+
+/** Une chaine videe efface le champ : `''` devient `null`. */
+function vidable(valeur: string | undefined): string | null | undefined {
+  if (valeur === undefined) return undefined;
+  return valeur.trim() === '' ? null : valeur.trim();
+}
+
+export async function updateMyProfile(userId: string, dto: UpdatePatientDto) {
+  const sien = await prisma.patientProfile.findUnique({
+    where: { idUtilisateur: userId },
+    select: { id: true, idFusionneDans: true },
+  });
+  if (!sien) throw new NotFoundError('Profil patient non trouve');
+  await assertNomModifiableParLePatient(userId, { prenom: dto.prenom, nom: dto.nom });
+  // Apres une fusion, le patient lit le dossier principal (getMyProfile) :
+  // c'est la qu'il doit aussi ecrire, sinon ses changements partent dans un
+  // dossier que plus personne ne lit.
+  const idDossier = sien.idFusionneDans ?? sien.id;
+
+  const champsVidables = ['groupeSanguin', 'sousPrefecture', 'village', 'urgenceNom', 'urgenceTelephone'] as const;
   const updated = await prisma.$transaction(async (tx) => {
     if (dto.prenom || dto.nom || dto.email || dto.langue || dto.photoUrl) {
       await tx.utilisateur.update({
@@ -229,17 +275,18 @@ export async function updateMyProfile(userId: string, dto: UpdatePatientDto) {
       });
     }
 
+    const data: Record<string, unknown> = {};
+    for (const champ of champsVidables) {
+      const valeur = vidable(dto[champ]);
+      if (valeur !== undefined) data[champ] = valeur;
+    }
+    // Une liste vide est une reponse : « aucune allergie connue ».
+    if (dto.allergies !== undefined) data['allergies'] = dto.allergies;
+    if (dto.maladiesChroniques !== undefined) data['maladiesChroniques'] = dto.maladiesChroniques;
+
     return tx.patientProfile.update({
-      where: { idUtilisateur: userId },
-      data: {
-        ...(dto.groupeSanguin && { groupeSanguin: dto.groupeSanguin }),
-        ...(dto.allergies && { allergies: dto.allergies }),
-        ...(dto.maladiesChroniques && { maladiesChroniques: dto.maladiesChroniques }),
-        ...(dto.sousPrefecture && { sousPrefecture: dto.sousPrefecture }),
-        ...(dto.village && { village: dto.village }),
-        ...(dto.urgenceNom && { urgenceNom: dto.urgenceNom }),
-        ...(dto.urgenceTelephone && { urgenceTelephone: dto.urgenceTelephone }),
-      },
+      where: { id: idDossier },
+      data,
       include: {
         utilisateur: {
           select: { id: true, telephone: true, email: true, prenom: true, nom: true, photoUrl: true, langue: true },

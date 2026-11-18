@@ -18,6 +18,7 @@ import { randomBytes } from 'node:crypto';
 import { prisma } from '../config/prisma';
 import { filtreRecherchePatient } from './hopital.service';
 import { normaliserTelephone } from './doublon.service';
+import { getValeursParametres } from './parametres.service';
 import { genererMotDePasseTemp } from './admin-structure.service';
 import { hashPassword } from '../utils/password.utils';
 import { JwtPayload } from '../types/auth.types';
@@ -1829,9 +1830,14 @@ export async function rechercherPatientParTelephone(
   telephone: string
 ): Promise<PatientAssureurRechercheView[]> {
   await assureurDe(user);
-  const chiffres = normaliserTelephone(telephone);
-  if (chiffres.length !== 9) {
-    throw new ValidationError('Saisissez le numero de telephone complet du beneficiaire (9 chiffres)');
+  // R14 : le numero complet, a la longueur du pays installe. Un numero partiel
+  // retrouverait par sa fin des patients que la compagnie n'assure pas.
+  const { pays: numerotation } = await getValeursParametres();
+  const chiffres = normaliserTelephone(telephone, numerotation);
+  if (chiffres.length !== numerotation.longueurNumero) {
+    throw new ValidationError(
+      `Saisissez le numero de telephone complet du beneficiaire (${numerotation.longueurNumero} chiffres)`,
+    );
   }
 
   const patients = await prisma.patientProfile.findMany({

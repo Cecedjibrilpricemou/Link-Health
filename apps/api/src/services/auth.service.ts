@@ -9,6 +9,8 @@ import { peutRenvoyerOtpEnClair } from '../utils/otp-developpement';
 import { assertMotDePasseConforme } from '../utils/politique-mot-de-passe';
 import { envoyerEmailResetMotDePasse, envoyerOtpConnexion } from './email.service';
 import { initialiserConsentementsParDefaut } from './privacy.service';
+import { assertNomModifiableParLePatient } from './patient.service';
+import { assertNomModifiableParLeProfessionnel } from './compte.service';
 import {
   AppError,
   ConflictError,
@@ -407,6 +409,8 @@ export async function getMe(userId: string) {
       photoUrl: true,
       estActif: true,
       doitChangerMotDePasse: true,
+      // L'ecran verrouille le nom d'un professionnel dont l'ordre est verifie.
+      ordreVerifieLe: true,
       creeLe: true,
       modifieLe: true,
     },
@@ -530,18 +534,28 @@ export async function updateProfil(userId: string, dto: {
   telephone?: string;
   photoUrl?: string;
 }): Promise<void> {
+  // La fenetre « Mon profil » est commune a tous les roles : pour un patient,
+  // elle tient la meme regle que son espace (nom fige une fois verifie, R15).
+  await assertNomModifiableParLePatient(userId, { prenom: dto.prenom, nom: dto.nom });
+  // Et pour un professionnel : nom fige une fois son ordre verifie.
+  await assertNomModifiableParLeProfessionnel(userId, { prenom: dto.prenom, nom: dto.nom });
   if (dto.email) {
     const existing = await prisma.utilisateur.findFirst({
       where: { email: dto.email, NOT: { id: userId } },
     });
     if (existing) throw new ConflictError('Cette adresse email est deja utilisee');
   }
-  if (dto.telephone) {
-    const existing = await prisma.utilisateur.findFirst({
-      where: { telephone: dto.telephone, NOT: { id: userId } },
-    });
-    if (existing) throw new ConflictError('Ce numero de telephone est deja utilise');
+  // Le numero est la cle du compte : il ne change plus ici, sans preuve, mais
+  // par le parcours dedie (mot de passe, puis code au nouveau numero - voir
+  // telephone.service.ts). Renvoyer le meme numero avec le reste du
+  // formulaire reste sans effet.
+  const { telephone, ...reste } = dto;
+  if (telephone !== undefined) {
+    const actuel = await prisma.utilisateur.findUnique({ where: { id: userId }, select: { telephone: true } });
+    if (telephone.trim() !== actuel?.telephone) {
+      throw new ValidationError('Le numero de telephone se change avec votre mot de passe et un code envoye au nouveau numero');
+    }
   }
 
-  await prisma.utilisateur.update({ where: { id: userId }, data: dto });
+  await prisma.utilisateur.update({ where: { id: userId }, data: reste });
 }

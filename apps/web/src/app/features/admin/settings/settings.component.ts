@@ -21,6 +21,8 @@ import type {
   ParametresSyncView,
   ParametresSystemeValeurs,
   ParametresSystemeView,
+  ParametresPaysView,
+  ParametresZonesView,
   UpdateParametresSystemeDto,
 } from '@baobaoheath/shared-types';
 import { CategorieProduitPipe } from '../../../shared/pipes/categorie-produit.pipe';
@@ -28,8 +30,12 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { AdminService } from '../../../core/services/admin.service';
 import { PlateformeService } from '../../../shared/services/plateforme.service';
+import { urlMedia } from '../../../shared/utils/url-media';
 
 type Onglet = keyof ParametresSystemeValeurs;
+
+/** R11 : les trois moyens de paiement, tels que la section Facturation les porte. */
+type MoyenPaiement = 'paiementEspeces' | 'paiementOrangeMoney' | 'paiementMomo';
 
 @Component({
   selector: 'app-settings',
@@ -47,6 +53,8 @@ export class SettingsComponent implements OnInit {
   private adminService = inject(AdminService);
   private toastr = inject(ToastrService);
   private plateforme = inject(PlateformeService);
+  /** L'apercu du logo : son chemin (/uploads/logos/...) resolu chez l'API. */
+  readonly urlMedia = urlMedia;
 
   // Navigation
   activeTab = signal<Onglet>('identite');
@@ -64,7 +72,9 @@ export class SettingsComponent implements OnInit {
       { id: 'alertes',     label: this.i18n.t('ADMIN.SETTINGS.TAB_ALERTS'),   icon: 'pi pi-bolt' },
       { id: 'sync',        label: this.i18n.t('ADMIN.SETTINGS.TAB_SYNC'),     icon: 'pi pi-sync' },
       { id: 'prescription', label: this.i18n.t('ADMIN.SETTINGS.TAB_PRESCRIPTION'), icon: 'pi pi-file-edit' },
-      { id: 'pharmacie',   label: this.i18n.t('ADMIN.SETTINGS.TAB_PHARMACIE'),    icon: 'pi pi-shopping-cart' }
+      { id: 'pharmacie',   label: this.i18n.t('ADMIN.SETTINGS.TAB_PHARMACIE'),    icon: 'pi pi-shopping-cart' },
+      { id: 'zones',       label: this.i18n.t('ADMIN.SETTINGS.TAB_ZONES'),        icon: 'pi pi-map-marker' },
+      { id: 'pays',        label: this.i18n.t('ADMIN.SETTINGS.TAB_PAYS'),         icon: 'pi pi-globe' }
     ];
   }
 
@@ -116,6 +126,111 @@ export class SettingsComponent implements OnInit {
     categoriesExigeantOrdonnance: []
   };
 
+  // M5 : delai avant qu'un appel sans preneur dans sa commune s'ouvre a
+  // toute la prefecture (ordonnances pour les pharmacies, courses pour les motards).
+  zones: ParametresZonesView = {
+    delaiElargissementCommandeMinutes: 10,
+    delaiElargissementCourseMinutes: 10,
+    // R1 : au-dela, l'appel s'arrete (sans pharmacie, sans motard).
+    delaiFinalCommandeMinutes: 60,
+    delaiFinalCourseMinutes: 60
+  };
+
+  // M1 : le pays de l'installation et son decoupage administratif. Une
+  // installation sert un pays ; ses niveaux (Prefecture, LGA, Distrito...)
+  // et leurs noms se declarent ici, pas dans le code.
+  pays: ParametresPaysView = {
+    code: '', nom: '', indicatifTelephone: '', longueurNumero: 9, niveaux: [], niveauBase: '', niveauElargissement: ''
+  };
+
+  readonly maxNiveaux = 6;
+
+  /**
+   * R6 : des adresses sont enregistrees selon ce decoupage. Codes, ordre,
+   * niveau de base et d'elargissement ne bougent plus (l'API le refuserait) ;
+   * le nom, l'indicatif et les libelles restent modifiables.
+   */
+  decoupageFige = signal(false);
+
+  /**
+   * R12 : des prix et des montants sont enregistres. Ils n'ont pas de devise
+   * propre : la changer les reetiquetterait sans les convertir.
+   */
+  deviseFigee = signal(false);
+
+  /**
+   * R11 : le dernier moyen de paiement actif ne se coupe pas - plus rien ne
+   * pourrait etre paye. L'ecran verrouille ce dernier interrupteur plutot que
+   * de laisser l'API refuser l'enregistrement.
+   */
+  dernierMoyenPaiement(moyen: MoyenPaiement): boolean {
+    const f = this.facturation;
+    const actifs = [f.paiementEspeces, f.paiementOrangeMoney, f.paiementMomo].filter(Boolean).length;
+    return actifs === 1 && !!f[moyen];
+  }
+
+  /**
+   * Couper le dernier moyen actif est refuse ici, pas seulement grise : un
+   * interrupteur desactive se laisse encore basculer au clavier selon les
+   * versions, et l'API refuserait l'enregistrement apres coup.
+   */
+  basculerPaiement(moyen: MoyenPaiement, actif: boolean) {
+    if (!actif && this.dernierMoyenPaiement(moyen)) {
+      this.toastr.error(this.i18n.t('ADMIN.SETTINGS.PAY_DERNIER'), this.i18n.t('COMMON.ERROR_TITLE'));
+      return;
+    }
+    this.facturation[moyen] = actif;
+  }
+
+  /**
+   * R10 : un produit reglemente raccourcit la validite d'une ordonnance.
+   * Reglee plus longue que la validite ordinaire, elle ferait l'inverse.
+   */
+  validiteIncoherente(): boolean {
+    return this.prescription.dureeValiditeReglementeJours > this.prescription.dureeValiditeJours;
+  }
+
+  ajouterNiveau() {
+    if (this.decoupageFige() || this.pays.niveaux.length >= this.maxNiveaux) return;
+    this.pays.niveaux = [...this.pays.niveaux, { code: '', libelles: { fr: '', en: '', pt: '' } }];
+  }
+
+  retirerNiveau(index: number) {
+    if (this.decoupageFige()) return;
+    this.pays.niveaux = this.pays.niveaux.filter((_, i) => i !== index);
+  }
+
+  /** Les niveaux vont du plus large au plus fin : l'ordre a un sens. */
+  deplacerNiveau(index: number, sens: -1 | 1) {
+    if (this.decoupageFige()) return;
+    const cible = index + sens;
+    if (cible < 0 || cible >= this.pays.niveaux.length) return;
+    const niveaux = [...this.pays.niveaux];
+    [niveaux[index], niveaux[cible]] = [niveaux[cible]!, niveaux[index]!];
+    this.pays.niveaux = niveaux;
+  }
+
+  /** Ce qui part a l'API : libelles vides retires, codes et textes nettoyes. */
+  private paysPourEnvoi(): ParametresPaysView {
+    const p = this.pays;
+    return {
+      code: p.code.trim().toUpperCase(),
+      nom: p.nom.trim(),
+      indicatifTelephone: p.indicatifTelephone.trim(),
+      longueurNumero: Number(p.longueurNumero),
+      niveaux: p.niveaux.map((n) => ({
+        code: n.code.trim().toLowerCase(),
+        libelles: {
+          fr: n.libelles.fr.trim(),
+          ...(n.libelles.en?.trim() ? { en: n.libelles.en.trim() } : {}),
+          ...(n.libelles.pt?.trim() ? { pt: n.libelles.pt.trim() } : {}),
+        },
+      })),
+      niveauBase: p.niveauBase,
+      niveauElargissement: p.niveauElargissement,
+    };
+  }
+
   /**
    * Les categories que l'on peut soumettre a ordonnance. `MEDICAMENT` n'y
    * figure pas : un medicament reglemente l'est deja de droit (EF-05-12), et
@@ -160,7 +275,14 @@ export class SettingsComponent implements OnInit {
   /** Enregistre uniquement la section de l'onglet actif. */
   enregistrer(section: Onglet) {
     if (this.isSaving()) return;
-    const payload: UpdateParametresSystemeDto = { [section]: { ...this[section] } };
+    // R10 : l'ecran le dit avant d'envoyer, plutot que de laisser l'API refuser.
+    if (section === 'prescription' && this.validiteIncoherente()) {
+      this.toastr.error(this.i18n.t('ADMIN.SETTINGS.PRESCRIPTION_REG_INCOHERENT'), this.i18n.t('COMMON.ERROR_TITLE'));
+      return;
+    }
+    const payload: UpdateParametresSystemeDto = section === 'pays'
+      ? { pays: this.paysPourEnvoi() }
+      : { [section]: { ...this[section] } };
 
     this.isSaving.set(true);
     this.adminService.updateParametres(payload).subscribe({
@@ -223,6 +345,10 @@ export class SettingsComponent implements OnInit {
     this.prescription = { ...vue.prescription };
     // La liste est copiee, pas partagee : ngModel mute les tableaux.
     this.pharmacie = { ...vue.pharmacie, categoriesExigeantOrdonnance: [...vue.pharmacie.categoriesExigeantOrdonnance] };
+    this.zones = { ...vue.zones };
+    this.pays = { ...vue.pays, niveaux: vue.pays.niveaux.map((n) => ({ ...n, libelles: { ...n.libelles } })) };
     this.modifieLe.set(vue.modifieLe);
+    this.decoupageFige.set(vue.decoupageFige === true);
+    this.deviseFigee.set(vue.deviseFigee === true);
   }
 }

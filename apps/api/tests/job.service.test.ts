@@ -10,15 +10,33 @@ jest.mock('../src/services/ussd.service', () => ({
 jest.mock('../src/services/laboratoire.service', () => ({
   traiterAlertesCritiques: jest.fn().mockResolvedValue({ escaladees: 0, relancees: 0, escaladesLiberation: 0 }),
 }));
+jest.mock('../src/services/commande.service', () => ({
+  elargirCommandesEnAttente: jest.fn().mockResolvedValue({ elargies: 0 }),
+  conclureCommandesExpirees: jest.fn().mockResolvedValue({ conclues: 0 }),
+}));
+jest.mock('../src/services/course.service', () => ({
+  elargirCoursesEnAttente: jest.fn().mockResolvedValue({ elargies: 0 }),
+  conclureCoursesExpirees: jest.fn().mockResolvedValue({ conclues: 0 }),
+}));
+jest.mock('../src/services/parametres.service', () => ({
+  getValeursParametres: jest.fn().mockResolvedValue({
+    zones: {
+      delaiElargissementCommandeMinutes: 7, delaiElargissementCourseMinutes: 13,
+      delaiFinalCommandeMinutes: 45, delaiFinalCourseMinutes: 90,
+    },
+  }),
+}));
 jest.mock('../src/config/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
 import { startBackgroundJobs } from '../src/services/job.service';
+import { conclureCommandesExpirees, elargirCommandesEnAttente } from '../src/services/commande.service';
+import { conclureCoursesExpirees, elargirCoursesEnAttente } from '../src/services/course.service';
 
 describe('startBackgroundJobs', () => {
-  it('unrefs all recurring timers so they do not keep Jest alive', () => {
-    const timers = Array.from({ length: 4 }, () => ({
+  it('unrefs all recurring timers so they do not keep Jest alive', async () => {
+    const timers = Array.from({ length: 5 }, () => ({
       unref: jest.fn(),
     } as unknown as NodeJS.Timeout));
     let nextTimer = 0;
@@ -33,8 +51,17 @@ describe('startBackgroundJobs', () => {
     try {
       startBackgroundJobs();
 
-      expect(setIntervalSpy).toHaveBeenCalledTimes(4);
+      expect(setIntervalSpy).toHaveBeenCalledTimes(5);
       for (const timer of timers) expect(timer.unref).toHaveBeenCalledTimes(1);
+
+      // M5 : l'elargissement tourne des le demarrage, avec les delais
+      // administres - pas une constante du code.
+      await new Promise((r) => setImmediate(r));
+      expect(elargirCommandesEnAttente).toHaveBeenCalledWith(7);
+      expect(elargirCoursesEnAttente).toHaveBeenCalledWith(13);
+      // R1 : le delai final, administre lui aussi.
+      expect(conclureCommandesExpirees).toHaveBeenCalledWith(45);
+      expect(conclureCoursesExpirees).toHaveBeenCalledWith(90);
     } finally {
       if (previousEnableJobs === undefined) delete process.env.ENABLE_JOBS;
       else process.env.ENABLE_JOBS = previousEnableJobs;

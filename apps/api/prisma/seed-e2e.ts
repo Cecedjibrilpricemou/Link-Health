@@ -7,6 +7,7 @@ import { PrismaClient, Role, TypeStructure } from '../src/config/generated/clien
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { hashPassword } from '../src/utils/password.utils.js';
+import { empreinteCatalogue } from '../src/utils/catalogue.js';
 import { seedExamens } from './seed-examens.js';
 
 export const E2E = {
@@ -170,17 +171,23 @@ async function main() {
 
   let medicament = await prisma.medicament.findFirst({ where: { nomCommercial: E2E.medicament.nomCommercial } });
   if (!medicament) {
-    medicament = await prisma.medicament.create({ data: { ...E2E.medicament, listeEssentielle: true } });
+    medicament = await prisma.medicament.create({
+      data: { ...E2E.medicament, listeEssentielle: true, rechercheTexte: empreinteCatalogue(E2E.medicament) },
+    });
   }
 
   const allergene = await prisma.medicament.findFirst({ where: { nomCommercial: E2E.allergene.nomCommercial } });
   if (!allergene) {
-    await prisma.medicament.create({ data: { ...E2E.allergene, listeEssentielle: false } });
+    await prisma.medicament.create({
+      data: { ...E2E.allergene, listeEssentielle: false, rechercheTexte: empreinteCatalogue(E2E.allergene) },
+    });
   }
 
   const reglemente = await prisma.medicament.findFirst({ where: { nomCommercial: E2E.reglemente.nomCommercial } });
   if (!reglemente) {
-    await prisma.medicament.create({ data: { ...E2E.reglemente, listeEssentielle: false } });
+    await prisma.medicament.create({
+      data: { ...E2E.reglemente, listeEssentielle: false, rechercheTexte: empreinteCatalogue(E2E.reglemente) },
+    });
   }
 
   // La pharmacie doit avoir du stock pour delivrer ; l'ASC n'en a pas encore

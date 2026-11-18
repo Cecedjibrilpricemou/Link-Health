@@ -15,11 +15,13 @@ import { HopitalService, MedecinRefView } from '../../../core/services/hopital.s
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
+import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
+import { GeographieService } from '../../../core/services/geographie.service';
 
 @Component({
   selector: 'app-hopital-admission',
   standalone: true,
-  imports: [ListeRechercheComponent, RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslatePipe],
+  imports: [ListeRechercheComponent, RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TranslatePipe, SuggestionsLieuxComponent],
   templateUrl: './admission.component.html',
 })
 export class AdmissionComponent implements OnInit {
@@ -28,6 +30,8 @@ export class AdmissionComponent implements OnInit {
     this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: m.specialite ?? undefined })));
 
   private hopital = inject(HopitalService);
+  /** R9 : le nom du niveau (« Prefecture », « LGA »...) et ses lieux viennent du pays installe. */
+  readonly geo = inject(GeographieService);
   private router  = inject(Router);
   private toastr  = inject(ToastrService);
   private i18n    = inject(I18nService);

@@ -8,6 +8,10 @@
 // Fusionner deux personnes distinctes mélange leurs dossiers médicaux, ce qui
 // est bien plus dangereux que de laisser un doublon.
 
+// R4 : le nom de la mere se cherche par empreinte, calculee sous une cle
+// derivee de DB_ENCRYPTION_KEY. Une cle de test, jamais celle d'une base.
+process.env.DB_ENCRYPTION_KEY = 'ab'.repeat(32);
+
 jest.mock('../src/config/prisma', () => ({
   prisma: {
     patientProfile: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
@@ -15,6 +19,14 @@ jest.mock('../src/config/prisma', () => ({
   },
 }));
 jest.mock('../src/config/redis', () => ({ getRedis: () => null }));
+// R14 : la numerotation vient des parametres du pays installe. `paysInstalle`
+// laisse un test changer de pays ; une fonction simple, pas un jest.fn, pour
+// que `resetAllMocks` ne l'efface pas.
+const paysInstalle: { valeur?: unknown } = {};
+jest.mock('../src/services/parametres.service', () => {
+  const vrai = jest.requireActual('../src/services/parametres.service');
+  return { ...vrai, getValeursParametres: async () => ({ pays: paysInstalle.valeur ?? vrai.PARAMETRES_PAR_DEFAUT.pays }) };
+});
 
 type M = jest.Mock;
 const { prisma } = jest.requireMock('../src/config/prisma') as {
@@ -28,6 +40,7 @@ import {
   chercher, comparer, distance, estDateParDefaut, memeMotEcritAutrement,
   normaliser, normaliserTelephone, pourPatient, SEUIL_A_VERIFIER, SEUIL_PROBABLE,
 } from '../src/services/doublon.service';
+import { empreinteRecherche } from '../src/utils/encryption.utils';
 
 // L'appelant autorise : depuis le 2026-10-24, ces lectures passent par
 // `assertCanAccessPatient`. Le refus hors perimetre est couvert par
@@ -54,6 +67,9 @@ const BASE = {
 beforeEach(() => {
   jest.resetAllMocks();
   prisma.patientProfile.findMany.mockResolvedValue([]);
+  // Le pays installe revient a la Guinee : un test qui en change ne doit pas
+  // le laisser aux suivants.
+  delete paysInstalle.valeur;
 });
 
 // ── Ce que les données réelles ont imposé ────────────────────────────
@@ -90,8 +106,93 @@ describe('normaliserTelephone', () => {
     ['627082602', '627082602'],
     ['620 100 010', '620100010'],
     ['00224620100010', '620100010'],
+    ['+224 627-08-26-02', '627082602'],
   ])('%s -> %s', (entree, attendu) => {
     expect(normaliserTelephone(entree)).toBe(attendu);
+  });
+
+  // R14 : la numerotation vient du pays installe. Garder les 9 derniers
+  // chiffres etait une regle guineenne : au Nigeria (10 chiffres), elle
+  // tronquait le numero et confondait deux numeros differents.
+  describe('un pays a numeros de 10 chiffres (Nigeria)', () => {
+    const NIGERIA = { indicatifTelephone: '+234', longueurNumero: 10 };
+
+    it.each([
+      ['+2348031234567', '8031234567'],
+      ['8031234567', '8031234567'],
+      ['08031234567', '8031234567'],
+      ['002348031234567', '8031234567'],
+      ['+234 803 123 4567', '8031234567'],
+    ])('%s -> %s', (entree, attendu) => {
+      expect(normaliserTelephone(entree, NIGERIA)).toBe(attendu);
+    });
+
+    it('garde les dix chiffres au lieu de couper aux neuf derniers', () => {
+      expect(normaliserTelephone('+2348031234567', NIGERIA)).toHaveLength(10);
+    });
+
+    it('deux numeros qui ne different que par leur premier chiffre restent distincts', () => {
+      const a = normaliserTelephone('+2348031234567', NIGERIA);
+      const b = normaliserTelephone('+2349031234567', NIGERIA);
+      expect(a).not.toBe(b);
+    });
+  });
+
+  // Un numero national qui commence par les chiffres de l'indicatif n'est pas
+  // ampute : l'indicatif ne tombe qu'en ecriture internationale, ou quand la
+  // longueur totale ne laisse pas de doute.
+  it('ne retire pas l indicatif d un numero national qui commence pareil', () => {
+    const SENEGAL = { indicatifTelephone: '+221', longueurNumero: 9 };
+    expect(normaliserTelephone('221456789', SENEGAL)).toBe('221456789');
+    expect(normaliserTelephone('+221221456789', SENEGAL)).toBe('221456789');
+  });
+
+  it('un numero vide ou sans chiffre ne rend rien', () => {
+    expect(normaliserTelephone('')).toBe('');
+    expect(normaliserTelephone('  --  ')).toBe('');
+  });
+});
+
+// R14 : la numerotation traverse les deux fonctions qui s'en servent. Sans
+// cela, un pays a dix chiffres verrait deux numeros differents comme un seul.
+describe('la numerotation du pays suit jusqu au bout', () => {
+  const NIGERIA = { indicatifTelephone: '+234', longueurNumero: 10 };
+  // Memes neuf derniers chiffres, premier chiffre different.
+  const A = { ...BASE, telephone: '8031234567' };
+  const B = { ...BASE, telephone: '9031234567' };
+
+  it('comparer : deux numeros nigerians distincts ne concordent pas', () => {
+    // Avec l'ancienne regle (neuf derniers chiffres), « 031234567 » les
+    // confondait : ils ne different que par leur premier chiffre.
+    expect(A.telephone.slice(-9)).toBe(B.telephone.slice(-9));
+    expect(comparer(A, B, NIGERIA).traits).not.toContain('TELEPHONE_IDENTIQUE');
+  });
+
+  it('comparer : le numero international et le national sont le meme', () => {
+    const international = { ...BASE, telephone: '+2348031234567' };
+    expect(comparer(A, international, NIGERIA).traits).toContain('TELEPHONE_IDENTIQUE');
+    // Et avec le zero national, comme on l'ecrit sur place.
+    expect(comparer(A, { ...BASE, telephone: '08031234567' }, NIGERIA).traits).toContain('TELEPHONE_IDENTIQUE');
+  });
+
+  it('comparer : le meme numero nigerian, ecrit autrement, concorde', () => {
+    expect(comparer(A, { ...BASE, telephone: '+234 803 123 4567' }, NIGERIA).traits)
+      .toContain('TELEPHONE_IDENTIQUE');
+  });
+
+  it('chercher : le pre-filtre cherche le numero a la longueur du pays installe', async () => {
+    paysInstalle.valeur = { ...NIGERIA, niveauBase: 'ward', niveauElargissement: 'lga', niveaux: [] };
+    dansSonPerimetre();
+    prisma.patientProfile.findMany.mockResolvedValue([]);
+
+    // Ecrit en international : c'est la que les deux numerotations divergent.
+    // Avec l'indicatif guineen, « +234 » resterait collee devant le numero et
+    // le pre-filtre ne ramenerait plus personne.
+    await chercher({ ...A, telephone: '+2348031234567' });
+
+    const ou = prisma.patientProfile.findMany.mock.calls[0][0].where.OR;
+    const parTel = ou.find((c: { utilisateur?: { telephone?: unknown } }) => c.utilisateur?.telephone);
+    expect(parTel).toEqual({ utilisateur: { telephone: { contains: '8031234567' } } });
   });
 });
 
@@ -313,10 +414,13 @@ describe('chercher', () => {
   // plus discriminant.
   it('ramène aussi par le nom de la mère', async () => {
     await chercher({ ...BASE, nomMere: 'Fatoumata Condé' });
-    const [args] = prisma.patientProfile.findMany.mock.calls[0] as [{ where: { OR: { nomMere?: unknown }[] } }];
-    const parLaMere = args.where.OR.filter((c) => c.nomMere);
+    const [args] = prisma.patientProfile.findMany.mock.calls[0] as [{ where: { OR: { nomMereEmpreinte?: unknown }[] } }];
+    const parLaMere = args.where.OR.filter((c) => c.nomMereEmpreinte);
     expect(parLaMere).toHaveLength(1);
-    expect(parLaMere[0]).toEqual({ nomMere: { equals: 'Fatoumata Condé', mode: 'insensitive' } });
+    // R4 : chiffre en base, le nom se compare par empreinte - sans accent ni casse.
+    expect(parLaMere[0]).toEqual({ nomMereEmpreinte: empreinteRecherche('fatoumata  CONDE') });
+    // Et le nom en clair ne part jamais dans la requete.
+    expect(JSON.stringify(args.where)).not.toMatch(/fatoumata/i);
   });
 
   // Le lieu de naissance reste dehors, et c'est voulu : « Conakry » ramènerait

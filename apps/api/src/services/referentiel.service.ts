@@ -15,6 +15,7 @@
 import { CategorieProduit, NiveauInteraction } from '../config/generated/client/client';
 import { prisma } from '../config/prisma';
 import { ValidationError } from '../utils/app-error';
+import { empreinteCatalogue } from '../utils/catalogue';
 import { normaliser } from './prescription-securite.service';
 import type { LigneImportView, RapportImportView, TypeReferentiel } from '@baobaoheath/shared-types';
 
@@ -432,14 +433,22 @@ async function importerMedicament(ligne: LigneCsv, simulation: boolean): Promise
       .filter(Boolean),
   };
 
+  // A1 : le texte de recherche suit le produit a chaque import. Sans cela,
+  // un catalogue remplace en masse redeviendrait introuvable des qu'on
+  // l'ecrit sans accents.
+  const avecRecherche = {
+    ...donnees,
+    rechercheTexte: empreinteCatalogue({ libelle, ...donnees }),
+  };
+
   const existant = await prisma.medicament.findFirst({ where: { libelle }, select: { id: true } });
   if (simulation) return { cle: libelle, statut: existant ? 'MISE_A_JOUR' : 'CREEE' };
 
   if (existant) {
-    await prisma.medicament.update({ where: { id: existant.id }, data: donnees });
+    await prisma.medicament.update({ where: { id: existant.id }, data: avecRecherche });
     return { cle: libelle, statut: 'MISE_A_JOUR' };
   }
-  await prisma.medicament.create({ data: { libelle, ...donnees } });
+  await prisma.medicament.create({ data: { libelle, ...avecRecherche } });
   return { cle: libelle, statut: 'CREEE' };
 }
 

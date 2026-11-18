@@ -8,6 +8,7 @@ import { envoyerEmailAdminStructure, envoyerEmailAgent } from './email.service';
 import { logger } from '../config/logger';
 import type { JwtPayload } from '../types/auth.types';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
+import { verifierCoordonnees } from '../utils/coordonnees';
 import { estStructureHospitaliere } from '../utils/officine.util';
 import {
     ecrireFichiers, exigeDesPieces, SOUS_AUTORISATION_DU_PARENT, supprimerFichiers,
@@ -59,12 +60,14 @@ export function genererMotDePasseTemp(): string {
  * fichiers orphelins, qu'on supprime.
  */
 export async function creerStructureAvecAdmin(dto: {
-    nom: string; type: string; prefecture: string;
+    nom: string; type: string; prefecture: string; commune: string; quartier?: string;
     adresse?: string; latitude?: number; longitude?: number; telephone?: string;
     admin: { prenom: string; nom: string; telephone: string; email?: string; };
 } & IdentifiantsRecus, pieces: readonly FichierRecu[] = [], libelles: Readonly<Record<string, string | undefined>> = {}) {
     const typeValid = Object.values(TypeStructure).includes(dto.type as TypeStructure);
     if (!typeValid) throw new ValidationError(`Type invalide : ${dto.type}`);
+
+    verifierCoordonnees(dto.latitude, dto.longitude);
 
     // Refuser avant toute ecriture, et avant de consommer un numero de
     // telephone : un dossier incomplet ne doit rien laisser derriere lui.
@@ -90,7 +93,8 @@ export async function creerStructureAvecAdmin(dto: {
         const structure = await tx.structureSante.create({
             data: {
                 nom: dto.nom, type: dto.type as TypeStructure,
-                prefecture: dto.prefecture, adresse: dto.adresse,
+                prefecture: dto.prefecture, commune: dto.commune.trim(), quartier: dto.quartier?.trim() || null,
+                adresse: dto.adresse,
                 latitude: dto.latitude, longitude: dto.longitude,
                 telephone: dto.telephone, estActive: true,
                 ...identifiants,
@@ -169,12 +173,13 @@ export async function creerStructureAvecAdmin(dto: {
  * pharmacie interne, pour une autorisation qui n'existe pas.
  */
 export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
-    nom: string; prefecture: string;
+    nom: string; prefecture: string; commune?: string; quartier?: string;
     idStructureParente?: string;
     adresse?: string; latitude?: number; longitude?: number; telephone?: string;
     pharmacien: { prenom: string; nom: string; telephone: string; email?: string; motDePasse?: string; };
 } & IdentifiantsRecus, pieces: readonly FichierRecu[] = [], libelles: Readonly<Record<string, string | undefined>> = {}) {
     let idStructureParente: string | null = dto.idStructureParente ?? null;
+    verifierCoordonnees(dto.latitude, dto.longitude);
 
     if (auteur.role === Role.ADMIN_STRUCTURE) {
         const admin = await prisma.utilisateur.findUnique({
@@ -209,6 +214,25 @@ export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
     const identifiants = validerIdentifiants(typeDossier, dto);
     const validees = validerPieces(typeDossier, pieces, libelles);
 
+    let communeFinale: string | undefined;
+    let quartierFinal: string | null | undefined;
+
+    if (idStructureParente) {
+        const parent = await prisma.structureSante.findUnique({
+            where: { id: idStructureParente },
+            select: { commune: true, quartier: true },
+        });
+        if (!parent) throw new NotFoundError('Structure hospitaliere parente introuvable');
+        communeFinale = (dto.commune ?? parent.commune ?? '').trim();
+        quartierFinal = (dto.quartier ?? parent.quartier ?? '').trim() || null;
+    } else {
+        communeFinale = dto.commune?.trim();
+        if (!communeFinale) {
+            throw new ValidationError('La commune est obligatoire : sans elle, la pharmacie ne recevrait aucune ordonnance');
+        }
+        quartierFinal = dto.quartier?.trim() || null;
+    }
+
     const existingTel = await prisma.utilisateur.findUnique({ where: { telephone: dto.pharmacien.telephone } });
     if (existingTel) throw new ConflictError('Ce numero de telephone est deja utilise');
 
@@ -233,6 +257,10 @@ export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
                 type: TypeStructure.PHARMACIE,
                 idStructureParente,
                 prefecture: dto.prefecture,
+                // Un hopital sans commune connue : pas de chaine vide, qui
+                // ressemblerait a une commune ; « inconnue » se dit null.
+                commune: communeFinale || null,
+                quartier: quartierFinal ?? null,
                 adresse: dto.adresse,
                 latitude: dto.latitude,
                 longitude: dto.longitude,
@@ -372,10 +400,13 @@ export async function getPharmaciesStructure(adminId: string) {
 
 // ── SUPER_ADMIN : modifier une structure ──────────────────────────
 export async function modifierStructure(id: string, dto: {
-    nom?: string; type?: string; prefecture?: string;
+    nom?: string; type?: string; prefecture?: string; commune?: string; quartier?: string;
     adresse?: string; latitude?: number; longitude?: number;
     telephone?: string; estActive?: boolean;
 }) {
+    if (dto.latitude !== undefined || dto.longitude !== undefined) {
+        verifierCoordonnees(dto.latitude, dto.longitude);
+    }
     if (dto.type) {
         const typeValid = Object.values(TypeStructure).includes(dto.type as TypeStructure);
         if (!typeValid) throw new ValidationError(`Type invalide : ${dto.type}`);

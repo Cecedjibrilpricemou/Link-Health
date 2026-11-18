@@ -2,7 +2,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
 import QRCode from 'qrcode';
-import type { CourseLivreurView } from '@baobaoheath/shared-types';
+import type { AdresseLivraisonView, CourseLivreurView } from '@baobaoheath/shared-types';
 import { CourseService } from '../../../core/services/course.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
@@ -49,6 +49,21 @@ export class LivreurMesCoursesComponent implements OnInit {
 
   libelleStatut(statut: string): string {
     return this.i18n.t(`LIVREUR.STATUT_${statut}`);
+  }
+
+  /** « Kipé, Ratoma » : le quartier d'abord, c'est lui qui guide sur place. */
+  lieuDe(a: AdresseLivraisonView): string {
+    return [a.quartier, a.commune].filter((x): x is string => !!x?.trim()).join(', ');
+  }
+
+  /**
+   * M3 : l'itineraire jusqu'au patient, quand il a donne sa position. Les
+   * coordonnees sont des nombres venus de l'API : elles ne peuvent rien
+   * injecter d'autre dans le lien.
+   */
+  lienItineraire(a: AdresseLivraisonView): string | null {
+    if (!Number.isFinite(a.latitude) || !Number.isFinite(a.longitude)) return null;
+    return `https://www.google.com/maps/dir/?api=1&destination=${a.latitude},${a.longitude}`;
   }
 
   private async genererQr(code: string): Promise<void> {

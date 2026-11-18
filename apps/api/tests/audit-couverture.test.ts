@@ -157,3 +157,21 @@ describe('la ligne ecrite', () => {
     expect(args.data.metadonnees.body['autorisationTitulaire']).toBe('[REDACTED]');
   });
 });
+
+describe('ce que la recherche publique ne laisse pas derriere elle', () => {
+  // A1. Ce qu une personne cherche en pharmacie dit souvent ce dont elle
+  // souffre. Une ligne « GET /recherche/produits?q=test de grossesse »
+  // rattachee a un compte serait une donnee de sante creee par nous, dans
+  // une table que personne ne pense a regarder sous cet angle.
+  it('ne garde aucune trace d une recherche, meme d un compte connecte', async () => {
+    const trace = await journalise('GET', '/api/v1/recherche/produits?q=paracetamol&prefecture=Conakry');
+    expect(trace).toBe(false);
+  });
+
+  it('n en garde pas davantage pour un visiteur sans compte', async () => {
+    const trace = await journalise('GET', '/api/v1/recherche/produits?q=doliprane&prefecture=Conakry', {
+      connecte: false,
+    });
+    expect(trace).toBe(false);
+  });
+});

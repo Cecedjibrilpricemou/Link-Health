@@ -6,7 +6,7 @@
     <div class="bb-page-head__text">
       <span class="bb-page-head__tag"><i class="pi pi-chart-bar" aria-hidden="true"></i> {{ 'ADMIN.ROLE' | translate }}</span>
       <h1 class="bb-page-head__title">{{ 'ADMIN.NAV_ANALYTICS' | translate }}</h1>
-      <p class="bb-page-head__sub">{{ 'ADMIN.ANALYTICS.SUBTITLE' | translate: { nom: plateforme.nom() } }}</p>
+      <p class="bb-page-head__sub">{{ 'ADMIN.ANALYTICS.SUBTITLE' | translate: { nom: plateforme.nom(), pays: geo.configuration()?.nom ?? '' } }}</p>
     </div>
 
     <div class="bb-page-head__actions bb-dash__actions">

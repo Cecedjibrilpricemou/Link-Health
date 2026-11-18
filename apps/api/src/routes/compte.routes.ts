@@ -6,7 +6,7 @@ import * as comptes from '../services/compte.service';
 import * as livreurs from '../services/livreur-recrutement.service';
 import * as administrateurs from '../services/administrateur-recrutement.service';
 import {
-  activiteLivreurSchema, creerAdministrateurSchema, creerLivreurSchema, filtreComptesSchema,
+  activiteLivreurSchema, corrigerNomCompteSchema, creerAdministrateurSchema, creerLivreurSchema, filtreComptesSchema,
   suspendreCompteSchema, verifierOrdreSchema,
 } from '../validators/api.schemas';
 import type {
@@ -141,6 +141,22 @@ router.post('/:id/verifier-ordre', validateBody(verifierOrdreSchema), async (req
     data,
     message: `Numero d'ordre de ${data.nomComplet} verifie. Le compte peut etre active.`,
   });
+});
+
+/**
+ * Corriger le nom d'un compte professionnel, avec un motif.
+ *
+ * Une fois son ordre verifie, un professionnel ne change plus son nom
+ * lui-meme : il figure sur les ordonnances qu'il signe. L'administration le
+ * corrige ici, et le journal garde l'ancien et le nouveau.
+ */
+router.post('/:id/corriger-nom', validateBody(corrigerNomCompteSchema), async (req: AuthRequest, res: Response) => {
+  const data: CompteView = await comptes.corrigerNom(
+    { userId: req.user!.userId, role: req.user!.role },
+    req.params['id'] as string,
+    req.body,
+  );
+  res.json({ success: true, data, message: `Nom corrige : ${data.prenom} ${data.nom}.` });
 });
 
 export default router;

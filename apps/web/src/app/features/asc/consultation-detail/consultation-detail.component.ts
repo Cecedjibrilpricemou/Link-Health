@@ -76,6 +76,13 @@ export class ConsultationDetailComponent implements OnInit {
     window.open(this.ordonnanceService.urlDocument(id), '_blank', 'noopener');
   }
 
+  /** Le compte rendu de la consultation (EF-05-03), meme mecanique. */
+  imprimerCompteRendu() {
+    const c = this.consultation();
+    if (!c) return;
+    window.open(this.consultationService.urlCompteRendu(c.id), '_blank', 'noopener');
+  }
+
   consultation    = signal<ConsultationDetailView | null>(null);
   isLoading       = signal(true);
   errorMessage    = signal('');

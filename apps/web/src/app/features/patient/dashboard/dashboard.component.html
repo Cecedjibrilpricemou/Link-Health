@@ -109,6 +109,13 @@
                   </span>
                 </div>
                 <span [class]="'bb-badge bb-badge--' + (getStatutSeverity(c.statut) | severiteVariante)">{{ getStatutLabel(c.statut) }}</span>
+                @if (peutImprimer(c)) {
+                  <button type="button" class="list-item__print" (click)="imprimerCompteRendu(c)"
+                          [attr.aria-label]="'PATIENT.DASHBOARD.PRINT_REPORT' | translate"
+                          [title]="'PATIENT.DASHBOARD.PRINT_REPORT' | translate">
+                    <i class="pi pi-print" aria-hidden="true"></i>
+                  </button>
+                }
               </div>
             }
           }

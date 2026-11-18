@@ -287,6 +287,8 @@ enum TypeNotification {
   COURSE_OUVERTE // P8-a : les livreurs actifs de la zone sont appeles
   OFFRE_COURSE // P8-a : une offre nouvelle ou modifiee attend le choix du patient
   COURSE_ATTRIBUEE // P8-a : l'officine sait qu'un livreur a ete choisi
+  COURSE_SANS_MOTARD // R1 : delai final atteint, le patient choisit relancer ou retrait
+  IDENTITE_DEMANDE_TRAITEE // R15 : l'accueil a accepte ou refuse la correction demandee
 }
 
 enum UssdSessionStatus {
@@ -337,9 +339,11 @@ model Utilisateur {
   suspensionsPrononcees Utilisateur[] @relation("SuspensionsProoncees")
 
   /// Les identites de patients qu'il a verifiees (EF-01-04).
-  identitesVerifiees  PatientProfile[] @relation("IdentitesVerifiees")
-  brisDeGlaceDeclares BrisDeGlace[]    @relation("BrisDeGlaceDeclares")
-  brisDeGlaceRevus    BrisDeGlace[]    @relation("BrisDeGlaceRevus")
+  identitesVerifiees         PatientProfile[]            @relation("IdentitesVerifiees")
+  correctionsIdentite        CorrectionIdentite[]        @relation("CorrectionsIdentite")
+  demandesCorrectionTraitees DemandeCorrectionIdentite[] @relation("DemandesCorrectionTraitees")
+  brisDeGlaceDeclares        BrisDeGlace[]               @relation("BrisDeGlaceDeclares")
+  brisDeGlaceRevus           BrisDeGlace[]               @relation("BrisDeGlaceRevus")
   /// Numero d'inscription a l'ordre professionnel (EF-01-08).
   ///
   /// **Sur l'utilisateur, pas sur chaque profil.** Le numero vivait sur
@@ -351,11 +355,11 @@ model Utilisateur {
   /// numero au registre de l'ordre. Il n'y a pas d'API nationale a interroger ;
   /// c'est donc un acte humain, trace comme la verification d'identite
   /// (EF-01-04).
-  numeroOrdre         String?
-  ordreVerifieLe      DateTime?
-  idOrdreVerifiePar   String?
-  ordreVerifiePar     Utilisateur?     @relation("OrdresVerifies", fields: [idOrdreVerifiePar], references: [id], onDelete: SetNull)
-  ordresVerifies      Utilisateur[]    @relation("OrdresVerifies")
+  numeroOrdre                String?
+  ordreVerifieLe             DateTime?
+  idOrdreVerifiePar          String?
+  ordreVerifiePar            Utilisateur?                @relation("OrdresVerifies", fields: [idOrdreVerifiePar], references: [id], onDelete: SetNull)
+  ordresVerifies             Utilisateur[]               @relation("OrdresVerifies")
 
   textesConsentementPublies TexteConsentement[]     @relation("TextesConsentementPublies")
   evenementsConsentement    EvenementConsentement[] @relation("EvenementsConsentement")
@@ -377,6 +381,7 @@ model Utilisateur {
   sessions                  Session[]
   evenementsConnexion       EvenementConnexion[]
   authOtps                  AuthOtp[]
+  changementsTelephone      ChangementTelephone[]
   motDePasseResets          MotDePasseReset[]
   auditLogs                 JournalAudit[]
   messagesEnvoyes           Message[]                @relation("Expediteur")
@@ -415,7 +420,7 @@ model Utilisateur {
   ussdSessions              UssdSession[]
   notifications             Notification[]
 
-  conseilsDeclares      StructureConseillee[]    @relation("ConseilsDeclares")
+  conseilsDeclares StructureConseillee[] @relation("ConseilsDeclares")
 
   @@map("utilisateurs")
 }
@@ -784,6 +789,15 @@ model StructureSante {
   controlesEligibilite     ControleEligibilite[]
   latitude                 Float?
   longitude                Float?
+
+  /// Horaires d'ouverture, un creneau par jour : `{ "1": { "ouvre": "08:00",
+  /// "ferme": "20:00" }, "0": null }`. Le jour suit `Date.getDay()` — 0 pour
+  /// dimanche — pour n'avoir aucune conversion a faire a la lecture.
+  ///
+  /// **Nul n'est pas ferme** : une officine qui n'a rien saisi ne doit pas
+  /// apparaitre close, elle n'a simplement rien dit. Saisi par le titulaire.
+  horaires                 Json?
+
   telephone                String?
   photoUrl                 String?
   estActive                Boolean               @default(true)
@@ -822,13 +836,13 @@ model StructureSante {
   medecinProfiles       MedecinProfile[]
   pharmacienProfiles    PharmacienProfile[]
   stocks                Stock[]
-  patientsPreferent     PatientProfile[]    @relation("StructurePreferee")
-  demandesRendezVous    DemandeRendezVous[] @relation("DemandesRendezVous")
-  approvisionnements    Approvisionnement[] @relation("ApprovisionnementsStructure")
-  referencementsSource  Referencement[]     @relation("StructureSource")
-  referencementsCible   Referencement[]     @relation("StructureCible")
+  patientsPreferent     PatientProfile[]      @relation("StructurePreferee")
+  demandesRendezVous    DemandeRendezVous[]   @relation("DemandesRendezVous")
+  approvisionnements    Approvisionnement[]   @relation("ApprovisionnementsStructure")
+  referencementsSource  Referencement[]       @relation("StructureSource")
+  referencementsCible   Referencement[]       @relation("StructureCible")
   episodes              EpisodeSoins[]
-  demandesAnalyseRecues DemandeAnalyse[]    @relation("Laboratoire")
+  demandesAnalyseRecues DemandeAnalyse[]      @relation("Laboratoire")
   plateauTechnique      PlateauTechnique[]
   conseille             StructureConseillee[] @relation("StructureQuiConseille")
   conseilleePar         StructureConseillee[] @relation("StructureConseillee")
@@ -897,8 +911,8 @@ enum TypePieceIdentite {
 }
 
 model PatientProfile {
-  id                 String   @id @default(cuid())
-  qrCode             String   @unique @default(cuid())
+  id     String @id @default(cuid())
+  qrCode String @unique @default(cuid())
 
   // ── Code PIN de la passerelle USSD ─────────────────────────────────────
   //
@@ -933,9 +947,14 @@ model PatientProfile {
   // Facultatifs : un ASC qui enregistre quelqu'un en brousse ne les a pas
   // toujours. Ils deviennent exigibles pour passer en identite verifiee.
   /// Ville ou village de naissance, tel que declare.
-  lieuNaissance String?
+  lieuNaissance    String?
   /// Nom de la mere. Le trait le plus discriminant quand les noms se repetent.
-  nomMere       String?
+  /// Chiffre (R4) : la detection de doublons compare `nomMereEmpreinte`.
+  nomMere          String?
+  /// R4 : empreinte de recherche du nom de la mere (HMAC de la valeur
+  /// normalisee). Posee par l'extension de chiffrement a chaque ecriture de
+  /// `nomMere` ; ne se retourne pas en nom sans la cle.
+  nomMereEmpreinte String?
 
   /// Le degre de confiance dans cette identite. Voir `NiveauIdentite`.
   niveauIdentite NiveauIdentite @default(PROVISOIRE)
@@ -967,20 +986,32 @@ model PatientProfile {
   brisDeGlace            BrisDeGlace[]           @relation("BrisDeGlacePatient")
   evenementsConsentement EvenementConsentement[]
 
-  fusionsPrincipal FusionDossier[] @relation("FusionPrincipal")
-  fusionsAbsorbe   FusionDossier[] @relation("FusionAbsorbe")
+  fusionsPrincipal   FusionDossier[]             @relation("FusionPrincipal")
+  fusionsAbsorbe     FusionDossier[]             @relation("FusionAbsorbe")
+  corrections        CorrectionIdentite[]
+  demandesCorrection DemandeCorrectionIdentite[]
   // Maille reelle du parcours commande/livraison : c'est dans son quartier que
   // le patient cherche une pharmacie, pas dans sa prefecture.
-  commune          String?
-  quartier         String?
-  village          String?
-  latitude         Float?
-  longitude        Float?
-  photoUrl         String?
-  urgenceNom       String?
-  urgenceTelephone String?
-  creeLe           DateTime        @default(now())
-  modifieLe        DateTime        @updatedAt
+  commune            String?
+  quartier           String?
+  village            String?
+  /// M3 : ce qui guide le motard quand la rue n'a pas de nom
+  /// (« derriere la mosquee de Kipe »).
+  pointRepere        String?
+  /// Position donnee par le patient, avec son accord, et qu'il peut effacer.
+  /// Montree au seul motard qui a sa course en main.
+  ///
+  /// R4 : « latitude,longitude » en une chaine, **chiffree** (le chiffrement
+  /// de champ ne porte que sur du texte). Aucune requete ne la filtre ni ne
+  /// la trie en base : seul le service d'adresse la lit et la decoupe.
+  position           String?
+  /// Quand la position a ete donnee : une position ancienne se reverifie.
+  positionLe         DateTime?
+  photoUrl           String?
+  urgenceNom         String?
+  urgenceTelephone   String?
+  creeLe             DateTime                    @default(now())
+  modifieLe          DateTime                    @updatedAt
 
   idUtilisateur String      @unique
   utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Restrict)
@@ -1021,6 +1052,8 @@ model PatientProfile {
   /// prochaine migration les emporte en silence.
   @@index([dateNaissance, lieuNaissance], map: "patients_traits_distinctifs_idx")
   @@index([niveauIdentite], map: "patients_niveau_identite_idx")
+  /// R4 : la detection de doublons cherche par empreinte du nom de la mere.
+  @@index([nomMereEmpreinte])
   @@map("patients")
 }
 
@@ -1095,12 +1128,20 @@ model PharmacienProfile {
 }
 
 model LivreurProfile {
-  id         String   @id @default(cuid())
-  qrCode     String   @unique @default(cuid())
-  quartier   String
-  prefecture String
-  estActif   Boolean  @default(true)
-  creeLe     DateTime @default(now())
+  id                 String    @id @default(cuid())
+  qrCode             String    @unique @default(cuid())
+  quartier           String
+  prefecture         String
+  /// Commune de travail. La zone d'une course est la commune (voir
+  /// utils/zone.ts) ; vide, le livreur garde l'ancienne maille du quartier.
+  commune            String?
+  estActif           Boolean   @default(true)
+  /// Communes desservies en plus de la sienne, dans la meme prefecture (5 au plus).
+  communesDesservies String[]  @default([])
+  /// Le motard se declare disponible : seul un motard en service est prevenu des courses.
+  enService          Boolean   @default(false)
+  enServiceDepuis    DateTime?
+  creeLe             DateTime  @default(now())
 
   idUtilisateur String      @unique
   utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Restrict)
@@ -1109,6 +1150,7 @@ model LivreurProfile {
   offres  OffreCourse[]
 
   @@index([prefecture, quartier, estActif])
+  @@index([prefecture, commune, estActif])
   @@map("profils_livreur")
 }
 
@@ -1243,6 +1285,17 @@ model Medicament {
   /// national (D6) n'est pas arrete. Comparees aux maladies chroniques du
   /// patient (EF-05-06).
   contreIndications String[]
+
+  /// A1 : le texte sur lequel porte la recherche publique, normalise — sans
+  /// accents, en minuscules. Il reunit le libelle, le nom commercial, la DCI
+  /// et la classe therapeutique, parce qu'un visiteur tape « paracetamol »
+  /// sans accent et attend Doliprane.
+  ///
+  /// Rempli par `empreinteCatalogue`, jamais saisi a la main. Nullable pour
+  /// les lignes anterieures a la colonne : la recherche garde un repli sur
+  /// les champs bruts, donc un produit non reindexe reste trouvable quand on
+  /// l'ecrit avec ses accents.
+  rechercheTexte String?
 
   /// Les medicaments du referentiel ont un proprietaire nul. Les articles
   /// locaux d'une officine sont rattaches a sa structure et ne sont visibles
@@ -2024,6 +2077,40 @@ model ParametresSysteme {
   @@map("parametres_systeme")
 }
 
+// M1 : referentiel geographique, **generique**.
+//
+// Une installation par pays : chacun declare ses niveaux administratifs dans
+// les parametres (section `pays`) — Region > Prefecture > Commune en Guinee,
+// State > LGA > Ward au Nigeria, Provincia > Distrito > Posto au Mozambique.
+// Ici, un lieu n'est qu'un noeud de l'arbre : un niveau (code du parametre),
+// un nom, un parent.
+//
+// **Il propose, il ne contraint pas.** Les saisies de lieu restent du texte
+// sur les patients, structures et motards ; celles absentes du referentiel
+// remontent a l'administrateur, qui les ajoute.
+//
+// **`aValider`** : un jeu de depart tire de sources publiques reste marque tant
+// qu'un administrateur ne l'a pas confirme.
+model LieuGeo {
+  id        String    @id @default(cuid())
+  /// Code du niveau, tel que declare dans les parametres du pays.
+  niveau    String
+  nom       String
+  idParent  String?
+  parent    LieuGeo?  @relation("ArbreGeo", fields: [idParent], references: [id], onDelete: Restrict)
+  enfants   LieuGeo[] @relation("ArbreGeo")
+  /// Lieux limitrophes du meme niveau, tenus dans les deux sens par le service.
+  /// Ils serviront a elargir un appel par etapes (M1-C).
+  voisins   String[]  @default([])
+  aValider  Boolean   @default(true)
+  creeLe    DateTime  @default(now())
+  modifieLe DateTime  @updatedAt
+
+  @@index([niveau])
+  @@index([idParent])
+  @@map("geo_lieux")
+}
+
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // P1 â€” Hopital : episode de soins et demande d'analyse (EF-03)
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -2153,9 +2240,9 @@ model StructureConseillee {
   idStructureConseillee String
   structureConseillee   StructureSante @relation("StructureConseillee", fields: [idStructureConseillee], references: [id], onDelete: Cascade)
 
-  declareLe   DateTime @default(now())
-  declarePar  String
-  auteur      Utilisateur @relation("ConseilsDeclares", fields: [declarePar], references: [id], onDelete: Restrict)
+  declareLe  DateTime    @default(now())
+  declarePar String
+  auteur     Utilisateur @relation("ConseilsDeclares", fields: [declarePar], references: [id], onDelete: Restrict)
 
   @@unique([idStructure, idStructureConseillee])
   @@index([idStructure])
@@ -2385,7 +2472,20 @@ model Commande {
 
   /// Quartier vise par l'appel, fige a la creation : le patient peut
   /// demenager, la commande doit rester lisible telle qu'elle a ete passee.
-  quartierRecherche String?
+  quartierRecherche   String?
+  /// Prefecture et commune du patient au moment de l'appel, figees comme le
+  /// quartier : la zone des pharmacies sollicitees (voir utils/zone.ts).
+  prefectureRecherche String?
+  communeRecherche    String?
+  /// M1-C : premiere etape d'elargissement, vers les communes voisines du
+  /// referentiel. Null tant que l'appel reste dans sa commune.
+  voisinesLe          DateTime?
+  /// Les voisines appelees, en minuscules, figees a cette date : un voisinage
+  /// modifie ensuite ne change pas qui peut repondre a cet appel.
+  communesVoisines    String[]  @default([])
+  /// M5 : personne n'a repondu dans la commune, l'appel s'est etendu a toute
+  /// la prefecture a cette date. Null tant qu'il reste dans la commune.
+  elargieLe           DateTime?
 
   creeLe    DateTime @default(now())
   modifieLe DateTime @updatedAt
@@ -2430,9 +2530,22 @@ model Course {
   statut              StatutCourse @default(APPEL_OFFRES)
   quartier            String
   prefecture          String
+  /// La zone des motards prevenus (voir utils/zone.ts).
+  commune             String?
   prixGnf             Int?
   delaiAnnonceMinutes Int?
+  /// M1-C : premiere etape d'elargissement, vers les communes voisines.
+  voisinesLe          DateTime?
+  /// Les voisines appelees, en minuscules, figees a cette date.
+  communesVoisines    String[]     @default([])
+  /// M5 : aucun motard de la commune n'a fait d'offre a temps, l'appel s'est
+  /// etendu a toute la prefecture a cette date.
+  elargieLe           DateTime?
   creeeLe             DateTime     @default(now())
+  /// R1 : debut de l'appel en cours. Egale a creeeLe, remise a l'heure d'une
+  /// relance par le patient : les delais d'elargissement et le delai final
+  /// se comptent depuis ici.
+  ouverteLe           DateTime     @default(now())
   attribueeLe         DateTime?
   remiseLe            DateTime?
   livreeLe            DateTime?
@@ -2448,6 +2561,7 @@ model Course {
   offres OffreCourse[]
 
   @@index([prefecture, quartier, statut])
+  @@index([prefecture, commune, statut])
   @@index([idLivreur, statut])
   @@map("courses")
 }
@@ -3101,4 +3215,102 @@ model MouvementStock {
   @@index([idLot, creeLe(sort: Desc)])
   @@index([reference])
   @@map("mouvements_stock")
+}
+
+/// R15 : la correction d'un trait d'identite (sexe, date de naissance, nom,
+/// prenom) par l'accueil ou l'administration, avec l'ancienne valeur.
+///
+/// **Une ligne par trait corrige, jamais modifiee ni supprimee.** Une erreur
+/// de saisie se corrige ; elle ne s'efface pas. La date de naissance decide de
+/// doses pediatriques, le sexe de normes biologiques : si une correction est
+/// elle-meme fausse, il faut pouvoir dire qui l'a faite, quand, et ce qu'il y
+/// avait avant.
+model CorrectionIdentite {
+  id             String   @id @default(cuid())
+  /// prenom | nom | sexe | dateNaissance
+  champ          String
+  ancienneValeur String
+  nouvelleValeur String
+  /// Pourquoi : « erreur de saisie a l'admission, acte de naissance presente ».
+  motif          String
+  creeLe         DateTime @default(now())
+
+  idPatient String
+  patient   PatientProfile @relation(fields: [idPatient], references: [id], onDelete: Restrict)
+
+  /// `SetNull` : le depart de l'agent n'efface pas la correction.
+  idAuteur String?
+  auteur   Utilisateur? @relation("CorrectionsIdentite", fields: [idAuteur], references: [id], onDelete: SetNull)
+
+  @@index([idPatient, creeLe])
+  @@map("corrections_identite")
+}
+
+/// Une demande de changement de numero de telephone, en attente du code.
+///
+/// **Le numero est la cle du compte** : il sert a se connecter, a recevoir
+/// les codes et a ouvrir le dossier par USSD. Il ne change donc qu'en deux
+/// temps : le mot de passe actuel prouve que c'est le titulaire, un code
+/// envoye au **nouveau** numero prouve qu'il le detient. Une session volee ne
+/// suffit plus a detourner le compte vers un autre telephone.
+///
+/// Le code n'est jamais stocke en clair (hache comme un mot de passe).
+model ChangementTelephone {
+  id               String    @id @default(cuid())
+  nouveauTelephone String
+  codeHash         String
+  expireLe         DateTime
+  tentatives       Int       @default(0)
+  maxTentatives    Int       @default(5)
+  /// Pose a la confirmation, ou quand les tentatives sont epuisees.
+  utiliseLe        DateTime?
+  creeLe           DateTime  @default(now())
+
+  idUtilisateur String
+  utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Cascade)
+
+  @@index([idUtilisateur, creeLe])
+  @@map("changements_telephone")
+}
+
+/// R15 : ou en est une demande de correction d'identite.
+enum StatutDemandeCorrection {
+  EN_ATTENTE
+  ACCEPTEE
+  REFUSEE
+}
+
+/// R15 : le patient demande lui-meme la correction de son identite.
+///
+/// Il ne la fait pas : une identite verifiee sur piece ne se reecrit pas sur
+/// simple declaration. Il la **demande**, avec sa raison, et l'accueil de sa
+/// structure l'accepte - la correction passe alors par `CorrectionIdentite`,
+/// avec l'ancienne valeur et l'agent - ou la refuse en disant pourquoi.
+///
+/// Seuls les traits demandes sont remplis ; les autres restent nuls.
+model DemandeCorrectionIdentite {
+  id            String                  @id @default(cuid())
+  prenom        String?
+  nom           String?
+  sexe          String?
+  /// AAAA-MM-JJ, comme sur une piece.
+  dateNaissance String?
+  /// Pourquoi, dans les mots du patient : « mon acte de naissance dit 2020 ».
+  justification String
+  statut        StatutDemandeCorrection @default(EN_ATTENTE)
+  /// La reponse de l'accueil, exigee pour un refus.
+  reponse       String?
+  creeLe        DateTime                @default(now())
+  traiteeLe     DateTime?
+
+  idPatient String
+  patient   PatientProfile @relation(fields: [idPatient], references: [id], onDelete: Restrict)
+
+  /// `SetNull` : le depart de l'agent n'efface pas la decision.
+  idTraitePar String?
+  traitePar   Utilisateur? @relation("DemandesCorrectionTraitees", fields: [idTraitePar], references: [id], onDelete: SetNull)
+
+  @@index([statut, creeLe])
+  @@index([idPatient, creeLe])
+  @@map("demandes_correction_identite")
 }

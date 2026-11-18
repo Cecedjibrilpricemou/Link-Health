@@ -2,7 +2,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpResponse } from '@angular/common/http';
 import type {
-  AnomalieView, CompteView, DemandeRgpdView, FileDemandesView, FiltreJournalDto,
+  AnomalieView, CompteView, CorrigerNomCompteDto, DemandeRgpdView, FileDemandesView, FiltreJournalDto,
   AgentAssureurCreeView, CreerAgentAssureurDto, PageJournalView, Role, SeuilsAnomalies, StatutDemandeRgpd, SuspensionView,
   TypeDemandeRgpd,
 } from '@baobaoheath/shared-types';
@@ -318,6 +318,19 @@ export class AdminService {
 
   reactiverCompte(id: string): Observable<ApiResponse<SuspensionView>> {
     return this.api.post<ApiResponse<SuspensionView>>(`/comptes/${id}/reactiver`, {});
+  }
+
+  /**
+   * EF-01-08 : l'administrateur declare avoir confronte le numero au registre
+   * de l'ordre. Sans cela, le compte ne s'active pas ; ensuite, le nom est fige.
+   */
+  verifierOrdre(id: string, numeroOrdre: string): Observable<ApiResponse<unknown>> {
+    return this.api.post<ApiResponse<unknown>>(`/comptes/${id}/verifier-ordre`, { numeroOrdre });
+  }
+
+  /** Corriger le nom d'un compte professionnel, avec un motif garde au journal. */
+  corrigerNomCompte(id: string, dto: CorrigerNomCompteDto): Observable<ApiResponse<CompteView>> {
+    return this.api.post<ApiResponse<CompteView>>(`/comptes/${id}/corriger-nom`, dto);
   }
 
   // --- Anomalies d acces (EF-12-06) -------------------------------------

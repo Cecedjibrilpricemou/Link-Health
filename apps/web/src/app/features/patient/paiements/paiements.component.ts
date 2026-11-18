@@ -158,6 +158,10 @@ export class PatientPaiementsComponent implements OnInit {
     window.open(url, '_blank', 'noopener');
   }
 
+  ouvrirRecu(idFacture: string): void {
+    window.open(this.service.urlRecu(idFacture), '_blank', 'noopener');
+  }
+
   /** Relire l'etat : le serveur interroge la passerelle au passage. */
   actualiser(d: ADeReglerView): void {
     if (!d.facture) return;

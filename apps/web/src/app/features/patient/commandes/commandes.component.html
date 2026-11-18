@@ -127,6 +127,23 @@
                 </button>
               }
             </section>
+          } @else if (c.statutCourse === 'SANS_MOTARD' && c.idCourse) {
+            <!-- R1 : delai final atteint sans offre. Le patient choisit la suite. -->
+            <section class="bb-cmd__course" aria-label="Aucun livreur disponible">
+              <h3>{{ 'PATIENT.COMMANDES.SANS_MOTARD_TITRE' | translate }}</h3>
+              <p class="bb-cmd__note">{{ 'PATIENT.COMMANDES.SANS_MOTARD_TEXTE' | translate }}</p>
+              <div class="bb-cmd__actions">
+                <button class="bb-cmd__btn" type="button"
+                        (click)="relancerLivraison(c)" [disabled]="enCours() === c.id">
+                  <i class="pi pi-refresh" aria-hidden="true"></i>
+                  {{ 'PATIENT.COMMANDES.RELANCER_LIVRAISON' | translate }}
+                </button>
+                <button class="bb-cmd__btn bb-cmd__btn--plat" type="button"
+                        (click)="demanderRenoncementLivraison(c)" [disabled]="enCours() === c.id">
+                  {{ 'PATIENT.COMMANDES.ALLER_CHERCHER' | translate }}
+                </button>
+              </div>
+            </section>
           } @else if (c.statutCourse === 'ATTRIBUEE') {
             <p class="bb-cmd__note">
               <i class="pi pi-truck" aria-hidden="true"></i>

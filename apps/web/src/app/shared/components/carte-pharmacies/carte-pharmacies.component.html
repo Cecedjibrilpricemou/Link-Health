@@ -1,0 +1,13 @@
+@if (localisables().length > 0) {
+  <section class="pub-card carte-pharmacies" aria-labelledby="carte-pharmacies-titre">
+    <h2 id="carte-pharmacies-titre" class="pub-card__title">
+      {{ 'PUBLIC.MAP.TITLE' | translate }}
+    </h2>
+    <div
+      #conteneurCarte
+      class="carte-pharmacies__surface"
+      role="application"
+      [attr.aria-label]="'PUBLIC.MAP.ARIA_LABEL' | translate"
+    ></div>
+  </section>
+}

@@ -1,0 +1,103 @@
+// L'adresse du patient (M3). Variables --bb-* du theme uniquement : le rendu
+// suit le mode clair ou sombre comme le reste du profil.
+:host {
+  display: block;
+  --adr-accent: var(--bb-primary);
+}
+
+:host-context([data-theme="dark"]) {
+  --adr-accent: var(--bb-bright);
+}
+
+.adresse__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.adresse__large { grid-column: 1 / -1; }
+
+// R8 : changer de prefecture, c'est changer les pharmacies qui recoivent
+// l'ordonnance. Le patient le lit avant d'enregistrer.
+.adresse__demenagement {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--bb-radius-sm);
+  border: 1px solid var(--bb-border-light);
+  background: var(--bb-surface-1);
+  color: var(--bb-text-primary);
+
+  .pi { color: var(--adr-accent); margin-top: 2px; }
+}
+
+.adresse__alerte {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--bb-radius-sm);
+  border: 1px solid var(--bb-warning-border);
+  background: var(--bb-warning-bg);
+  color: var(--bb-warning);
+}
+
+.adresse__position {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.adresse__position-texte {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  color: var(--bb-text-primary);
+}
+
+.adresse__bouton {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--bb-border-light);
+  border-radius: var(--bb-radius-sm);
+  background: transparent;
+  color: var(--bb-text-primary);
+  cursor: pointer;
+  font: inherit;
+
+  &:hover:not(:disabled) { background: var(--bb-surface-1); }
+}
+
+.adresse__bouton--principal {
+  border-color: var(--adr-accent);
+  background: var(--adr-accent);
+  color: #fff;
+
+  &:hover:not(:disabled) { background: var(--adr-accent); filter: brightness(1.05); }
+}
+
+.adresse__bouton--danger {
+  border-color: var(--bb-danger-border);
+  color: var(--bb-danger);
+
+  &:hover:not(:disabled) { background: var(--bb-danger-bg); }
+}
+
+.adresse__bouton:disabled { opacity: .6; cursor: default; }
+
+.adresse__bouton:focus-visible {
+  outline: none;
+  box-shadow: var(--bb-focus-ring);
+}
+
+.adresse__erreur { width: 100%; color: var(--bb-danger); }
+.adresse__aide { width: 100%; color: var(--bb-text-secondary); }

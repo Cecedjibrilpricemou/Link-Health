@@ -1,6 +1,7 @@
 // core/services/consultation.service.ts
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { ApiService } from './api.service';
 import { ApiResponse } from '../models/api.model';
 import { Consultation, Diagnostic, OrdonnanceLigne } from '../models/patient.model';
@@ -81,5 +82,13 @@ export class ConsultationService {
 
   closeConsultation(id: string): Observable<ApiResponse<Consultation>> {
     return this.api.post<ApiResponse<Consultation>>(`/consultations/${id}/complete`, {});
+  }
+
+  /**
+   * Le compte rendu imprimable, rendu par l'API comme l'ordonnance : on
+   * l'ouvre dans un onglet, le cookie de session suffit.
+   */
+  urlCompteRendu(id: string): string {
+    return `${environment.apiUrl}/consultations/${id}/compte-rendu`;
   }
 }

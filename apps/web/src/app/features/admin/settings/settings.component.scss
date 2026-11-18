@@ -287,3 +287,95 @@
   // Le logo est souvent sombre : fond clair conserve en mode sombre
   :host-context([data-theme="dark"]) &__preview { background: #fff; }
 }
+// ── Onglet Pays (M1) ────────────────────────────────────────────────
+// Un niveau administratif par ligne, du plus large au plus fin. Memes
+// surfaces que les autres reglages (setting-row) ; aucune couleur en dur.
+.pays-code { text-transform: uppercase; }
+
+.niveau-row {
+  align-items: center;
+
+  &__rang {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: var(--bb-surface-card);
+    border: 1px solid var(--bb-border-light);
+    color: var(--bb-text-secondary);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  &__champs {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: minmax(110px, 0.8fr) repeat(3, minmax(120px, 1fr));
+    gap: 8px 12px;
+    min-width: 0;
+
+    @media (max-width: 900px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (max-width: 520px) { grid-template-columns: 1fr; }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 2px;
+    color: var(--bb-text-secondary);
+  }
+}
+
+.pays-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+// R6 : le decoupage est fige des que des adresses sont enregistrees.
+.pays-fige {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--bb-radius-sm);
+  border: 1px solid var(--bb-warning-border);
+  background: var(--bb-warning-bg);
+  color: var(--bb-text-primary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+
+  .pi { color: var(--bb-warning); margin-top: 2px; }
+}
+
+// R10 a R13 : un reglage fige, ou qui se contredit, le dit sur place.
+.settings-fige,
+.settings-erreur {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  border-radius: var(--bb-radius-sm);
+}
+
+.settings-fige {
+  border: 1px solid var(--bb-warning-border);
+  background: var(--bb-warning-bg);
+  color: var(--bb-text-primary);
+
+  .pi { color: var(--bb-warning); margin-top: 2px; }
+}
+
+.settings-erreur {
+  border: 1px solid var(--bb-danger-border);
+  background: var(--bb-danger-bg);
+  color: var(--bb-danger);
+
+  .pi { margin-top: 2px; }
+}

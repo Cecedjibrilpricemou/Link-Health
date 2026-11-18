@@ -1,4 +1,4 @@
-import { creerAgent, creerPharmacieAvecPharmacien } from '../src/services/admin-structure.service';
+import { creerAgent, creerPharmacieAvecPharmacien, creerStructureAvecAdmin } from '../src/services/admin-structure.service';
 import { ForbiddenError, NotFoundError, ValidationError } from '../src/utils/app-error';
 import type { JwtPayload } from '../src/types/auth.types';
 
@@ -63,6 +63,8 @@ const PIECES = [
 const DTO = {
   nom: 'Pharmacie du CHU',
   prefecture: 'Conakry',
+  commune: 'Ratoma',
+  quartier: 'Kipé',
   pharmacien: {
     prenom: 'Aminata',
     nom: 'Diallo',
@@ -93,6 +95,7 @@ describe('creerPharmacieAvecPharmacien', () => {
         ? { idStructure: 'hopital-1', structure: { type: 'CHU' } }
         : null,
     );
+    prisma.structureSante.findUnique.mockResolvedValue({ commune: 'Dixinn', quartier: 'Kipé' });
 
     const result = await creerPharmacieAvecPharmacien(ADMIN_HOPITAL, DTO);
 
@@ -139,6 +142,52 @@ describe('creerPharmacieAvecPharmacien', () => {
     expect(prisma.structureSante.create).not.toHaveBeenCalled();
   });
 
+  it('refuse une pharmacie sans parent et sans commune', async () => {
+    // Dossier reglementaire complet : seul le manque de commune doit la faire refuser.
+    await expect(creerPharmacieAvecPharmacien(SUPER_ADMIN, {
+      ...DTO,
+      ...DOSSIER,
+      commune: undefined,
+      quartier: undefined,
+    }, PIECES)).rejects.toThrow('La commune est obligatoire');
+    expect(prisma.structureSante.create).not.toHaveBeenCalled();
+    expect(prisma.utilisateur.create).not.toHaveBeenCalled();
+  });
+
+  it('utilise la commune et le quartier du parent quand ils ne sont pas fournis', async () => {
+    prisma.utilisateur.findUnique.mockImplementation(async (args: { where: { id?: string } }) =>
+      args.where.id === ADMIN_HOPITAL.userId
+        ? { idStructure: 'hopital-1', structure: { type: 'CHU' } }
+        : null,
+    );
+    prisma.structureSante.findUnique.mockResolvedValue({ commune: 'Dixinn', quartier: 'Lambanyi' });
+
+    await creerPharmacieAvecPharmacien(ADMIN_HOPITAL, { ...DTO, commune: undefined, quartier: undefined });
+
+    expect(prisma.structureSante.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        idStructureParente: 'hopital-1',
+        commune: 'Dixinn',
+        quartier: 'Lambanyi',
+      }),
+    });
+  });
+
+  it('enregistre « commune inconnue » (null), jamais une chaine vide, pour un hopital sans commune', async () => {
+    prisma.utilisateur.findUnique.mockImplementation(async (args: { where: { id?: string } }) =>
+      args.where.id === ADMIN_HOPITAL.userId
+        ? { idStructure: 'hopital-1', structure: { type: 'CHU' } }
+        : null,
+    );
+    prisma.structureSante.findUnique.mockResolvedValue({ commune: null, quartier: null });
+
+    await creerPharmacieAvecPharmacien(ADMIN_HOPITAL, { ...DTO, commune: undefined, quartier: undefined });
+
+    expect(prisma.structureSante.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ commune: null, quartier: null }),
+    });
+  });
+
   it('permet au super-admin de créer une pharmacie indépendante avec son dossier', async () => {
     const result = await creerPharmacieAvecPharmacien(SUPER_ADMIN, { ...DTO, ...DOSSIER }, PIECES);
 
@@ -146,6 +195,8 @@ describe('creerPharmacieAvecPharmacien', () => {
       data: expect.objectContaining({
         type: 'PHARMACIE',
         idStructureParente: null,
+        commune: 'Ratoma',
+        quartier: 'Kipé',
         rccm: 'GN.TCC.2026.A.14724',
         lieuAutorise: 'Quartier Donka, Dixinn, Conakry',
       }),
@@ -174,6 +225,16 @@ describe('creerPharmacieAvecPharmacien', () => {
     await expect(creerPharmacieAvecPharmacien(SUPER_ADMIN, DTO, PIECES))
       .rejects.toBeInstanceOf(ValidationError);
     expect(prisma.structureSante.create).not.toHaveBeenCalled();
+  });
+
+  it('refuse une latitude sans longitude avant toute écriture', async () => {
+    await expect(creerPharmacieAvecPharmacien(SUPER_ADMIN, {
+      ...DTO,
+      latitude: 9.5,
+      longitude: undefined,
+    })).rejects.toBeInstanceOf(ValidationError);
+    expect(prisma.structureSante.create).not.toHaveBeenCalled();
+    expect(prisma.utilisateur.create).not.toHaveBeenCalled();
   });
 
   // Refuser doit rester **sans effet de bord** : le numero de telephone du
@@ -211,13 +272,11 @@ describe('creerPharmacieAvecPharmacien', () => {
   // celui de son hopital. Lui demander un dossier bloquerait l'hopital qui
   // ouvre sa pharmacie interne.
   it('n’exige aucun dossier pour une pharmacie hospitalière', async () => {
-    // `Once` et non `mockResolvedValue` : le service appelle deux fois
-    // `utilisateur.findUnique` — l'admin, puis l'unicite du telephone. Le
-    // second appel doit retomber sur le `null` du beforeEach.
     prisma.utilisateur.findUnique.mockResolvedValueOnce({
       idStructure: 'hopital-1',
       structure: { type: 'CHU' },
     });
+    prisma.structureSante.findUnique.mockResolvedValue({ commune: 'Dixinn', quartier: 'Lambanyi' });
 
     const result = await creerPharmacieAvecPharmacien(ADMIN_HOPITAL, DTO);
 
@@ -268,5 +327,34 @@ describe('creerPharmacieAvecPharmacien', () => {
     })).rejects.toThrow(/adresse email professionnelle est obligatoire/i);
     expect(prisma.utilisateur.findUnique).not.toHaveBeenCalled();
     expect(prisma.utilisateur.create).not.toHaveBeenCalled();
+  });
+});
+
+// Une structure qui n'est pas une pharmacie (centre, clinique, CHU...) porte
+// aussi sa commune : c'est elle qui la place dans une zone.
+describe('creerStructureAvecAdmin : commune et quartier', () => {
+  it('enregistre la commune nettoyee, et un quartier vide comme absent', async () => {
+    prisma.structureSante.create.mockResolvedValue({ id: 'centre-1', type: 'CENTRE', nom: 'Centre de sante de Kipe' });
+    prisma.utilisateur.create.mockResolvedValue({ id: 'admin-1', telephone: '+224620000099', email: 'admin@exemple.test', prenom: 'Awa', nom: 'Bah', role: 'ADMIN_STRUCTURE' });
+
+    // La suite (compte administrateur, e-mail) ne concerne pas ce test.
+    await creerStructureAvecAdmin({
+      nom: 'Centre de sante de Kipe', type: 'CENTRE', prefecture: 'Conakry',
+      commune: '  Ratoma ', quartier: '   ',
+      admin: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000099', email: 'admin@exemple.test' },
+    }).catch(() => undefined);
+
+    expect(prisma.structureSante.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ commune: 'Ratoma', quartier: null }),
+    });
+  });
+
+  it('refuse une latitude sans longitude avant toute ecriture', async () => {
+    await expect(creerStructureAvecAdmin({
+      nom: 'Centre de sante de Kipe', type: 'CENTRE', prefecture: 'Conakry', commune: 'Ratoma',
+      latitude: 9.6,
+      admin: { prenom: 'Awa', nom: 'Bah', telephone: '+224620000099', email: 'admin@exemple.test' },
+    })).rejects.toBeInstanceOf(ValidationError);
+    expect(prisma.structureSante.create).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,82 @@
+<div class="bb-logout-overlay" (click)="fermerDialogue()">
+  <section
+    class="bb-situer-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="struct-situer-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="bb-situer-modal__head">
+      <div>
+        <h2 id="struct-situer-title">{{ 'ADMIN.STRUCTURES.SITUER_TITLE' | translate }}</h2>
+        <p>{{ structure().nom }}</p>
+        @if (structure().adresse) {
+          <p>{{ structure().adresse }}</p>
+        }
+      </div>
+    </header>
+
+    <div
+      #conteneurCarte
+      class="bb-situer-modal__map"
+      role="application"
+      [attr.aria-label]="'ADMIN.STRUCTURES.SITUER_TITLE' | translate"
+    ></div>
+
+    @if (coordonneesAffichees(); as coordonnees) {
+      <p class="bb-situer-modal__coordinates">
+        <span>{{ 'ADMIN.STRUCTURES.SITUER_COORDONNEES' | translate }}</span>
+        <strong>Lat. {{ coordonnees.latitude }} · Lon. {{ coordonnees.longitude }}</strong>
+      </p>
+    } @else {
+      <p class="bb-situer-modal__hint">{{ 'ADMIN.STRUCTURES.SITUER_HELP' | translate }}</p>
+    }
+
+    @if (pointInterdit()) {
+      <p class="bb-situer-modal__error" role="alert">
+        {{ 'ADMIN.STRUCTURES.SITUER_POINT_INTERDIT' | translate }}
+      </p>
+    }
+    @if (erreurGps(); as erreur) {
+      <p class="bb-situer-modal__error" role="alert">{{ erreur }}</p>
+    }
+
+    <footer class="bb-situer-modal__actions">
+      <button
+        matButton
+        type="button"
+        (click)="utiliserPositionActuelle()"
+        [disabled]="gpsEnCours() || enregistrement()"
+      >
+        <i class="pi pi-map-marker" aria-hidden="true"></i>
+        {{
+          (gpsEnCours() ? 'ADMIN.STRUCTURES.GPS_EN_COURS' : 'ADMIN.STRUCTURES.GPS_BTN')
+            | translate
+        }}
+      </button>
+      <span class="bb-situer-modal__spacer"></span>
+      <button
+        matButton
+        type="button"
+        data-action="annuler"
+        (click)="fermerDialogue()"
+        [disabled]="enregistrement()"
+      >
+        {{ 'COMMON.CANCEL' | translate }}
+      </button>
+      <button
+        matButton="filled"
+        type="button"
+        data-action="enregistrer"
+        (click)="enregistrer()"
+        [disabled]="enregistrementDesactive()"
+      >
+        <i class="pi pi-save" aria-hidden="true"></i>
+        {{
+          (enregistrement() ? 'COMMON.SAVING' : 'COMMON.SAVE')
+            | translate
+        }}
+      </button>
+    </footer>
+  </section>
+</div>

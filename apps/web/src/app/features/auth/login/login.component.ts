@@ -18,6 +18,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { AuthShellComponent } from '../../../shared/components/auth-shell/auth-shell.component';
 import { ToastrService } from 'ngx-toastr';
 import { accueilDuRole } from '../../../core/navigation/accueil-par-role';
+import { PlateformeSecuriseeComponent } from '../../../shared/components/plateforme-securisee/plateforme-securisee.component';
 
 
 /** Le message a afficher pour un echec de connexion ou de verification OTP. */
@@ -27,6 +28,12 @@ export function messageErreurConnexion(
   cleParDefaut: string,
 ): string {
   const e = err as { status?: number; error?: { error?: string; message?: string } };
+  // **Si l'API a repondu avec son propre message, c'est lui qu'on montre**,
+  // quel que soit le statut. Elle repond 503 quand le mot de passe est juste
+  // mais que le code OTP n'a pas pu partir : afficher « serveur injoignable »
+  // faisait chercher une panne de reseau qui n'existait pas.
+  const messageApi = typeof e?.error === 'object' && typeof e.error?.error === 'string' ? e.error.error.trim() : '';
+  if (e?.status !== 0 && messageApi) return messageApi;
   // status 0 : la requete n'a jamais atteint le serveur (arrete, CORS, reseau).
   // 502/503/504 : le relais (nginx en production, proxy de developpement) est
   // joignable mais pas l'API ; il repond par une page HTML, sans corps JSON.
@@ -43,7 +50,7 @@ export function messageErreurConnexion(
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [
+  imports: [PlateformeSecuriseeComponent, 
     MatButtonModule,
     MatFormFieldModule, MatInputModule,
     FormsModule, RouterLink,

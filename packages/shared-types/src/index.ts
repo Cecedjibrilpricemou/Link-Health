@@ -137,7 +137,9 @@ export type TypeNotification =
   | 'ORDONNANCE_LIGNE_REFUSEE'
   | 'COURSE_OUVERTE'
   | 'OFFRE_COURSE'
-  | 'COURSE_ATTRIBUEE';
+  | 'COURSE_ATTRIBUEE'
+  | 'COURSE_SANS_MOTARD'
+  | 'IDENTITE_DEMANDE_TRAITEE';
 
 /** Statut d'une commande pharmacie (EF-07). */
 // ═══════════════════════════════════════════════════════════════════
@@ -183,6 +185,15 @@ export interface ReponsePharmacieView {
   repondueLe: HorodatageApi;
 }
 
+/** Ce que la pharmacie sait du motard qui vient chercher le colis. */
+export interface LivreurAttribueView {
+  prenom: string;
+  nom: string;
+  telephone: string;
+  /** Chemin `/uploads/avatars/…`, ou null si le motard n'a pas mis de photo. */
+  photoUrl: string | null;
+}
+
 export interface CommandeView {
   id: string;
   /** Identifiant de la course active, pour les gestes patient/pharmacie en livraison. */
@@ -212,6 +223,13 @@ export interface CommandeView {
 
   /** Vrai quand **cette** pharmacie l'a prise : l'API le calcule pour elle. */
   estLaMienne?: boolean;
+
+  /**
+   * Le motard choisi par le patient, rendu a la seule pharmacie qui lui remet
+   * le colis, de l'attribution a la livraison : elle le reconnait au comptoir
+   * avant de scanner son QR.
+   */
+  livreur?: LivreurAttribueView;
 
   /**
    * Le total du panier, nul tant qu'il n'est pas chiffre.
@@ -303,6 +321,134 @@ export interface CourseLivreurView {
   livreeLe: HorodatageApi | null;
   pharmacie: { id: string; nom: string } | null;
   patient?: { prenom: string; nom: string; telephone: string };
+  /**
+   * M3 : ou livrer. Seulement pendant que la course est en main (attribuee ou
+   * en cours) : une fois livree, le motard n'a plus a savoir ou habite le patient.
+   */
+  adresseLivraison?: AdresseLivraisonView;
+}
+
+// ── M1 : referentiel geographique generique ──────────────────────────
+// Un arbre de lieux, aux niveaux declares par le pays (ParametresPaysView).
+// Il propose des noms ; les saisies restent du texte libre.
+
+/** GET /geographie/configuration — public : le decoupage du pays installe. */
+export interface ConfigurationGeoView {
+  code: string;
+  nom: string;
+  indicatifTelephone: string;
+  niveaux: NiveauAdministratifView[];
+  niveauBase: string;
+  niveauElargissement: string;
+  /** Un jeu de depart existe-t-il pour ce pays et ce decoupage ? */
+  jeuDeDepartDisponible: boolean;
+}
+
+/** GET /geographie/lieux */
+export interface LieuGeoView {
+  id: string;
+  niveau: string;
+  nom: string;
+  idParent: string | null;
+  /** Nom du parent, pour l'affichage (« Ratoma — Conakry »). */
+  parent: string | null;
+  /** Lieux limitrophes du meme niveau. */
+  voisins: { id: string; nom: string }[];
+  /** Donnee de depart pas encore confirmee par un administrateur. */
+  aValider: boolean;
+}
+
+/** POST /geographie/lieux (administration). */
+export interface CreerLieuGeoDto {
+  niveau: string;
+  nom: string;
+  /** Obligatoire, sauf pour le niveau le plus large. */
+  idParent?: string;
+}
+
+/** PUT /geographie/lieux/:id (administration). */
+export interface ModifierLieuGeoDto {
+  voisins?: string[];
+  aValider?: boolean;
+}
+
+/**
+ * R7 : ce qui porte le nom d'un lieu. Les adresses le recopient en texte
+ * (niveau de base : `commune`, dans sa zone ; niveau d'elargissement :
+ * `prefecture`) ; les autres niveaux ne sont recopies nulle part.
+ */
+export interface UtilisationLieuGeoView {
+  enfants: number;
+  structures: number;
+  patients: number;
+  /** Motards dont l'adresse ou une commune desservie porte ce nom. */
+  motards: number;
+  /** Commandes en recherche de pharmacie et courses en appel d'offres. */
+  appelsEnCours: number;
+}
+
+/** POST /geographie/lieux/:id/renommer (administration). */
+export interface RenommerLieuGeoDto {
+  nom: string;
+}
+
+/** Le lieu renomme, et ce qui a pris son nouveau nom avec lui. */
+export interface RenommageLieuGeoView {
+  lieu: LieuGeoView;
+  renommes: Omit<UtilisationLieuGeoView, 'enfants'>;
+}
+
+/** POST /geographie/jeu-de-depart (administration). */
+export interface JeuDeDepartGeoView {
+  crees: number;
+  dejaPresents: number;
+}
+
+/**
+ * GET /geographie/hors-referentiel : les lieux du niveau de base saisis sur
+ * des patients, structures ou motards et absents du referentiel, a ajouter.
+ * `zone` est le lieu du niveau d'elargissement saisi avec (champ `prefecture`).
+ */
+export interface LieuHorsReferentielView {
+  zone: string;
+  lieu: string;
+  patients: number;
+  structures: number;
+  livreurs: number;
+  total: number;
+}
+
+/** Ce que le motard voit de l'adresse du patient (M3). */
+export interface AdresseLivraisonView {
+  commune: string | null;
+  quartier: string | null;
+  pointRepere: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+/** GET/PUT /patients/me/adresse — l'adresse du patient, vue par lui-meme (M3). */
+export interface AdressePatientView extends AdresseLivraisonView {
+  prefecture: string;
+  positionLe: HorodatageApi | null;
+}
+
+/**
+ * PUT /patients/me/adresse. La position est facultative et ne s'envoie
+ * qu'avec l'accord du patient ; `effacerPosition` la retire.
+ */
+export interface DefinirAdresseDto {
+  /**
+   * R8 : en demenageant dans une autre prefecture. Nom du referentiel ; la
+   * position enregistree s'efface si aucune nouvelle n'est donnee.
+   */
+  prefecture?: string;
+  commune: string;
+  quartier: string;
+  pointRepere?: string;
+  latitude?: number;
+  longitude?: number;
+  effacerPosition?: boolean;
 }
 
 /** Courses attribuees au livreur et QR de son profil, y compris sans course active. */
@@ -310,6 +456,21 @@ export interface MesCoursesLivreurView {
   qrCode: string;
   courses: CourseLivreurView[];
 }
+
+/** Disponibilite et zone de travail du motard, vues par lui-meme. */
+export interface LivreurZoneView {
+  prefecture: string;
+  commune: string | null;
+  quartier: string;
+  /** Communes desservies en plus de la sienne, dans la meme prefecture (5 au plus). */
+  communesDesservies: string[];
+  /** Seul un motard en service est prevenu des courses et peut proposer une offre. */
+  enService: boolean;
+  enServiceDepuis: HorodatageApi | null;
+  estActif: boolean;
+}
+export interface DefinirEnServiceDto { enService: boolean; }
+export interface DefinirCommunesDesserviesDto { communes: string[]; }
 
 /** Offre d'un livreur, ordonnee par prix puis par delai pour le patient. */
 export interface OffreCourseView {
@@ -405,6 +566,8 @@ export interface UserDto {
   photoUrl?: string;
   estActif: boolean;
   doitChangerMotDePasse: boolean;
+  /** EF-01-08 : une fois l ordre verifie, le professionnel ne change plus son nom seul. */
+  ordreVerifieLe?: string | null;
   creeLe: string;
   modifieLe: string;
 }
@@ -667,6 +830,8 @@ export interface CreateStructureDto {
   nom: string;
   type: TypeStructure;
   prefecture: string;
+  commune?: string;
+  quartier?: string;
   adresse?: string;
   telephone?: string;
   latitude?: number;
@@ -682,6 +847,8 @@ export interface CreateStructureDto {
 export interface CreatePharmacieDto {
   nom: string;
   prefecture: string;
+  commune?: string;
+  quartier?: string;
   adresse?: string;
   telephone?: string;
   latitude?: number;
@@ -996,12 +1163,14 @@ export interface DashboardAnalyticsView {
   topPathologies: TopPathologieView[];
 }
 
+/**
+ * Un point de la carte epidemiologique : une prefecture, ses cas.
+ * R4 : aucune coordonnee de patient ; la carte compte, elle ne localise personne.
+ */
 export interface HeatmapPointView {
   prefecture: string;
   count: number;
   pathologies: Record<string, number>;
-  latitude?: number;
-  longitude?: number;
 }
 
 export type NiveauAlerte = 'ATTENTION' | 'ALERTE' | 'URGENCE';
@@ -1771,6 +1940,8 @@ export interface CreerLivreurDto {
   telephone: string;
   quartier: string;
   prefecture: string;
+  /** Commune de travail : la zone des courses qu'il recoit. */
+  commune?: string;
 }
 
 /** GET /comptes/livreurs. Ne contient ni QR ni mot de passe. */
@@ -1781,6 +1952,7 @@ export interface LivreurAdminView {
   telephone: string;
   quartier: string;
   prefecture: string;
+  commune: string | null;
   estActif: boolean;
   creeLe: HorodatageApi;
 }
@@ -2047,6 +2219,60 @@ export interface ParametresPharmacieView {
   categoriesExigeantOrdonnance: CategorieProduit[];
 }
 
+/**
+ * Elargissement des appels (M5) : sans preneur dans sa commune au bout de ce
+ * delai, une ordonnance ou une course s'ouvre a toute la prefecture.
+ */
+export interface ParametresZonesView {
+  delaiElargissementCommandeMinutes: number;
+  delaiElargissementCourseMinutes: number;
+  /** R1 : au-dela, depuis l'ouverture, l'appel s'arrete (sans pharmacie / sans motard). */
+  delaiFinalCommandeMinutes: number;
+  delaiFinalCourseMinutes: number;
+}
+
+/** Langues dans lesquelles un niveau administratif peut etre nomme. */
+export type LangueLibelle = 'fr' | 'en' | 'pt';
+
+/**
+ * Un niveau administratif du pays (M1) : « Prefecture » en Guinee, « LGA » au
+ * Nigeria, « Distrito » au Mozambique. Du plus large au plus fin.
+ */
+export interface NiveauAdministratifView {
+  /** Identifiant stable, en minuscules : `prefecture`, `lga`, `distrito`... */
+  code: string;
+  libelles: { fr: string; en?: string; pt?: string };
+}
+
+/**
+ * Le pays de l'installation (M1). Une installation sert un seul pays : ses
+ * donnees de sante y restent, et son decoupage administratif y est declare.
+ *
+ * Les champs `commune` et `prefecture` des patients, structures et motards
+ * portent respectivement le lieu du **niveau de base** (ou l'on cherche
+ * d'abord une pharmacie ou un motard) et celui du **niveau d'elargissement**
+ * (ou l'appel s'etend ensuite). Leurs noms techniques datent de la Guinee ;
+ * leur sens vient d'ici.
+ */
+export interface ParametresPaysView {
+  /** ISO 3166-1 alpha-2 : GN, SN, NG, MZ... */
+  code: string;
+  nom: string;
+  /** Indicatif international : +224, +221, +234... */
+  indicatifTelephone: string;
+  /**
+   * R14 : chiffres du numero national, sans indicatif (9 en Guinee, 10 au
+   * Nigeria). Un numero d'une autre longueur est refuse la ou il identifie
+   * une personne.
+   */
+  longueurNumero: number;
+  niveaux: NiveauAdministratifView[];
+  /** Code du niveau ou l'on cherche d'abord (la commune en Guinee). */
+  niveauBase: string;
+  /** Code du niveau ou l'appel s'etend ensuite (la prefecture en Guinee). */
+  niveauElargissement: string;
+}
+
 export interface ParametresSystemeValeurs {
   identite: ParametresIdentiteView;
   facturation: ParametresFacturationView;
@@ -2055,12 +2281,26 @@ export interface ParametresSystemeValeurs {
   sync: ParametresSyncView;
   prescription: ParametresPrescriptionView;
   pharmacie: ParametresPharmacieView;
+  zones: ParametresZonesView;
+  pays: ParametresPaysView;
 }
 
 /** GET/PUT /admin-structure/parametres */
 export interface ParametresSystemeView extends ParametresSystemeValeurs {
   modifieLe: HorodatageApi | null;
   idModifiePar: string | null;
+  /**
+   * R6 : des adresses sont enregistrees selon le decoupage du pays. Les codes
+   * des niveaux, leur ordre, le niveau de base et le niveau d'elargissement ne
+   * se modifient plus ; le nom, l'indicatif et les libelles, si.
+   */
+  decoupageFige: boolean;
+  /**
+   * R12 : des prix ou des montants sont enregistres. Ils n'ont pas de devise
+   * propre : la changer les reetiquetterait sans les convertir. Elle ne se
+   * modifie plus.
+   */
+  deviseFigee: boolean;
 }
 
 /** PUT /admin-structure/parametres — chaque section et chaque champ est optionnel. */
@@ -2072,6 +2312,8 @@ export interface UpdateParametresSystemeDto {
   sync?: Partial<ParametresSyncView>;
   prescription?: Partial<ParametresPrescriptionView>;
   pharmacie?: Partial<ParametresPharmacieView>;
+  zones?: Partial<ParametresZonesView>;
+  pays?: Partial<ParametresPaysView>;
 }
 
 /** POST /admin-structure/parametres/logo — reponse. */
@@ -3534,6 +3776,18 @@ export interface CompteView {
    * suspension documentee.
    */
   fermeSansMotif: boolean;
+  /** EF-01-08 : role qui releve d un ordre professionnel (medecin, pharmacien...). */
+  soumisOrdre: boolean;
+  numeroOrdre: string | null;
+  /** Null tant que l administration n a pas confronte le numero au registre. */
+  ordreVerifieLe: HorodatageApi | null;
+}
+
+/** Correction du nom d un compte professionnel par l administration. */
+export interface CorrigerNomCompteDto {
+  prenom?: string;
+  nom?: string;
+  motif: string;
 }
 
 /** Le resultat d une suspension ou d une reactivation. */
@@ -3674,6 +3928,9 @@ export type TypePieceIdentite =
 export interface IdentitePatientView {
   id: string;
   nomComplet: string;
+  /** Separes pour la correction (R15) ; `nomComplet` reste pour l affichage. */
+  prenom: string;
+  nom: string;
   telephone: string;
   dateNaissance: HorodatageApi;
   sexe: string;
@@ -3711,6 +3968,73 @@ export interface VerifierIdentiteDto {
 export interface NoterTraitsDto {
   lieuNaissance?: string;
   nomMere?: string;
+}
+
+/**
+ * Changement de numero de telephone, etape 1 : un code est parti au nouveau
+ * numero. Le numero n est montre que masque.
+ */
+export interface DemandeChangementTelephoneView {
+  telephoneMasque: string;
+  expireDansMinutes: number;
+  /** Developpement seulement (EMAIL_OTP_DEV_FALLBACK=true, jamais en production). */
+  codeDeveloppement?: string;
+}
+
+/** R15 : un trait d identite corrigeable par l accueil ou l administration. */
+export type ChampCorrigeable = 'prenom' | 'nom' | 'sexe' | 'dateNaissance';
+
+/**
+ * R15 : corriger l identite d un patient. Seuls les traits fournis et
+ * differents de l actuel sont ecrits ; le motif est exige.
+ */
+export interface CorrigerIdentiteDto {
+  prenom?: string;
+  nom?: string;
+  sexe?: 'M' | 'F';
+  /** Date seule, AAAA-MM-JJ. */
+  dateNaissance?: string;
+  motif: string;
+}
+
+/** R15 : le patient demande une correction ; l accueil l accepte ou la refuse. */
+export type StatutDemandeCorrection = 'EN_ATTENTE' | 'ACCEPTEE' | 'REFUSEE';
+
+export interface DemanderCorrectionIdentiteDto {
+  prenom?: string;
+  nom?: string;
+  sexe?: 'M' | 'F';
+  /** AAAA-MM-JJ. */
+  dateNaissance?: string;
+  /** Pourquoi, dans les mots du patient. */
+  justification: string;
+}
+
+export interface DemandeCorrectionIdentiteView {
+  id: string;
+  statut: StatutDemandeCorrection;
+  /** Les seuls traits demandes ; les autres sont absents. */
+  demande: { prenom?: string; nom?: string; sexe?: string; dateNaissance?: string };
+  justification: string;
+  /** La reponse de l accueil (exigee pour un refus). */
+  reponse: string | null;
+  creeLe: HorodatageApi;
+  traiteeLe: HorodatageApi | null;
+  traitePar: string | null;
+  /** Cote accueil seulement : l identite actuelle, pour comparer. */
+  patient?: { id: string; prenom: string; nom: string; sexe: string; dateNaissance: string };
+}
+
+/** Une correction passee, telle que l historique la montre. */
+export interface CorrectionIdentiteView {
+  id: string;
+  champ: ChampCorrigeable;
+  ancienneValeur: string;
+  nouvelleValeur: string;
+  motif: string;
+  creeLe: HorodatageApi;
+  /** Null si l agent a depuis quitte la plateforme. */
+  auteur: string | null;
 }
 
 // --- Bris de glace (EF-02-06) ----------------------------------------------
@@ -3987,4 +4311,175 @@ export interface CandidatDoublonView {
   /** Au-dela du seuil : a regarder en priorite. En deca : un doute a lever. */
   probable: boolean;
   traits: TraitConcordant[];
+}
+
+// ── A1 : recherche publique de produits ──────────────────────────────
+
+/**
+ * Ce que le public apprend d'un stock. **Jamais la quantite exacte** : elle
+ * renseigne un concurrent et designe l'officine a devaliser.
+ */
+export type EtatStockPublic = 'DISPONIBLE' | 'FAIBLE';
+
+/** Jusqu'ou la recherche a du s'etendre pour trouver quelque chose. */
+export type ZoneRechercheProduit = 'COMMUNE' | 'VOISINES' | 'PREFECTURE' | 'PAYS';
+
+/** Une officine qui declare avoir le produit, et a quel prix chez elle. */
+export interface PharmacieProduitView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  /** Pour appeler avant de se deplacer. */
+  telephone: string | null;
+  prixGnf: number;
+  etatStock: EtatStockPublic;
+  declareLe: string;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
+  /** Ouvert maintenant ? Le visiteur va se deplacer. */
+  ouverture: EtatOuvertureView;
+}
+
+export interface ProduitTrouveView {
+  id: string;
+  libelle: string;
+  /** La DCI : « paracetamol » pour un Doliprane. Absente hors medicament. */
+  molecule: string | null;
+  nomCommercial: string | null;
+  forme: string | null;
+  dosage: string | null;
+  categorie: string;
+  /**
+   * Un medicament se delivre parfois sur ordonnance. Tant que le catalogue ne
+   * porte pas cette information produit par produit, l'ecran invite a demander
+   * conseil plutot que de laisser croire a une vente libre.
+   */
+  estMedicament: boolean;
+  nombrePharmacies: number;
+  prixMinGnf: number;
+  prixMaxGnf: number;
+  etatStock: EtatStockPublic;
+  /** Quand l'officine a declare ce stock pour la derniere fois. */
+  declareLe: string;
+  /** Les officines qui l'ont, la plus proche d'abord puis la moins chere. */
+  pharmacies: PharmacieProduitView[];
+}
+
+/** Une officine trouvee par son nom (A3). */
+export interface PharmacieTrouveeView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  telephone: string | null;
+  /** Ce qu'elle a en rayon, pour savoir si la visite vaut le coup. */
+  nombreProduits: number;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
+  ouverture: EtatOuvertureView;
+}
+
+/** Un produit tel qu'il se presente dans le rayon d'une officine. */
+export interface ProduitEnRayonView {
+  id: string;
+  libelle: string;
+  molecule: string | null;
+  forme: string | null;
+  dosage: string | null;
+  categorie: string;
+  estMedicament: boolean;
+  prixGnf: number;
+  etatStock: EtatStockPublic;
+  declareLe: string;
+}
+
+/** Une officine et son rayon, pour sa page publique. */
+export interface PharmacieDetailView {
+  id: string;
+  nom: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string | null;
+  adresse: string | null;
+  telephone: string | null;
+  /** Tout ce qu'elle a en rayon, meme quand la liste rendue est filtree. */
+  nombreProduits: number;
+  produits: ProduitEnRayonView[];
+  /** Les sept jours, pour que le visiteur sache quand revenir. */
+  horaires: HorairesView | null;
+  /** Pour poser un marqueur sur la carte ; nul quand l'officine n'est pas situee. */
+  latitude: number | null;
+  longitude: number | null;
+  ouverture: EtatOuvertureView;
+}
+
+export interface RechercheProduitsView {
+  zoneUtilisee: ZoneRechercheProduit;
+  /** Nulle quand le visiteur n'a pas dit ou il est. */
+  prefecture: string | null;
+  commune: string | null;
+  /** Les communes voisines interrogees, quand la recherche s'est elargie. */
+  communesVoisines: string[];
+  produits: ProduitTrouveView[];
+  /** Les officines dont le nom ressemble a ce qui a ete tape. */
+  pharmaciesTrouvees: PharmacieTrouveeView[];
+}
+
+// ── Horaires d'ouverture d'une officine ──────────────────────────────
+
+/** Un creneau, en heures locales. */
+export interface CreneauView {
+  ouvre: string;
+  ferme: string;
+}
+
+/**
+ * Les sept jours, indexes comme `Date.getDay()` : « 0 » pour dimanche. Une
+ * entree nulle veut dire ferme ce jour-la.
+ */
+export type HorairesView = Record<string, CreneauView | null>;
+
+export interface EtatOuvertureView {
+  /** Nul quand l'officine n'a pas saisi ses horaires : on ne devine pas. */
+  ouvert: boolean | null;
+  /** L'heure de fermeture du jour, quand c'est ouvert. */
+  fermeA: string | null;
+  /** Le prochain creneau quand c'est ferme ; `dansJours: 0` pour aujourd'hui. */
+  prochaine: { dansJours: number; heure: string } | null;
+}
+
+/**
+ * La position de l'officine sur la carte, telle que son titulaire l'a posee.
+ *
+ * Nulle tant qu'elle n'a pas ete posee : une officine non situee reste
+ * trouvable, elle n'apparait simplement pas sur la carte.
+ */
+export interface PositionOfficineView {
+  latitude: number | null;
+  longitude: number | null;
+  /** De quoi se reperer pendant la saisie : le nom et l'adresse declares. */
+  nom: string;
+  adresse: string | null;
+  commune: string | null;
+}
+
+/** Les deux ensemble, ou aucune des deux : une demi-position ne situe rien. */
+export interface DefinirPositionDto {
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface HorairesOfficineView {
+  horaires: HorairesView | null;
+  etat: EtatOuvertureView;
+}
+
+/** Ce que le titulaire enregistre : sept jours, un creneau ou rien. */
+export interface DefinirHorairesDto {
+  horaires: HorairesView;
 }

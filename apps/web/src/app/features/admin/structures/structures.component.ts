@@ -14,6 +14,9 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import type { CreationPharmacieView, CreationStructureView, StructureAdminView, TypePieceAgrement } from '@baobaoheath/shared-types';
 import { ListeRechercheComponent, OptionsDePipe } from '../../../shared/components/liste-recherche/liste-recherche.component';
+import { GeographieService } from '../../../core/services/geographie.service';
+import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
+import { SituerStructureDialogComponent } from './situer-structure-dialog.component';
 
 // Contenu de la modale de confirmation : assemble cote client a partir de la
 // reponse de creation, il n'a pas d'equivalent dans une reponse d'API.
@@ -49,7 +52,8 @@ function normaliser(v: string): string {
   standalone: true,
   imports: [ListeRechercheComponent, OptionsDePipe, 
     MatFormFieldModule, MatInputModule, MatSelectModule,CommonModule, FormsModule, TranslatePipe,
-    ExportListeComponent, PiecesAgrementComponent, DossierAgrementComponent],
+    ExportListeComponent, PiecesAgrementComponent, DossierAgrementComponent, SuggestionsLieuxComponent,
+    SituerStructureDialogComponent],
   templateUrl: './structures.component.html',
   styleUrl: './structures.component.scss'
 })
@@ -64,6 +68,7 @@ export class StructuresComponent implements OnInit {
   isSaving          = signal(false);
   isToggling        = signal<string | null>(null); // id de la structure en cours de toggle
   confirmDesactiver = signal<StructureAdminView | null>(null); // modal confirmation
+  structureASituer = signal<StructureAdminView | null>(null);
 
   mdpAffiche = signal<MotDePasseAffiche | null>(null);
 
@@ -80,8 +85,11 @@ export class StructuresComponent implements OnInit {
     this.dossierOuvert.update((v) => (v === id ? null : id));
   }
 
+  gpsEnCours = signal(false);
+  erreurGps = signal<string | null>(null);
+
   newStructure = {
-    nom: '', type: 'CENTRE', prefecture: '', adresse: '',
+    nom: '', type: 'CENTRE', prefecture: '', commune: '', quartier: '', adresse: '',
     latitude: null as number | null, longitude: null as number | null, telephone: '',
     rccm: '', numeroAgrementCreation: '', numeroAgrementExploitation: '', lieuAutorise: '',
     admin: { prenom: '', nom: '', telephone: '', email: '' }
@@ -113,8 +121,9 @@ export class StructuresComponent implements OnInit {
    * Lu par le gabarit pour desactiver le bouton : un envoi parti sans ses
    * pieces reviendrait en 400, apres le temps de montee des fichiers.
    */
-  readonly peutEnvoyer = computed(() =>
-    !this.isSaving() && (!this.exigeUnDossier() || this.piecesCompletes()));
+  peutEnvoyer(): boolean {
+    return !this.isSaving() && !!this.newStructure.commune.trim() && (!this.exigeUnDossier() || this.piecesCompletes());
+  }
 
   get typeOptions() {
     return [
@@ -133,7 +142,23 @@ export class StructuresComponent implements OnInit {
     ];
   }
 
-  prefectures = ['Conakry','Kindia','Boké','Mamou','Labé','Faranah','Kankan','Nzérékoré','Coyah','Dubréka','Forécariah','Fria','Télimélé','Pita','Dalaba','Tougué','Dinguiraye','Kouroussa','Siguiri','Mandiana','Kérouané','Macenta','Guékédou','Kissidougou','Beyla','Lola','Yomou'].map(p => ({ label: p, value: p }));
+  /** M1 : les noms des niveaux et les lieux viennent du pays installe. */
+  readonly geo = inject(GeographieService);
+  private readonly zonesReferentiel = signal<string[]>([]);
+
+  /**
+   * Les zones d'elargissement proposees (les prefectures en Guinee), tirees du
+   * referentiel du pays installe.
+   *
+   * R9 : plus de liste guineenne de repli. Elle etait incomplete (27
+   * prefectures sur 33) et figeait dans le code un decoupage qui appartient
+   * au referentiel. Tant que celui-ci est vide, la zone se saisit librement
+   * (`saisieLibreZone`) et l'ecran invite a charger le jeu de depart.
+   */
+  readonly prefectures = computed(() => this.zonesReferentiel().map((p) => ({ label: p, value: p })));
+
+  /** Referentiel encore vide : la zone se tape, pour qu'une structure puisse quand meme etre creee. */
+  readonly saisieLibreZone = computed(() => this.zonesReferentiel().length === 0);
 
   /** Les colonnes du document imprime **et** du fichier : les memes.
    * C'est ce qui empeche la feuille et le tableur de se contredire. */
@@ -181,7 +206,12 @@ export class StructuresComponent implements OnInit {
     return ICONES_TYPE[type] ?? 'pi-building';
   }
 
-  ngOnInit() { this.loadStructures(); }
+  ngOnInit() {
+    this.loadStructures();
+    // M1 : les zones d'elargissement du referentiel, quand il est rempli.
+    this.geo.chargerConfiguration().subscribe(() =>
+      this.geo.nomsSuggeres('elargissement').subscribe((noms) => this.zonesReferentiel.set(noms)));
+  }
 
   loadStructures() {
     this.isLoading.set(true);
@@ -198,9 +228,32 @@ export class StructuresComponent implements OnInit {
     });
   }
 
+  positionActuelle() {
+    if (!navigator.geolocation) {
+      this.erreurGps.set(this.i18n.t('ADMIN.STRUCTURES.GPS_ERR'));
+      return;
+    }
+
+    this.gpsEnCours.set(true);
+    this.erreurGps.set(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.newStructure.latitude = Number(pos.coords.latitude.toFixed(6));
+        this.newStructure.longitude = Number(pos.coords.longitude.toFixed(6));
+        this.gpsEnCours.set(false);
+      },
+      () => {
+        this.gpsEnCours.set(false);
+        this.erreurGps.set(this.i18n.t('ADMIN.STRUCTURES.GPS_ERR'));
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }
+
   creerStructure() {
     const validationTitle = this.i18n.t('ADMIN.STRUCTURES.VALIDATION_TITLE');
-    if (!this.newStructure.nom || !this.newStructure.prefecture) {
+    if (!this.newStructure.nom || !this.newStructure.prefecture || !this.newStructure.commune.trim()) {
       this.toastr.error(this.i18n.t('ADMIN.STRUCTURES.ERR_VALIDATION_STRUCT'), validationTitle); return;
     }
     if (!this.newStructure.admin.prenom || !this.newStructure.admin.nom || !this.newStructure.admin.telephone || !this.newStructure.admin.email) {
@@ -233,10 +286,12 @@ export class StructuresComponent implements OnInit {
       const payload = {
         nom: this.newStructure.nom,
         prefecture: this.newStructure.prefecture,
+        commune: this.newStructure.commune.trim(),
+        quartier: this.newStructure.quartier.trim() || undefined,
         adresse: this.newStructure.adresse || undefined,
         telephone: this.newStructure.telephone || undefined,
-        latitude: this.newStructure.latitude || undefined,
-        longitude: this.newStructure.longitude || undefined,
+        latitude: this.newStructure.latitude ?? undefined,
+        longitude: this.newStructure.longitude ?? undefined,
         ...this.identifiants(),
         pharmacien: {
           prenom: this.newStructure.admin.prenom,
@@ -251,10 +306,12 @@ export class StructuresComponent implements OnInit {
         nom: this.newStructure.nom,
         type: this.newStructure.type,
         prefecture: this.newStructure.prefecture,
+        commune: this.newStructure.commune.trim(),
+        quartier: this.newStructure.quartier.trim() || undefined,
         adresse: this.newStructure.adresse || undefined,
         telephone: this.newStructure.telephone || undefined,
-        latitude: this.newStructure.latitude || undefined,
-        longitude: this.newStructure.longitude || undefined,
+        latitude: this.newStructure.latitude ?? undefined,
+        longitude: this.newStructure.longitude ?? undefined,
         ...this.identifiants(),
         admin: {
           prenom: this.newStructure.admin.prenom,
@@ -272,7 +329,7 @@ export class StructuresComponent implements OnInit {
         this.isSaving.set(false);
         this.showForm.set(false);
         this.newStructure = {
-          nom: '', type: 'CENTRE', prefecture: '', adresse: '',
+          nom: '', type: 'CENTRE', prefecture: '', commune: '', quartier: '', adresse: '',
           latitude: null, longitude: null, telephone: '',
           rccm: '', numeroAgrementCreation: '', numeroAgrementExploitation: '', lieuAutorise: '',
           admin: { prenom: '', nom: '', telephone: '', email: '' }
@@ -311,6 +368,25 @@ export class StructuresComponent implements OnInit {
   demanderDesactivation(s: StructureAdminView) {
     this.menuOuvert.set(null);
     this.confirmDesactiver.set(s);
+  }
+
+  situerStructure(s: StructureAdminView) {
+    this.menuOuvert.set(null);
+    this.structureASituer.set(s);
+  }
+
+  fermerDialoguePosition() {
+    this.structureASituer.set(null);
+  }
+
+  appliquerPositionStructure(position: { id: string; latitude: number; longitude: number }) {
+    this.structures.update((structures) =>
+      structures.map((structure) =>
+        structure.id === position.id
+          ? { ...structure, latitude: position.latitude, longitude: position.longitude }
+          : structure,
+      ),
+    );
   }
 
   annulerDesactivation() {

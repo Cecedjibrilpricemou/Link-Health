@@ -52,7 +52,7 @@
             </div>
             <div class="identity-logo__actions">
               @if (identite.logoUrl) {
-                <img class="identity-logo__preview" [src]="identite.logoUrl" [alt]="identite.nom" />
+                <img class="identity-logo__preview" [src]="urlMedia(identite.logoUrl)" [alt]="identite.nom" />
               } @else {
                 <span class="identity-logo__none">{{ 'ADMIN.SETTINGS.IDENTITY_LOGO_NONE' | translate }}</span>
               }
@@ -110,11 +110,13 @@
                 <input matInput id="id-ville" maxlength="120" [(ngModel)]="identite.ville" />
               </mat-form-field>
             </div>
+            <!-- R13 : un seul nom de pays, celui de l'installation (onglet Pays). -->
             <div class="field">
               <label for="id-pays">{{ 'ADMIN.SETTINGS.IDENTITY_PAYS' | translate }}</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <input matInput id="id-pays" maxlength="120" [(ngModel)]="identite.pays" />
+                <input matInput id="id-pays" [value]="pays.nom" readonly disabled />
               </mat-form-field>
+              <small class="text-secondary mt-1 block" id="id-pays-hint">{{ 'ADMIN.SETTINGS.IDENTITY_PAYS_HINT' | translate }}</small>
             </div>
             <div class="field">
               <label for="id-tel">{{ 'ADMIN.SETTINGS.IDENTITY_TELEPHONE' | translate }}</label>
@@ -181,8 +183,15 @@
             <div class="field">
               <label for="id-devise">{{ 'ADMIN.SETTINGS.IDENTITY_DEVISE' | translate }}</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-                <input matInput id="id-devise" maxlength="3" style="text-transform: uppercase" [(ngModel)]="identite.devise" />
+                <!-- R12 : les montants enregistres n'ont pas de devise propre. -->
+                <input matInput id="id-devise" maxlength="3" style="text-transform: uppercase"
+                       [(ngModel)]="identite.devise" [readonly]="deviseFigee()" />
               </mat-form-field>
+              @if (deviseFigee()) {
+                <small class="settings-fige mt-1" id="id-devise-figee" role="note">
+                  <i class="pi pi-lock" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.IDENTITY_DEVISE_FIGEE' | translate }}
+                </small>
+              }
             </div>
           </div>
 
@@ -201,7 +210,9 @@
               <span class="setting-title" id="setting-especes-label">{{ 'ADMIN.SETTINGS.PAY_CASH_TITLE' | translate }}</span>
               <span class="setting-sub">{{ 'ADMIN.SETTINGS.PAY_CASH_SUB' | translate }}</span>
             </div>
-            <mat-slide-toggle aria-labelledby="setting-especes-label" [(ngModel)]="facturation.paiementEspeces"></mat-slide-toggle>
+            <!-- R11 : le dernier moyen actif ne se coupe pas. -->
+            <mat-slide-toggle aria-labelledby="setting-especes-label" [ngModel]="facturation.paiementEspeces" (ngModelChange)="basculerPaiement('paiementEspeces', $event)"
+                              [disabled]="dernierMoyenPaiement('paiementEspeces')"></mat-slide-toggle>
           </div>
 
           <div class="setting-row">
@@ -209,7 +220,8 @@
               <span class="setting-title" id="setting-om-label">{{ 'ADMIN.SETTINGS.PAY_OM_TITLE' | translate }}</span>
               <span class="setting-sub">{{ 'ADMIN.SETTINGS.PAY_OM_SUB' | translate }}</span>
             </div>
-            <mat-slide-toggle aria-labelledby="setting-om-label" [(ngModel)]="facturation.paiementOrangeMoney"></mat-slide-toggle>
+            <mat-slide-toggle aria-labelledby="setting-om-label" [ngModel]="facturation.paiementOrangeMoney" (ngModelChange)="basculerPaiement('paiementOrangeMoney', $event)"
+                              [disabled]="dernierMoyenPaiement('paiementOrangeMoney')"></mat-slide-toggle>
           </div>
 
           <div class="setting-row">
@@ -217,8 +229,13 @@
               <span class="setting-title" id="setting-momo-label">{{ 'ADMIN.SETTINGS.PAY_MOMO_TITLE' | translate }}</span>
               <span class="setting-sub">{{ 'ADMIN.SETTINGS.PAY_MOMO_SUB' | translate }}</span>
             </div>
-            <mat-slide-toggle aria-labelledby="setting-momo-label" [(ngModel)]="facturation.paiementMomo"></mat-slide-toggle>
+            <mat-slide-toggle aria-labelledby="setting-momo-label" [ngModel]="facturation.paiementMomo" (ngModelChange)="basculerPaiement('paiementMomo', $event)"
+                              [disabled]="dernierMoyenPaiement('paiementMomo')"></mat-slide-toggle>
           </div>
+
+          <p class="settings-fige" id="paiement-dernier" role="note">
+            <i class="pi pi-info-circle" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.PAY_DERNIER' | translate }}
+          </p>
 
           <div class="field mt-4">
             <label id="structure-marge-label">{{ 'ADMIN.SETTINGS.MARGE_LABEL' | translate: { value: facturation.margePct } }}</label>
@@ -373,6 +390,12 @@
                      [(ngModel)]="prescription.dureeValiditeReglementeJours" />
             </mat-form-field>
             <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.PRESCRIPTION_REG_HINT' | translate }}</small>
+            <!-- R10 : un produit reglemente raccourcit la validite, il ne l'allonge pas. -->
+            @if (validiteIncoherente()) {
+              <small class="settings-erreur mt-1" id="presc-reg-incoherent" role="alert">
+                <i class="pi pi-exclamation-triangle" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.PRESCRIPTION_REG_INCOHERENT' | translate }}
+              </small>
+            }
           </div>
 
           <div class="field mt-4">
@@ -424,6 +447,185 @@
           }
 
           <ng-container *ngTemplateOutlet="footer; context: { section: 'pharmacie' }"></ng-container>
+        </div>
+      }
+
+      <!-- ONGLET : ZONES (M5) - delai avant d'ouvrir un appel a la prefecture -->
+      @if (activeTab() === 'zones') {
+        <div class="settings-panel">
+          <h2>{{ 'ADMIN.SETTINGS.ZONES_TITLE' | translate }}</h2>
+          <p class="panel-desc">{{ 'ADMIN.SETTINGS.ZONES_DESC' | translate }}</p>
+
+          <div class="field">
+            <label for="zones-commande">{{ 'ADMIN.SETTINGS.ZONES_COMMANDE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="zones-commande" type="number" min="1" max="1440"
+                     [(ngModel)]="zones.delaiElargissementCommandeMinutes" />
+            </mat-form-field>
+            <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_COMMANDE_HINT' | translate }}</small>
+          </div>
+
+          <div class="field mt-4">
+            <label for="zones-course">{{ 'ADMIN.SETTINGS.ZONES_COURSE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="zones-course" type="number" min="1" max="1440"
+                     [(ngModel)]="zones.delaiElargissementCourseMinutes" />
+            </mat-form-field>
+            <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_COURSE_HINT' | translate }}</small>
+          </div>
+
+          <!-- R1 : au-dela, l'appel s'arrete au lieu d'attendre sans fin -->
+          <div class="field mt-4">
+            <label for="zones-final-commande">{{ 'ADMIN.SETTINGS.ZONES_FINAL_COMMANDE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="zones-final-commande" type="number" min="3" max="4320"
+                     [(ngModel)]="zones.delaiFinalCommandeMinutes" />
+            </mat-form-field>
+            <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_FINAL_COMMANDE_HINT' | translate }}</small>
+          </div>
+
+          <div class="field mt-4">
+            <label for="zones-final-course">{{ 'ADMIN.SETTINGS.ZONES_FINAL_COURSE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="zones-final-course" type="number" min="3" max="4320"
+                     [(ngModel)]="zones.delaiFinalCourseMinutes" />
+            </mat-form-field>
+            <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.ZONES_FINAL_COURSE_HINT' | translate }}</small>
+          </div>
+
+          <ng-container *ngTemplateOutlet="footer; context: { section: 'zones' }"></ng-container>
+        </div>
+      }
+
+      <!-- ONGLET : PAYS (M1) - une installation par pays, son decoupage administratif -->
+      @if (activeTab() === 'pays') {
+        <div class="settings-panel">
+          <h2>{{ 'ADMIN.SETTINGS.PAYS_TITLE' | translate }}</h2>
+          <p class="panel-desc">{{ 'ADMIN.SETTINGS.PAYS_DESC' | translate }}</p>
+
+          <div class="identity-grid">
+            <div class="field">
+              <label for="pays-nom">{{ 'ADMIN.SETTINGS.PAYS_NOM' | translate }}</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <input matInput id="pays-nom" maxlength="80" [(ngModel)]="pays.nom" />
+              </mat-form-field>
+            </div>
+            <div class="field">
+              <label for="pays-code">{{ 'ADMIN.SETTINGS.PAYS_CODE' | translate }}</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <input matInput id="pays-code" maxlength="2" class="pays-code" [(ngModel)]="pays.code" />
+              </mat-form-field>
+              <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.PAYS_CODE_HINT' | translate }}</small>
+            </div>
+            <div class="field">
+              <label for="pays-indicatif">{{ 'ADMIN.SETTINGS.PAYS_INDICATIF' | translate }}</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <input matInput id="pays-indicatif" maxlength="5" inputmode="tel" [(ngModel)]="pays.indicatifTelephone" />
+              </mat-form-field>
+            </div>
+            <!-- R14 : reconnaitre deux fois le meme numero suppose de savoir
+                 combien de chiffres compte un numero national ici. -->
+            <div class="field">
+              <label for="pays-longueur-numero">{{ 'ADMIN.SETTINGS.PAYS_LONGUEUR_NUMERO' | translate }}</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <input matInput id="pays-longueur-numero" type="number" min="6" max="12"
+                       [(ngModel)]="pays.longueurNumero" />
+              </mat-form-field>
+              <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.PAYS_LONGUEUR_NUMERO_HINT' | translate }}</small>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3 class="panel-subtitle">{{ 'ADMIN.SETTINGS.PAYS_NIVEAUX_TITLE' | translate }}</h3>
+          <p class="panel-desc">{{ 'ADMIN.SETTINGS.PAYS_NIVEAUX_DESC' | translate }}</p>
+          <!-- R6 : des adresses sont enregistrees selon ce decoupage. -->
+          @if (decoupageFige()) {
+            <p class="pays-fige" id="pays-decoupage-fige" role="note">
+              <i class="pi pi-lock" aria-hidden="true"></i>
+              {{ 'ADMIN.SETTINGS.PAYS_DECOUPAGE_FIGE' | translate }}
+            </p>
+          }
+
+          @for (n of pays.niveaux; track $index; let i = $index; let premier = $first; let dernier = $last) {
+            <div class="setting-row niveau-row">
+              <span class="niveau-row__rang" aria-hidden="true">{{ i + 1 }}</span>
+              <div class="niveau-row__champs">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ 'ADMIN.SETTINGS.PAYS_NIVEAU_CODE' | translate }}</mat-label>
+                  <input matInput [id]="'niveau-code-' + i" maxlength="30" [(ngModel)]="n.code" [readonly]="decoupageFige()" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ 'ADMIN.SETTINGS.PAYS_LIBELLE_FR' | translate }}</mat-label>
+                  <input matInput [id]="'niveau-fr-' + i" maxlength="40" [(ngModel)]="n.libelles.fr" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ 'ADMIN.SETTINGS.PAYS_LIBELLE_EN' | translate }}</mat-label>
+                  <input matInput [id]="'niveau-en-' + i" maxlength="40" [(ngModel)]="n.libelles.en" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ 'ADMIN.SETTINGS.PAYS_LIBELLE_PT' | translate }}</mat-label>
+                  <input matInput [id]="'niveau-pt-' + i" maxlength="40" [(ngModel)]="n.libelles.pt" />
+                </mat-form-field>
+              </div>
+              @if (!decoupageFige()) {
+              <div class="niveau-row__actions">
+                <button mat-icon-button type="button" [disabled]="premier" (click)="deplacerNiveau(i, -1)"
+                        [attr.aria-label]="'ADMIN.SETTINGS.PAYS_MONTER' | translate">
+                  <i class="pi pi-arrow-up" aria-hidden="true"></i>
+                </button>
+                <button mat-icon-button type="button" [disabled]="dernier" (click)="deplacerNiveau(i, 1)"
+                        [attr.aria-label]="'ADMIN.SETTINGS.PAYS_DESCENDRE' | translate">
+                  <i class="pi pi-arrow-down" aria-hidden="true"></i>
+                </button>
+                <button mat-icon-button type="button" [disabled]="pays.niveaux.length <= 2" (click)="retirerNiveau(i)"
+                        [attr.aria-label]="'ADMIN.SETTINGS.PAYS_RETIRER' | translate">
+                  <i class="pi pi-trash" aria-hidden="true"></i>
+                </button>
+              </div>
+              }
+            </div>
+          }
+          @if (!decoupageFige()) {
+          <button mat-stroked-button type="button" id="pays-ajouter-niveau" (click)="ajouterNiveau()" [disabled]="pays.niveaux.length >= maxNiveaux">
+            <i class="pi pi-plus" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.PAYS_AJOUTER' | translate }}
+          </button>
+          }
+
+          <div class="divider"></div>
+
+          <h3 class="panel-subtitle">{{ 'ADMIN.SETTINGS.PAYS_ROLES_TITLE' | translate }}</h3>
+          <p class="panel-desc">{{ 'ADMIN.SETTINGS.PAYS_ROLES_DESC' | translate }}</p>
+          <div class="identity-grid">
+            <div class="field">
+              <label for="pays-base">{{ 'ADMIN.SETTINGS.PAYS_BASE' | translate }}</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <select matNativeControl id="pays-base" [(ngModel)]="pays.niveauBase" [disabled]="decoupageFige()">
+                  @for (n of pays.niveaux; track $index) {
+                    <option [value]="n.code">{{ n.libelles.fr || n.code }}</option>
+                  }
+                </select>
+              </mat-form-field>
+              <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.PAYS_BASE_HINT' | translate }}</small>
+            </div>
+            <div class="field">
+              <label for="pays-elargissement">{{ 'ADMIN.SETTINGS.PAYS_ELARGISSEMENT' | translate }}</label>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+                <select matNativeControl id="pays-elargissement" [(ngModel)]="pays.niveauElargissement" [disabled]="decoupageFige()">
+                  @for (n of pays.niveaux; track $index) {
+                    <option [value]="n.code">{{ n.libelles.fr || n.code }}</option>
+                  }
+                </select>
+              </mat-form-field>
+              <small class="text-secondary mt-1 block">{{ 'ADMIN.SETTINGS.PAYS_ELARGISSEMENT_HINT' | translate }}</small>
+            </div>
+          </div>
+
+          <a mat-stroked-button routerLink="/admin/geographie" class="pays-lien">
+            <i class="pi pi-map" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.PAYS_REFERENTIEL' | translate }}
+          </a>
+
+          <ng-container *ngTemplateOutlet="footer; context: { section: 'pays' }"></ng-container>
         </div>
       }
 

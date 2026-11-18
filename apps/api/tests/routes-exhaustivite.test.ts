@@ -42,10 +42,10 @@ type Couche = {
  */
 const FICHIERS = [
   'admin-structure', 'analytics', 'asc', 'assurance', 'auth', 'bris-de-glace',
-  'commande', 'compte', 'consentement', 'consultation', 'course', 'fhir', 'hopital',
+  'commande', 'compte', 'consentement', 'consultation', 'course', 'fhir', 'geographie', 'hopital',
   'identite', 'journal', 'laboratoire', 'medecin', 'medicament', 'notification',
   'ordonnance', 'paiement', 'parametres', 'patient', 'pharmacien', 'privacy',
-  'referentiel', 'resultats', 'rgpd', 'stats', 'sync', 'triage', 'upload',
+  'recherche', 'referentiel', 'resultats', 'rgpd', 'stats', 'sync', 'triage', 'upload',
   'ussd', 'vaccination', 'webhook-chapchap',
 ] as const;
 
@@ -70,10 +70,15 @@ const PUBLIQUES: Record<string, string> = {
   'patient POST /': 'inscription du patient par lui-même ; pose les cookies en retour',
 
   // ── Ce qu'une page d'accueil doit pouvoir afficher avant toute connexion.
+  // A1 : chercher un produit en pharmacie avant meme d'avoir un compte.
+  'recherche GET /produits': "recherche publique de produits ; ne rend que des stocks declares par les pharmacies, jamais un produit reglemente, jamais une quantite",
+  'recherche GET /pharmacies/:id': "page publique d'une officine : son rayon, son adresse et son telephone, rien de plus",
   'parametres GET /publics': "nom et logo de la plateforme, affichés sur l'écran de connexion",
   'stats GET /public': 'compteurs agrégés, aucune donnée nominative',
   'admin-structure GET /structures/publiques':
     "annuaire des établissements, pour choisir où prendre rendez-vous ; déclarée **avant** le router.use(authenticate) du fichier",
+  'geographie GET /configuration': "découpage administratif du pays installé (M1) ; aucune donnée personnelle",
+  'geographie GET /lieux': "noms des lieux et de leurs voisins (M1), proposés dès l'inscription ; aucune donnée personnelle",
 
   // ── Deux entrées machine, authentifiées autrement qu'au cookie.
   'ussd POST /session':
@@ -95,6 +100,8 @@ const TOUS_ROLES_CONNECTES: Record<string, string> = {
   'auth POST /logout': 'efface ses propres cookies',
   'auth PUT /change-password': 'son propre mot de passe',
   'auth PUT /profile': 'modifie le profil du porteur du jeton ; ne prend aucun identifiant en entree',
+  'auth POST /telephone/demande': 'son propre numero ; exige son mot de passe actuel, aucun identifiant de cible en entree',
+  'auth POST /telephone/confirmer': 'sa propre demande en cours, prouvee par le code recu au nouveau numero',
   'upload POST /avatar': 'enregistre la photo du porteur du jeton ; aucun identifiant de cible en entree',
 
   // ── Ses propres notifications, filtrées sur l'identifiant du jeton.

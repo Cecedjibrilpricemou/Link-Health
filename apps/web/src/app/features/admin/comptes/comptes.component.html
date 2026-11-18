@@ -56,7 +56,7 @@
       <span>{{ succes() }}</span>
     </div>
   }
-  @if (erreur() && !cible()) {
+  @if (erreur() && !boiteOuverte()) {
     <div class="comptes-erreur" role="alert">
       <mat-icon fontSet="pi" fontIcon="pi-exclamation-triangle" aria-hidden="true"></mat-icon>
       <span>{{ erreur() }}</span>
@@ -101,7 +101,19 @@
                     <span class="comptes-table__structure">{{ c.structure }}</span>
                   }
                 </td>
-                <td>{{ 'ROLE.' + c.role | translate }}</td>
+                <td>
+                  {{ 'ROLE.' + c.role | translate }}
+                  <!-- EF-01-08 : verifie, ou en attente - sans verification le compte ne s'active pas. -->
+                  @if (c.soumisOrdre) {
+                    @if (c.ordreVerifieLe) {
+                      <span class="comptes-table__ordre comptes-table__ordre--ok">
+                        {{ 'ADMIN.COMPTES.ORDRE_OK' | translate:{ numero: c.numeroOrdre ?? '' } }}
+                      </span>
+                    } @else {
+                      <span class="comptes-table__ordre comptes-table__ordre--attente">{{ 'ADMIN.COMPTES.ORDRE_ATTENTE' | translate }}</span>
+                    }
+                  }
+                </td>
                 <td>
                   @if (c.estActif) {
                     <span class="comptes-table__etat comptes-table__etat--actif">{{ 'ADMIN.COMPTES.ACTIVE' | translate }}</span>
@@ -135,6 +147,14 @@
                       {{ 'ADMIN.COMPTES.REACTIVATE' | translate }}
                     </button>
                   }
+                  @if (c.soumisOrdre && !c.ordreVerifieLe) {
+                    <button mat-button class="comptes-table__secondaire" (click)="ouvrirVerificationOrdre(c)" [disabled]="enCours()">
+                      {{ 'ADMIN.COMPTES.ORDRE_VERIFIER' | translate }}
+                    </button>
+                  }
+                  <button mat-button class="comptes-table__secondaire" (click)="ouvrirCorrectionNom(c)" [disabled]="enCours()">
+                    {{ 'ADMIN.COMPTES.NOM_CORRIGER' | translate }}
+                  </button>
                 </td>
               </tr>
             }
@@ -175,6 +195,80 @@
           <button mat-flat-button color="warn" (click)="confirmerSuspension()"
                   [disabled]="!motifValide() || enCours()">
             {{ 'ADMIN.COMPTES.CONFIRM' | translate }}
+          </button>
+        </div>
+      </mat-card>
+    </div>
+  }
+
+  <!-- EF-01-08 : une declaration de l'administrateur, pas un appel a un registre. -->
+  @if (aVerifier(); as c) {
+    <div class="comptes-boite" role="dialog" aria-modal="true" aria-labelledby="comptes-ordre-titre">
+      <mat-card class="comptes-boite__carte">
+        <h2 id="comptes-ordre-titre">{{ 'ADMIN.COMPTES.ORDRE_TITRE' | translate:{ nom: c.prenom + ' ' + c.nom } }}</h2>
+        <p class="comptes-boite__avertissement">{{ 'ADMIN.COMPTES.ORDRE_AIDE' | translate }}</p>
+
+        <mat-form-field appearance="outline" class="comptes-boite__motif">
+          <mat-label>{{ 'ADMIN.COMPTES.ORDRE_NUMERO' | translate }}</mat-label>
+          <input matInput [ngModel]="numeroOrdre()" (ngModelChange)="numeroOrdre.set($event)" />
+        </mat-form-field>
+
+        @if (erreur()) {
+          <div class="comptes-erreur" role="alert">
+            <mat-icon fontSet="pi" fontIcon="pi-exclamation-triangle" aria-hidden="true"></mat-icon>
+            <span>{{ erreur() }}</span>
+          </div>
+        }
+
+        <div class="comptes-boite__actions">
+          <button mat-stroked-button (click)="fermerVerificationOrdre()" [disabled]="enCours()">
+            {{ 'ADMIN.COMPTES.CANCEL' | translate }}
+          </button>
+          <button mat-flat-button color="primary" (click)="confirmerVerificationOrdre()" [disabled]="!peutVerifierOrdre()">
+            {{ 'ADMIN.COMPTES.ORDRE_CONFIRMER' | translate }}
+          </button>
+        </div>
+      </mat-card>
+    </div>
+  }
+
+  <!-- Corriger un nom : un motif, et le journal garde l'ancien et le nouveau. -->
+  @if (aRenommer(); as c) {
+    <div class="comptes-boite" role="dialog" aria-modal="true" aria-labelledby="comptes-nom-titre">
+      <mat-card class="comptes-boite__carte">
+        <h2 id="comptes-nom-titre">{{ 'ADMIN.COMPTES.NOM_TITRE' | translate:{ nom: c.prenom + ' ' + c.nom } }}</h2>
+        <p class="comptes-boite__avertissement">{{ 'ADMIN.COMPTES.NOM_AIDE' | translate }}</p>
+
+        <div class="comptes-boite__duo">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ADMIN.COMPTES.NOM_PRENOM' | translate }}</mat-label>
+            <input matInput [ngModel]="prenomCorrige()" (ngModelChange)="prenomCorrige.set($event)" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ADMIN.COMPTES.NOM_NOM' | translate }}</mat-label>
+            <input matInput [ngModel]="nomCorrige()" (ngModelChange)="nomCorrige.set($event)" />
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="comptes-boite__motif">
+          <mat-label>{{ 'ADMIN.COMPTES.REASON' | translate }}</mat-label>
+          <textarea matInput rows="2" [ngModel]="motifNom()" (ngModelChange)="motifNom.set($event)"></textarea>
+          <mat-hint>{{ 'ADMIN.COMPTES.REASON_HINT' | translate:{ min: motifMin } }}</mat-hint>
+        </mat-form-field>
+
+        @if (erreur()) {
+          <div class="comptes-erreur" role="alert">
+            <mat-icon fontSet="pi" fontIcon="pi-exclamation-triangle" aria-hidden="true"></mat-icon>
+            <span>{{ erreur() }}</span>
+          </div>
+        }
+
+        <div class="comptes-boite__actions">
+          <button mat-stroked-button (click)="fermerCorrectionNom()" [disabled]="enCours()">
+            {{ 'ADMIN.COMPTES.CANCEL' | translate }}
+          </button>
+          <button mat-flat-button color="primary" (click)="confirmerCorrectionNom()" [disabled]="!peutCorrigerNom()">
+            {{ 'ADMIN.COMPTES.NOM_CONFIRMER' | translate }}
           </button>
         </div>
       </mat-card>

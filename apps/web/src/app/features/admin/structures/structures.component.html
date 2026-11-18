@@ -74,6 +74,14 @@
     </div>
   }
 
+  @if (structureASituer(); as structure) {
+    <app-situer-structure-dialog
+      [structure]="structure"
+      (fermer)="fermerDialoguePosition()"
+      (positionEnregistree)="appliquerPositionStructure($event)"
+    />
+  }
+
   @if (showForm()) {
     <div class="bb-struct__form">
       <h3>{{ 'ADMIN.STRUCTURES.NEW_BTN' | translate }}</h3>
@@ -99,11 +107,37 @@
 </mat-form-field>
         </div>
         <div class="bb-struct__field">
-          <label id="struct-pref-label" for="struct-pref">{{ 'ADMIN.STRUCTURES.PREFECTURE_LABEL' | translate }}</label>
-          <app-liste-recherche inputId="struct-pref" [options]="prefectures | optionsDe"
-                               [(ngModel)]="newStructure.prefecture" #structPref="ngModel" required
-                               [placeholder]="'PATIENT.PROFILE.GENDER_SELECT' | translate" />
-          @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
+          <label id="struct-pref-label" for="struct-pref">{{ geo.libelle('elargissement') }} *</label>
+          @if (saisieLibreZone()) {
+            <!-- R9 : referentiel encore vide - la zone se tape, sans liste ecrite dans le code. -->
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="struct-pref" [(ngModel)]="newStructure.prefecture" #structPref="ngModel" required
+                     maxlength="80" autocomplete="off" />
+            </mat-form-field>
+            <small class="bb-struct__hint" id="struct-pref-vide">{{ 'ADMIN.STRUCTURES.ZONES_VIDES' | translate }}</small>
+            @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
+          } @else {
+            <app-liste-recherche inputId="struct-pref" [options]="prefectures() | optionsDe"
+                                 [(ngModel)]="newStructure.prefecture" #structPref="ngModel" required
+                                 [placeholder]="'PATIENT.PROFILE.GENDER_SELECT' | translate" />
+            @if (structPref.invalid && (structPref.dirty || structPref.touched)) { <small class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
+          }
+        </div>
+        <div class="bb-struct__field">
+          <label for="struct-commune">{{ geo.libelle('base') }} *</label>
+          <!-- M1 : les lieux du referentiel sont proposes ; le texte libre reste accepte. -->
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+            <input matInput id="struct-commune" [(ngModel)]="newStructure.commune" [placeholder]="'ADMIN.STRUCTURES.COMMUNE_PH' | translate" #structCommune="ngModel" required aria-describedby="struct-commune-msg"
+                   list="struct-liste-communes" autocomplete="off" />
+          </mat-form-field>
+          <app-suggestions-lieux idListe="struct-liste-communes" role="base" [dans]="newStructure.prefecture" />
+          @if (structCommune.invalid && (structCommune.dirty || structCommune.touched)) { <small id="struct-commune-msg" class="bb-error-text" role="alert">{{ 'ADMIN.STRUCTURES.REQUIRED' | translate }}</small> }
+        </div>
+        <div class="bb-struct__field">
+          <label for="struct-quartier">{{ 'ADMIN.STRUCTURES.QUARTIER_LABEL' | translate }}</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+            <input matInput id="struct-quartier" [(ngModel)]="newStructure.quartier" [placeholder]="'ADMIN.STRUCTURES.QUARTIER_PH' | translate" />
+          </mat-form-field>
         </div>
         <div class="bb-struct__field"><label for="struct-adresse">{{ 'ADMIN.STRUCTURES.ADRESSE_LABEL' | translate }}</label><mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
   <input matInput id="struct-adresse" [(ngModel)]="newStructure.adresse" [placeholder]="'ADMIN.STRUCTURES.ADRESSE_PH' | translate" />
@@ -127,6 +161,15 @@
     [placeholder]="'ADMIN.STRUCTURES.LNG_PH' | translate"
   />
 </mat-form-field></div>
+      </div>
+      <div class="bb-struct__gps">
+        <button type="button" class="bb-struct__secondary-btn" (click)="positionActuelle()" [disabled]="gpsEnCours()">
+          <i class="pi pi-map-marker" aria-hidden="true"></i> {{ (gpsEnCours() ? 'ADMIN.STRUCTURES.GPS_EN_COURS' : 'ADMIN.STRUCTURES.GPS_BTN') | translate }}
+        </button>
+        @if (erreurGps()) {
+          <small class="bb-error-text" role="alert">{{ erreurGps() }}</small>
+        }
+        <small class="bb-struct__gps-aide">{{ 'ADMIN.STRUCTURES.GPS_AIDE' | translate }}</small>
       </div>
 
       <!-- Le dossier reglementaire. **Il bloque** : une pharmacie
@@ -292,6 +335,12 @@
                 }
               </div>
               <p class="bb-struct__meta">{{ getTypeLabel(s.type) }} · {{ s.prefecture }}</p>
+              @if (s.latitude != null && s.longitude != null) {
+                <p class="bb-struct__position">
+                  <i class="pi pi-map-marker" aria-hidden="true"></i>
+                  <span>{{ s.latitude | number: '1.6-6' }}, {{ s.longitude | number: '1.6-6' }}</span>
+                </p>
+              }
             </div>
           </div>
           <div class="bb-struct__item-actions">
@@ -323,6 +372,11 @@
               @if (menuOuvert() === s.id) {
                 <div class="bb-struct__menu" role="menu" (click)="$event.stopPropagation()">
                   @if (s.estActive) {
+                    <button type="button" role="menuitem" data-action="situer"
+                            class="bb-struct__menu-item"
+                            (click)="situerStructure(s)">
+                      <i class="pi pi-map-marker" aria-hidden="true"></i> {{ 'ADMIN.STRUCTURES.SITUER_BTN' | translate }}
+                    </button>
                     <button type="button" role="menuitem" data-action="desactiver"
                             class="bb-struct__menu-item bb-struct__menu-item--danger"
                             (click)="demanderDesactivation(s)">
