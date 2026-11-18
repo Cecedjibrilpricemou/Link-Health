@@ -70,6 +70,10 @@ export const envSchema = z.object({
   // et `coerce.number()` lirait 0, et l'API refuserait de demarrer a cause
   // d'une ligne que personne n'a remplie.
   EMAIL_EXPEDITEUR: videCommeAbsent(z.string().email().optional()),
+  // Ou arrivent les reponses. Le domaine qui expedie n'a pas forcement de
+  // boite aux lettres : sans cette adresse, un patient qui repond a son code
+  // ecrit dans le vide, et personne ne l'apprend.
+  EMAIL_REPONSE: videCommeAbsent(z.string().email().optional()),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: videCommeAbsent(z.coerce.number().int().positive().optional()),
   SMTP_USER: z.string().optional(),

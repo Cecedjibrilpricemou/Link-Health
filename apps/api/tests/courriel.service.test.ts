@@ -9,11 +9,21 @@ jest.mock('../src/services/parametres.service', () => ({
 import {
   adresseExpediteur,
   choisirTransport,
+  corpsBrevo,
   diagnosticBrevo,
+  envoyerCourriel,
+  messageNodemailer,
   optionsGmail,
   optionsSmtp,
   type ConfigCourriel,
+  type Courriel,
+  type Expediteur,
 } from '../src/services/courriel.service';
+
+const { env } = jest.requireMock('../src/config/env') as { env: Record<string, unknown> };
+const { getIdentitePlateforme } = jest.requireMock('../src/services/parametres.service') as {
+  getIdentitePlateforme: jest.Mock;
+};
 
 describe('courriel : choix du transport', () => {
   it('prend Brevo avant tout le reste', () => {
@@ -115,6 +125,47 @@ describe('courriel : diagnostic des refus de Brevo', () => {
   });
 });
 
+// Le domaine qui expedie n'a pas forcement d'enregistrement MX : une reponse
+// envoyee a l'expediteur disparait alors sans rebond ni avertissement.
+describe('courriel : adresse de reponse', () => {
+  const DE: Expediteur = { nom: 'Lead Health', adresse: 'service@sante.gn' };
+  const MESSAGE: Courriel = {
+    destinataire: 'patient@exemple.gn',
+    nomDestinataire: 'Awa Diallo',
+    sujet: 'Votre code',
+    html: '<p>123456</p>',
+  };
+
+  it('porte le Reply-To dans le corps envoye a Brevo', () => {
+    expect(corpsBrevo(DE, MESSAGE, 'reponses@exemple.gn')).toMatchObject({
+      replyTo: { email: 'reponses@exemple.gn' },
+    });
+  });
+
+  it('porte le Reply-To dans le message nodemailer', () => {
+    expect(messageNodemailer(DE, MESSAGE, 'reponses@exemple.gn')).toMatchObject({
+      replyTo: 'reponses@exemple.gn',
+    });
+  });
+
+  // Un Reply-To vide dans l'en-tete vaut moins que pas d'en-tete du tout :
+  // certains clients l'affichent comme destinataire de la reponse.
+  it.each([
+    ['absente', undefined],
+    ['vide', ''],
+    ['faite d espaces', '   '],
+  ])('n ajoute aucun Reply-To quand l adresse est %s', (_titre, valeur) => {
+    expect(corpsBrevo(DE, MESSAGE, valeur)).not.toHaveProperty('replyTo');
+    expect(messageNodemailer(DE, MESSAGE, valeur)).not.toHaveProperty('replyTo');
+  });
+
+  it("garde l'expediteur distinct de l'adresse de reponse", () => {
+    const corps = corpsBrevo(DE, MESSAGE, 'reponses@exemple.gn');
+    expect(corps.sender).toEqual({ name: 'Lead Health', email: 'service@sante.gn' });
+    expect(corps.to).toEqual([{ email: 'patient@exemple.gn', name: 'Awa Diallo' }]);
+  });
+});
+
 describe('courriel : options du relais SMTP', () => {
   it('prend le port 587 et STARTTLS par defaut', () => {
     const options = optionsSmtp({ SMTP_HOST: 'smtp-relay.brevo.com' });
@@ -137,6 +188,92 @@ describe('courriel : options du relais SMTP', () => {
       SMTP_PASSWORD: 'motdepasse',
     });
     expect(options.auth).toEqual({ user: 'compte', pass: 'motdepasse' });
+  });
+});
+
+// Les tests ci-dessus jugent chaque decision isolement. Celui-ci juge le
+// cablage : que la configuration arrive bien jusqu'au message envoye. Sans
+// lui, remplacer `config.EMAIL_REPONSE` par `undefined` dans `envoyerCourriel`
+// ne faisait tomber aucun test.
+describe('courriel : du reglage au message envoye', () => {
+  const IDENTITE = { nom: 'Lead Health', emailExpediteur: '' };
+  let appels: jest.Mock;
+
+  /** Le corps JSON confie a Brevo, relu depuis l'appel reseau simule. */
+  const corpsEnvoye = () => JSON.parse((appels.mock.calls.at(-1)![1] as { body: string }).body);
+
+  beforeEach(() => {
+    for (const cle of Object.keys(env)) delete env[cle];
+    getIdentitePlateforme.mockResolvedValue(IDENTITE);
+    appels = jest.fn().mockResolvedValue({ ok: true, status: 201, text: async () => '' });
+    (globalThis as { fetch: unknown }).fetch = appels;
+  });
+
+  it('porte EMAIL_REPONSE jusque dans le message', async () => {
+    env['BREVO_API_KEY'] = 'cle-de-test';
+    env['EMAIL_EXPEDITEUR'] = 'service@sante.gn';
+    env['EMAIL_REPONSE'] = 'reponses@exemple.gn';
+
+    await envoyerCourriel({ destinataire: 'patient@exemple.gn', sujet: 'Code', html: '<p>1</p>' });
+
+    expect(corpsEnvoye().replyTo).toEqual({ email: 'reponses@exemple.gn' });
+  });
+
+  it('n ajoute pas de Reply-To quand EMAIL_REPONSE n est pas posee', async () => {
+    env['BREVO_API_KEY'] = 'cle-de-test';
+    env['EMAIL_EXPEDITEUR'] = 'service@sante.gn';
+
+    await envoyerCourriel({ destinataire: 'patient@exemple.gn', sujet: 'Code', html: '<p>1</p>' });
+
+    expect(corpsEnvoye()).not.toHaveProperty('replyTo');
+  });
+
+  it("envoie la cle d'API dans l'en-tete attendu par Brevo", async () => {
+    env['BREVO_API_KEY'] = 'cle-de-test';
+    env['EMAIL_EXPEDITEUR'] = 'service@sante.gn';
+
+    await envoyerCourriel({ destinataire: 'patient@exemple.gn', sujet: 'Code', html: '<p>1</p>' });
+
+    const [url, options] = appels.mock.calls.at(-1)! as [string, { headers: Record<string, string> }];
+    expect(url).toBe('https://api.brevo.com/v3/smtp/email');
+    expect(options.headers['api-key']).toBe('cle-de-test');
+  });
+
+  // Sans expediteur, reveler le code vaudrait mieux que rien pour l'appelant
+  // naif : l'erreur doit etre explicite pour qu'il refuse la connexion.
+  it('refuse clairement quand aucun transport n est configure', async () => {
+    await expect(
+      envoyerCourriel({ destinataire: 'patient@exemple.gn', sujet: 'Code', html: '<p>1</p>' }),
+    ).rejects.toThrow(/BREVO_API_KEY/);
+    expect(appels).not.toHaveBeenCalled();
+  });
+
+  it('refuse clairement quand aucune adresse d expedition n est connue', async () => {
+    env['BREVO_API_KEY'] = 'cle-de-test';
+
+    await expect(
+      envoyerCourriel({ destinataire: 'patient@exemple.gn', sujet: 'Code', html: '<p>1</p>' }),
+    ).rejects.toThrow(/adresse d'expedition/);
+    expect(appels).not.toHaveBeenCalled();
+  });
+
+  it("remonte le refus de Brevo sans laisser filtrer la cle", async () => {
+    env['BREVO_API_KEY'] = 'xkeysib-secrete';
+    env['EMAIL_EXPEDITEUR'] = 'service@sante.gn';
+    appels.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => 'sender email is invalid, cle xkeysib-secrete',
+    });
+
+    const envoi = envoyerCourriel({
+      destinataire: 'patient@exemple.gn',
+      sujet: 'Code',
+      html: '<p>1</p>',
+    });
+
+    await expect(envoi).rejects.toThrow(/service@sante\.gn/);
+    await expect(envoi).rejects.not.toThrow(/xkeysib-secrete/);
   });
 });
 

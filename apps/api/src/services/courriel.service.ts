@@ -48,6 +48,7 @@ export type ConfigCourriel = {
   GMAIL_USER?: string;
   GMAIL_APP_PASSWORD?: string;
   EMAIL_EXPEDITEUR?: string;
+  EMAIL_REPONSE?: string;
 };
 
 export type Transport = 'brevo' | 'smtp' | 'gmail';
@@ -147,7 +148,40 @@ export function optionsGmail(config: ConfigCourriel) {
   return { service: 'gmail' as const, auth: { user, pass } };
 }
 
-async function envoyerParBrevo(cle: string, de: Expediteur, c: Courriel): Promise<void> {
+/**
+ * Le corps que Brevo attend.
+ *
+ * `replyTo` compte autant que l'expediteur : le domaine qui expedie n'a pas
+ * forcement de boite aux lettres, et une reponse partie vers une adresse qui
+ * ne recoit rien disparait sans que personne ne le sache.
+ */
+export function corpsBrevo(de: Expediteur, c: Courriel, repondreA?: string) {
+  return {
+    sender: { name: de.nom, email: de.adresse },
+    to: [{ email: c.destinataire, ...(c.nomDestinataire ? { name: c.nomDestinataire } : {}) }],
+    subject: c.sujet,
+    htmlContent: c.html,
+    ...(vide(repondreA) ? {} : { replyTo: { email: repondreA!.trim() } }),
+  };
+}
+
+/** Le meme message, pour nodemailer. */
+export function messageNodemailer(de: Expediteur, c: Courriel, repondreA?: string) {
+  return {
+    from: `"${de.nom}" <${de.adresse}>`,
+    to: c.destinataire,
+    subject: c.sujet,
+    html: c.html,
+    ...(vide(repondreA) ? {} : { replyTo: repondreA!.trim() }),
+  };
+}
+
+async function envoyerParBrevo(
+  cle: string,
+  de: Expediteur,
+  c: Courriel,
+  repondreA?: string,
+): Promise<void> {
   let reponse: Response;
   try {
     reponse = await fetch(URL_BREVO, {
@@ -157,12 +191,7 @@ async function envoyerParBrevo(cle: string, de: Expediteur, c: Courriel): Promis
         'content-type': 'application/json',
         accept: 'application/json',
       },
-      body: JSON.stringify({
-        sender: { name: de.nom, email: de.adresse },
-        to: [{ email: c.destinataire, ...(c.nomDestinataire ? { name: c.nomDestinataire } : {}) }],
-        subject: c.sujet,
-        htmlContent: c.html,
-      }),
+      body: JSON.stringify(corpsBrevo(de, c, repondreA)),
       signal: AbortSignal.timeout(DELAI_MAX_MS),
     });
   } catch (erreur) {
@@ -179,13 +208,9 @@ async function envoyerParNodemailer(
   options: ReturnType<typeof optionsSmtp> | ReturnType<typeof optionsGmail>,
   de: Expediteur,
   c: Courriel,
+  repondreA?: string,
 ): Promise<void> {
-  await nodemailer.createTransport(options).sendMail({
-    from: `"${de.nom}" <${de.adresse}>`,
-    to: c.destinataire,
-    subject: c.sujet,
-    html: c.html,
-  });
+  await nodemailer.createTransport(options).sendMail(messageNodemailer(de, c, repondreA));
 }
 
 /**
@@ -214,8 +239,11 @@ export async function envoyerCourriel(c: Courriel): Promise<void> {
   }
 
   const de: Expediteur = { nom: identite.nom, adresse };
+  const repondreA = config.EMAIL_REPONSE;
 
-  if (transport === 'brevo') return envoyerParBrevo(config.BREVO_API_KEY!.trim(), de, c);
-  if (transport === 'smtp') return envoyerParNodemailer(optionsSmtp(config), de, c);
-  return envoyerParNodemailer(optionsGmail(config), de, c);
+  if (transport === 'brevo') {
+    return envoyerParBrevo(config.BREVO_API_KEY!.trim(), de, c, repondreA);
+  }
+  if (transport === 'smtp') return envoyerParNodemailer(optionsSmtp(config), de, c, repondreA);
+  return envoyerParNodemailer(optionsGmail(config), de, c, repondreA);
 }
