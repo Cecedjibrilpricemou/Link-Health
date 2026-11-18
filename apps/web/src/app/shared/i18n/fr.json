@@ -1371,6 +1371,7 @@
   "PHARMACIEN": {
     "ROLE": "Pharmacien",
     "NAV_ASSURANCES": "Assurances partenaires",
+    "NAV_DOSSIER": "Dossier réglementaire",
     "NAV_SCANNER": "Scanner QR Code",
     "NAV_ORDONNANCES": "Ordonnances",
     "NAV_STOCKS": "Stocks",

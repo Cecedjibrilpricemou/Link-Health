@@ -11,6 +11,7 @@
 jest.mock('../src/config/prisma', () => {
   const prisma: Record<string, unknown> = {
     utilisateur: { findUnique: jest.fn() },
+    pharmacienProfile: { findUnique: jest.fn() },
     structureSante: { findUnique: jest.fn() },
     pieceAgrement: { findUnique: jest.fn(), findMany: jest.fn(), createMany: jest.fn(), delete: jest.fn() },
   };
@@ -31,7 +32,7 @@ import { promises as fs } from 'fs';
 
 import {
   cheminPiece, deposerPieces, dossierDe, estStructurePublique, exigeDesPieces, libellePiece,
-  lirePiece, normaliserRccm, piecesRequisesPour, SOUS_AUTORISATION_DU_PARENT,
+  lirePiece, maStructure, normaliserRccm, piecesRequisesPour, SOUS_AUTORISATION_DU_PARENT,
   validerIdentifiants, validerPieces,
 } from '../src/services/piece-agrement.service';
 import type { TypePieceAgrement } from '../src/config/generated/client/client';
@@ -43,6 +44,7 @@ type M = jest.Mock;
 const { prisma } = jest.requireMock('../src/config/prisma') as {
   prisma: {
     utilisateur: { findUnique: M };
+    pharmacienProfile: { findUnique: M };
     structureSante: { findUnique: M };
     pieceAgrement: { findUnique: M; findMany: M; createMany: M; delete: M };
     $transaction: M;
@@ -53,6 +55,7 @@ const qui = (role: string, userId = 'u-1') => ({ userId, role, sessionId: 's' })
 
 const NATIONAL = qui('ADMIN_NATIONAL', 'u-nat');
 const ADMIN = qui('ADMIN_STRUCTURE', 'u-adm');
+const TITULAIRE = qui('PHARMACIEN', 'u-ph');
 
 /** Un PDF minimal. C'est la signature de tete qui fait foi. */
 const PDF = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n', 'latin1');
@@ -400,6 +403,9 @@ describe('qui peut lire une piece', () => {
     prisma.pieceAgrement.findUnique.mockResolvedValue({
       fichier: 'aaaa-bbbb.pdf', type: 'AGREMENT_CREATION', idStructure: 'donka',
     });
+    // Par defaut, personne n'a de profil d'officine : le pharmacien du
+    // it.each ci-dessous est un pharmacien sans titre, pas un titulaire.
+    prisma.pharmacienProfile.findUnique.mockResolvedValue(null);
   });
 
   it('l administration nationale lit tout', async () => {
@@ -426,10 +432,74 @@ describe('qui peut lire une piece', () => {
     },
   );
 
+  // ── Le titulaire d'officine ────────────────────────────────────────
+  //
+  // Une pharmacie validee par agrement n'a pas d'ADMIN_STRUCTURE : son
+  // titulaire est un PHARMACIEN, et c'est lui qui repond du dossier.
+  // Le role seul ne suffit donc plus a decider, il faut le titre.
+
+  it('le titulaire lit le dossier de son officine', async () => {
+    prisma.pharmacienProfile.findUnique.mockResolvedValue({ estResponsable: true, idStructure: 'donka' });
+    await expect(lirePiece(TITULAIRE, 'p-1')).resolves.toBeDefined();
+  });
+
+  it('refuse un pharmacien de l officine qui n en est pas le titulaire', async () => {
+    prisma.pharmacienProfile.findUnique.mockResolvedValue({ estResponsable: false, idStructure: 'donka' });
+    await expect(lirePiece(TITULAIRE, 'p-1')).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('ne dit pas a un titulaire d ailleurs que la piece existe', async () => {
+    prisma.pharmacienProfile.findUnique.mockResolvedValue({ estResponsable: true, idStructure: 'autre-officine' });
+    await expect(lirePiece(TITULAIRE, 'p-1')).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('refuse un titulaire que son profil ne rattache a aucune structure', async () => {
+    prisma.pharmacienProfile.findUnique.mockResolvedValue({ estResponsable: true, idStructure: null });
+    await expect(lirePiece(TITULAIRE, 'p-1')).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
   it('ne lit pas le disque pour une piece inconnue', async () => {
     prisma.pieceAgrement.findUnique.mockResolvedValue(null);
     await expect(lirePiece(NATIONAL, 'p-absente')).rejects.toBeInstanceOf(NotFoundError);
     expect(fs.readFile).not.toHaveBeenCalled();
+  });
+});
+
+// ── La structure dont on repond ──────────────────────────────────────
+//
+// Le titulaire n'a pas d'ecran d'administration de structure : c'est par la
+// qu'il apprend quel dossier demander.
+
+describe('ma structure', () => {
+  beforeEach(() => {
+    prisma.pharmacienProfile.findUnique.mockResolvedValue(null);
+    prisma.structureSante.findUnique.mockResolvedValue({ id: 'donka', nom: 'Pharmacie Donka' });
+  });
+
+  it('nomme la pharmacie de son titulaire', async () => {
+    prisma.pharmacienProfile.findUnique.mockResolvedValue({ estResponsable: true, idStructure: 'donka' });
+    await expect(maStructure(TITULAIRE)).resolves.toEqual({ id: 'donka', nom: 'Pharmacie Donka' });
+  });
+
+  it('nomme sa structure a l administrateur', async () => {
+    prisma.utilisateur.findUnique.mockResolvedValue({ idStructure: 'donka' });
+    await expect(maStructure(ADMIN)).resolves.toEqual({ id: 'donka', nom: 'Pharmacie Donka' });
+  });
+
+  it('refuse un pharmacien qui n est pas titulaire', async () => {
+    prisma.pharmacienProfile.findUnique.mockResolvedValue({ estResponsable: false, idStructure: 'donka' });
+    await expect(maStructure(TITULAIRE)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('refuse un compte sans structure', async () => {
+    prisma.utilisateur.findUnique.mockResolvedValue({ idStructure: null });
+    await expect(maStructure(ADMIN)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  // L'administration nationale n'en repond d'aucune : cette route ne lui
+  // sert a rien, et lui rendre une structure au hasard serait pire.
+  it('refuse l administration nationale', async () => {
+    await expect(maStructure(NATIONAL)).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
 

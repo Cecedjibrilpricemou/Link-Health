@@ -38,9 +38,11 @@ import {
   validerPieces,
   type FichierRecu,
 } from './piece-agrement.service';
+import { estStructureOfficinale } from '../utils/officine.util';
 import type { JwtPayload } from '../types/auth.types';
 import {
   Role,
+  RoleOfficine,
   StatutDemandeAgrement,
   TypePieceAgrement,
   TypeStructure,
@@ -550,18 +552,48 @@ export async function valider(user: JwtPayload, id: string) {
       data: { idStructure: structure.id },
     });
 
-    await tx.utilisateur.create({
+    /**
+     * **Le role depend du type, et c'est tout l'enjeu de ce bloc.**
+     *
+     * Une officine validee donnait un `ADMIN_STRUCTURE`, comme les autres.
+     * Son titulaire arrivait alors sur un tableau de bord qui compte des
+     * consultations et des patients rattaches - qu'une pharmacie n'a pas -,
+     * et l'espace officine lui etait ferme : ni stock, ni commande, ni
+     * caisse, ni ordonnance recue. Il ne pouvait litteralement rien faire.
+     *
+     * La creation par l'administration, elle, faisait deja un `PHARMACIEN`
+     * titulaire. Deux portes, deux resultats pour le meme metier : c'est la
+     * porte la plus recente qui avait tort.
+     */
+    const officine = estStructureOfficinale(d.type);
+
+    const compte = await tx.utilisateur.create({
       data: {
         telephone: d.responsableTelephone,
         email: d.responsableEmail,
         motDePasseHash,
         prenom: d.responsablePrenom,
         nom: d.responsableNom,
-        role: Role.ADMIN_STRUCTURE,
+        role: officine ? Role.PHARMACIEN : Role.ADMIN_STRUCTURE,
         idStructure: structure.id,
         doitChangerMotDePasse: true,
       },
+      select: { id: true },
     });
+
+    // Le profil d'officine porte ce que le role ne dit pas : **titulaire**, et
+    // responsable. C'est lui qui distingue le patron de son caissier, qui
+    // porte pourtant le meme role.
+    if (officine) {
+      await tx.pharmacienProfile.create({
+        data: {
+          idUtilisateur: compte.id,
+          idStructure: structure.id,
+          estResponsable: true,
+          roleOfficine: RoleOfficine.TITULAIRE,
+        },
+      });
+    }
 
     await tx.demandeAgrement.update({
       where: { id },

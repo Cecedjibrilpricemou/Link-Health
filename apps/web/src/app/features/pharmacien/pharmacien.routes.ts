@@ -68,6 +68,11 @@ export const PHARMACIEN_ROUTES: Routes = [
         path: 'assurances',
         loadComponent: () =>
           import('../admin-structure/assurances/assurances.component').then(m => m.AssurancesComponent)
+      },
+      {
+        path: 'dossier',
+        loadComponent: () =>
+          import('./dossier/dossier.component').then(m => m.PharmacienDossierComponent)
       }
     ]
   }

@@ -103,6 +103,10 @@ export class PharmacienLayoutComponent {
     { labelKey: 'PHARMACIEN.NAV_CONNEXIONS', icon: 'pi-shield', route: '/pharmacien/connexions', roles: ['TITULAIRE'] },
     { labelKey: 'PHARMACIEN.NAV_AGENTS', icon: 'pi-users', route: '/pharmacien/agents', roles: ['TITULAIRE'] },
     { labelKey: 'PHARMACIEN.NAV_ASSURANCES', icon: 'pi-shield', route: '/pharmacien/assurances', roles: ['TITULAIRE'] },
+    // Le dossier reglementaire de l'officine : au titulaire seul. C'est lui
+    // qui redepose l'agrement quand il est renouvele, et les pieces portent
+    // son diplome et l'adresse exacte du local.
+    { labelKey: 'PHARMACIEN.NAV_DOSSIER', icon: 'pi-folder', route: '/pharmacien/dossier', roles: ['TITULAIRE'] },
   ];
 
   get navItems() {

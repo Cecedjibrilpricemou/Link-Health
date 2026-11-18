@@ -483,6 +483,7 @@ let tx: {
   structureSante: Record<string, jest.Mock>;
   pieceAgrement: Record<string, jest.Mock>;
   utilisateur: Record<string, jest.Mock>;
+  pharmacienProfile: Record<string, jest.Mock>;
   demandeAgrement: Record<string, jest.Mock>;
 };
 
@@ -491,6 +492,7 @@ beforeEach(() => {
     structureSante: { create: jest.fn(async () => ({ id: 'structure-1' })) },
     pieceAgrement: { updateMany: jest.fn(async () => ({ count: 4 })) },
     utilisateur: { create: jest.fn(async () => ({ id: 'compte-1' })) },
+    pharmacienProfile: { create: jest.fn(async () => ({})) },
     demandeAgrement: { update: jest.fn(async () => ({})) },
   };
   bd.$transaction.mockImplementation(async (rappel: (t: typeof tx) => Promise<unknown>) => rappel(tx));
@@ -563,7 +565,6 @@ describe('valider', () => {
         data: expect.objectContaining({
           telephone: '620000102',
           email: 'm.barry@example.gn',
-          role: 'ADMIN_STRUCTURE',
           idStructure: 'structure-1',
           doitChangerMotDePasse: true,
           motDePasseHash: 'hache:MotDePasseTemporaire9',
@@ -571,6 +572,51 @@ describe('valider', () => {
       }),
     );
   });
+
+  // ── Le role du responsable depend du metier ────────────────────────
+  //
+  // Le responsable d'une officine est un pharmacien : il lui faut le role
+  // PHARMACIEN pour tenir son comptoir, et le profil d'officine qui va
+  // avec, sans quoi il serait admin d'une pharmacie ou il ne peut pas
+  // vendre. Partout ailleurs, le responsable reste un ADMIN_STRUCTURE.
+
+  it('fait du responsable d une officine un pharmacien titulaire', async () => {
+    await service.valider(AGENT, 'demande-1');
+
+    expect(tx.utilisateur.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ role: 'PHARMACIEN' }) }),
+    );
+    expect(tx.pharmacienProfile.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          idUtilisateur: 'compte-1',
+          idStructure: 'structure-1',
+          estResponsable: true,
+          roleOfficine: 'TITULAIRE',
+        }),
+      }),
+    );
+  });
+
+  it.each(['CLINIQUE', 'LABORATOIRE', 'HOPITAL_PREFECTORAL', 'ASSURANCE'])(
+    'laisse le responsable d une %s administrateur de structure, sans profil d officine',
+    async (type) => {
+      bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ type }));
+      bd.demandeAgrement.findUniqueOrThrow.mockResolvedValue(demandeEnBase({ type }));
+      // Chaque metier a son dossier : l'assurance ne depose pas les quatre
+      // pieces d'une officine. On depose exactement ce que le type demande.
+      bd.pieceAgrement.findMany.mockResolvedValue(
+        service.piecesDemandeesPour(type as never).map((p) => ({ type: p })),
+      );
+
+      await service.valider(AGENT, 'demande-1');
+
+      expect(tx.utilisateur.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ role: 'ADMIN_STRUCTURE' }) }),
+      );
+      expect(tx.pharmacienProfile.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('marque le dossier valide et retient qui a decide', async () => {
     await service.valider(AGENT, 'demande-1');

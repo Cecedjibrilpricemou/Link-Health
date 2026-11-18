@@ -2113,6 +2113,7 @@
   "PHARMACIEN": {
     "ROLE": "Pharmacist",
     "NAV_ASSURANCES": "Partner insurers",
+    "NAV_DOSSIER": "Regulatory file",
     "NAV_SCANNER": "Scan QR Code",
     "NAV_ORDONNANCES": "Prescriptions",
     "NAV_STOCKS": "Stock",
