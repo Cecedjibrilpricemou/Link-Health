@@ -27,6 +27,11 @@ COPY packages/shared-types packages/shared-types
 # meme etape.
 ARG DATABASE_URL="postgresql://build:build@localhost:5432/build"
 RUN npm run prisma:generate --workspace=apps/api
+
+# `@baobaoheath/shared-types` declare `main: src/index.ts`, ce qui convient au
+# developpement — tsx charge le TypeScript a la volee — mais pas a une image
+# ou l'API tourne en JavaScript compile. Il faut donc le compiler aussi.
+RUN npm run build --workspace=packages/shared-types
 RUN npm run build --workspace=apps/api
 
 # Dependances de production seules. La CLI prisma et ce qu'elle tire —
@@ -52,6 +57,16 @@ COPY --from=prod-deps /repo/node_modules /repo/node_modules
 COPY --from=build /repo/apps/api/dist ./dist
 COPY apps/api/package.json ./package.json
 COPY apps/api/prisma ./prisma
+
+# npm workspaces ne copie pas un paquet local dans node_modules : il y pose
+# un lien symbolique vers packages/shared-types, dossier absent de cette
+# image. Le lien pointait donc dans le vide, et l'API s'arretait au demarrage
+# sur « Cannot find module '@baobaoheath/shared-types' ».
+#
+# Le JavaScript compile prend la place du lien. Node trouve l'index.js du
+# dossier sans autre declaration, et le package.json du paquet — qui designe
+# du TypeScript — n'a pas a etre embarque.
+COPY --from=build /repo/packages/shared-types/dist /repo/node_modules/@baobaoheath/shared-types
 
 RUN chown -R node:node /repo
 USER node
