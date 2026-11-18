@@ -1,51 +1,16 @@
 // src/services/email.service.ts
-import nodemailer from 'nodemailer';
-import { AppError } from '../utils/app-error';
+//
+// Le contenu des courriels de la plateforme, et rien d'autre. L'expedition
+// est dans `courriel.service.ts`, qui choisit le transport selon ce qui est
+// configure : ce fichier ne sait plus par ou le message part, et n'a plus a
+// changer quand l'expediteur change.
+import { env } from '../config/env';
+
+import { envoyerCourriel } from './courriel.service';
 import { getIdentitePlateforme } from './parametres.service';
 
-// ── Transporter Gmail ─────────────────────────────────────────────
-type EmailConfig = {
-    user: string;
-    pass: string;
-};
-
-function getEmailConfig(): EmailConfig {
-    const user = process.env.GMAIL_USER?.trim();
-    const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '');
-
-    if (!user || !pass) {
-        throw new AppError('Configuration Gmail manquante: GMAIL_USER ou GMAIL_APP_PASSWORD absent', 503);
-    }
-
-    if (pass.length !== 16) {
-        throw new AppError('Configuration Gmail invalide: GMAIL_APP_PASSWORD doit contenir 16 caracteres', 503);
-    }
-
-    return { user, pass };
-}
-
-function createGmailTransporter() {
-    const { user, pass } = getEmailConfig();
-
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user, pass },
-    });
-}
-
-function getGmailAuthHelp(error: unknown): string | undefined {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes('535') && !message.toLowerCase().includes('badcredentials')) {
-        return undefined;
-    }
-
-    return [
-        'Authentification Gmail refusee.',
-        'Verifiez que GMAIL_USER est le meme compte Gmail que celui qui a genere le mot de passe d application.',
-        'GMAIL_APP_PASSWORD doit etre le mot de passe d application Gmail de 16 caracteres, pas le mot de passe normal du compte.',
-        'Si vous venez de le remplacer, redemarrez npm run dev.',
-    ].join(' ');
-}
+/** Le lien de connexion depend du deploiement, jamais code en dur. */
+const lienConnexion = () => `${env.FRONTEND_URL.replace(/\/+$/, '')}/auth/login`;
 
 export async function envoyerOtpConnexion(dto: {
     destinataire: string;
@@ -53,7 +18,6 @@ export async function envoyerOtpConnexion(dto: {
     code: string;
     expireDansMinutes: number;
 }): Promise<void> {
-    const { user } = getEmailConfig();
     const identite = await getIdentitePlateforme();
     const nom = identite.nom;
 
@@ -96,20 +60,12 @@ export async function envoyerOtpConnexion(dto: {
 </html>
   `;
 
-    try {
-        await createGmailTransporter().sendMail({
-            from: `"${identite.emailExpediteur.trim() || nom}" <${user}>`,
-            to: dto.destinataire,
-            subject: `Code de verification ${nom}: ${dto.code}`,
-            html
-        });
-    } catch (error) {
-        const help = getGmailAuthHelp(error);
-        if (help) {
-            throw new AppError(help, 503);
-        }
-        throw error;
-    }
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Code de verification ${nom}: ${dto.code}`,
+        html,
+    });
 }
 
 // ── Email de réinitialisation de mot de passe ────────────────────
@@ -119,7 +75,6 @@ export async function envoyerEmailResetMotDePasse(dto: {
     lienReset: string;
     expireDansMinutes: number;
 }): Promise<void> {
-    const { user } = getEmailConfig();
     const identite = await getIdentitePlateforme();
     const nom = identite.nom;
 
@@ -174,18 +129,14 @@ export async function envoyerEmailResetMotDePasse(dto: {
 </html>
   `;
 
-    try {
-        await createGmailTransporter().sendMail({
-            from: `"${identite.emailExpediteur.trim() || nom}" <${user}>`,
-            to: dto.destinataire,
-            subject: 'Réinitialisation de votre mot de passe ${nom}',
-            html
-        });
-    } catch (error) {
-        const help = getGmailAuthHelp(error);
-        if (help) throw new AppError(help, 503);
-        throw error;
-    }
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        // Le sujet etait entre guillemets simples : les destinataires
+        // recevaient « ${nom} » en toutes lettres dans l'objet du message.
+        sujet: `Reinitialisation de votre mot de passe ${nom}`,
+        html,
+    });
 }
 
 // ── Email de bienvenue pour un admin de structure ─────────────────
@@ -263,7 +214,7 @@ export async function envoyerEmailAdminStructure(dto: {
 
               <!-- CTA -->
               <div style="text-align:center;margin:0 0 32px;">
-                <a href="http://localhost:4200/auth/login"
+                <a href="${lienConnexion()}"
                    style="background:#1B5E35;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block;">
                   Se connecter à ${nom}
                 </a>
@@ -293,22 +244,12 @@ export async function envoyerEmailAdminStructure(dto: {
 </html>
   `;
 
-    const { user } = getEmailConfig();
-
-    try {
-        await createGmailTransporter().sendMail({
-            from: `"${identite.emailExpediteur.trim() || nom}" <${user}>`,
-            to: dto.destinataire,
-            subject: `Vos identifiants ${nom} - ${dto.nomStructure}`,
-            html
-        });
-    } catch (error) {
-        const help = getGmailAuthHelp(error);
-        if (help) {
-            throw new AppError(help, 503);
-        }
-        throw error;
-    }
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Vos identifiants ${nom} - ${dto.nomStructure}`,
+        html,
+    });
 }
 
 // ── Email de bienvenue pour un agent (ASC, Médecin, Pharmacien) ───
@@ -370,7 +311,7 @@ export async function envoyerEmailAgent(dto: {
                 <p style="margin:0;color:#92400e;font-size:13px;">⚠️ <strong>Changez ce mot de passe</strong> lors de votre première connexion.</p>
               </div>
               <div style="text-align:center;margin:0 0 24px;">
-                <a href="http://localhost:4200/auth/login" style="background:#1B5E35;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block;">
+                <a href="${lienConnexion()}" style="background:#1B5E35;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block;">
                   Se connecter
                 </a>
               </div>
@@ -389,20 +330,10 @@ export async function envoyerEmailAgent(dto: {
 </html>
   `;
 
-    const { user } = getEmailConfig();
-
-    try {
-        await createGmailTransporter().sendMail({
-            from: `"${identite.emailExpediteur.trim() || nom}" <${user}>`,
-            to: dto.destinataire,
-            subject: `Vos identifiants ${nom} - ${dto.nomStructure}`,
-            html
-        });
-    } catch (error) {
-        const help = getGmailAuthHelp(error);
-        if (help) {
-            throw new AppError(help, 503);
-        }
-        throw error;
-    }
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Vos identifiants ${nom} - ${dto.nomStructure}`,
+        html,
+    });
 }
