@@ -307,9 +307,17 @@ async function structureDontIlRepond(user: JwtPayload): Promise<string | null> {
   if (user.role === 'PHARMACIEN') {
     const profil = await prisma.pharmacienProfile.findUnique({
       where: { idUtilisateur: user.userId },
-      select: { estResponsable: true, idStructure: true },
+      select: { estResponsable: true, roleOfficine: true, idStructure: true },
     });
-    return profil?.estResponsable ? profil.idStructure ?? null : null;
+    // **Deux marques pour un meme titre, et il faut les deux.** Le reste du
+    // module officine reconnait le titulaire a `roleOfficine`, et le menu du
+    // navigateur filtre sur ce champ. Les trois portes de creation posent
+    // toujours les deux ensemble, mais s'en tenir a `estResponsable` ferait
+    // afficher l'entree « Dossier reglementaire » a un titulaire que le
+    // serveur refuserait ensuite : un ecran vide, sans explication. Aucune
+    // des deux marques n'ouvre quoi que ce soit a l'adjoint ou au caissier.
+    const titulaire = profil?.estResponsable || profil?.roleOfficine === 'TITULAIRE';
+    return titulaire ? profil?.idStructure ?? null : null;
   }
 
   return null;

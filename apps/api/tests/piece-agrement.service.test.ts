@@ -443,9 +443,24 @@ describe('qui peut lire une piece', () => {
     await expect(lirePiece(TITULAIRE, 'p-1')).resolves.toBeDefined();
   });
 
-  it('refuse un pharmacien de l officine qui n en est pas le titulaire', async () => {
-    prisma.pharmacienProfile.findUnique.mockResolvedValue({ estResponsable: false, idStructure: 'donka' });
-    await expect(lirePiece(TITULAIRE, 'p-1')).rejects.toBeInstanceOf(ForbiddenError);
+  it.each(['ADJOINT', 'PREPARATEUR', 'CAISSIER'])(
+    'refuse un %s de la meme officine',
+    async (roleOfficine) => {
+      prisma.pharmacienProfile.findUnique.mockResolvedValue({
+        estResponsable: false, roleOfficine, idStructure: 'donka',
+      });
+      await expect(lirePiece(TITULAIRE, 'p-1')).rejects.toBeInstanceOf(ForbiddenError);
+    },
+  );
+
+  // Le reste du module officine reconnait le titulaire a `roleOfficine`, et
+  // le menu du navigateur filtre sur ce champ : un profil marque TITULAIRE
+  // sans `estResponsable` verrait l'entree du dossier et se ferait refuser.
+  it('reconnait le titulaire a son role d officine, pas seulement au drapeau', async () => {
+    prisma.pharmacienProfile.findUnique.mockResolvedValue({
+      estResponsable: false, roleOfficine: 'TITULAIRE', idStructure: 'donka',
+    });
+    await expect(lirePiece(TITULAIRE, 'p-1')).resolves.toBeDefined();
   });
 
   it('ne dit pas a un titulaire d ailleurs que la piece existe', async () => {
