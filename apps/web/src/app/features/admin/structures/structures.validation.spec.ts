@@ -311,3 +311,92 @@ describe('creation d une structure : ce qui est exige, type par type', () => {
     }
   }
 });
+
+// ── Pourquoi le bouton ne part pas ───────────────────────────────────
+//
+// **Un formulaire rempli au complet, un bouton mort, et rien qui le dise.**
+// Le dossier reclame quatre PDF ; le compteur « 0/4 jointes » vit en haut du
+// bloc des pieces et sort de l'ecran bien avant le bouton. L'administrateur
+// n'avait aucun moyen de savoir ce qui manquait.
+
+describe('la raison du blocage', () => {
+  beforeEach(() => TestBed.resetTestingModule());
+
+  /** Remplit tout sauf le dossier, et joint `combien` pieces. */
+  function sansDossierComplet(component: StructuresComponent, type: string, combien: number) {
+    remplir(component, type);
+    const fichiers: Partial<Record<TypePieceAgrement, File>> = {};
+    for (const piece of (PIECES_PAR_TYPE[type] ?? []).slice(0, combien)) {
+      fichiers[piece] = new File(['%PDF-1.4'], `${piece}.pdf`, { type: 'application/pdf' });
+    }
+    component.pieces.set(fichiers);
+    component.piecesCompletes.set(false);
+  }
+
+  it('dit combien de pieces manquent quand aucune n est jointe', () => {
+    const { component } = monter();
+    sansDossierComplet(component, 'PHARMACIE', 0);
+
+    const raison = component.raisonBlocage();
+    expect(component.peutEnvoyer()).toBe(false);
+    expect(raison).toContain('0');
+    expect(raison).toContain('4');
+  });
+
+  it('suit le compte a mesure que les pieces arrivent', () => {
+    const { component } = monter();
+    sansDossierComplet(component, 'CLINIQUE', 2);
+
+    expect(component.raisonBlocage()).toContain('2');
+  });
+
+  // Un hopital n'en demande que trois : le total vient du serveur, jamais
+  // d'un chiffre ecrit en dur dans l'ecran.
+  it('compte selon le type, et non sur un total fixe', () => {
+    const { component } = monter();
+    sansDossierComplet(component, 'HOPITAL_PREF', 0);
+
+    expect(component.raisonBlocage()).toContain('3');
+  });
+
+  it('se tait quand le dossier est complet', () => {
+    const { component } = monter();
+    remplir(component, 'PHARMACIE');
+
+    expect(component.peutEnvoyer()).toBe(true);
+    expect(component.raisonBlocage()).toBeNull();
+  });
+
+  // Pendant l'envoi, le bouton est deja desactive et affiche « Creation... » :
+  // une raison en plus accuserait l'administrateur alors qu'il n'a rien a
+  // faire qu'attendre.
+  it('se tait pendant l envoi', () => {
+    const { component } = monter();
+    sansDossierComplet(component, 'PHARMACIE', 0);
+    component.isSaving.set(true);
+
+    expect(component.raisonBlocage()).toBeNull();
+  });
+
+  it('nomme la commune quand c est elle qui manque', () => {
+    const { component } = monter();
+    remplir(component, 'PHARMACIE');
+    component.newStructure.commune = '  ';
+
+    expect(component.raisonBlocage()?.toLowerCase()).toContain('commune');
+  });
+
+  /**
+   * Les deux marqueurs doivent exister dans les deux langues : sans eux, le
+   * compte ne s'affiche pas et la phrase perd ce qu'elle apporte.
+   */
+  it('porte le compte dans les deux langues', () => {
+    for (const catalogue of [fr, en]) {
+      const texte = (catalogue as Record<string, any>)['ADMIN']['STRUCTURES']['BLOCAGE_PIECES'] as string;
+      expect(texte).toContain('{{jointes}}');
+      expect(texte).toContain('{{total}}');
+    }
+    expect((fr as Record<string, any>)['ADMIN']['STRUCTURES']['BLOCAGE_COMMUNE'].toLowerCase()).toContain('commune');
+    expect((en as Record<string, any>)['ADMIN']['STRUCTURES']['BLOCAGE_COMMUNE'].toLowerCase()).toContain('commune');
+  });
+});

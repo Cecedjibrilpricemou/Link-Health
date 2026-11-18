@@ -184,6 +184,36 @@ export class StructuresComponent implements OnInit {
     return !this.isSaving() && !!this.newStructure.commune.trim() && (!this.exigeUnDossier() || this.piecesCompletes());
   }
 
+  /**
+   * Pourquoi le bouton ne part pas, en une phrase, ou `null` s'il part.
+   *
+   * **Un bouton grise qui ne dit rien laisse chercher.** Le dossier reclame
+   * quatre PDF ; le compteur « 0/4 jointes » vit en haut du bloc des pieces,
+   * et sur un formulaire de cette longueur il sort de l'ecran bien avant le
+   * bouton. L'administrateur remplit alors tous les champs, voit un bouton
+   * mort et n'a aucun moyen de savoir ce qui manque.
+   *
+   * La phrase nomme ce qui bloque et, pour les pieces, ou on en est.
+   */
+  raisonBlocage(): string | null {
+    if (this.isSaving()) return null;
+    if (!this.newStructure.commune.trim()) {
+      return this.i18n.t('ADMIN.STRUCTURES.BLOCAGE_COMMUNE');
+    }
+    if (this.exigeUnDossier() && !this.piecesCompletes()) {
+      const requises = this.requisesImposees();
+      // Sans la liste du serveur, on ne peut pas compter : on dit seulement
+      // que le dossier est incomplet, plutot qu'un total invente.
+      if (!requises) return this.i18n.t('AGREMENT.ERR_PIECES');
+      const jointes = requises.filter((type) => !!this.pieces()[type]).length;
+      return this.i18n.t('ADMIN.STRUCTURES.BLOCAGE_PIECES', {
+        jointes,
+        total: requises.length,
+      });
+    }
+    return null;
+  }
+
   get typeOptions() {
     return [
       { label: this.i18n.t('ADMIN.STRUCTURES.TYPE_POSTE'),        value: 'POSTE'        },

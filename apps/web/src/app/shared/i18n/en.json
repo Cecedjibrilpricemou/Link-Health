@@ -1489,6 +1489,8 @@
       "EMAIL_ADMIN_PH": "E.g.: admin@structure.gn",
       "CREATING": "Creating...",
       "CREATE_BTN": "Create facility",
+      "BLOCAGE_COMMUNE": "Enter the commune to create the facility.",
+      "BLOCAGE_PIECES": "Attach the regulatory file documents to create the facility ({{jointes}} of {{total}} attached).",
       "INACTIVE_BADGE": "Deactivated",
       "ACTIVE_BADGE": "Active",
       "USER_COUNT": "{{count}} user(s)",
