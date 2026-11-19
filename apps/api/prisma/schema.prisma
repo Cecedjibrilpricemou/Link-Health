@@ -414,7 +414,11 @@ model Utilisateur {
   personnesAssureesSaisies  PersonneAssuree[]        @relation("PersonnesAssureesSaisies")
   piecesAgrementDeposees    PieceAgrement[]          @relation("PiecesAgrementDeposees")
   demandesAgrementExaminees DemandeAgrement[]        @relation("DemandesAgrementExaminees")
-  controlesEligibilite      ControleEligibilite[]    @relation("ControlesEligibilite")
+  candidaturesLivreurExaminees CandidatureLivreur[]  @relation("CandidaturesLivreurExaminees")
+  /// Le dossier sur lequel ce livreur a ete admis. Absent pour un livreur cree
+  /// avant que le dossier soit exige.
+  candidatureLivreur        CandidatureLivreur?      @relation("CandidatureDuLivreur")
+  controlesEligibilite     ControleEligibilite[]    @relation("ControlesEligibilite")
   syncEvents                SyncEvent[]
   syncMutations             SyncMutation[]
   consentementsDonnes       ConsentementPatient[]
@@ -983,6 +987,114 @@ model DemandeAgrement {
 
   @@index([statut, deposeLe])
   @@map("demandes_agrement")
+}
+
+/// L'etat d'une candidature de motard livreur. Memes etapes, et memes raisons,
+/// que `StatutDemandeAgrement` : `EN_ANALYSE` dit qu'un agent a le dossier
+/// sous les yeux.
+enum StatutCandidatureLivreur {
+  RECUE
+  EN_ANALYSE
+  VALIDEE
+  REFUSEE
+}
+
+/// Les six pieces exigees d'un motard, sans exception ni piece facultative.
+enum TypePieceLivreur {
+  CNI_RECTO
+  CNI_VERSO
+  PERMIS_CONDUIRE
+  CARTE_GRISE
+  ASSURANCE
+  CERTIFICAT_RESIDENCE
+}
+
+/// Le dossier d'un motard livreur, de son depot a la decision.
+///
+/// **Tout livreur a un dossier, quelle que soit la porte.** Le motard qui
+/// candidate depuis `/devenir-livreur` en depose un ; l'administration qui
+/// cree un compte directement en depose un aussi, enregistre d'emblee comme
+/// valide. Sans cela, on ne saurait jamais sur quelles pieces un livreur a
+/// ete admis - et c'est lui qui entre chez les patients avec leurs
+/// medicaments.
+///
+/// **Pourquoi une table a part, et non un `LivreurProfile` en attente** : un
+/// profil inactif apparait deja dans l'ecran des livreurs et peut etre
+/// reactive d'un clic. Un candidat que personne n'a examine ne doit pas
+/// pouvoir l'etre.
+model CandidatureLivreur {
+  id String @id @default(cuid())
+
+  /// Numero de dossier communique au candidat, de la forme `DL-2026-0001`.
+  numero String                   @unique
+  statut StatutCandidatureLivreur @default(RECUE)
+
+  /// Vrai quand le dossier a ete depose par l'administration avec la
+  /// creation du compte, et non par le motard lui-meme.
+  deposeParAdministration Boolean @default(false)
+
+  prenom        String
+  nom           String
+  dateNaissance DateTime @db.Date
+  /// `M` ou `F`, comme le profil patient.
+  sexe          String
+  telephone     String
+  /// Facultatif : beaucoup de motards n'en ont pas. Quand il existe, les
+  /// identifiants y partent a la validation.
+  email         String?
+
+  /// Le lieu de residence et de travail, en texte comme ailleurs : le
+  /// referentiel propose, il ne contraint pas.
+  prefecture String
+  commune    String?
+  quartier   String
+
+  pieces PieceCandidatureLivreur[]
+
+  /// Le compte ne d'une validation. Le lien permet de retrouver, des annees
+  /// plus tard, le dossier sur lequel un livreur a ete admis.
+  idLivreurCree String?      @unique
+  livreurCree   Utilisateur? @relation("CandidatureDuLivreur", fields: [idLivreurCree], references: [id], onDelete: SetNull)
+
+  /// Obligatoire pour un refus - impose par l'API.
+  motifRefus String?
+
+  idExaminePar String?
+  examinePar   Utilisateur? @relation("CandidaturesLivreurExaminees", fields: [idExaminePar], references: [id], onDelete: SetNull)
+  examineLe    DateTime?
+
+  deposeLe DateTime @default(now())
+
+  @@index([statut, deposeLe])
+  @@index([telephone, statut])
+  @@map("candidatures_livreur")
+}
+
+/// Une piece du dossier d'un motard.
+///
+/// Le fichier vit dans `stockage-prive/livreurs/`, **jamais sous `uploads/`**
+/// qui est servi sans authentification : une carte d'identite recto verso
+/// suffit a usurper une identite.
+///
+/// Un motard photographie ses papiers plus souvent qu'il ne les scanne : la
+/// piece peut etre une image ou un PDF. `typeMime` est celui **lu dans les
+/// octets** au depot, pas celui que le navigateur a declare, et c'est lui qui
+/// est renvoye a la lecture.
+model PieceCandidatureLivreur {
+  id       String           @id @default(cuid())
+  type     TypePieceLivreur
+  fichier  String
+  typeMime String
+  taille   Int
+
+  idCandidature String
+  candidature   CandidatureLivreur @relation(fields: [idCandidature], references: [id], onDelete: Cascade)
+
+  deposeLe DateTime @default(now())
+
+  /// Une seule piece par type et par dossier.
+  @@unique([idCandidature, type])
+  @@map("pieces_candidature_livreur")
 }
 
 /// Le degre de confiance dans l'identite d'un patient (EF-01-04).
