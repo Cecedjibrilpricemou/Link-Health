@@ -471,6 +471,48 @@ export class StructuresComponent implements OnInit {
     });
   }
 
+  /**
+   * Une officine, c'est-a-dire une structure sollicitee pour une commande.
+   *
+   * Le partenariat ne concerne qu'elles : un CHU n'est jamais appele quand un
+   * patient cherche a faire servir son ordonnance, et lui afficher un etat de
+   * partenariat n'apprendrait rien.
+   */
+  estOfficine(type: string): boolean {
+    return type === 'PHARMACIE';
+  }
+
+  /**
+   * Accorder ou retirer le partenariat.
+   *
+   * **Sans cette action, le drapeau n'avait aucune porte.** Une pharmacie
+   * creee avec son dossier complet restait hors du circuit des commandes, et
+   * son titulaire ne voyait qu'un refus que personne ne pouvait lever.
+   */
+  basculerPartenariat(s: StructureAdminView) {
+    this.menuOuvert.set(null);
+    this.isToggling.set(s.id);
+    const vise = !s.estPartenaire;
+
+    this.adminService.definirPartenariat(s.id, vise).subscribe({
+      next: () => {
+        this.isToggling.set(null);
+        this.toastr.success(
+          this.i18n.t(vise ? 'ADMIN.STRUCTURES.PARTENARIAT_ACCORDE' : 'ADMIN.STRUCTURES.PARTENARIAT_RETIRE', { nom: s.nom }),
+          this.i18n.t('ADMIN.STRUCTURES.SUCCESS_TITLE'),
+        );
+        this.loadStructures();
+      },
+      error: (err) => {
+        this.isToggling.set(null);
+        this.toastr.error(
+          err?.error?.error ?? this.i18n.t('ADMIN.STRUCTURES.ERR_PARTENARIAT'),
+          this.i18n.t('COMMON.ERROR_TITLE'),
+        );
+      },
+    });
+  }
+
   // ── Demander confirmation avant désactivation ─────────────────
   demanderDesactivation(s: StructureAdminView) {
     this.menuOuvert.set(null);

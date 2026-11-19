@@ -33,10 +33,13 @@ const cartes = vi.hoisted(() => {
 vi.mock('leaflet', () => cartes);
 
 const STRUCTURES = [
-  { id: 'chu', nom: 'CHU Donka', type: 'CHU', prefecture: 'Conakry', telephone: '620000001', estActive: true, creeLe: '2026-01-01' },
-  { id: 'poste', nom: 'Poste de santé de Bantignel', type: 'POSTE', prefecture: 'Pita', telephone: null, estActive: true, creeLe: '2026-01-02' },
-  { id: 'pharma', nom: 'Pharmacie du Port', type: 'PHARMACIE', prefecture: 'Conakry', telephone: null, estActive: false, creeLe: '2026-01-03' },
-  { id: 'labo', nom: 'Laboratoire Mamou Analyses', type: 'LABORATOIRE', prefecture: 'Mamou', telephone: null, estActive: true, creeLe: '2026-01-04' },
+  { id: 'chu', nom: 'CHU Donka', type: 'CHU', prefecture: 'Conakry', telephone: '620000001', estActive: true, estPartenaire: true, creeLe: '2026-01-01' },
+  { id: 'poste', nom: 'Poste de santé de Bantignel', type: 'POSTE', prefecture: 'Pita', telephone: null, estActive: true, estPartenaire: false, creeLe: '2026-01-02' },
+  { id: 'pharma', nom: 'Pharmacie du Port', type: 'PHARMACIE', prefecture: 'Conakry', telephone: null, estActive: false, estPartenaire: true, creeLe: '2026-01-03' },
+  { id: 'labo', nom: 'Laboratoire Mamou Analyses', type: 'LABORATOIRE', prefecture: 'Mamou', telephone: null, estActive: true, estPartenaire: false, creeLe: '2026-01-04' },
+  // Une officine ouverte, mais hors du circuit des commandes : le cas que
+  // l'ecran doit savoir montrer et corriger.
+  { id: 'horscircuit', nom: 'Pharmacie de Kindia', type: 'PHARMACIE', prefecture: 'Kindia', telephone: null, estActive: true, estPartenaire: false, creeLe: '2026-01-05' },
 ];
 
 function monter() {
@@ -45,6 +48,10 @@ function monter() {
     getStructures: () => of({ success: true, data: STRUCTURES }),
     deleteStructure: (id: string) => { appels.push(`desactiver:${id}`); return of({ success: true }); },
     updateStructure: (id: string) => { appels.push(`reactiver:${id}`); return of({ success: true }); },
+    definirPartenariat: (id: string, etat: boolean) => {
+      appels.push(`partenariat:${id}:${etat}`);
+      return of({ success: true, data: {} });
+    },
   };
   TestBed.configureTestingModule({
     imports: [StructuresComponent],
@@ -243,5 +250,69 @@ describe('commune et position', () => {
     expect(c.erreurGps()).toContain('Position');
 
     Object.defineProperty(navigator, 'geolocation', { value: originalGeo, configurable: true });
+  });
+});
+
+// ── Le partenariat ───────────────────────────────────────────────────
+//
+// **Le drapeau n'avait aucune porte.** `estPartenaire` decide qui recoit les
+// appels de commande du quartier ; il naissait a faux et rien, dans toute
+// l'application, ne le levait. Une pharmacie entree avec ses quatre pieces
+// reglementaires restait muette, et son titulaire ne voyait qu'un refus —
+// « votre pharmacie n'est pas partenaire de la plateforme » — que personne ne
+// pouvait corriger autrement qu'en ecrivant dans la base.
+
+describe('le partenariat des officines', () => {
+  beforeEach(() => TestBed.resetTestingModule());
+
+  const menuDe = (el: HTMLElement, id: string) => {
+    ligne(el, id).querySelector<HTMLButtonElement>('.bb-struct__menu-btn')!.click();
+  };
+
+  it('signale une officine hors du circuit des commandes', () => {
+    const { el, rendre } = monter();
+
+    expect(ligne(rendre(), 'horscircuit').querySelector('.bb-struct__badge-hors-circuit')).toBeTruthy();
+    expect(ligne(el, 'pharma').querySelector('.bb-struct__badge-hors-circuit')).toBeNull();
+  });
+
+  // Un poste de sante n'est jamais sollicite pour une ordonnance : lui coller
+  // « hors circuit » inquieterait pour rien.
+  it('ne dit rien du partenariat des structures qui ne servent pas d ordonnances', () => {
+    const { el, rendre } = monter();
+    rendre();
+
+    for (const id of ['chu', 'poste', 'labo']) {
+      expect(ligne(el, id).querySelector('.bb-struct__badge-hors-circuit')).toBeNull();
+    }
+  });
+
+  it('accorde le partenariat depuis le menu', () => {
+    const { el, rendre, appels } = monter();
+    rendre();
+
+    menuDe(el, 'horscircuit');
+    rendre().querySelector<HTMLButtonElement>('.bb-struct__item[data-id="horscircuit"] [data-action="partenariat"]')!.click();
+
+    expect(appels).toContain('partenariat:horscircuit:true');
+  });
+
+  // L'etat vise est envoye explicitement, jamais une bascule : on verifie
+  // donc qu'une officine deja partenaire recoit bien `false`.
+  it('retire le partenariat d une officine qui l a', () => {
+    const { c, rendre, appels } = monter();
+    rendre();
+
+    c.basculerPartenariat({ id: 'pharma', nom: 'Pharmacie du Port', estPartenaire: true } as never);
+
+    expect(appels).toContain('partenariat:pharma:false');
+  });
+
+  it("n'offre pas l'action sur une structure qui ne sert pas d'ordonnances", () => {
+    const { el, rendre } = monter();
+    rendre();
+
+    menuDe(el, 'chu');
+    expect(rendre().querySelector('.bb-struct__item[data-id="chu"] [data-action="partenariat"]')).toBeNull();
   });
 });

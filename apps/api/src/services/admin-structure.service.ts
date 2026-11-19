@@ -97,6 +97,14 @@ export async function creerStructureAvecAdmin(dto: {
                 adresse: dto.adresse,
                 latitude: dto.latitude, longitude: dto.longitude,
                 telephone: dto.telephone, estActive: true,
+                // **Partenaire des la creation.** Le drapeau decide qui recoit
+                // les appels de commande du quartier ; sans lui, une officine
+                // entree avec son agrement complet n'en recevait aucun, et rien
+                // dans l'application ne permettait de le lever. Une structure
+                // que l'administration cree elle-meme est partenaire d'office ;
+                // le retrait se fait ensuite, a la main, quand elle ne tient
+                // plus ses engagements.
+                estPartenaire: true, partenaireDepuis: new Date(),
                 ...identifiants,
             }
         });
@@ -266,6 +274,11 @@ export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
                 longitude: dto.longitude,
                 telephone: dto.telephone,
                 estActive: true,
+                // Partenaire des la creation, comme toute structure que
+                // l'administration ouvre elle-meme : sans ce drapeau, l'officine
+                // ne recoit aucun appel de commande.
+                estPartenaire: true,
+                partenaireDepuis: new Date(),
                 ...identifiants,
             }
         });
@@ -439,6 +452,37 @@ export async function supprimerStructure(id: string) {
     return prisma.structureSante.update({
         where: { id },
         data: { estActive: false }
+    });
+}
+
+/**
+ * Accorder ou retirer le partenariat d'une structure.
+ *
+ * **Le drapeau n'avait aucune porte.** `estPartenaire` decide qui recoit les
+ * appels de commande du quartier, mais rien dans l'application ne le levait :
+ * une officine entree avec son dossier complet restait muette, et seule une
+ * ecriture directe en base pouvait la reveiller.
+ *
+ * `partenaireDepuis` retient la date d'entree et s'efface au retrait : une
+ * structure ecartee puis reprise redemarre une nouvelle periode, et l'ancienne
+ * ne doit pas lui etre comptee.
+ */
+export async function definirPartenariat(id: string, estPartenaire: boolean) {
+    const structure = await prisma.structureSante.findUnique({
+        where: { id },
+        select: { id: true, estActive: true },
+    });
+    if (!structure) throw new NotFoundError('Structure introuvable');
+
+    // Une structure fermee ne doit pas rejoindre le circuit des commandes :
+    // elle serait sollicitee sans personne pour repondre.
+    if (estPartenaire && !structure.estActive) {
+        throw new ValidationError('Une structure desactivee ne peut pas devenir partenaire');
+    }
+
+    return prisma.structureSante.update({
+        where: { id },
+        data: { estPartenaire, partenaireDepuis: estPartenaire ? new Date() : null },
     });
 }
 

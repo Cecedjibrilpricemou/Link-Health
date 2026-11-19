@@ -442,6 +442,17 @@ export const updateStructureSchema = structureBase
   .refine(pasLePointZero, messagePointZero);
 
 /**
+ * Accorder ou retirer le partenariat.
+ *
+ * Un seul champ, et il est obligatoire : une bascule qui se devine - absente,
+ * elle vaudrait « inverse l'etat actuel » - rend l'appel dependant de ce que
+ * le client croit savoir. Ici le client dit l'etat qu'il veut.
+ */
+export const definirPartenariatSchema = z.object({
+  estPartenaire: z.boolean(),
+}).strict();
+
+/**
  * Une demande d'agrement, telle qu'un candidat sans compte la depose.
  *
  * Trois differences avec `createStructureSchema`, et chacune a sa raison :
