@@ -5,6 +5,17 @@
 >
 > Si vous constatez un écart entre ce fichier et le code, **le code a raison** — corrigez ce fichier.
 
+> ### ⚠️ Chiffres périmés depuis le 2026-11-19
+>
+> Les compteurs ci-dessous datent du 2026-10-02 et ont été dépassés de
+> plusieurs ordres : ce fichier annonce 568 tests API et 21 tests web, il y en
+> a aujourd'hui **2675 et 588**. Les modèles, migrations, routes et services
+> ont augmenté dans les mêmes proportions.
+>
+> **Pour l'état courant, les règles de travail et les pièges connus, lisez
+> `docs/PASSATION.md`.** Ce fichier-ci reste la meilleure source sur
+> l'architecture, les parcours métier et la feuille de route.
+
 > ### ⚠️ À lire avant de cloner
 >
 > **`main` est la branche de référence.** L'ancienne branche `develop` y est entièrement fusionnée (mise à jour du 2026-10-30) : les six blocs de l'addendum, les lots de stock, le référentiel de catégories et les correctifs de sécurité sont tous sur `main`.
