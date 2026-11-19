@@ -612,7 +612,27 @@ describe('valider', () => {
     );
   });
 
-  it.each(['CLINIQUE', 'LABORATOIRE', 'HOPITAL_PREFECTORAL', 'ASSURANCE'])(
+  // Une compagnie d'assurance ne se demande pas par cette porte - elle releve
+  // de la Banque Centrale -, mais la regle du role est commune aux trois
+  // portes de creation : si elle passait un jour par ici, son responsable
+  // devrait entrer dans l'espace assureur, et non dans celui des
+  // etablissements de soins.
+  it('ferait du responsable d une assurance un ASSUREUR', async () => {
+    bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ type: 'ASSURANCE' }));
+    bd.demandeAgrement.findUniqueOrThrow.mockResolvedValue(demandeEnBase({ type: 'ASSURANCE' }));
+    bd.pieceAgrement.findMany.mockResolvedValue(
+      service.piecesDemandeesPour('ASSURANCE' as never).map((p) => ({ type: p })),
+    );
+
+    await service.valider(AGENT, 'demande-1');
+
+    expect(tx.utilisateur.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ role: 'ASSUREUR' }) }),
+    );
+    expect(tx.pharmacienProfile.create).not.toHaveBeenCalled();
+  });
+
+  it.each(['CLINIQUE', 'LABORATOIRE', 'HOPITAL_PREFECTORAL'])(
     'laisse le responsable d une %s administrateur de structure, sans profil d officine',
     async (type) => {
       bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ type }));

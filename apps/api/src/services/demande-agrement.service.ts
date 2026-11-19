@@ -38,7 +38,7 @@ import {
   validerPieces,
   type FichierRecu,
 } from './piece-agrement.service';
-import { estStructureOfficinale } from '../utils/officine.util';
+import { estStructureOfficinale, roleDuResponsable } from '../utils/officine.util';
 import type { JwtPayload } from '../types/auth.types';
 import {
   Role,
@@ -573,6 +573,9 @@ export async function valider(user: JwtPayload, id: string) {
      * titulaire. Deux portes, deux resultats pour le meme metier : c'est la
      * porte la plus recente qui avait tort.
      */
+    // La correspondance entre le type de structure et le role de son
+    // responsable n'est ecrite qu'a un seul endroit : les portes de creation
+    // la lisent, elles ne la redecident pas.
     const officine = estStructureOfficinale(d.type);
 
     const compte = await tx.utilisateur.create({
@@ -582,7 +585,7 @@ export async function valider(user: JwtPayload, id: string) {
         motDePasseHash,
         prenom: d.responsablePrenom,
         nom: d.responsableNom,
-        role: officine ? Role.PHARMACIEN : Role.ADMIN_STRUCTURE,
+        role: roleDuResponsable(d.type),
         idStructure: structure.id,
         doitChangerMotDePasse: true,
       },

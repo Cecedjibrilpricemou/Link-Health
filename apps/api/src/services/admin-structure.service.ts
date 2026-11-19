@@ -3,13 +3,13 @@ import { randomInt } from 'crypto';
 import { prisma } from '../config/prisma';
 import { hashPassword } from '../utils/password.utils';
 import { assertMotDePasseConforme } from '../utils/politique-mot-de-passe';
-import { Role, TypeStructure } from '../config/generated/client/client';
+import { Role, RoleOfficine, TypeStructure } from '../config/generated/client/client';
 import { envoyerEmailAdminStructure, envoyerEmailAgent } from './email.service';
 import { logger } from '../config/logger';
 import type { JwtPayload } from '../types/auth.types';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { verifierCoordonnees } from '../utils/coordonnees';
-import { estStructureHospitaliere } from '../utils/officine.util';
+import { estStructureHospitaliere, roleDuResponsable } from '../utils/officine.util';
 import {
     ecrireFichiers, exigeDesPieces, SOUS_AUTORISATION_DU_PARENT, supprimerFichiers,
     validerIdentifiants, validerPieces,
@@ -115,6 +115,13 @@ export async function creerStructureAvecAdmin(dto: {
             });
         }
 
+        // **Le role suit le metier de la structure.** Cette porte cree aussi
+        // bien un centre de sante qu'une officine ou une compagnie
+        // d'assurance : donner `ADMIN_STRUCTURE` a tous deposait le titulaire
+        // d'une pharmacie et le responsable d'un assureur dans un espace ou
+        // leur metier n'existe pas.
+        const role = roleDuResponsable(dto.type as TypeStructure);
+
         const admin = await tx.utilisateur.create({
             data: {
                 telephone: dto.admin.telephone,
@@ -122,11 +129,25 @@ export async function creerStructureAvecAdmin(dto: {
                 motDePasseHash,
                 prenom: dto.admin.prenom,
                 nom: dto.admin.nom,
-                role: Role.ADMIN_STRUCTURE,
+                role,
                 idStructure: structure.id,
                 doitChangerMotDePasse: true
             }
         });
+
+        // Le role seul ne suffit pas a une officine : tous ses agents le
+        // portent. C'est le profil qui distingue le titulaire, et c'est lui
+        // qui ouvre le dossier reglementaire et la gestion des agents.
+        if (role === Role.PHARMACIEN) {
+            await tx.pharmacienProfile.create({
+                data: {
+                    idUtilisateur: admin.id,
+                    idStructure: structure.id,
+                    estResponsable: true,
+                    roleOfficine: RoleOfficine.TITULAIRE,
+                },
+            });
+        }
 
         return { structure, admin };
     });
