@@ -47,6 +47,52 @@ describe('les pieces a joindre', () => {
     },
   );
 
+  // ── La liste imposee par l'appelant ────────────────────────────────
+  //
+  // **Elle est comparee sur son contenu, pas sur son identite.** Les
+  // appelants la rebatissent a chaque detection de changement ; s'en tenir a
+  // l'identite rejouait sans fin l'effet qui remet les choix a zero, et le
+  // fichier a peine choisi disparaissait. Mais comparer trop grossierement
+  // ferait l'inverse : une liste vraiment nouvelle passerait inapercue.
+
+  it('prend la liste imposee a la place de sa table locale', () => {
+    const f = monter('PHARMACIE');
+    f.componentRef.setInput('requisesImposees', ['AGREMENT_CREATION', 'DIPLOME_RESPONSABLE']);
+    f.detectChanges();
+
+    expect(f.componentInstance.requises()).toEqual(['AGREMENT_CREATION', 'DIPLOME_RESPONSABLE']);
+  });
+
+  // Meme longueur, pieces differentes : comparer les tailles ne suffit pas.
+  it('suit une liste de meme longueur mais de contenu different', () => {
+    const f = monter('PHARMACIE');
+    f.componentRef.setInput('requisesImposees', ['AGREMENT_CREATION', 'DIPLOME_RESPONSABLE']);
+    f.detectChanges();
+
+    f.componentRef.setInput('requisesImposees', ['AGREMENT_ASSURANCE', 'INSCRIPTION_ORDRE']);
+    f.detectChanges();
+
+    expect(f.componentInstance.requises()).toEqual(['AGREMENT_ASSURANCE', 'INSCRIPTION_ORDRE']);
+  });
+
+  // Le meme contenu dans un tableau neuf ne doit rien rejouer : c'est ce que
+  // fait un appelant qui construit sa liste dans une methode.
+  it('ne perd pas un fichier quand la meme liste revient dans un tableau neuf', () => {
+    const f = monter('PHARMACIE');
+    f.componentRef.setInput('requisesImposees', ['AGREMENT_CREATION', 'DIPLOME_RESPONSABLE']);
+    f.detectChanges();
+
+    f.componentInstance.choisir('AGREMENT_CREATION', evenement(pdf()));
+    f.detectChanges();
+    expect(f.componentInstance.nomDe('AGREMENT_CREATION')).toBe('agrement.pdf');
+
+    // Meme contenu, tableau neuf — exactement ce que produit un `.map()`.
+    f.componentRef.setInput('requisesImposees', ['AGREMENT_CREATION', 'DIPLOME_RESPONSABLE']);
+    f.detectChanges();
+
+    expect(f.componentInstance.nomDe('AGREMENT_CREATION')).toBe('agrement.pdf');
+  });
+
   // L'assureur relève de la Banque Centrale : ni diplôme ni ordre professionnel.
   it('l assureur ne demande que son agrement', () => {
     const f = monter('ASSURANCE');
