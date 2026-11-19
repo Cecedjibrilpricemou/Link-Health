@@ -154,6 +154,19 @@ export class AdminService {
     return this.api.delete<ApiResponse<void>>(`/admin-structure/structures/${id}`);
   }
 
+  /**
+   * Accorder ou retirer le partenariat d'une structure.
+   *
+   * L'etat vise est envoye explicitement, jamais une bascule : deux
+   * administrateurs devant la meme liste n'inverseraient pas le meme etat.
+   */
+  definirPartenariat(id: string, estPartenaire: boolean): Observable<ApiResponse<StructureAdminView>> {
+    return this.api.put<ApiResponse<StructureAdminView>>(
+      `/admin-structure/structures/${id}/partenariat`,
+      { estPartenaire },
+    );
+  }
+
   updateStructure(id: string, payload: Record<string, unknown>): Observable<ApiResponse<StructureAdminView>> {
     return this.api.put<ApiResponse<StructureAdminView>>(`/admin-structure/structures/${id}`, payload);
   }

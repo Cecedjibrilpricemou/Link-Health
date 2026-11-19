@@ -546,6 +546,20 @@ describe('valider', () => {
     );
   });
 
+  // **Une officine validee doit recevoir les commandes.** Elle a produit son
+  // agrement, son diplome et son inscription a l'ordre, et son dossier a ete
+  // examine ; la laisser hors du circuit reviendrait a valider pour rien, et
+  // son titulaire ne verrait qu'un refus sans recours.
+  it('rend la structure partenaire des la validation', async () => {
+    await service.valider(AGENT, 'demande-1');
+
+    expect(tx.structureSante.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ estPartenaire: true, partenaireDepuis: expect.any(Date) }),
+      }),
+    );
+  });
+
   it('rattache les pieces deja deposees a la structure creee, sans les recopier', async () => {
     await service.valider(AGENT, 'demande-1');
 

@@ -30,6 +30,7 @@ import {
   createStructureSchema,
   updateParametresSystemeSchema,
   updateStructureSchema,
+  definirPartenariatSchema,
 } from '../validators/api.schemas';
 
 const router = Router();
@@ -218,6 +219,17 @@ router.post('/pharmacies', requireRole('SUPER_ADMIN', 'ADMIN_STRUCTURE'), recevo
 
 router.put('/structures/:id', requireRole('SUPER_ADMIN'), validateBody(updateStructureSchema), async (req: AuthRequest, res: Response) => {
   const data: StructureAdminView = await service.modifierStructure(String(req.params.id), req.body);
+  res.json({ success: true, data });
+});
+
+/**
+ * Accorder ou retirer le partenariat.
+ *
+ * Reserve a l'administration nationale : c'est elle qui conventionne, et le
+ * drapeau ouvre l'acces aux commandes du quartier.
+ */
+router.put('/structures/:id/partenariat', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL'), validateBody(definirPartenariatSchema), async (req: AuthRequest, res: Response) => {
+  const data = await service.definirPartenariat(String(req.params.id), req.body.estPartenaire);
   res.json({ success: true, data });
 });
 

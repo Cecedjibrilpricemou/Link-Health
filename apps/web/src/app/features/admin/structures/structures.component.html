@@ -357,6 +357,15 @@
                 } @else {
                   <span class="bb-struct__badge-active"><i class="pi pi-check-circle" aria-hidden="true"></i> {{ 'ADMIN.STRUCTURES.ACTIVE_BADGE' | translate }}</span>
                 }
+                <!-- Seules les officines sont sollicitees pour une commande :
+                     dire d'un CHU qu'il est « hors circuit » n'apprendrait
+                     rien et encombrerait la ligne. -->
+                @if (estOfficine(s.type) && !s.estPartenaire) {
+                  <span class="bb-struct__badge-hors-circuit">
+                    <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                    {{ 'ADMIN.STRUCTURES.HORS_CIRCUIT_BADGE' | translate }}
+                  </span>
+                }
               </div>
               <p class="bb-struct__meta">{{ getTypeLabel(s.type) }} · {{ s.prefecture }}</p>
               @if (s.latitude != null && s.longitude != null) {
@@ -401,6 +410,17 @@
                             (click)="situerStructure(s)">
                       <i class="pi pi-map-marker" aria-hidden="true"></i> {{ 'ADMIN.STRUCTURES.SITUER_BTN' | translate }}
                     </button>
+                    <!-- Le partenariat decide qui recoit les appels de
+                         commande du quartier. Il ne concerne que les
+                         officines : elles seules sont sollicitees. -->
+                    @if (estOfficine(s.type)) {
+                      <button type="button" role="menuitem" data-action="partenariat"
+                              class="bb-struct__menu-item"
+                              (click)="basculerPartenariat(s)">
+                        <i [class]="s.estPartenaire ? 'pi pi-link' : 'pi pi-check-circle'" aria-hidden="true"></i>
+                        {{ (s.estPartenaire ? 'ADMIN.STRUCTURES.RETIRER_PARTENARIAT' : 'ADMIN.STRUCTURES.ACCORDER_PARTENARIAT') | translate }}
+                      </button>
+                    }
                     <button type="button" role="menuitem" data-action="desactiver"
                             class="bb-struct__menu-item bb-struct__menu-item--danger"
                             (click)="demanderDesactivation(s)">

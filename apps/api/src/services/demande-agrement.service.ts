@@ -543,6 +543,14 @@ export async function valider(user: JwtPayload, id: string) {
         numeroAgrementExploitation: d.numeroAgrementExploitation,
         lieuAutorise: d.lieuAutorise,
         estActive: true,
+        // **Partenaire des la validation.** Une officine qui a produit son
+        // agrement, son diplome et son inscription a l'ordre, et dont le
+        // dossier a ete examine, a franchi une barriere autrement plus haute
+        // qu'une convention commerciale. La laisser hors du circuit des
+        // commandes - sans qu'aucun ecran ne puisse l'y faire entrer - revenait
+        // a valider un dossier pour rien.
+        estPartenaire: true,
+        partenaireDepuis: new Date(),
       },
       select: { id: true },
     });

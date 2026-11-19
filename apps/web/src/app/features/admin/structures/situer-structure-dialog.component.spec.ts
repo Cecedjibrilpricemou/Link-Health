@@ -48,6 +48,7 @@ const STRUCTURE: StructureAdminView = {
   latitude: null,
   longitude: null,
   estActive: true,
+  estPartenaire: false,
   creeLe: '2026-01-01',
 };
 

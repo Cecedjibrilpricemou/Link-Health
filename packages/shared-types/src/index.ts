@@ -1633,6 +1633,12 @@ export interface StructureAdminView {
   telephone?: string | null;
   photoUrl?: string | null;
   estActive: boolean;
+  /**
+   * Partenaire conventionne : seules ces structures sont sollicitees quand un
+   * patient cherche a faire servir son ordonnance. Distinct de `estActive`,
+   * qui dit seulement si la structure existe encore sur la plateforme.
+   */
+  estPartenaire: boolean;
   creeLe: HorodatageApi;
 }
 
