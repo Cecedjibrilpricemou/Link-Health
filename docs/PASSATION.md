@@ -9,7 +9,7 @@
 > `docs/REPRISE-PROJET.md` reste la référence de fond — architecture, parcours
 > métier, feuille de route. Mais il date du **2026-10-02** et ses compteurs
 > sont périmés : il annonce 568 tests API et 21 tests web, il y en a
-> aujourd'hui 2675 et 588. Lisez-le pour le *pourquoi*, pas pour les chiffres.
+> aujourd'hui 2707 et 606. Lisez-le pour le *pourquoi*, pas pour les chiffres.
 
 ---
 
@@ -37,11 +37,11 @@ tests, ni dans les messages de commit.
 | | |
 |---|---|
 | Monorepo | npm workspaces : `apps/api`, `apps/web`, `packages/shared-types`. **Un seul `package-lock.json`, à la racine.** |
-| API | Node 24, Express, TypeScript, Prisma 7 / PostgreSQL 16 — 38 fichiers de routes, 66 services |
-| Web | Angular 21 **standalone + signaux + zoneless**, Angular Material, i18n maison FR/EN — 95 composants |
-| Modèle | **78 modèles Prisma, 45 enums, 80 migrations, 14 rôles** |
-| Tests API | **2675 tests, 117 suites** (Jest 30) |
-| Tests web | **588 tests, 74 fichiers** (Vitest 4) |
+| API | Node 24, Express, TypeScript, Prisma 7 / PostgreSQL 16 — 39 fichiers de routes, 67 services |
+| Web | Angular 21 **standalone + signaux + zoneless**, Angular Material, i18n maison FR/EN — 96 composants dans `features/` |
+| Modèle | **80 modèles Prisma, 47 enums, 81 migrations, 14 rôles** |
+| Tests API | **2707 tests, 118 suites** (Jest 30) |
+| Tests web | **606 tests, 75 fichiers** (Vitest 4) |
 | Hébergement | VPS **Hostinger** piloté par **Dokploy**, tout en conteneurs Docker |
 
 Branche de référence : **`main`**. Le travail se fait sur une branche par sujet,
@@ -63,11 +63,11 @@ npm run dev                # API + web ensemble
 ```bash
 # API — depuis apps/api
 npx tsc --noEmit                                   # types
-npx jest --silent                                  # 2675 tests
+npx jest --silent                                  # 2707 tests
 npx jest tests/<fichier>.test.ts                   # une suite
 
 # Web — depuis apps/web
-npx ng test --watch=false                          # 588 tests
+npx ng test --watch=false                          # 606 tests
 npx ng test --include='**/features/x/*.spec.ts' --watch=false
 npx ng build                                       # doit passer sans erreur
 
@@ -179,6 +179,25 @@ les autres rôles doivent utiliser leur **email professionnel**, et reçoivent
 ensuite un **code à usage unique par email**. Sans expéditeur configuré
 (`BREVO_API_KEY`, `EMAIL_EXPEDITEUR`), ils ne peuvent pas se connecter du tout.
 
+### Windows : Vitest et la casse de la lettre du lecteur
+
+Lancé depuis `c:\Pricemou\...` (c minuscule), `ng test` peut échouer sur
+**toutes** les suites avec « Vitest failed to find the runner » — y compris
+celles que personne n'a touchées. Le même lancement depuis `C:\Pricemou\...`
+passe. Vitest charge alors deux fois son propre module. Avant de chercher une
+erreur dans le code, relancez depuis un chemin en `C:` majuscule
+(`Set-Location C:\Pricemou\...` sous PowerShell). Vider le cache Angular n'y
+change rien.
+
+### Windows : Git Bash cache les `\r`
+
+`sed`, `od` et `cat -A` lancés depuis Git Bash peuvent montrer un fichier en LF
+alors qu'il est en CRLF — les catalogues `fr.json` et `en.json` le sont. Un
+script qui cherche `"\n    \"CLE\""` ne trouve alors rien. Pour une
+manipulation textuelle, lisez le fichier en Python avec `newline=''`,
+normalisez en `\n`, et rétablissez le CRLF à l'écriture. `git ls-files --eol`
+dit la vérité.
+
 ### Le message « Identifiants invalides » ne dit pas lequel
 
 Il couvre deux cas : compte introuvable **et** mot de passe refusé. Pour les
@@ -244,11 +263,37 @@ assurance ne passe **pas** par là : elle relève de la Banque Centrale.
 
 ### La candidature des livreurs
 
-`/devenir-livreur`, livré le 2026-11-19 : **écran seulement**. Six pièces
-— carte d'identité recto et verso, permis, carte grise, assurance, certificat de
-résidence —, photo ou PDF, 5 Mo maximum. Le bouton d'envoi est **désactivé**
-(`ENVOI_ACTIF = false`) : la route serveur `POST /livreurs/candidatures`
-n'existe pas encore.
+**Tout livreur a un dossier, quelle que soit la porte.** Six pièces — carte
+d'identité recto et verso, permis, carte grise, assurance, certificat de
+résidence —, photo (JPEG, PNG) ou PDF, 5 Mo maximum, **vérifiées dans leurs
+octets** (`typeMimeReel`), jamais sur l'en-tête du navigateur. Majeur, sexe `M`
+ou `F`, quartier obligatoire (le profil livreur ne sait pas s'en passer).
+
+- **Dépôt public** : `/devenir-livreur` → `POST /livreurs/candidatures`, sans
+  compte, limité à dix par heure. Refuse un téléphone déjà porté par un compte
+  ou dont un dossier est en cours. **Aucun compte n'est créé au dépôt.**
+- **Examen** : `/admin/candidatures-livreurs`, ouvert aux mêmes rôles que
+  `/admin/livreurs` (`SUPER_ADMIN`, `ADMIN_NATIONAL`, `ADMIN_REGIONAL`).
+  Prise en charge, validation (crée le compte `LIVREUR` et son profil), refus
+  avec motif d'au moins dix caractères. Une décision ne se reprend pas, et la
+  mise à jour porte le statut dans son filtre : deux agents ne décident pas
+  le même dossier.
+- **Création par l'administration** : `POST /comptes/livreurs` exige les
+  mêmes six pièces et enregistre un dossier **déjà validé**
+  (`deposeParAdministration`). Les deux portes n'exigent pas moins l'une que
+  l'autre.
+- **Mot de passe temporaire** : par courriel si le livreur a un email, et il
+  n'est alors **pas** rendu à l'agent. Sans email, ou si l'envoi échoue, il
+  est rendu **une fois** et affiché sur la page — pas dans la fenêtre du
+  dossier — jusqu'à ce que l'agent dise l'avoir noté. Les SMS ne partent pas
+  encore : sans ce repli, un motard sans email n'apprendrait jamais son mot
+  de passe. Un livreur se connecte par téléphone, sans code par email, qu'il
+  ait une adresse ou non.
+
+Le code est dans `apps/api/src/services/candidature-livreur.service.ts` et,
+côté web, `core/services/candidature-livreur.service.ts`, qui porte aussi le
+contrôle des fichiers partagé par les deux écrans. Les pièces vivent dans
+`stockage-prive/livreurs/`.
 
 ### La géographie
 
@@ -276,7 +321,7 @@ Quatre volumes portent tout ce qui doit survivre à un redéploiement :
 | Volume | Contenu |
 |---|---|
 | `postgres_data` | la base |
-| `api_stockage_prive` | les PDF du dossier réglementaire |
+| `api_stockage_prive` | les PDF du dossier réglementaire, et les pièces des livreurs (`livreurs/`) |
 | `api_uploads` | avatars, logos, photos — servis publiquement |
 | `redis_data` | sessions, codes à usage unique, cache |
 
@@ -288,8 +333,9 @@ donne des dossiers qui pointent vers le vide.
 
 `scripts/backup-db.sh` existe (dump chiffré AES-256, rétention 14 jours) mais :
 
-1. il ne sauvegarde **que la base**, pas les PDF d'agrément — or un candidat
-   n'a aucun moyen de les redéposer après validation ;
+1. il ne sauvegarde **que la base**, pas `stockage-prive/` — ni les PDF
+   d'agrément ni les cartes d'identité et permis des livreurs, que personne
+   ne peut redéposer après validation ;
 2. ses valeurs par défaut datent de l'ancienne configuration (`baobao_user`,
    port 5433) et ne correspondent plus à la production ;
 3. rien ne prouve qu'un cron l'appelle sur le serveur.
@@ -300,12 +346,15 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **Candidatures des livreurs de bout en bout** (branche
+  `feat/candidature-livreur-serveur`) : tables, dépôt public, écran d'examen,
+  dossier exigé à la création par l'administration (section 6). Vérifié contre
+  une vraie base PostgreSQL et dans un navigateur, en plus des tests.
 - **Rôle du responsable selon le métier** — l'espace assureur était
   inatteignable : le rôle `ASSUREUR` existait, les routes le réclamaient, la
   redirection le prévoyait, mais aucun compte ne le portait jamais. Même trou
   pour les officines créées par la porte administrative.
-- **Écran public de candidature des motards** (branche
-  `feat/candidature-livreur-web`, non fusionnée au moment d'écrire).
+- **Écran public de candidature des motards**.
 - **Partenariat des officines** — `estPartenaire` n'avait aucune porte : aucune
   pharmacie réelle ne recevait de commande.
 - **Correction du fichier joint effacé** dans l'écran admin des structures.
@@ -325,13 +374,17 @@ Par ordre de risque décroissant.
 
 1. **L'index trigramme non déclaré** (section 5) — une migration distraite fait
    tomber la recherche de médicaments en production.
-2. **Les sauvegardes** (section 7) — les PDF d'agrément ne sont sauvegardés
-   nulle part.
-3. **Le serveur de la candidature livreur** : table, route publique de dépôt,
-   stockage privé des pièces, écran d'examen, création du compte à la
-   validation. Même travail que les demandes d'agrément.
-4. **Les comptes déjà créés** gardent leur ancien rôle : un responsable
+2. **Les sauvegardes** (section 7) — ni les PDF d'agrément ni les pièces des
+   livreurs ne sont sauvegardés nulle part.
+3. **Les comptes déjà créés** gardent leur ancien rôle : un responsable
    d'assurance existant reste `ADMIN_STRUCTURE` tant qu'on ne le bascule pas.
+   De même, les livreurs créés avant le 2026-11-20 n'ont **aucun dossier** :
+   rien ne dit sur quelles pièces ils ont été admis.
+4. **La fenêtre d'examen passe sous le menu latéral** sur ordinateur : sa
+   partie gauche est coupée. Le défaut vient de la feuille de style de
+   l'examen des agréments, que l'examen des livreurs réutilise : les deux
+   écrans l'ont. À corriger une fois, dans
+   `demandes-agrement.component.scss`.
 5. **Écran patient « Mon adresse »** : un bogue a été signalé par un testeur,
    l'analyse est faite mais le message d'erreur exact manque pour conclure. Les
    trois causes possibles sont identifiées dans
