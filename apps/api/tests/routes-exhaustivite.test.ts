@@ -42,7 +42,7 @@ type Couche = {
  */
 const FICHIERS = [
   'admin-structure', 'analytics', 'asc', 'assurance', 'auth', 'bris-de-glace',
-  'commande', 'compte', 'consentement', 'consultation', 'course', 'demande-agrement',
+  'candidature-livreur', 'commande', 'compte', 'consentement', 'consultation', 'course', 'demande-agrement',
   'fhir', 'geographie', 'hopital',
   'identite', 'journal', 'laboratoire', 'medecin', 'medicament', 'notification',
   'ordonnance', 'paiement', 'parametres', 'patient', 'pharmacien', 'privacy',
@@ -80,6 +80,9 @@ const PUBLIQUES: Record<string, string> = {
   // une session ici fermerait la porte qu'on vient d'ouvrir.
   'demande-agrement GET /pieces-attendues': "la liste des pieces exigees par type, lue par le formulaire public ; elle ne rend aucune donnee, seulement la regle",
   'demande-agrement POST /': "depot d'un dossier d'agrement par un etablissement sans compte ; dix par heure et par adresse, pieces verifiees octet par octet, et aucun compte cree avant decision",
+  // Le motard qui veut livrer n'a, comme l'etablissement, aucun compte pour
+  // le demander : c'est justement ce qu'il sollicite.
+  'candidature-livreur POST /': "depot d'une candidature de livreur par un motard sans compte ; dix par heure et par adresse, six pieces verifiees octet par octet, majeur, et aucun compte cree avant validation",
   'parametres GET /publics': "nom et logo de la plateforme, affichés sur l'écran de connexion",
   'stats GET /public': 'compteurs agrégés, aucune donnée nominative',
   'admin-structure GET /structures/publiques':

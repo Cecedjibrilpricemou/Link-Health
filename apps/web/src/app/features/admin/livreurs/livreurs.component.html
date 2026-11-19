@@ -56,9 +56,33 @@
                  (ngModelChange)="modifier('nom', $event)" name="nom" autocomplete="family-name" />
         </mat-form-field>
         <mat-form-field appearance="outline">
+          <mat-label>{{ 'ADMIN.LIVREURS.BIRTH_DATE' | translate }}</mat-label>
+          <input matInput required type="date" [ngModel]="formulaire().dateNaissance"
+                 (ngModelChange)="modifier('dateNaissance', $event)" name="dateNaissance" />
+          @if (estMineur()) {
+            <mat-hint class="livreurs__hint-error">{{ 'PUBLIC.LIVREUR_REQUEST.MINOR' | translate }}</mat-hint>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ADMIN.LIVREURS.GENDER' | translate }}</mat-label>
+          <select matNativeControl required [ngModel]="formulaire().sexe"
+                  (ngModelChange)="modifier('sexe', $event)" name="sexe">
+            <option value=""></option>
+            <option value="M">{{ 'PATIENT.PROFILE.GENDER_M' | translate }}</option>
+            <option value="F">{{ 'PATIENT.PROFILE.GENDER_F' | translate }}</option>
+          </select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
           <mat-label>{{ 'ADMIN.LIVREURS.PHONE' | translate }}</mat-label>
           <input matInput required type="tel" inputmode="tel" [ngModel]="formulaire().telephone"
                  (ngModelChange)="modifier('telephone', $event)" name="telephone" autocomplete="tel" />
+        </mat-form-field>
+        <!-- Facultatif : present, les identifiants y partent et ne s'affichent
+             pas ici. -->
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ADMIN.LIVREURS.EMAIL' | translate }}</mat-label>
+          <input matInput type="email" [ngModel]="formulaire().email"
+                 (ngModelChange)="modifier('email', $event)" name="email" autocomplete="email" />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>{{ 'ADMIN.LIVREURS.NEIGHBORHOOD' | translate }}</mat-label>
@@ -79,6 +103,60 @@
                  (ngModelChange)="modifier('prefecture', $event)" name="prefecture" />
         </mat-form-field>
         <app-suggestions-lieux idListe="livreur-liste-zones" role="elargissement" />
+      </div>
+
+      <!-- Le meme dossier que celui du motard qui candidate, et la meme
+           presentation : les styles viennent du bloc des pieces partage. -->
+      <div class="bb-pieces livreurs__pieces">
+        <div class="bb-pieces__head">
+          <span class="bb-pieces__titre">
+            <i class="pi pi-paperclip" aria-hidden="true"></i>
+            {{ 'ADMIN.LIVREURS.PIECES_TITLE' | translate }}
+          </span>
+          <span class="bb-pieces__compte"
+                [class.bb-pieces__compte--ok]="piecesManquantes().length === 0">
+            {{ 'AGREMENT.PIECE.COMPTE' | translate: {
+                 deposees: typesPieces.length - piecesManquantes().length, total: typesPieces.length
+               } }}
+          </span>
+        </div>
+        <p class="livreurs__hint">{{ 'PUBLIC.LIVREUR_REQUEST.PIECES_NOTE' | translate }}</p>
+
+        @for (p of typesPieces; track p) {
+          <div class="bb-pieces__ligne" [class.bb-pieces__ligne--ok]="nomDe(p)">
+            <div class="bb-pieces__texte">
+              <span class="bb-pieces__nom">{{ 'PUBLIC.LIVREUR_REQUEST.PIECE_' + p | translate }} *</span>
+              <small class="bb-pieces__detail">{{ 'PUBLIC.LIVREUR_REQUEST.PIECE_' + p + '_AIDE' | translate }}</small>
+              @if (nomDe(p)) {
+                <small class="bb-pieces__fichier">
+                  <i class="pi pi-file" aria-hidden="true"></i>
+                  {{ nomDe(p) }} · {{ tailleDe(p) }}
+                </small>
+              }
+              @if (refusDe(p)) {
+                <small class="bb-pieces__refus" role="alert">
+                  <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                  {{ refusDe(p) }}
+                </small>
+              }
+            </div>
+            <div class="bb-pieces__actions">
+              <label class="bb-pieces__bouton">
+                <i class="pi" [class.pi-upload]="!nomDe(p)" [class.pi-refresh]="nomDe(p)" aria-hidden="true"></i>
+                {{ (nomDe(p) ? 'AGREMENT.PIECE.REMPLACER' : 'AGREMENT.PIECE.CHOISIR') | translate }}
+                <input type="file" [attr.data-piece]="p"
+                       accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+                       (change)="choisirPiece(p, $event)" />
+              </label>
+              @if (nomDe(p)) {
+                <button type="button" class="bb-pieces__retirer" (click)="retirerPiece(p)"
+                        [attr.aria-label]="'AGREMENT.PIECE.RETIRER' | translate">
+                  <i class="pi pi-times" aria-hidden="true"></i>
+                </button>
+              }
+            </div>
+          </div>
+        }
       </div>
       <button mat-flat-button color="primary" type="submit"
               [disabled]="!peutCreer()">

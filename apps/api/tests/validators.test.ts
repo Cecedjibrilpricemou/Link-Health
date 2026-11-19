@@ -51,9 +51,13 @@ describe('api.schemas', () => {
     }).email).toBe('awa@example.com');
   });
 
+  // Un livreur se connecte par son telephone : lui exiger un email, comme a
+  // un professionnel, fermerait la porte a la plupart des motards. La date de
+  // naissance et le sexe sont exiges depuis que la creation depose un dossier.
   it('laisse le schema livreur sans email', () => {
     expect(creerLivreurSchema.parse({
       prenom: 'Awa', nom: 'Bah', telephone: '+224620000001',
+      dateNaissance: '1995-04-12', sexe: 'F',
       quartier: 'Donka', prefecture: 'Conakry',
     })).not.toHaveProperty('email');
   });

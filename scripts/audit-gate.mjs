@@ -29,7 +29,30 @@ const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * pas seulement qu'il gene.
  */
 const EXCEPTIONS = [
-  // Aucune exception en cours : tout avis high ou critical fait echouer la CI.
+  {
+    ghsa: 'GHSA-7589-6fvf-x4pw',
+    paquet: 'effect',
+    reexamen: '2027-01-31',
+    motif:
+      "ReDoS dans Schema.TemplateLiteral : deux spans Schema.String ou plus " +
+      "dans un meme gabarit produisent une expression reguliere a " +
+      "retour-arriere catastrophique. Corrige en amont par effect 3.22.1, " +
+      "mais ce correctif est hors d'atteinte ici : un seul paquet de l'arbre " +
+      "depend d'effect, @prisma/config, et il l'epingle en version exacte " +
+      "3.20.0. Un override vers 3.22.1 a ete essaye le 2026-11-19 : npm " +
+      "resout le conflit en n'installant pas effect du tout, et prisma ne " +
+      "demarre plus (Cannot find module 'effect'). Monter prisma ne donne " +
+      "rien non plus : 7.10.1 est la derniere 7.x, et latest est une " +
+      "release candidate de Prisma 8. " +
+      "Surtout, @prisma/config sert a la CLI prisma, pas au client : " +
+      "@prisma/client ne depend que de @prisma/client-runtime-utils, et le " +
+      "Dockerfile retire deja la CLI et ce qu'elle tire de l'image de " +
+      "production. Ce qui tourne en Guinee ne contient donc pas effect. " +
+      "Enfin, ce que @prisma/config decode avec ces gabarits est notre " +
+      "propre prisma.config.ts, un fichier du depot : aucune entree " +
+      "d'utilisateur n'atteint ce code. A reexaminer quand Prisma 8 sera " +
+      "stable, ou des que @prisma/config desepingle effect.",
+  },
 
   // Historique.
   //

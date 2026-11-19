@@ -1466,15 +1466,33 @@ export const creerAdministrateurSchema = z.object({
   role: z.enum(['ADMIN_REGIONAL', 'ADMIN_NATIONAL']),
 }).strict();
 
-export const creerLivreurSchema = z.object({
+/**
+ * Le dossier d'un motard livreur, tel que l'envoient les deux portes : le
+ * formulaire public et la creation par l'administration. Une seule forme,
+ * pour que l'une n'exige jamais moins que l'autre.
+ *
+ * La date se lit ici comme une chaine `AAAA-MM-JJ` ; sa realite (pas de 30
+ * fevrier) et l'age minimum sont verifies par le service, qui sait
+ * l'expliquer au candidat.
+ */
+const dossierLivreur = {
   prenom: z.string().trim().min(1).max(100),
   nom: z.string().trim().min(1).max(100),
-  telephone: z.string().trim().min(6).max(30),
+  dateNaissance: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date de naissance attendue au format AAAA-MM-JJ.'),
+  sexe: z.enum(['M', 'F']),
+  telephone: phone,
+  email: z.string().trim().toLowerCase().email().max(160).optional()
+    .or(z.literal('').transform(() => undefined)),
+  /** Le quartier est exige : le profil du livreur ne sait pas s'en passer. */
   quartier: z.string().trim().min(1).max(120),
   prefecture: z.string().trim().min(1).max(120),
   /** Commune de travail : la zone des courses qu'il recoit (utils/zone.ts). */
   commune: z.string().trim().min(1).max(120).optional(),
-}).strict();
+};
+
+export const candidatureLivreurSchema = z.object(dossierLivreur).strict();
+
+export const creerLivreurSchema = z.object(dossierLivreur).strict();
 
 export const activiteLivreurSchema = z.object({
   estActif: z.boolean(),

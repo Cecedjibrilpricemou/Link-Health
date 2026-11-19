@@ -7,6 +7,7 @@ import { notifierSansBloquer } from '../src/services/notification.service';
 import { hashPassword } from '../src/utils/password.utils';
 import { genererMotDePasseTemp } from '../src/services/admin-structure.service';
 import { filtreZone } from '../src/utils/zone';
+import { creerAvecDossier } from '../src/services/candidature-livreur.service';
 
 jest.mock('../src/config/prisma', () => {
   const prisma: Record<string, unknown> = {
@@ -18,6 +19,13 @@ jest.mock('../src/config/prisma', () => {
   return { prisma };
 });
 
+// La creation passe desormais par le dossier du livreur, eprouve dans sa
+// propre suite (candidature-livreur.service.test.ts). Ici, seule compte la
+// porte : qu'elle verifie le role, transmette les pieces et rende la vue.
+jest.mock('../src/services/candidature-livreur.service', () => ({
+  ...jest.requireActual('../src/services/candidature-livreur.service'),
+  creerAvecDossier: jest.fn(),
+}));
 jest.mock('../src/utils/password.utils', () => ({ hashPassword: jest.fn().mockResolvedValue('password-hash') }));
 jest.mock('../src/services/admin-structure.service', () => ({
   genererMotDePasseTemp: jest.fn().mockReturnValue('BaoBao@Demo123'),
@@ -78,93 +86,39 @@ beforeEach(() => {
 });
 
 describe('recrutement des livreurs', () => {
-  it('cree le compte et son profil dans la meme transaction', async () => {
-    const user = {
+  // **La regle a change** : la creation exige desormais les six pieces du
+  // dossier, comme le depot public. Les anciens tests de cette porte
+  // (transaction, commune vide, telephone pris) eprouvent maintenant le vrai
+  // code dans candidature-livreur.service.test.ts.
+  const dossierDto = { ...dto, dateNaissance: '1995-04-12', sexe: 'M' as const };
+  const fichiers = [{ fieldname: 'CNI_RECTO', buffer: Buffer.from('%PDF-1.4') }];
+
+  it('cree le livreur par son dossier et rend sa vue, sans QR', async () => {
+    (creerAvecDossier as jest.Mock).mockResolvedValue({
+      idUtilisateur: 'user-1', numero: 'DL-2026-0001', motDePasseTemporaire: null,
+    });
+    prisma.utilisateur.findUnique.mockResolvedValue({
       id: 'user-1', prenom: dto.prenom, nom: dto.nom, telephone: dto.telephone,
       creeLe: new Date('2026-10-24T00:00:00Z'),
-    };
-    prisma.utilisateur.create.mockResolvedValue(user);
-    prisma.livreurProfile.create.mockResolvedValue({});
-
-    const result = await creerLivreur(admin, dto);
-
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(prisma.utilisateur.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        role: Role.LIVREUR,
-        idStructure: null,
-        doitChangerMotDePasse: true,
-        motDePasseHash: 'password-hash',
-      }),
-    }));
-    expect(prisma.livreurProfile.create).toHaveBeenCalledWith({
-      data: {
-        idUtilisateur: 'user-1',
-        quartier: dto.quartier,
-        prefecture: dto.prefecture,
-        commune: dto.commune,
-      },
+      livreurProfile: { quartier: dto.quartier, prefecture: dto.prefecture, commune: dto.commune, estActif: true },
     });
+
+    const result = await creerLivreur(admin, dossierDto, fichiers);
+
+    expect(creerAvecDossier).toHaveBeenCalledWith(admin, dossierDto, fichiers);
     expect(result.livreur).toEqual(expect.objectContaining({
-      id: 'user-1',
-      quartier: dto.quartier,
-      prefecture: dto.prefecture,
-      commune: dto.commune,
-      estActif: true,
+      id: 'user-1', quartier: dto.quartier, commune: dto.commune, estActif: true,
     }));
     expect(result).not.toHaveProperty('livreur.qrCode');
-    expect(result.motDePasseTemporaire).toBe('BaoBao@Demo123');
-  });
-
-  it('enregistre une commune vide comme absente', async () => {
-    prisma.utilisateur.create.mockResolvedValue({
-      id: 'user-1', prenom: dto.prenom, nom: dto.nom, telephone: dto.telephone,
-      creeLe: new Date('2026-10-24T00:00:00Z'),
-    });
-
-    await creerLivreur(admin, { ...dto, commune: '   ' });
-
-    expect(prisma.livreurProfile.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ commune: null }),
-    });
-  });
-
-  it('annule la creation du compte si la creation du profil echoue', async () => {
-    const utilisateursPersistes: { id: string }[] = [];
-    prisma.utilisateur.create.mockImplementation(async () => {
-      const user = { id: 'user-a-annuler' };
-      utilisateursPersistes.push(user);
-      return {
-        ...user, prenom: dto.prenom, nom: dto.nom, telephone: dto.telephone,
-        creeLe: new Date('2026-10-24T00:00:00Z'),
-      };
-    });
-    prisma.livreurProfile.create.mockRejectedValue(new Error('echec profil'));
-    prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      const tailleInitiale = utilisateursPersistes.length;
-      try {
-        return await fn(prisma);
-      } catch (error) {
-        utilisateursPersistes.splice(tailleInitiale);
-        throw error;
-      }
-    });
-
-    await expect(creerLivreur(admin, dto)).rejects.toThrow('echec profil');
-    expect(utilisateursPersistes).toEqual([]);
+    expect(result.numeroDossier).toBe('DL-2026-0001');
+    // Parti par courriel : l'agent ne le voit pas.
+    expect(result.motDePasseTemporaire).toBeNull();
   });
 
   it('refuse un role non autorise avant toute ecriture', async () => {
-    await expect(creerLivreur(patient, dto)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(creerLivreur(patient, dossierDto, fichiers)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(creerAvecDossier).not.toHaveBeenCalled();
     expect(prisma.utilisateur.create).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-  });
-
-  it('refuse proprement un numero de telephone deja utilise', async () => {
-    prisma.utilisateur.findUnique.mockResolvedValue({ id: 'existing-user' });
-
-    await expect(creerLivreur(admin, dto)).rejects.toBeInstanceOf(ConflictError);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('n envoie pas de notification aux livreurs inactifs', async () => {

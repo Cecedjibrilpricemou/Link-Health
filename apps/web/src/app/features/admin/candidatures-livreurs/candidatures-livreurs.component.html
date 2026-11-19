@@ -1,0 +1,290 @@
+<main class="bb-demandes">
+  <header class="bb-page-head">
+    <div class="bb-page-head__text">
+      <span class="bb-page-head__tag">
+        <i class="pi pi-truck" aria-hidden="true"></i>
+        {{ 'ADMIN.ROLE' | translate }}
+      </span>
+      <h1 class="bb-page-head__title">{{ 'ADMIN.LIVREUR_REQUESTS.TITLE' | translate }}</h1>
+      <p class="bb-page-head__sub">{{ 'ADMIN.LIVREUR_REQUESTS.SUBTITLE' | translate }}</p>
+    </div>
+  </header>
+
+  @if (erreur(); as message) {
+    <p class="bb-demandes__notice bb-demandes__notice--error" role="alert">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      {{ message }}
+    </p>
+  }
+  @if (succes(); as message) {
+    <p class="bb-demandes__notice bb-demandes__notice--ok" role="status" aria-live="polite">
+      <i class="pi pi-check-circle" aria-hidden="true"></i>
+      {{ message }}
+    </p>
+  }
+
+  <!-- Sur la page et non dans le dossier : il reste jusqu'a ce que l'agent
+       dise l'avoir note, quoi qu'il ferme entre-temps. -->
+  @if (motDePasse(); as identifiants) {
+    <div class="bb-demandes__notice bb-demandes__notice--ok bb-demandes__password" role="status">
+      <i class="pi pi-key" aria-hidden="true"></i>
+      <div>
+        <strong>{{ 'ADMIN.LIVREUR_REQUESTS.PASSWORD_TITLE' | translate: { nom: identifiants.nom } }}</strong>
+        <p>{{ 'ADMIN.LIVREURS.PASSWORD_WARNING' | translate }}</p>
+        <code>{{ identifiants.motDePasse }}</code>
+      </div>
+      <button type="button" matButton (click)="ignorerMotDePasse()">
+        {{ 'ADMIN.LIVREURS.PASSWORD_DISMISS' | translate }}
+      </button>
+    </div>
+  }
+
+  <div class="bb-demandes__tools">
+    <label class="bb-demandes__filter">
+      <span>{{ 'ADMIN.LIVREUR_REQUESTS.FILTER' | translate }}</span>
+      <!-- Le filtre recharge depuis le serveur. -->
+      <select [value]="filtreEtat()" (change)="changerFiltre($any($event.target).value)">
+        @for (etat of etats; track etat) {
+          <option [value]="etat">{{ ('ADMIN.AGREMENT_REQUESTS.STATE_' + etat) | translate }}</option>
+        }
+      </select>
+    </label>
+    <span class="bb-demandes__count" role="status" aria-live="polite">
+      {{ 'ADMIN.LIVREUR_REQUESTS.COUNT' | translate: { nombre: candidatures().length } }}
+    </span>
+  </div>
+
+  @if (chargement()) {
+    <div class="bb-demandes__empty">
+      <i class="pi pi-spinner" aria-hidden="true"></i>
+      <p>{{ 'ADMIN.AGREMENT_REQUESTS.LOADING' | translate }}</p>
+    </div>
+  } @else if (candidatures().length === 0) {
+    <div class="bb-demandes__empty">
+      <i class="pi pi-inbox" aria-hidden="true"></i>
+      <p>{{ 'ADMIN.LIVREUR_REQUESTS.EMPTY' | translate }}</p>
+    </div>
+  } @else {
+    <div class="bb-demandes__list">
+      @for (candidature of candidatures(); track candidature.id) {
+        <article class="bb-demandes__item" [attr.data-id]="candidature.id">
+          <div class="bb-demandes__identity">
+            <span class="bb-demandes__icon" aria-hidden="true">
+              <i class="pi pi-truck"></i>
+            </span>
+            <div class="bb-demandes__main">
+              <div class="bb-demandes__name-line">
+                <h2>{{ candidature.prenom }} {{ candidature.nom }}</h2>
+                <span class="bb-demandes__state" [attr.data-state]="candidature.statut">
+                  {{ ('ADMIN.AGREMENT_REQUESTS.STATE_' + candidature.statut) | translate }}
+                </span>
+              </div>
+              <p class="bb-demandes__meta">
+                {{ candidature.quartier }}
+                · {{ candidature.commune ?? candidature.prefecture }}
+                · {{ candidature.deposeLe | date: 'dd/MM/yyyy' }}
+                · {{ 'ADMIN.AGREMENT_REQUESTS.PIECES_COUNT' | translate: { nombre: candidature.nombrePieces } }}
+              </p>
+              <small class="bb-demandes__number">
+                {{ candidature.numero }} · {{ candidature.telephone }}
+                @if (candidature.deposeParAdministration) {
+                  · {{ 'ADMIN.LIVREUR_REQUESTS.BY_ADMINISTRATION' | translate }}
+                }
+              </small>
+            </div>
+          </div>
+
+          <div class="bb-demandes__menu-wrap">
+            <button type="button" matButton class="bb-demandes__menu-button"
+                    aria-haspopup="menu" [attr.aria-expanded]="menuOuvert() === candidature.id"
+                    [attr.aria-label]="('ADMIN.AGREMENT_REQUESTS.ACTIONS' | translate) + ' — ' + candidature.prenom + ' ' + candidature.nom"
+                    (click)="basculerMenu(candidature.id, $event)">
+              <i class="pi pi-ellipsis-v" aria-hidden="true"></i>
+            </button>
+            @if (menuOuvert() === candidature.id) {
+              <div class="bb-demandes__menu" role="menu" (click)="$event.stopPropagation()">
+                <button type="button" role="menuitem" class="bb-demandes__menu-item"
+                        (click)="ouvrirCandidature(candidature.id)">
+                  <i class="pi pi-folder-open" aria-hidden="true"></i>
+                  {{ 'ADMIN.LIVREUR_REQUESTS.OPEN' | translate }}
+                </button>
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+
+  @if (candidatureOuverte(); as candidature) {
+    <div class="bb-demandes__overlay" (click)="fermerDialogue()">
+      <section class="bb-demandes__modal" role="dialog" aria-modal="true"
+               aria-labelledby="candidature-detail-title" (click)="$event.stopPropagation()">
+        <header class="bb-demandes__modal-head">
+          <div>
+            <p class="bb-demandes__number">{{ candidature.numero }}</p>
+            <h2 id="candidature-detail-title">{{ candidature.prenom }} {{ candidature.nom }}</h2>
+            <p class="bb-demandes__meta">
+              {{ candidature.quartier }}
+              · {{ candidature.commune ?? candidature.prefecture }}
+              · {{ candidature.deposeLe | date: 'dd/MM/yyyy' }}
+            </p>
+          </div>
+          <button type="button" matButton class="bb-demandes__close"
+                  [attr.aria-label]="'ADMIN.AGREMENT_REQUESTS.CLOSE' | translate"
+                  (click)="fermerDialogue()">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </header>
+
+        <div class="bb-demandes__detail">
+          <section>
+            <h3>{{ 'ADMIN.LIVREUR_REQUESTS.IDENTITY' | translate }}</h3>
+            <dl class="bb-demandes__facts">
+              <div><dt>{{ 'PUBLIC.LIVREUR_REQUEST.FIRST_NAME' | translate }}</dt><dd>{{ candidature.prenom }}</dd></div>
+              <div><dt>{{ 'PUBLIC.LIVREUR_REQUEST.LAST_NAME' | translate }}</dt><dd>{{ candidature.nom }}</dd></div>
+              <div>
+                <dt>{{ 'PUBLIC.LIVREUR_REQUEST.BIRTH_DATE' | translate }}</dt>
+                <dd>
+                  {{ candidature.dateNaissance | date: 'dd/MM/yyyy' }}
+                  ({{ 'PUBLIC.LIVREUR_REQUEST.AGE' | translate: { age: candidature.age } }})
+                </dd>
+              </div>
+              <div>
+                <dt>{{ 'ADMIN.LIVREURS.GENDER' | translate }}</dt>
+                <dd>{{ ('PATIENT.PROFILE.GENDER_' + candidature.sexe) | translate }}</dd>
+              </div>
+              <div><dt>{{ 'PUBLIC.LIVREUR_REQUEST.PHONE' | translate }}</dt><dd>{{ candidature.telephone }}</dd></div>
+              <div><dt>{{ 'ADMIN.LIVREURS.EMAIL' | translate }}</dt><dd>{{ candidature.email || '—' }}</dd></div>
+            </dl>
+          </section>
+
+          <section>
+            <h3>{{ 'PUBLIC.LIVREUR_REQUEST.ADDRESS_SECTION' | translate }}</h3>
+            <dl class="bb-demandes__facts">
+              <div><dt>{{ geo.libelle('elargissement') }}</dt><dd>{{ candidature.prefecture }}</dd></div>
+              <div><dt>{{ geo.libelle('base') }}</dt><dd>{{ candidature.commune || '—' }}</dd></div>
+              <div><dt>{{ 'PUBLIC.LIVREUR_REQUEST.QUARTIER' | translate }}</dt><dd>{{ candidature.quartier }}</dd></div>
+            </dl>
+          </section>
+
+          <section>
+            <h3>{{ 'ADMIN.AGREMENT_REQUESTS.PIECES' | translate }}</h3>
+
+            <!-- Recalcule par le serveur a chaque lecture. -->
+            @if (!candidature.complet) {
+              <p class="bb-demandes__missing" role="alert">
+                <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                {{ 'ADMIN.AGREMENT_REQUESTS.MISSING' | translate }}
+                @for (manquante of candidature.manquantes; track manquante) {
+                  <span>{{ ('PUBLIC.LIVREUR_REQUEST.PIECE_' + manquante) | translate }}</span>
+                }
+              </p>
+            }
+
+            <ul class="bb-demandes__pieces">
+              @for (piece of candidature.pieces; track piece.id) {
+                <li>
+                  <span class="bb-demandes__piece-icon">
+                    <i class="pi" [class.pi-image]="estImage(piece)" [class.pi-file-pdf]="!estImage(piece)"
+                       aria-hidden="true"></i>
+                  </span>
+                  <span class="bb-demandes__piece-text">
+                    <strong>{{ libellePiece(piece) }}</strong>
+                    <small>{{ piece.deposeLe | date: 'dd/MM/yyyy' }}</small>
+                  </span>
+                  <button type="button" matButton class="bb-demandes__view-piece"
+                          (click)="consulterPiece(piece)">
+                    <i class="pi pi-eye" aria-hidden="true"></i>
+                    {{ 'ADMIN.AGREMENT_REQUESTS.VIEW_PIECE' | translate }}
+                  </button>
+                </li>
+              }
+            </ul>
+
+            @if (apercu(); as vue) {
+              <div class="bb-demandes__preview" aria-live="polite">
+                <div class="bb-demandes__preview-head">
+                  <strong>{{ vue.libelle }}</strong>
+                  <button type="button" matButton (click)="fermerApercu()">
+                    <i class="pi pi-times" aria-hidden="true"></i>
+                    {{ 'ADMIN.AGREMENT_REQUESTS.PREVIEW_CLOSE' | translate }}
+                  </button>
+                </div>
+                <!-- Photo ou PDF, le navigateur affiche l'un et l'autre dans
+                     le meme cadre : le type vient du serveur, lu dans les
+                     octets au depot. -->
+                <iframe class="bb-demandes__preview-frame" [src]="vue.url"
+                        [title]="vue.libelle"></iframe>
+              </div>
+            }
+          </section>
+
+          @if (candidature.statut === 'REFUSEE' && candidature.motifRefus) {
+            <section>
+              <h3>{{ 'ADMIN.AGREMENT_REQUESTS.REFUSAL_REASON' | translate }}</h3>
+              <p class="bb-demandes__reason-text">{{ candidature.motifRefus }}</p>
+            </section>
+          }
+
+          @if (candidature.examinePar) {
+            <p class="bb-demandes__examined">
+              {{ 'ADMIN.AGREMENT_REQUESTS.DECIDED_BY' | translate: { qui: candidature.examinePar } }}
+              @if (candidature.examineLe) {
+                · {{ candidature.examineLe | date: 'dd/MM/yyyy HH:mm' }}
+              }
+            </p>
+          }
+        </div>
+
+        <footer class="bb-demandes__actions">
+          <span class="bb-demandes__current-state">
+            {{ 'ADMIN.AGREMENT_REQUESTS.CURRENT_STATE' | translate }}
+            <strong>{{ ('ADMIN.AGREMENT_REQUESTS.STATE_' + candidature.statut) | translate }}</strong>
+          </span>
+
+          @if (decidable()) {
+            <div class="bb-demandes__action-buttons">
+              <button type="button" matButton [disabled]="action() || candidature.statut === 'EN_ANALYSE'"
+                      (click)="mettreEnAnalyse()">
+                <i class="pi pi-search" aria-hidden="true"></i>
+                {{ 'ADMIN.AGREMENT_REQUESTS.MARK_ANALYSIS' | translate }}
+              </button>
+              <button type="button" matButton="filled" class="bb-demandes__validate"
+                      [disabled]="action() || !candidature.complet" (click)="valider()">
+                <i class="pi pi-check" aria-hidden="true"></i>
+                {{ 'ADMIN.AGREMENT_REQUESTS.VALIDATE' | translate }}
+              </button>
+              <button type="button" matButton class="bb-demandes__refuse"
+                      [disabled]="action()" (click)="ouvrirSaisieMotif()">
+                <i class="pi pi-ban" aria-hidden="true"></i>
+                {{ 'ADMIN.AGREMENT_REQUESTS.REFUSE' | translate }}
+              </button>
+            </div>
+          } @else {
+            <!-- Une decision ne se reprend pas. -->
+            <p class="bb-demandes__decided" role="note">
+              <i class="pi pi-lock" aria-hidden="true"></i>
+              {{ 'ADMIN.AGREMENT_REQUESTS.DECIDED_NOTICE' | translate }}
+            </p>
+          }
+
+          @if (saisieMotifOuverte()) {
+            <div class="bb-demandes__reason">
+              <label for="candidature-motif">{{ 'ADMIN.AGREMENT_REQUESTS.REASON' | translate }} *</label>
+              <textarea id="candidature-motif" rows="3" maxlength="600" [ngModel]="motifRefus()"
+                        (ngModelChange)="motifRefus.set($event)"></textarea>
+              @if (erreurMotif()) {
+                <small role="alert">{{ 'ADMIN.AGREMENT_REQUESTS.REASON_TOO_SHORT' | translate }}</small>
+              }
+              <button type="button" matButton="filled" class="bb-demandes__confirm-refusal"
+                      [disabled]="!motifSuffisant() || action()" (click)="refuser()">
+                {{ 'ADMIN.AGREMENT_REQUESTS.CONFIRM_REFUSAL' | translate }}
+              </button>
+            </div>
+          }
+        </footer>
+      </section>
+    </div>
+  }
+</main>

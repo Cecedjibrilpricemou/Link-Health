@@ -4,9 +4,9 @@
 // rejoindre la plateforme n'a personne pour le proposer : il depose lui-meme
 // son dossier, et attend une decision.
 //
-// Le depot n'est pas encore actif : ENVOI_ACTIF a faux desactive le bouton
-// d'envoi et affiche un bandeau d'attente. Le service est pret, la route
-// serveur manque.
+// Le depot part vers `POST /livreurs/candidatures`. Aucun compte n'est cree
+// a ce moment : il nait de la validation par l'administration, qui examine
+// le dossier depuis l'ecran des candidatures.
 import { Component, type OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,8 @@ import { MatButtonModule } from '@angular/material/button';
 
 import {
   CandidatureLivreurService,
+  refusPieceLivreur,
+  tailleLisible,
   TYPES_PIECES_LIVREUR,
   type TypePieceLivreur,
   type DepotCandidatureLivreurDto,
@@ -22,18 +24,6 @@ import { GeographieService } from '../../../core/services/geographie.service';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { PublicShellComponent } from '../../../shared/components/public-shell/public-shell.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
-
-/** Le depot n'est pas encore raccorde au serveur. */
-const ENVOI_ACTIF = false;
-
-/** 5 Mo, comme les pieces d'agrement : un scan de permis depasse souvent 2 Mo. */
-const TAILLE_MAX_PIECE = 5 * 1024 * 1024;
-
-/** Les types MIME acceptes : un motard photographie ses papiers. */
-const TYPES_ACCEPTES = ['image/jpeg', 'image/png', 'application/pdf'];
-
-/** Les extensions correspondantes, pour les navigateurs qui ne renseignent pas le type. */
-const EXTENSIONS_ACCEPTEES = ['.jpg', '.jpeg', '.png', '.pdf'];
 
 interface FormulaireCandidat {
   prenom: string;
@@ -66,7 +56,6 @@ export class CandidatureLivreurComponent implements OnInit {
   private readonly i18n = inject(I18nService);
   readonly geo = inject(GeographieService);
 
-  readonly envoiActif = ENVOI_ACTIF;
   readonly typesPieces = TYPES_PIECES_LIVREUR;
 
   readonly prefectures = signal<string[]>([]);
@@ -170,7 +159,6 @@ export class CandidatureLivreurComponent implements OnInit {
    * resultat ne serait pas correctement suivi par un computed() impur.
    */
   raisonBlocage(): string | null {
-    if (!ENVOI_ACTIF) return this.i18n.t('PUBLIC.LIVREUR_REQUEST.NOT_ACTIVE_YET');
     if (this.envoi()) return null;
 
     const f = this.formulaire();
@@ -189,7 +177,9 @@ export class CandidatureLivreurComponent implements OnInit {
     if (!this.telephoneValide()) {
       return this.i18n.t('PUBLIC.LIVREUR_REQUEST.MISSING_PHONE');
     }
-    if (!f.prefecture.trim()) {
+    // Le quartier est exige : le profil du livreur ne sait pas s'en passer,
+    // et le serveur refuserait le dossier apres dix minutes de televersement.
+    if (!f.prefecture.trim() || !f.quartier.trim()) {
       return this.i18n.t('PUBLIC.LIVREUR_REQUEST.MISSING_ADDRESS');
     }
 
@@ -215,7 +205,6 @@ export class CandidatureLivreurComponent implements OnInit {
   }
 
   peutEnvoyer(): boolean {
-    if (!ENVOI_ACTIF) return false;
     return this.raisonBlocage() === null && !this.envoi();
   }
 
@@ -297,37 +286,15 @@ export class CandidatureLivreurComponent implements OnInit {
     const refus = this.refusPiece();
     const pieces = this.pieces();
 
-    // Controle du format
-    const nomLower = fichier.name.toLowerCase();
-    const typeOk =
-      TYPES_ACCEPTES.includes(fichier.type) ||
-      EXTENSIONS_ACCEPTEES.some((ext) => nomLower.endsWith(ext));
-    if (!typeOk) {
+    // La regle est celle du service, partagee avec l'ecran d'administration.
+    const motif = refusPieceLivreur(fichier);
+    if (motif) {
       this.refusPiece.set({
         ...refus,
-        [type]: this.i18n.t('PUBLIC.LIVREUR_REQUEST.PIECE_BAD_FORMAT', {
-          piece: this.i18n.t('PUBLIC.LIVREUR_REQUEST.PIECE_' + type),
-        }),
-      });
-      return;
-    }
-
-    // Controle de la taille
-    if (fichier.size > TAILLE_MAX_PIECE) {
-      this.refusPiece.set({
-        ...refus,
-        [type]: this.i18n.t('PUBLIC.LIVREUR_REQUEST.PIECE_TOO_LARGE', {
+        [type]: this.i18n.t(`PUBLIC.LIVREUR_REQUEST.${motif}`, {
           piece: this.i18n.t('PUBLIC.LIVREUR_REQUEST.PIECE_' + type),
           taille: tailleLisible(fichier.size),
         }),
-      });
-      return;
-    }
-
-    if (fichier.size === 0) {
-      this.refusPiece.set({
-        ...refus,
-        [type]: this.i18n.t('PUBLIC.LIVREUR_REQUEST.PIECE_EMPTY'),
       });
       return;
     }
@@ -366,12 +333,12 @@ export class CandidatureLivreurComponent implements OnInit {
       prenom: f.prenom.trim(),
       nom: f.nom.trim(),
       dateNaissance: f.dateNaissance,
-      sexe: f.sexe,
+      sexe: f.sexe as DepotCandidatureLivreurDto['sexe'],
       telephone: f.telephone.trim(),
       ...(f.email.trim() ? { email: f.email.trim() } : {}),
       prefecture: f.prefecture.trim(),
       ...(f.commune.trim() ? { commune: f.commune.trim() } : {}),
-      ...(f.quartier.trim() ? { quartier: f.quartier.trim() } : {}),
+      quartier: f.quartier.trim(),
     };
 
     this.service.deposer(dto, this.pieces()).subscribe({
@@ -394,11 +361,4 @@ export class CandidatureLivreurComponent implements OnInit {
       },
     });
   }
-}
-
-/** `200 Ko`, `2.0 Mo` — jamais `0 Ko`, qui ressemble a un televersement rate. */
-function tailleLisible(octets: number): string {
-  return octets >= 1024 * 1024
-    ? `${(octets / (1024 * 1024)).toFixed(1)} Mo`
-    : `${Math.max(1, Math.round(octets / 1024))} Ko`;
 }

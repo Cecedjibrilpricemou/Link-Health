@@ -157,10 +157,11 @@
               }
             }
 
-            <!-- Quartier : toujours libre -->
+            <!-- Quartier : toujours libre, mais exige - le profil du livreur
+                 en a besoin pour situer ses courses. -->
             <label class="candidature-livreur__field" for="candidature-quartier">
-              <span>{{ 'PUBLIC.LIVREUR_REQUEST.QUARTIER' | translate }}</span>
-              <input id="candidature-quartier" name="quartier"
+              <span>{{ 'PUBLIC.LIVREUR_REQUEST.QUARTIER' | translate }} *</span>
+              <input id="candidature-quartier" name="quartier" required
                      [ngModel]="formulaire().quartier"
                      (ngModelChange)="modifierChamp('quartier', $event)" />
             </label>
