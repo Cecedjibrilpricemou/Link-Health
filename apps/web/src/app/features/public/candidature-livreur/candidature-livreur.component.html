@@ -1,0 +1,254 @@
+<app-public-shell>
+  <header class="pub-hero">
+    <span class="pub-tag">{{ 'PUBLIC.LIVREUR_REQUEST.TAG' | translate }}</span>
+    <h1 class="pub-hero__title">
+      {{ 'PUBLIC.LIVREUR_REQUEST.TITLE_A' | translate }}
+      <span class="pub-hero__accent">{{ 'PUBLIC.LIVREUR_REQUEST.TITLE_B' | translate }}</span>
+    </h1>
+    <p class="pub-hero__lead">{{ 'PUBLIC.LIVREUR_REQUEST.LEAD' | translate }}</p>
+  </header>
+
+  <section class="pub-section candidature-livreur" aria-live="polite">
+    @if (confirmation(); as numero) {
+      <section class="candidature-livreur__confirmation" aria-labelledby="candidature-confirmation-title">
+        <span class="candidature-livreur__confirmation-icon" aria-hidden="true">
+          <i class="pi pi-check-circle"></i>
+        </span>
+        <h2 id="candidature-confirmation-title">{{ 'PUBLIC.LIVREUR_REQUEST.CONFIRM_TITLE' | translate }}</h2>
+        <p>{{ 'PUBLIC.LIVREUR_REQUEST.CONFIRM_TEXT' | translate: { numero: numero } }}</p>
+        <strong class="candidature-livreur__numero">{{ numero }}</strong>
+        <p class="candidature-livreur__hint">{{ 'PUBLIC.LIVREUR_REQUEST.CONFIRM_NEXT' | translate }}</p>
+      </section>
+    } @else {
+      <form class="candidature-livreur__form" (ngSubmit)="envoyer()">
+
+        <!-- ── Identite ─────────────────────────────────────────── -->
+        <section class="candidature-livreur__section" aria-labelledby="candidature-identite-title">
+          <h2 id="candidature-identite-title">{{ 'PUBLIC.LIVREUR_REQUEST.IDENTITY' | translate }}</h2>
+          <div class="candidature-livreur__grid">
+            <label class="candidature-livreur__field" for="candidature-prenom">
+              <span>{{ 'PUBLIC.LIVREUR_REQUEST.FIRST_NAME' | translate }} *</span>
+              <input id="candidature-prenom" name="prenom" required
+                     [ngModel]="formulaire().prenom"
+                     (ngModelChange)="modifierChamp('prenom', $event)" />
+            </label>
+            <label class="candidature-livreur__field" for="candidature-nom">
+              <span>{{ 'PUBLIC.LIVREUR_REQUEST.LAST_NAME' | translate }} *</span>
+              <input id="candidature-nom" name="nom" required
+                     [ngModel]="formulaire().nom"
+                     (ngModelChange)="modifierChamp('nom', $event)" />
+            </label>
+            <label class="candidature-livreur__field" for="candidature-naissance">
+              <span>{{ 'PUBLIC.LIVREUR_REQUEST.BIRTH_DATE' | translate }} *</span>
+              <input id="candidature-naissance" name="dateNaissance" type="date" required
+                     [ngModel]="formulaire().dateNaissance"
+                     (ngModelChange)="modifierChamp('dateNaissance', $event)" />
+              <!-- `age()!` : le bloc ne s'affiche que si l'age existe, mais le
+                   compilateur ne le deduit pas d'un appel de methode. -->
+              @if (age() !== null) {
+                <small class="candidature-livreur__age">
+                  {{ 'PUBLIC.LIVREUR_REQUEST.AGE' | translate: { age: age()! } }}
+                </small>
+              }
+              @if (estMineur()) {
+                <small class="candidature-livreur__refus" role="alert">
+                  <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                  {{ 'PUBLIC.LIVREUR_REQUEST.MINOR' | translate }}
+                </small>
+              }
+            </label>
+            <label class="candidature-livreur__field" for="candidature-sexe">
+              <span>{{ 'PATIENT.PROFILE.GENDER' | translate }} *</span>
+              <select id="candidature-sexe" name="sexe" required
+                      [ngModel]="formulaire().sexe"
+                      (ngModelChange)="modifierChamp('sexe', $event)">
+                <option value="">{{ 'PATIENT.PROFILE.GENDER_SELECT' | translate }}</option>
+                <option value="M">{{ 'PATIENT.PROFILE.GENDER_M' | translate }}</option>
+                <option value="F">{{ 'PATIENT.PROFILE.GENDER_F' | translate }}</option>
+              </select>
+            </label>
+            <label class="candidature-livreur__field" for="candidature-telephone">
+              <span>{{ 'PUBLIC.LIVREUR_REQUEST.PHONE' | translate }} *</span>
+              <div class="candidature-livreur__tel-group">
+                @if (indicatif()) {
+                  <span class="candidature-livreur__indicatif" aria-hidden="true">{{ indicatif() }}</span>
+                }
+                <input id="candidature-telephone" name="telephone" type="tel" required
+                       inputmode="tel" autocomplete="tel"
+                       [ngModel]="formulaire().telephone"
+                       (ngModelChange)="modifierChamp('telephone', $event)" />
+              </div>
+            </label>
+            <label class="candidature-livreur__field" for="candidature-email">
+              <span>{{ 'PUBLIC.LIVREUR_REQUEST.EMAIL' | translate }}</span>
+              <input id="candidature-email" name="email" type="email"
+                     [ngModel]="formulaire().email"
+                     (ngModelChange)="modifierChamp('email', $event)" />
+            </label>
+          </div>
+        </section>
+
+        <!-- ── Adresse ──────────────────────────────────────────── -->
+        <section class="candidature-livreur__section" aria-labelledby="candidature-adresse-title">
+          <h2 id="candidature-adresse-title">{{ 'PUBLIC.LIVREUR_REQUEST.ADDRESS_SECTION' | translate }}</h2>
+          <div class="candidature-livreur__grid">
+            <label class="candidature-livreur__field" for="candidature-prefecture">
+              <span>{{ geo.libelle('elargissement') }} *</span>
+              <select id="candidature-prefecture" name="prefecture" required
+                      [ngModel]="formulaire().prefecture"
+                      (ngModelChange)="changerPrefecture($event)">
+                <option value="">{{ 'PUBLIC.SEARCH.CHOOSE' | translate }}</option>
+                @for (pref of prefectures(); track pref) {
+                  <option [value]="pref">{{ pref }}</option>
+                }
+              </select>
+            </label>
+
+            <!-- Conakry : commune obligatoire, dans la liste -->
+            @if (estConakry()) {
+              <label class="candidature-livreur__field" for="candidature-commune">
+                <span>{{ geo.libelle('base') }} *</span>
+                <select id="candidature-commune" name="commune" required
+                        [disabled]="communes().length === 0"
+                        [ngModel]="formulaire().commune"
+                        (ngModelChange)="modifierChamp('commune', $event)">
+                  <option value="">{{ 'PUBLIC.SEARCH.CHOOSE' | translate }}</option>
+                  @for (commune of communes(); track commune) {
+                    <option [value]="commune">{{ commune }}</option>
+                  }
+                </select>
+              </label>
+            }
+
+            <!-- Hors Conakry : case « hors ville » et sous-prefecture -->
+            @if (formulaire().prefecture && !estConakry()) {
+              <div class="candidature-livreur__field candidature-livreur__field--check">
+                <label for="candidature-hors-ville" class="candidature-livreur__checkbox-label">
+                  <input id="candidature-hors-ville" name="horsVille" type="checkbox"
+                         [ngModel]="formulaire().horsVille"
+                         (ngModelChange)="basculerHorsVille($event)" />
+                  {{ 'PUBLIC.LIVREUR_REQUEST.NOT_IN_TOWN' | translate }}
+                </label>
+              </div>
+
+              @if (formulaire().horsVille) {
+                <label class="candidature-livreur__field" for="candidature-sous-prefecture">
+                  <!-- Le niveau 'base' porte les sous-prefectures : c'est le
+                       meme referentiel, filtre par la prefecture choisie. -->
+                  <span>{{ geo.libelle('base') }}</span>
+                  @if (communes().length > 0) {
+                    <select id="candidature-sous-prefecture" name="commune"
+                            [ngModel]="formulaire().commune"
+                            (ngModelChange)="modifierChamp('commune', $event)">
+                      <option value="">{{ 'PUBLIC.SEARCH.CHOOSE' | translate }}</option>
+                      @for (commune of communes(); track commune) {
+                        <option [value]="commune">{{ commune }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <!-- Referentiel vide hors Conakry : saisie libre plutot
+                         que de bloquer le candidat. -->
+                    <input id="candidature-sous-prefecture" name="commune"
+                           [ngModel]="formulaire().commune"
+                           (ngModelChange)="modifierChamp('commune', $event)"
+                           [placeholder]="'PUBLIC.LIVREUR_REQUEST.FREE_TEXT' | translate" />
+                  }
+                </label>
+              }
+            }
+
+            <!-- Quartier : toujours libre -->
+            <label class="candidature-livreur__field" for="candidature-quartier">
+              <span>{{ 'PUBLIC.LIVREUR_REQUEST.QUARTIER' | translate }}</span>
+              <input id="candidature-quartier" name="quartier"
+                     [ngModel]="formulaire().quartier"
+                     (ngModelChange)="modifierChamp('quartier', $event)" />
+            </label>
+          </div>
+        </section>
+
+        <!-- ── Pieces ───────────────────────────────────────────── -->
+        <section class="candidature-livreur__section" aria-labelledby="candidature-pieces-title">
+          <h2 id="candidature-pieces-title">{{ 'PUBLIC.LIVREUR_REQUEST.PIECES_TITLE' | translate }}</h2>
+          <p class="candidature-livreur__hint">{{ 'PUBLIC.LIVREUR_REQUEST.PIECES_NOTE' | translate }}</p>
+
+          <div class="bb-pieces">
+            <div class="bb-pieces__head">
+              <span class="bb-pieces__titre">
+                <i class="pi pi-paperclip" aria-hidden="true"></i>
+                {{ 'PUBLIC.LIVREUR_REQUEST.PIECES_TITLE' | translate }}
+              </span>
+              <span class="bb-pieces__compte"
+                    [class.bb-pieces__compte--ok]="piecesManquantes().length === 0">
+                {{ 'AGREMENT.PIECE.COMPTE' | translate: {
+                     deposees: piecesJointes(), total: typesPieces.length
+                   } }}
+              </span>
+            </div>
+
+            @for (p of typesPieces; track p) {
+              <div class="bb-pieces__ligne" [class.bb-pieces__ligne--ok]="nomDe(p)">
+                <div class="bb-pieces__texte">
+                  <span class="bb-pieces__nom">
+                    {{ 'PUBLIC.LIVREUR_REQUEST.PIECE_' + p | translate }} *
+                  </span>
+                  <small class="bb-pieces__detail">{{ 'PUBLIC.LIVREUR_REQUEST.PIECE_' + p + '_AIDE' | translate }}</small>
+
+                  @if (nomDe(p)) {
+                    <small class="bb-pieces__fichier">
+                      <i class="pi pi-file" aria-hidden="true"></i>
+                      {{ nomDe(p) }} · {{ tailleDe(p) }}
+                    </small>
+                  }
+                  @if (refusDe(p)) {
+                    <small class="bb-pieces__refus" role="alert">
+                      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                      {{ refusDe(p) }}
+                    </small>
+                  }
+                </div>
+
+                <div class="bb-pieces__actions">
+                  <label class="bb-pieces__bouton">
+                    <i class="pi" [class.pi-upload]="!nomDe(p)" [class.pi-refresh]="nomDe(p)" aria-hidden="true"></i>
+                    {{ (nomDe(p) ? 'AGREMENT.PIECE.REMPLACER' : 'AGREMENT.PIECE.CHOISIR') | translate }}
+                    <input type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+                           (change)="choisirPiece(p, $event)" />
+                  </label>
+                  @if (nomDe(p)) {
+                    <button type="button" class="bb-pieces__retirer" (click)="retirerPiece(p)"
+                            [attr.aria-label]="'AGREMENT.PIECE.RETIRER' | translate">
+                      <i class="pi pi-times" aria-hidden="true"></i>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+
+        @if (erreur(); as message) {
+          <p class="candidature-livreur__error" role="alert">
+            <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+            {{ message }}
+          </p>
+        }
+
+        @if (raisonBlocage(); as raison) {
+          <p class="candidature-livreur__warning" role="status">
+            <i class="pi pi-info-circle" aria-hidden="true"></i>
+            {{ raison }}
+          </p>
+        }
+
+        <footer class="candidature-livreur__actions">
+          <button matButton="filled" type="submit" class="pub-btn pub-btn--primary"
+                  [disabled]="!peutEnvoyer()">
+            <i class="pi" [class.pi-send]="!envoi()" [class.pi-spinner]="envoi()" aria-hidden="true"></i>
+            {{ (envoi() ? 'PUBLIC.LIVREUR_REQUEST.SENDING' : 'PUBLIC.LIVREUR_REQUEST.SUBMIT') | translate }}
+          </button>
+        </footer>
+      </form>
+    }
+  </section>
+</app-public-shell>

@@ -1,0 +1,182 @@
+// L'ecran de candidature d'un motard livreur.
+//
+// Les styles du bloc des pieces viennent du composant partage, repris tels
+// quels : les deux ecrans doivent se ressembler, et une copie finirait par
+// diverger. Les styles d'un composant Angular etant encapsules, il faut les
+// faire entrer ici explicitement.
+@use '../../../shared/components/pieces-agrement/pieces-agrement.component';
+
+:host { display: block; }
+
+.candidature-livreur {
+  max-width: 1040px;
+
+  &__form,
+  &__confirmation {
+    padding: clamp(20px, 4vw, 36px);
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-xl);
+    background: var(--bb-surface-card);
+    box-shadow: var(--bb-shadow);
+  }
+
+  &__section {
+    & + & { margin-top: 30px; padding-top: 26px; border-top: 1px solid var(--bb-border-light); }
+    h2 {
+      margin: 0 0 16px;
+      color: var(--bb-text-primary);
+      font: 800 clamp(18px, 2vw, 22px) var(--bb-font-display);
+      letter-spacing: -.025em;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    @media (max-width: 640px) { grid-template-columns: 1fr; }
+  }
+
+  &__field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+    color: var(--bb-text-secondary);
+    font: 700 13px var(--bb-font-display);
+
+    input,
+    select {
+      width: 100%;
+      min-height: 48px;
+      padding: 10px 12px;
+      border: 1px solid var(--bb-border);
+      border-radius: var(--bb-radius);
+      background: var(--bb-surface-0);
+      color: var(--bb-text-primary);
+      font: 400 14px var(--bb-font-body);
+      &:focus-visible { outline: none; border-color: var(--bb-primary); box-shadow: var(--bb-focus-ring); }
+      &:disabled { cursor: not-allowed; opacity: .65; }
+    }
+
+    // La case a cocher ne doit pas s'etirer comme un champ de saisie.
+    &--check {
+      justify-content: center;
+      input[type='checkbox'] { width: auto; min-height: 0; }
+    }
+  }
+
+  &__checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--bb-text-primary);
+    font: 500 14px var(--bb-font-body);
+    cursor: pointer;
+  }
+
+  // Le groupe indicatif + numero : l'indicatif est fixe, il ne se saisit pas.
+  &__tel-group {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+
+    input { border-radius: 0 var(--bb-radius) var(--bb-radius) 0; }
+  }
+
+  &__indicatif {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    color: var(--bb-text-secondary);
+    background: var(--bb-surface-1);
+    border: 1px solid var(--bb-border);
+    border-right: none;
+    border-radius: var(--bb-radius) 0 0 var(--bb-radius);
+    font: 600 14px var(--bb-font-mono);
+    white-space: nowrap;
+  }
+
+  &__age {
+    color: var(--bb-text-muted);
+    font: 500 12.5px var(--bb-font-body);
+  }
+
+  &__refus,
+  &__error {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--bb-danger);
+    font: 500 12.5px var(--bb-font-body);
+  }
+
+  &__error {
+    margin: 20px 0 0;
+    padding: 11px 14px;
+    background: var(--bb-danger-bg);
+    border: 1px solid var(--bb-danger-border);
+    border-radius: var(--bb-radius);
+    font-size: 13.5px;
+  }
+
+  // La raison du blocage, juste au-dessus du bouton : c'est la que le regard
+  // se pose quand il ne repond pas.
+  &__warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 20px 0 0;
+    padding: 11px 14px;
+    color: var(--bb-text-secondary);
+    background: var(--bb-surface-1);
+    border: 1px solid var(--bb-border);
+    border-radius: var(--bb-radius);
+    font-size: 13.5px;
+    i { color: var(--bb-warning); }
+  }
+
+  &__hint { margin: -8px 0 14px; color: var(--bb-text-muted); font-size: 13px; line-height: 1.5; }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid var(--bb-border-light);
+    @media (max-width: 520px) { > * { width: 100%; justify-content: center; } }
+  }
+
+  // ── L'accuse de depot ───────────────────────────────────────────────
+  &__confirmation {
+    text-align: center;
+    h2 { margin: 14px 0 8px; color: var(--bb-text-primary); font: 800 22px var(--bb-font-display); }
+    p { margin: 0 auto; max-width: 56ch; color: var(--bb-text-secondary); line-height: 1.6; }
+  }
+
+  &__confirmation-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    color: var(--bb-success);
+    background: var(--bb-success-bg);
+    border-radius: 50%;
+    font-size: 26px;
+  }
+
+  // Le numero de dossier se recopie a la main, souvent sur un papier : il doit
+  // se lire sans confusion possible entre les caracteres.
+  &__numero {
+    display: inline-block;
+    margin: 14px 0 10px;
+    padding: 8px 16px;
+    color: var(--bb-primary);
+    background: color-mix(in srgb, var(--bb-primary) 9%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--bb-primary) 32%, transparent);
+    border-radius: var(--bb-radius);
+    font: 700 18px var(--bb-font-mono);
+    letter-spacing: .06em;
+  }
+}
