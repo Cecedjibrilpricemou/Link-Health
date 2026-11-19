@@ -44,6 +44,7 @@ import rechercheRoutes from './routes/recherche.routes';
 import compteRoutes from './routes/compte.routes';
 import rgpdRoutes from './routes/rgpd.routes';
 import demandeAgrementRoutes from './routes/demande-agrement.routes';
+import candidatureLivreurRoutes from './routes/candidature-livreur.routes';
 import identiteRoutes from './routes/identite.routes';
 import { setupSwagger } from './config/swagger';
 import { getIdentitePlateforme } from './services/parametres.service';
@@ -154,6 +155,29 @@ const depotAgrementLimiter = rateLimit({
   ...(redisClient && {
     store: new RedisStore({
       prefix: 'rl:agrement:',
+      sendCommand: async (...args: string[]) => redisClient!.call(args[0], ...args.slice(1)) as any,
+    }),
+  }),
+});
+
+/**
+ * Le depot d'une candidature de livreur : meme logique, memes bornes que
+ * celui des demandes d'agrement - six fichiers de cinq megaoctets sans aucun
+ * compte derriere. Le service refuse en outre un second dossier pour un
+ * telephone dont le premier est en cours d'examen.
+ */
+const depotLivreurLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Trop de candidatures déposées depuis cette connexion. Réessayez dans une heure.',
+  },
+  ...(redisClient && {
+    store: new RedisStore({
+      prefix: 'rl:livreur:',
       sendCommand: async (...args: string[]) => redisClient!.call(args[0], ...args.slice(1)) as any,
     }),
   }),
@@ -292,6 +316,9 @@ app.use('/api/v1/demandes-rgpd', rgpdRoutes);
 // l'administration, qui ouvre des dizaines de dossiers dans une matinee.
 app.post('/api/v1/demandes-agrement', depotAgrementLimiter);
 app.use('/api/v1/demandes-agrement', demandeAgrementRoutes);
+// Comme pour l'agrement, le limiteur serre ne couvre que le depot public.
+app.post('/api/v1/livreurs/candidatures', depotLivreurLimiter);
+app.use('/api/v1/livreurs/candidatures', candidatureLivreurRoutes);
 app.use('/api/v1/identites', identiteRoutes);
 
 // Route 404

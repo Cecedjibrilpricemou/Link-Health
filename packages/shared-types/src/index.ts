@@ -2051,10 +2051,20 @@ export interface ConseillerStructureDto {
   idStructureConseillee: string;
 }
 
+/**
+ * POST /comptes/livreurs, en multipart : ces champs dans `donnees`, et les six
+ * pieces du dossier sous leur type (`CNI_RECTO`...). Un livreur cree par
+ * l'administration a un dossier comme celui qui candidate.
+ */
 export interface CreerLivreurDto {
   prenom: string;
   nom: string;
+  /** `AAAA-MM-JJ`. Dix-huit ans au moins : le serveur refuse un mineur. */
+  dateNaissance: string;
+  sexe: 'M' | 'F';
   telephone: string;
+  /** Facultatif. Present, les identifiants y partent au lieu de l'ecran. */
+  email?: string;
   quartier: string;
   prefecture: string;
   /** Commune de travail : la zone des courses qu'il recoit. */
@@ -2076,7 +2086,95 @@ export interface LivreurAdminView {
 
 export interface CreationLivreurView {
   livreur: LivreurAdminView;
-  motDePasseTemporaire: string;
+  /** Le dossier enregistre avec le compte, deja valide. */
+  numeroDossier: string;
+  /**
+   * Nul quand les identifiants sont partis par courriel : l'agent n'a alors
+   * aucune raison de connaitre ce mot de passe. Renseigne seulement si le
+   * livreur n'a pas d'email ou si l'envoi a echoue - a lui communiquer.
+   */
+  motDePasseTemporaire: string | null;
+}
+
+// ── Candidatures de motards livreurs ────────────────────────────────
+
+export type StatutCandidatureLivreur = 'RECUE' | 'EN_ANALYSE' | 'VALIDEE' | 'REFUSEE';
+
+export type TypePieceLivreur =
+  | 'CNI_RECTO'
+  | 'CNI_VERSO'
+  | 'PERMIS_CONDUIRE'
+  | 'CARTE_GRISE'
+  | 'ASSURANCE'
+  | 'CERTIFICAT_RESIDENCE';
+
+/** POST /livreurs/candidatures — le numero est la seule reference du motard. */
+export interface DepotCandidatureLivreurView {
+  numero: string;
+  statut: StatutCandidatureLivreur;
+  deposeLe: HorodatageApi;
+}
+
+/** GET /livreurs/candidatures — de quoi trier, pas de quoi instruire. */
+export interface CandidatureLivreurListeView {
+  id: string;
+  numero: string;
+  statut: StatutCandidatureLivreur;
+  prenom: string;
+  nom: string;
+  telephone: string;
+  prefecture: string;
+  commune: string | null;
+  quartier: string;
+  deposeParAdministration: boolean;
+  nombrePieces: number;
+  deposeLe: HorodatageApi;
+}
+
+/** Une piece du dossier. Son contenu se lit par une route gardee. */
+export interface PieceCandidatureLivreurView {
+  id: string;
+  type: TypePieceLivreur;
+  /** Lu dans les octets au depot : decide d'un apercu image ou PDF. */
+  typeMime: 'application/pdf' | 'image/jpeg' | 'image/png';
+  taille: number;
+  deposeLe: HorodatageApi;
+}
+
+/** GET /livreurs/candidatures/:id — le dossier complet, pour decider. */
+export interface CandidatureLivreurView {
+  id: string;
+  numero: string;
+  statut: StatutCandidatureLivreur;
+  deposeParAdministration: boolean;
+  prenom: string;
+  nom: string;
+  /** `AAAA-MM-JJ`. */
+  dateNaissance: string;
+  /** Calcule a la lecture : un dossier ancien montre l'age d'aujourd'hui. */
+  age: number;
+  sexe: 'M' | 'F';
+  telephone: string;
+  email: string | null;
+  prefecture: string;
+  commune: string | null;
+  quartier: string;
+  pieces: PieceCandidatureLivreurView[];
+  /** Recalcule a chaque lecture, comme pour l'agrement. */
+  manquantes: TypePieceLivreur[];
+  complet: boolean;
+  motifRefus: string | null;
+  examineLe: HorodatageApi | null;
+  examinePar: string | null;
+  idLivreurCree: string | null;
+  deposeLe: HorodatageApi;
+}
+
+/** POST /livreurs/candidatures/:id/validation */
+export interface ValidationCandidatureLivreurView {
+  candidature: CandidatureLivreurView;
+  /** Meme regle que `CreationLivreurView` : nul si parti par courriel. */
+  motDePasseTemporaire: string | null;
 }
 
 /**

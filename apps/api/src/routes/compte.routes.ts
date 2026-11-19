@@ -2,6 +2,8 @@ import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/rbac.middleware';
 import { validateBody, validateQuery } from '../middlewares/validate.middleware';
+import { corpsJsonMultipart, recevoirPiecesLivreur } from '../middlewares/upload.middleware';
+import type { FichierRecu } from '../services/candidature-livreur.service';
 import * as comptes from '../services/compte.service';
 import * as livreurs from '../services/livreur-recrutement.service';
 import * as administrateurs from '../services/administrateur-recrutement.service';
@@ -54,8 +56,14 @@ router.get('/administrateurs', requireRole('SUPER_ADMIN'), async (req: AuthReque
   res.json({ success: true, data });
 });
 
-router.post('/livreurs', rolesRecrutement, validateBody(creerLivreurSchema), async (req: AuthRequest, res: Response) => {
-  const data: CreationLivreurView = await livreurs.creerLivreur(req.user!, req.body);
+/**
+ * Creer un livreur avec son dossier : multipart, les champs dans `donnees` et
+ * les six pieces sous leur type. Meme ordre de middlewares que le depot
+ * public, et pour la meme raison.
+ */
+router.post('/livreurs', rolesRecrutement, recevoirPiecesLivreur, corpsJsonMultipart, validateBody(creerLivreurSchema), async (req: AuthRequest, res: Response) => {
+  const fichiers = (req.files ?? []) as FichierRecu[];
+  const data: CreationLivreurView = await livreurs.creerLivreur(req.user!, req.body, fichiers);
   res.status(201).json({ success: true, data });
 });
 

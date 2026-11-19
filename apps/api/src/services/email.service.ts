@@ -420,6 +420,154 @@ export async function envoyerRefusDemandeAgrement(dto: {
     });
 }
 
+// ── Les candidatures de motards livreurs ─────────────────────────
+//
+// **Tout ce qui vient du candidat est echappe.** Son nom arrive d'un
+// formulaire public : insere tel quel, un `<a href>` dans le prenom
+// deviendrait un lien dans un courriel signe de la plateforme.
+
+function echapperHtml(texte: string): string {
+    return texte
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/** L'accuse de reception, avec le numero que le motard devra rappeler. */
+export async function envoyerAccuseCandidatureLivreur(dto: {
+    destinataire: string;
+    prenomNom: string;
+    numero: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: `Candidature reçue - ${dto.numero}`,
+        salutation: `Votre candidature est bien arrivée, ${echapperHtml(dto.prenomNom)}`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                Nous avons reçu votre candidature de livreur sur la plateforme ${nom},
+                accompagnée de vos pièces.
+              </p>
+
+              <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px 20px;margin:0 0 24px;text-align:center;">
+                <span style="color:#15803d;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Numéro de dossier</span><br>
+                <strong style="color:#15803d;font-size:22px;font-family:monospace;letter-spacing:2px;">${dto.numero}</strong>
+              </div>
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0;">
+                Votre dossier va être examiné. Si votre candidature est acceptée,
+                vous recevrez vos identifiants de connexion à cette même adresse.
+              </p>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Candidature reçue - dossier ${dto.numero}`,
+        html,
+    });
+}
+
+/** Les identifiants d'un livreur admis. Il se connecte avec son telephone. */
+export async function envoyerIdentifiantsLivreur(dto: {
+    destinataire: string;
+    prenomNom: string;
+    telephone: string;
+    motDePasseTemporaire: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: `Vos identifiants ${nom}`,
+        salutation: `Bienvenue, ${echapperHtml(dto.prenomNom)} !`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                Votre candidature de livreur a été acceptée. Voici vos identifiants
+                de connexion. <strong>Conservez-les précieusement.</strong>
+              </p>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+                    <span style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Téléphone</span><br>
+                    <strong style="color:#1e293b;font-size:16px;">${echapperHtml(dto.telephone)}</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 20px;">
+                    <span style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Mot de passe temporaire</span><br>
+                    <strong style="color:#1B5E35;font-size:20px;font-family:monospace;letter-spacing:2px;">${echapperHtml(dto.motDePasseTemporaire)}</strong>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;padding:14px 18px;margin:0 0 24px;">
+                <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6;">
+                  <strong>Important :</strong> lors de votre première connexion, vous devrez changer ce mot de passe temporaire.
+                </p>
+              </div>
+
+              <div style="text-align:center;margin:0;">
+                <a href="${lienConnexion()}"
+                   style="background:#1B5E35;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block;">
+                  Se connecter à ${nom}
+                </a>
+              </div>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Votre compte livreur ${nom}`,
+        html,
+    });
+}
+
+/** Le refus d'une candidature, avec son motif. */
+export async function envoyerRefusCandidatureLivreur(dto: {
+    destinataire: string;
+    prenomNom: string;
+    numero: string;
+    motif: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: `Décision sur le dossier ${dto.numero}`,
+        salutation: `Bonjour ${echapperHtml(dto.prenomNom)},`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                Votre candidature de livreur (dossier <strong>${dto.numero}</strong>)
+                n'a pas été retenue en l'état.
+              </p>
+
+              <div style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;padding:14px 18px;margin:0 0 24px;">
+                <p style="margin:0 0 6px;color:#92400e;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Motif</p>
+                <p style="margin:0;color:#92400e;font-size:14px;line-height:1.6;">${echapperHtml(dto.motif)}</p>
+              </div>
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0;">
+                Vous pouvez déposer une nouvelle candidature une fois ce point corrigé.
+              </p>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Décision sur votre dossier ${dto.numero}`,
+        html,
+    });
+}
+
 // ── Email de bienvenue pour un agent (ASC, Médecin, Pharmacien) ───
 export async function envoyerEmailAgent(dto: {
     destinataire: string;

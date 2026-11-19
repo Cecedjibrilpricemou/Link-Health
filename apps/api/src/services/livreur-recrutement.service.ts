@@ -1,4 +1,4 @@
-import { Prisma, Role, StatutCourse } from '../config/generated/client/client';
+import { Role, StatutCourse } from '../config/generated/client/client';
 import type {
   CreationLivreurView,
   CreerLivreurDto,
@@ -6,21 +6,8 @@ import type {
 } from '@baobaoheath/shared-types';
 import { prisma } from '../config/prisma';
 import type { JwtPayload } from '../types/auth.types';
-import { ConflictError, ForbiddenError, NotFoundError } from '../utils/app-error';
-import { hashPassword } from '../utils/password.utils';
-import { genererMotDePasseTemp } from './admin-structure.service';
-
-const ROLES_RECRUTEMENT: readonly Role[] = [
-  Role.ADMIN_REGIONAL,
-  Role.ADMIN_NATIONAL,
-  Role.SUPER_ADMIN,
-];
-
-function exigerRoleRecrutement(user: JwtPayload): void {
-  if (!ROLES_RECRUTEMENT.includes(user.role)) {
-    throw new ForbiddenError('Le recrutement des livreurs est reserve a l administration regionale ou nationale');
-  }
-}
+import { ConflictError, NotFoundError } from '../utils/app-error';
+import { creerAvecDossier, exigerRoleRecrutement, type FichierRecu } from './candidature-livreur.service';
 
 function versLivreurAdminView(livreur: {
   id: string;
@@ -51,63 +38,40 @@ function versLivreurAdminView(livreur: {
   };
 }
 
+/**
+ * Creer un livreur, **avec ses six pieces**.
+ *
+ * Cette porte creait un compte sur un nom et un telephone : on ne pouvait pas
+ * dire, ensuite, sur quelles pieces le livreur avait ete admis - lui qui
+ * entre chez les patients avec leurs medicaments. Elle depose desormais le
+ * meme dossier que le motard qui candidate, enregistre d'emblee comme valide.
+ */
 export async function creerLivreur(
   auteur: JwtPayload,
   dto: CreerLivreurDto,
+  fichiers: readonly FichierRecu[],
 ): Promise<CreationLivreurView> {
+  // Le role est verifie ici aussi, et pas seulement plus bas : cette porte
+  // ne doit pas dependre de ce que fait la suivante pour rester fermee.
   exigerRoleRecrutement(auteur);
-
-  const existant = await prisma.utilisateur.findUnique({
-    where: { telephone: dto.telephone },
-    select: { id: true },
+  const cree = await creerAvecDossier(auteur, dto, fichiers);
+  const livreur = await prisma.utilisateur.findUnique({
+    where: { id: cree.idUtilisateur },
+    select: {
+      id: true,
+      prenom: true,
+      nom: true,
+      telephone: true,
+      creeLe: true,
+      livreurProfile: { select: { quartier: true, prefecture: true, commune: true, estActif: true } },
+    },
   });
-  if (existant) throw new ConflictError('Ce numero de telephone est deja utilise');
-
-  const motDePasseTemporaire = genererMotDePasseTemp();
-  const motDePasseHash = await hashPassword(motDePasseTemporaire);
-
-  try {
-    const livreur = await prisma.$transaction(async (tx) => {
-      const utilisateur = await tx.utilisateur.create({
-        data: {
-          telephone: dto.telephone,
-          motDePasseHash,
-          prenom: dto.prenom,
-          nom: dto.nom,
-          role: Role.LIVREUR,
-          idStructure: null,
-          doitChangerMotDePasse: true,
-        },
-        select: { id: true, prenom: true, nom: true, telephone: true, creeLe: true },
-      });
-      await tx.livreurProfile.create({
-        data: {
-          idUtilisateur: utilisateur.id,
-          quartier: dto.quartier,
-          prefecture: dto.prefecture,
-          commune: dto.commune?.trim() || null,
-        },
-      });
-      return {
-        ...utilisateur,
-        livreurProfile: {
-          quartier: dto.quartier,
-          prefecture: dto.prefecture,
-          commune: dto.commune?.trim() || null,
-          estActif: true,
-        },
-      };
-    });
-    return {
-      livreur: versLivreurAdminView(livreur),
-      motDePasseTemporaire,
-    };
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new ConflictError('Ce numero de telephone est deja utilise');
-    }
-    throw error;
-  }
+  if (!livreur) throw new NotFoundError('Livreur introuvable');
+  return {
+    livreur: versLivreurAdminView(livreur),
+    numeroDossier: cree.numero,
+    motDePasseTemporaire: cree.motDePasseTemporaire,
+  };
 }
 
 export async function listerLivreurs(auteur: JwtPayload): Promise<LivreurAdminView[]> {

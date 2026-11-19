@@ -130,6 +130,74 @@ export function recevoirPiecesAgrement(req: Request, res: Response, next: NextFu
   });
 }
 
+// ── Les pieces du dossier d'un motard livreur ────────────────────────
+//
+// **Une photo autant qu'un PDF.** Un motard photographie sa carte grise avec
+// son telephone ; exiger un PDF l'enverrait chercher un cybercafe pour un
+// papier qu'il a en main. Le dossier accepte donc JPEG, PNG et PDF.
+//
+// Comme pour l'agrement, le filtre ci-dessous n'est qu'un refus precoce : ce
+// qui fait foi, ce sont les octets (`typeMimeReel`). Il laisse passer un type
+// absent ou `application/octet-stream`, que certains telephones envoient pour
+// une photo parfaitement valide - les octets trancheront.
+
+/** Les formats qu'un dossier de livreur accepte, tels qu'on les reconnait. */
+export type TypeMimePieceLivreur = 'application/pdf' | 'image/jpeg' | 'image/png';
+
+/** Six pieces exactement : multer refuse la septieme avant de la lire. */
+export const NOMBRE_PIECES_LIVREUR = 6;
+
+const TYPES_DECLARES_LIVREUR = ['application/pdf', 'image/jpeg', 'image/png', 'application/octet-stream', ''];
+
+export const uploadPiecesLivreur = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: TAILLE_MAX_PIECE, files: NOMBRE_PIECES_LIVREUR },
+  fileFilter: (_req, file, cb) => {
+    if (!TYPES_DECLARES_LIVREUR.includes(file.mimetype ?? '')) {
+      cb(new Error('Les pièces doivent être des photos (JPEG, PNG) ou des fichiers PDF.'));
+      return;
+    }
+    cb(null, true);
+  },
+}).any();
+
+const SIGNATURE_JPEG = Buffer.from([0xff, 0xd8, 0xff]);
+const SIGNATURE_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/**
+ * Le format reel d'une piece, lu dans ses octets de tete - ou `null`.
+ *
+ * C'est ce type, et non l'en-tete du client, qui est conserve puis renvoye a
+ * la lecture : un HTML renomme en `.jpg` et servi comme `text/html` depuis
+ * notre domaine serait une page executee chez l'agent qui l'ouvre.
+ */
+export function typeMimeReel(contenu: Buffer): TypeMimePieceLivreur | null {
+  const commencePar = (signature: Buffer) =>
+    contenu.length > signature.length && contenu.subarray(0, signature.length).equals(signature);
+  if (estPdf(contenu)) return 'application/pdf';
+  if (commencePar(SIGNATURE_JPEG)) return 'image/jpeg';
+  if (commencePar(SIGNATURE_PNG)) return 'image/png';
+  return null;
+}
+
+/** Recoit les pieces d'un livreur, refus de multer traduits comme pour l'agrement. */
+export function recevoirPiecesLivreur(req: Request, res: Response, next: NextFunction) {
+  uploadPiecesLivreur(req, res, (err: unknown) => {
+    if (!err) { next(); return; }
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        next(new ValidationError('Pièce trop volumineuse (5 Mo maximum par fichier).'));
+        return;
+      }
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        next(new ValidationError(`Trop de pièces (${NOMBRE_PIECES_LIVREUR} maximum).`));
+        return;
+      }
+    }
+    next(new ValidationError(err instanceof Error ? err.message : 'Échec du téléversement.'));
+  });
+}
+
 /**
  * En multipart, les champs texte sont des chaines plates : impossible d'y
  * porter un objet imbrique comme `admin`. Le client envoie donc un seul champ
