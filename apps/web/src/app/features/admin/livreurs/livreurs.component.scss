@@ -1,3 +1,7 @@
+// Le bloc des pieces reprend les styles partages, comme l'ecran public : les
+// deux dossiers doivent se ressembler, et une copie finirait par diverger.
+@use '../../../shared/components/pieces-agrement/pieces-agrement.component';
+
 :host {
   display: block;
   --liv-accent: var(--bb-primary);
@@ -205,3 +209,11 @@
 // ✦ Refonte UI : actions tactiles accessibles sans modifier leur comportement.
 .livreurs button { min-width: 44px; min-height: 44px; }
 .livreurs a { display: inline-flex; align-items: center; min-height: 44px; }
+
+.livreurs__pieces {
+  margin: 0 0 1rem;
+}
+
+.livreurs__hint-error {
+  color: var(--bb-danger, #b91c1c);
+}

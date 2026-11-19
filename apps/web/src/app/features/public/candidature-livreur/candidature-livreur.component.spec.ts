@@ -18,7 +18,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError, type Observable } from 'rxjs';
+import { vi } from 'vitest';
 
 import { CandidatureLivreurComponent } from './candidature-livreur.component';
 import { GeographieService } from '../../../core/services/geographie.service';
@@ -46,8 +47,12 @@ class GeoStub {
   };
 }
 
-function monter() {
+/** Le depot tel que le serveur y repond ; par defaut, un numero de dossier. */
+type Depot = (...args: unknown[]) => Observable<unknown>;
+
+function monter(deposer: Depot = () => of({ success: true, data: { numero: 'DL-2026-0001' } })) {
   TestBed.resetTestingModule();
+  const depot = vi.fn(deposer);
   const geo = new GeoStub();
   TestBed.configureTestingModule({
     imports: [CandidatureLivreurComponent],
@@ -57,13 +62,13 @@ function monter() {
       // le composant ne se monte pas.
       provideRouter([]),
       { provide: GeographieService, useValue: geo },
-      { provide: CandidatureLivreurService, useValue: { deposer: () => of({ success: true, data: null }) } },
+      { provide: CandidatureLivreurService, useValue: { deposer: depot } },
     ],
   });
   const fixture = TestBed.createComponent(CandidatureLivreurComponent);
   fixture.detectChanges();
   const rendre = () => { fixture.detectChanges(); return fixture.nativeElement as HTMLElement; };
-  return { c: fixture.componentInstance, fixture, rendre, geo };
+  return { c: fixture.componentInstance, fixture, rendre, geo, depot };
 }
 
 function fichier(nom: string, octets: number, type: string): File {
@@ -226,7 +231,7 @@ describe('les pieces du dossier', () => {
   });
 });
 
-describe('pourquoi le bouton ne part pas', () => {
+describe('l envoi du dossier', () => {
   /** Remplit tout ce qui est exige, dossier compris. */
   function remplirTout(c: CandidatureLivreurComponent) {
     c.modifierChamp('prenom', 'Mamadou');
@@ -236,30 +241,47 @@ describe('pourquoi le bouton ne part pas', () => {
     c.modifierChamp('telephone', '620000001');
     c.changerPrefecture('Conakry');
     c.modifierChamp('commune', 'Ratoma');
+    c.modifierChamp('quartier', 'Kipé');
     for (const type of TYPES_PIECES_LIVREUR) {
       c.choisirPiece(type, evenementFichier(fichier(`${type}.jpg`, 2048, 'image/jpeg')));
     }
   }
 
-  // Tant que la route serveur n'existe pas, l'ecran se montre et se remplit,
-  // mais ne promet pas un envoi qui echouerait.
-  it('annonce que le depot en ligne n est pas encore ouvert', () => {
-    const { c, rendre } = monter();
+  it('envoie le dossier complet et montre le numero recu', () => {
+    const { c, depot, rendre } = monter();
     remplirTout(c);
+    expect(c.raisonBlocage()).toBeNull();
+    expect(rendre().querySelector<HTMLButtonElement>('button[type=submit]')?.disabled).toBe(false);
 
-    expect(c.peutEnvoyer()).toBe(false);
-    expect(c.raisonBlocage()).toBe(
-      (fr as Record<string, any>)['PUBLIC']['LIVREUR_REQUEST']['NOT_ACTIVE_YET'],
-    );
-    expect(rendre().querySelector<HTMLButtonElement>('button[type=submit]')?.disabled).toBe(true);
+    c.envoyer();
+
+    const [dto, pieces] = depot.mock.calls[0] as [Record<string, unknown>, Record<string, File>];
+    expect(dto).toEqual(expect.objectContaining({ prenom: 'Mamadou', quartier: 'Kipé', commune: 'Ratoma', sexe: 'M' }));
+    expect(Object.keys(pieces).sort()).toEqual([...TYPES_PIECES_LIVREUR].sort());
+    expect(c.confirmation()).toBe('DL-2026-0001');
   });
 
-  it('ne tente rien quand le depot est ferme', () => {
-    const { c } = monter();
+  // Le profil du livreur exige un quartier : sans ce controle, le serveur
+  // refusait le dossier apres dix minutes de televersement.
+  it('exige le quartier avant d envoyer', () => {
+    const { c, depot } = monter();
+    remplirTout(c);
+    c.modifierChamp('quartier', '  ');
+
+    expect(c.raisonBlocage()).toBe((fr as Record<string, any>)['PUBLIC']['LIVREUR_REQUEST']['MISSING_ADDRESS']);
+    c.envoyer();
+    expect(depot).not.toHaveBeenCalled();
+  });
+
+  // Le serveur explique son refus (dossier deja en cours, telephone pris) :
+  // le candidat doit le lire, pas un message generique.
+  it('affiche le refus du serveur tel quel, et laisse renvoyer', () => {
+    const { c } = monter(() => throwError(() => ({ error: { error: 'Une candidature est déjà en cours.' } })));
     remplirTout(c);
 
     c.envoyer();
 
+    expect(c.erreur()).toBe('Une candidature est déjà en cours.');
     expect(c.envoi()).toBe(false);
     expect(c.confirmation()).toBeNull();
   });
@@ -273,7 +295,7 @@ describe('les textes de l ecran', () => {
     'ADDRESS_SECTION', 'NOT_IN_TOWN', 'FREE_TEXT', 'QUARTIER',
     'PIECES_TITLE', 'PIECES_NOTE',
     'PIECE_BAD_FORMAT', 'PIECE_TOO_LARGE', 'PIECE_EMPTY',
-    'NOT_ACTIVE_YET', 'MISSING_IDENTITY', 'MISSING_BIRTH_DATE', 'MISSING_GENDER',
+    'MISSING_IDENTITY', 'MISSING_BIRTH_DATE', 'MISSING_GENDER',
     'MISSING_PHONE', 'MISSING_ADDRESS', 'MISSING_PIECES',
     'SUBMIT', 'SENDING', 'SEND_ERROR',
     'CONFIRM_TITLE', 'CONFIRM_TEXT', 'CONFIRM_NEXT',

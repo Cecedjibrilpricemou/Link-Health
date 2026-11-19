@@ -70,6 +70,16 @@ export const ADMIN_ROUTES: Routes = [
           import('./livreurs/livreurs.component').then(m => m.LivreursComponent)
       },
       {
+        // Les memes roles que la creation des livreurs : examiner une
+        // candidature n'est qu'une autre facon de recruter.
+        path: 'candidatures-livreurs',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'] },
+        loadComponent: () =>
+          import('./candidatures-livreurs/candidatures-livreurs.component')
+            .then(m => m.CandidaturesLivreursComponent)
+      },
+      {
         // L'espace /admin accueille aussi l'admin regional et l'admin de
         // structure ; l'API d'assurance ne repond qu'a l'administration
         // nationale. Cacher l'entree de menu ne suffit pas : l'URL se tape.
