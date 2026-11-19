@@ -27,6 +27,14 @@ export const routes: Routes = [
         .then(m => m.DemandeAgrementComponent)
   },
 
+  // ── Candidature publique d'un motard livreur ────────────────────────
+  {
+    path: 'devenir-livreur',
+    loadComponent: () =>
+      import('./features/public/candidature-livreur/candidature-livreur.component')
+        .then(m => m.CandidatureLivreurComponent)
+  },
+
   // ── Page publique d'une officine (A3) ───────────────────────────────
   {
     path: 'pharmacie/:id',
