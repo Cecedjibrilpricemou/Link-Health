@@ -312,6 +312,76 @@ describe('creation d une structure : ce qui est exige, type par type', () => {
   }
 });
 
+// ── Le fichier joint doit rester attache ─────────────────────────────
+//
+// **Un fichier choisi disparaissait aussitot.** Le compteur restait a
+// « 0/4 jointes » et le bouton de creation ne s'activait jamais.
+//
+// La cause tenait a deux corrections justes prises separement. `requisesImposees()`
+// est devenue une methode — necessaire, le `computed` restait fige — mais elle
+// construit sa liste avec `.map()`, donc un tableau neuf a chaque appel. Et le
+// composant des pieces lit cette entree dans l'effet qui remet les choix a zero
+// — necessaire aussi, sans quoi il se croyait complet avant la reponse du
+// serveur. Resultat : chaque detection de changement donnait une entree d'identite
+// nouvelle, l'effet se rejouait, et le fichier a peine choisi etait efface.
+//
+// Ce test monte le vrai composant enfant dans le vrai parent : c'est le seul
+// montage qui voit le defaut, puisque les deux pieces sont correctes isolement.
+
+describe('les pieces jointes dans l ecran d administration', () => {
+  beforeEach(() => TestBed.resetTestingModule());
+
+  /** Ce que fait le navigateur quand on choisit un fichier dans la fenetre. */
+  function choisirFichier(champ: HTMLInputElement, nom: string) {
+    const fichier = new File(['%PDF-1.4 contenu'], nom, { type: 'application/pdf' });
+    Object.defineProperty(champ, 'files', { value: [fichier], configurable: true });
+    champ.dispatchEvent(new Event('change'));
+  }
+
+  function ouvrirFormulairePharmacie() {
+    const monte = monter();
+    monte.component.showForm.set(true);
+    monte.component.newStructure.type = 'PHARMACIE';
+    monte.fixture.detectChanges();
+    return monte;
+  }
+
+  it('montre les quatre lignes de pieces d une pharmacie', () => {
+    const { fixture } = ouvrirFormulairePharmacie();
+
+    const champs = fixture.nativeElement.querySelectorAll('input[type=file]');
+    expect(champs.length).toBe(4);
+  });
+
+  it('garde le fichier choisi apres une detection de changement', () => {
+    const { fixture, component } = ouvrirFormulairePharmacie();
+
+    const champs = fixture.nativeElement.querySelectorAll('input[type=file]');
+    choisirFichier(champs[0] as HTMLInputElement, 'agrement.pdf');
+    fixture.detectChanges();
+
+    expect(Object.keys(component.pieces()).length).toBe(1);
+    expect(component.pieces()['AGREMENT_CREATION']?.name).toBe('agrement.pdf');
+  });
+
+  it('active le bouton une fois les quatre pieces jointes', () => {
+    const { fixture, component } = ouvrirFormulairePharmacie();
+
+    const champs = fixture.nativeElement.querySelectorAll('input[type=file]');
+    for (let i = 0; i < champs.length; i++) {
+      choisirFichier(champs[i] as HTMLInputElement, `piece-${i}.pdf`);
+      fixture.detectChanges();
+    }
+
+    expect(Object.keys(component.pieces()).length).toBe(4);
+    expect(component.piecesCompletes()).toBe(true);
+  });
+
+  // La remise a zero des choix au changement de type est tenue par le spec du
+  // composant partage, qui pilote l'entree directement. La refaire ici, ou le
+  // type passe par ngModel, ne verifierait que la mecanique du montage.
+});
+
 // ── Pourquoi le bouton ne part pas ───────────────────────────────────
 //
 // **Un formulaire rempli au complet, un bouton mort, et rien qui le dise.**

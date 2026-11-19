@@ -40,6 +40,28 @@ const PIECES_PAR_TYPE: Readonly<Record<string, readonly TypePieceAgrement[]>> = 
   ASSURANCE: ['AGREMENT_ASSURANCE'],
 };
 
+/**
+ * Deux listes identiques le sont-elles pour Angular ?
+ *
+ * **Sans ces comparaisons, un fichier choisi disparaissait aussitot.** Les
+ * appelants construisent `requisesImposees` et `libellesImposes` dans des
+ * methodes, avec `.map()` : un tableau neuf a chaque detection de changement.
+ * Angular compare les entrees par identite, voyait donc une valeur nouvelle a
+ * chaque passe, rejouait l'effet qui remet les choix a zero — et bouclait.
+ *
+ * Comparer le contenu plutot que l'identite remet les choses d'aplomb pour
+ * tous les appelants a la fois, plutot que d'exiger de chacun qu'il stabilise
+ * ses references et se souvienne de le faire la prochaine fois.
+ */
+function memeListe(
+  a: readonly TypePieceAgrement[] | null,
+  b: readonly TypePieceAgrement[] | null,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.length === b.length && a.every((type, i) => type === b[i]);
+}
+
 @Component({
   selector: 'app-pieces-agrement',
   standalone: true,
@@ -75,6 +97,24 @@ export class PiecesAgrementComponent {
   readonly requisesImposees = input<readonly TypePieceAgrement[] | null>(null);
 
   /**
+   * La meme liste, mais dont l'identite ne change que si le contenu change.
+   *
+   * **Sans cet intermediaire, un fichier choisi disparaissait aussitot.** Les
+   * appelants construisent la liste dans une methode, avec `.map()` : un
+   * tableau neuf a chaque detection de changement. Angular compare les
+   * entrees par identite — et n'accepte pas de comparateur sur une entree —,
+   * donc tout ce qui lit cette entree se rejouait a chaque passe, y compris
+   * l'effet qui remet les choix a zero. La detection bouclait, et le fichier
+   * a peine choisi etait efface.
+   *
+   * `computed` accepte, lui, une egalite sur le contenu : ses dependants ne
+   * sont prevenus que si la liste a vraiment change. Tous les appelants en
+   * profitent, sans avoir a stabiliser leurs references ni a y penser la
+   * prochaine fois.
+   */
+  private readonly imposeesStables = computed(() => this.requisesImposees(), { equal: memeListe });
+
+  /**
    * Les libellés venus du serveur, par type de pièce.
    *
    * La même pièce ne porte pas le même nom partout : `AGREMENT_CREATION` est
@@ -86,7 +126,7 @@ export class PiecesAgrementComponent {
 
   readonly requises = computed<readonly TypePieceAgrement[]>(() => {
     if (this.sousAutoriteDuParent()) return [];
-    return this.requisesImposees() ?? PIECES_PAR_TYPE[this.type()] ?? [];
+    return this.imposeesStables() ?? PIECES_PAR_TYPE[this.type()] ?? [];
   });
 
   readonly exigeDesPieces = computed(() => this.requises().length > 0);
@@ -108,7 +148,11 @@ export class PiecesAgrementComponent {
       // Sans cette lecture, l'effet ne se rejouerait pas quand elle arrive et
       // `complet` resterait à vrai — calculé sur une liste encore vide. Le
       // parent croirait son dossier complet sans une seule pièce.
-      this.requisesImposees();
+      //
+      // On lit la version stabilisee, et non l'entree : celle-ci change
+      // d'identite a chaque detection de changement, ce qui rejouerait cet
+      // effet sans cesse et effacerait le fichier a peine choisi.
+      this.imposeesStables();
       this.choisies.set({});
       this.refus.set({});
       this.pieces.emit({});
