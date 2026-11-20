@@ -258,8 +258,24 @@ dans l'écran admin des structures (administration nationale seulement).
 ### Les demandes d'agrément
 
 Une structure privée peut candidater **sans compte** depuis
-`/demande-agrement`. L'administration examine, valide ou refuse avec motif. Une
-assurance ne passe **pas** par là : elle relève de la Banque Centrale.
+`/demande-agrement`. **Une compagnie d'assurance aussi, depuis le 2026-11-20** :
+la tuile « Inscrire mon assurance » de l'accueil ouvre le même formulaire déjà
+réglé (`?type=ASSURANCE`). Elle y propose le code de ses cartes (unique, vérifié
+dès le dépôt contre les compagnies existantes et les demandes en cours) et son
+mode d'échange ; sa seule référence d'agrément est celle de la BCRG, sans arrêté
+d'exploitation. Ses quatre pièces sont celles de la création directe.
+
+**Chaque action de l'administration porte un motif, envoyé par courriel au
+responsable** — mise en vérification, validation, refus, pour tous les types —
+et s'inscrit dans l'historique du dossier (`evenements_demande_agrement`) avec
+son auteur et **le sort du courriel** (`emailEnvoye`, posé après l'envoi,
+jamais avant). La mise en vérification se répète : chaque fois, un nouveau
+motif. La validation d'une assurance crée dans la même transaction la
+structure, la compagnie (au code éventuellement corrigé par l'agent) et le
+compte `ASSUREUR` ; le courriel de validation porte le motif, les identifiants
+et le code retenu. Le mot de passe ne sort jamais dans la réponse : si le
+courriel échoue, l'écran et l'historique le disent, et c'est à l'administration
+de prévenir le responsable.
 
 ### La candidature des livreurs
 
@@ -363,6 +379,10 @@ Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 - **Dossier réglementaire obligatoire pour toutes les structures**.
 - **Demandes d'agrément** de bout en bout : dépôt public, examen, validation ou
   refus motivé.
+- **Demandes d'assurance en ligne**, motif obligatoire et envoyé à chaque action,
+  historique des actions avec le sort de chaque courriel.
+- **La fenêtre d'examen ne passe plus sous le menu latéral** (agréments et
+  candidatures livreurs, qui partagent sa feuille de style).
 - **Volumes Docker en production** — chaque redéploiement effaçait jusque-là
   tous les fichiers téléversés.
 
@@ -380,16 +400,11 @@ Par ordre de risque décroissant.
    d'assurance existant reste `ADMIN_STRUCTURE` tant qu'on ne le bascule pas.
    De même, les livreurs créés avant le 2026-11-20 n'ont **aucun dossier** :
    rien ne dit sur quelles pièces ils ont été admis.
-4. **La fenêtre d'examen passe sous le menu latéral** sur ordinateur : sa
-   partie gauche est coupée. Le défaut vient de la feuille de style de
-   l'examen des agréments, que l'examen des livreurs réutilise : les deux
-   écrans l'ont. À corriger une fois, dans
-   `demandes-agrement.component.scss`.
-5. **Écran patient « Mon adresse »** : un bogue a été signalé par un testeur,
+4. **Écran patient « Mon adresse »** : un bogue a été signalé par un testeur,
    l'analyse est faite mais le message d'erreur exact manque pour conclure. Les
    trois causes possibles sont identifiées dans
    `features/patient/profil/adresse/`.
-6. Ménage : branches fusionnées à supprimer, référentiel LOINC, voisinages de
+5. Ménage : branches fusionnées à supprimer, référentiel LOINC, voisinages de
    Conakry, identité de la plateforme en production.
 
 ---

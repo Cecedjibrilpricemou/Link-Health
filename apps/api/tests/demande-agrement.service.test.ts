@@ -30,6 +30,8 @@ jest.mock('../src/config/prisma', () => ({
     utilisateur: { findUnique: jest.fn(), create: jest.fn() },
     pieceAgrement: { findMany: jest.fn(), updateMany: jest.fn() },
     structureSante: { create: jest.fn() },
+    assureur: { findUnique: jest.fn() },
+    evenementDemandeAgrement: { update: jest.fn() },
     $transaction: jest.fn(),
   },
 }));
@@ -55,6 +57,8 @@ jest.mock('../src/services/email.service', () => ({
   envoyerAccuseDemandeAgrement: jest.fn(),
   envoyerEmailAdminStructure: jest.fn(),
   envoyerRefusDemandeAgrement: jest.fn(),
+  envoyerSuiviDemandeAgrement: jest.fn(),
+  envoyerValidationDemandeAgrement: jest.fn(),
 }));
 
 jest.mock('../src/services/admin-structure.service', () => ({
@@ -76,8 +80,13 @@ const bd = prisma as unknown as {
   utilisateur: Record<string, jest.Mock>;
   pieceAgrement: Record<string, jest.Mock>;
   structureSante: Record<string, jest.Mock>;
+  assureur: Record<string, jest.Mock>;
+  evenementDemandeAgrement: Record<string, jest.Mock>;
   $transaction: jest.Mock;
 };
+
+/** Un motif assez explicite pour passer : chaque action en exige un. */
+const MOTIF = 'Les pièces sont lisibles et les références concordent.';
 
 const AGENT: JwtPayload = {
   userId: 'agent-1',
@@ -125,6 +134,27 @@ function officine(surcharge: Record<string, unknown> = {}) {
   } as Parameters<typeof service.deposer>[0];
 }
 
+/** Une compagnie d'assurance : sa reference BCRG, son code, ses quatre pieces. */
+function compagnie(surcharge: Record<string, unknown> = {}) {
+  return officine({
+    type: 'ASSURANCE',
+    nom: 'Sunu Assurances',
+    numeroAgrementCreation: 'D/2009/CAM/LOA/07',
+    numeroAgrementExploitation: undefined,
+    lieuAutorise: 'Kaloum',
+    codeAssureur: 'sunu',
+    modeEchange: 'PORTAIL',
+    ...surcharge,
+  });
+}
+
+const PIECES_ASSURANCE = [
+  pdf(TypePieceAgrement.AGREMENT_ASSURANCE),
+  pdf(TypePieceAgrement.EXTRAIT_RCCM),
+  pdf(TypePieceAgrement.PIECE_IDENTITE_RESPONSABLE),
+  pdf(TypePieceAgrement.CERTIFICAT_RESIDENCE_RESPONSABLE),
+];
+
 function hopital(surcharge: Record<string, unknown> = {}) {
   return officine({
     type: 'CHU',
@@ -139,7 +169,7 @@ function hopital(surcharge: Record<string, unknown> = {}) {
 const ANNEE = new Date().getFullYear();
 
 /** Les demandes que la base est censee contenir pour le test en cours. */
-type LigneDemande = { numero: string; telephone: string; statut: string };
+type LigneDemande = { numero: string; telephone: string; statut: string; codeAssureur?: string };
 let dejaEnBase: LigneDemande[] = [];
 
 /**
@@ -155,6 +185,7 @@ function findFirstFidele(args: {
   where?: {
     numero?: { startsWith?: string };
     telephone?: string;
+    codeAssureur?: string;
     statut?: { in?: string[] };
   };
 }) {
@@ -167,6 +198,7 @@ function findFirstFidele(args: {
       .sort((a, b) => (a.numero < b.numero ? 1 : -1));
   }
   if (ou.telephone) lignes = lignes.filter((l) => l.telephone === ou.telephone);
+  if (ou.codeAssureur) lignes = lignes.filter((l) => l.codeAssureur === ou.codeAssureur);
   if (ou.statut?.in) lignes = lignes.filter((l) => ou.statut!.in!.includes(l.statut));
   return Promise.resolve(lignes[0] ?? null);
 }
@@ -179,6 +211,8 @@ beforeEach(() => {
   dejaEnBase = [];
   bd.demandeAgrement.findFirst.mockImplementation(findFirstFidele);
   bd.utilisateur.findUnique.mockResolvedValue(null);
+  bd.assureur.findUnique.mockResolvedValue(null);
+  bd.evenementDemandeAgrement.update.mockResolvedValue({});
 
   (pieces.ecrireFichiers as jest.Mock).mockImplementation(async (validees: { type: TypePieceAgrement; contenu: Buffer; libelle: string | null }[]) =>
     validees.map((p, i) => ({
@@ -200,11 +234,13 @@ beforeEach(() => {
 // ── Ce que chaque type doit produire ─────────────────────────────
 
 describe('les types et leurs pieces', () => {
-  it("n'accepte pas les types qui ne se demandent pas ici", () => {
-    expect(service.TYPES_DEMANDE).not.toContain('ASSURANCE');
+  // Depuis le 2026-11-20, une compagnie d'assurance depose sa demande en
+  // ligne comme un etablissement de sante.
+  it("n'accepte pas les types qui ne se demandent pas ici, et accepte l'assurance", () => {
+    expect(service.TYPES_DEMANDE).toContain('ASSURANCE');
     expect(service.TYPES_DEMANDE).not.toContain('POSTE');
     expect(service.TYPES_DEMANDE).not.toContain('CENTRE');
-    expect(service.TYPES_DEMANDE).toHaveLength(6);
+    expect(service.TYPES_DEMANDE).toHaveLength(7);
   });
 
   it('reconnait les trois hopitaux publics, et eux seuls', () => {
@@ -247,7 +283,7 @@ describe('les types et leurs pieces', () => {
   it("ne se laisse pas demander un type reserve a l'administration", () => {
     expect(service.piecesDemandeesPour('POSTE').length).toBeGreaterThan(0);
     expect(service.TYPES_DEMANDE).not.toContain('POSTE');
-    expect(service.TYPES_DEMANDE).not.toContain('ASSURANCE');
+    expect(service.TYPES_DEMANDE).not.toContain('CENTRE');
   });
 
   it("appelle la meme piece « acte de creation » pour un CHU et « agrement de creation » pour une officine", () => {
@@ -289,7 +325,7 @@ describe('deposer', () => {
   });
 
   it('refuse un type qui ne se demande pas ici', async () => {
-    await expect(service.deposer(officine({ type: 'ASSURANCE' }), QUATRE_PIECES)).rejects.toThrow(
+    await expect(service.deposer(officine({ type: 'POSTE' }), QUATRE_PIECES)).rejects.toThrow(
       /ne se demande pas ici/,
     );
     expect(bd.demandeAgrement.create).not.toHaveBeenCalled();
@@ -473,14 +509,18 @@ function demandeEnBase(surcharge: Record<string, unknown> = {}) {
     examineLe: null,
     examinePar: null,
     idStructureCreee: null,
+    codeAssureur: null,
+    modeEchange: null,
     deposeLe: new Date('2026-11-18T10:00:00.000Z'),
     pieces: [],
+    evenements: [],
     ...surcharge,
   };
 }
 
 let tx: {
   structureSante: Record<string, jest.Mock>;
+  assureur: Record<string, jest.Mock>;
   pieceAgrement: Record<string, jest.Mock>;
   utilisateur: Record<string, jest.Mock>;
   pharmacienProfile: Record<string, jest.Mock>;
@@ -490,6 +530,7 @@ let tx: {
 beforeEach(() => {
   tx = {
     structureSante: { create: jest.fn(async () => ({ id: 'structure-1' })) },
+    assureur: { create: jest.fn(async () => ({ id: 'assureur-1' })) },
     pieceAgrement: { updateMany: jest.fn(async () => ({ count: 4 })) },
     utilisateur: { create: jest.fn(async () => ({ id: 'compte-1' })) },
     pharmacienProfile: { create: jest.fn(async () => ({})) },
@@ -509,27 +550,71 @@ beforeEach(() => {
 });
 
 describe('mettreEnAnalyse', () => {
-  it('note qui instruit le dossier', async () => {
-    await service.mettreEnAnalyse(AGENT, 'demande-1');
+  it('note qui instruit le dossier, et garde le motif dans l historique', async () => {
+    await service.mettreEnAnalyse(AGENT, 'demande-1', MOTIF);
 
     expect(bd.demandeAgrement.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { statut: 'EN_ANALYSE', idExaminePar: 'agent-1' },
+        data: {
+          statut: 'EN_ANALYSE',
+          idExaminePar: 'agent-1',
+          evenements: {
+            create: expect.objectContaining({ action: 'MISE_EN_VERIFICATION', motif: MOTIF, idAuteur: 'agent-1' }),
+          },
+        },
       }),
     );
   });
 
-  it("ne reecrit rien sur un dossier deja en analyse", async () => {
+  it('envoie le motif au candidat, et note que le courriel est parti', async () => {
+    await service.mettreEnAnalyse(AGENT, 'demande-1', `  ${MOTIF}  `);
+
+    expect(courriels.envoyerSuiviDemandeAgrement).toHaveBeenCalledWith(
+      expect.objectContaining({ destinataire: 'm.barry@example.gn', motif: MOTIF, numero: `DA-${ANNEE}-0041` }),
+    );
+    const idEvenement = bd.demandeAgrement.update.mock.calls[0]![0].data.evenements.create.id;
+    expect(bd.evenementDemandeAgrement.update).toHaveBeenCalledWith({
+      where: { id: idEvenement },
+      data: { emailEnvoye: true },
+    });
+  });
+
+  it('ne note pas le courriel comme parti quand il echoue, sans defaire la mise en verification', async () => {
+    (courriels.envoyerSuiviDemandeAgrement as jest.Mock).mockRejectedValueOnce(new Error('Brevo muet'));
+
+    await expect(service.mettreEnAnalyse(AGENT, 'demande-1', MOTIF)).resolves.toBeDefined();
+    expect(bd.demandeAgrement.update).toHaveBeenCalled();
+    expect(bd.evenementDemandeAgrement.update).not.toHaveBeenCalled();
+  });
+
+  // Une piece illisible, puis une reference a confirmer : chaque fois le
+  // candidat doit savoir ce qu'on attend de lui.
+  it('se repete sur un dossier deja en verification, avec un nouveau motif', async () => {
     bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ statut: 'EN_ANALYSE' }));
 
-    await service.mettreEnAnalyse(AGENT, 'demande-1');
+    await service.mettreEnAnalyse(AGENT, 'demande-1', MOTIF);
+
+    expect(bd.demandeAgrement.update).toHaveBeenCalledTimes(1);
+    expect(courriels.envoyerSuiviDemandeAgrement).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuse sans motif explicite, et n ecrit rien', async () => {
+    await expect(service.mettreEnAnalyse(AGENT, 'demande-1', 'ok')).rejects.toThrow(/au moins dix/);
+    expect(bd.demandeAgrement.update).not.toHaveBeenCalled();
+    expect(courriels.envoyerSuiviDemandeAgrement).not.toHaveBeenCalled();
+  });
+
+  it('ne remet pas en verification un dossier deja decide', async () => {
+    bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ statut: 'REFUSEE' }));
+
+    await expect(service.mettreEnAnalyse(AGENT, 'demande-1', MOTIF)).rejects.toThrow(/déjà été refusé/);
     expect(bd.demandeAgrement.update).not.toHaveBeenCalled();
   });
 });
 
 describe('valider', () => {
   it('cree la structure avec les references du dossier', async () => {
-    await service.valider(AGENT, 'demande-1');
+    await service.valider(AGENT, 'demande-1', MOTIF);
 
     expect(tx.structureSante.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -551,7 +636,7 @@ describe('valider', () => {
   // examine ; la laisser hors du circuit reviendrait a valider pour rien, et
   // son titulaire ne verrait qu'un refus sans recours.
   it('rend la structure partenaire des la validation', async () => {
-    await service.valider(AGENT, 'demande-1');
+    await service.valider(AGENT, 'demande-1', MOTIF);
 
     expect(tx.structureSante.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -561,7 +646,7 @@ describe('valider', () => {
   });
 
   it('rattache les pieces deja deposees a la structure creee, sans les recopier', async () => {
-    await service.valider(AGENT, 'demande-1');
+    await service.valider(AGENT, 'demande-1', MOTIF);
 
     expect(tx.pieceAgrement.updateMany).toHaveBeenCalledWith({
       where: { idDemande: 'demande-1' },
@@ -572,7 +657,7 @@ describe('valider', () => {
   });
 
   it('cree le compte du responsable, a changer des la premiere connexion', async () => {
-    await service.valider(AGENT, 'demande-1');
+    await service.valider(AGENT, 'demande-1', MOTIF);
 
     expect(tx.utilisateur.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -595,7 +680,7 @@ describe('valider', () => {
   // vendre. Partout ailleurs, le responsable reste un ADMIN_STRUCTURE.
 
   it('fait du responsable d une officine un pharmacien titulaire', async () => {
-    await service.valider(AGENT, 'demande-1');
+    await service.valider(AGENT, 'demande-1', MOTIF);
 
     expect(tx.utilisateur.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ role: 'PHARMACIEN' }) }),
@@ -612,19 +697,18 @@ describe('valider', () => {
     );
   });
 
-  // Une compagnie d'assurance ne se demande pas par cette porte - elle releve
-  // de la Banque Centrale -, mais la regle du role est commune aux trois
-  // portes de creation : si elle passait un jour par ici, son responsable
-  // devrait entrer dans l'espace assureur, et non dans celui des
-  // etablissements de soins.
-  it('ferait du responsable d une assurance un ASSUREUR', async () => {
-    bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ type: 'ASSURANCE' }));
-    bd.demandeAgrement.findUniqueOrThrow.mockResolvedValue(demandeEnBase({ type: 'ASSURANCE' }));
+  // Une compagnie d'assurance se demande par cette porte depuis le
+  // 2026-11-20 : son responsable entre dans l'espace assureur, et non dans
+  // celui des etablissements de soins.
+  it('fait du responsable d une assurance un ASSUREUR', async () => {
+    // Une demande d'assurance porte toujours son code : le depot l'exige.
+    bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ type: 'ASSURANCE', codeAssureur: 'SUNU' }));
+    bd.demandeAgrement.findUniqueOrThrow.mockResolvedValue(demandeEnBase({ type: 'ASSURANCE', codeAssureur: 'SUNU' }));
     bd.pieceAgrement.findMany.mockResolvedValue(
       service.piecesDemandeesPour('ASSURANCE' as never).map((p) => ({ type: p })),
     );
 
-    await service.valider(AGENT, 'demande-1');
+    await service.valider(AGENT, 'demande-1', MOTIF);
 
     expect(tx.utilisateur.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ role: 'ASSUREUR' }) }),
@@ -643,7 +727,7 @@ describe('valider', () => {
         service.piecesDemandeesPour(type as never).map((p) => ({ type: p })),
       );
 
-      await service.valider(AGENT, 'demande-1');
+      await service.valider(AGENT, 'demande-1', MOTIF);
 
       expect(tx.utilisateur.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ role: 'ADMIN_STRUCTURE' }) }),
@@ -653,7 +737,7 @@ describe('valider', () => {
   );
 
   it('marque le dossier valide et retient qui a decide', async () => {
-    await service.valider(AGENT, 'demande-1');
+    await service.valider(AGENT, 'demande-1', MOTIF);
 
     expect(tx.demandeAgrement.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -666,16 +750,47 @@ describe('valider', () => {
     );
   });
 
-  it('envoie les identifiants au responsable', async () => {
-    await service.valider(AGENT, 'demande-1');
+  it('envoie le motif et les identifiants au responsable, en un seul courriel', async () => {
+    await service.valider(AGENT, 'demande-1', MOTIF);
 
-    expect(courriels.envoyerEmailAdminStructure).toHaveBeenCalledWith(
+    expect(courriels.envoyerValidationDemandeAgrement).toHaveBeenCalledWith(
       expect.objectContaining({
         destinataire: 'm.barry@example.gn',
         telephone: '620000102',
         motDePasseTemporaire: 'MotDePasseTemporaire9',
+        motif: MOTIF,
+        codeAssureur: null,
       }),
     );
+    expect(courriels.envoyerEmailAdminStructure).not.toHaveBeenCalled();
+  });
+
+  it('garde le motif de la validation dans l historique, et note le courriel parti', async () => {
+    await service.valider(AGENT, 'demande-1', MOTIF);
+
+    const donnees = tx.demandeAgrement.update.mock.calls[0]![0].data;
+    expect(donnees.evenements.create).toEqual(
+      expect.objectContaining({ action: 'VALIDATION', motif: MOTIF, idAuteur: 'agent-1' }),
+    );
+    expect(bd.evenementDemandeAgrement.update).toHaveBeenCalledWith({
+      where: { id: donnees.evenements.create.id },
+      data: { emailEnvoye: true },
+    });
+  });
+
+  // Le courriel porte les identifiants : s'il ne part pas, l'historique doit
+  // le dire, pour que l'administration rappelle le responsable.
+  it('ne note pas le courriel comme parti quand il echoue', async () => {
+    (courriels.envoyerValidationDemandeAgrement as jest.Mock).mockRejectedValueOnce(new Error('Brevo muet'));
+
+    await expect(service.valider(AGENT, 'demande-1', MOTIF)).resolves.toBeDefined();
+    expect(tx.demandeAgrement.update).toHaveBeenCalled();
+    expect(bd.evenementDemandeAgrement.update).not.toHaveBeenCalled();
+  });
+
+  it('refuse de valider sans motif explicite, avant toute ecriture', async () => {
+    await expect(service.valider(AGENT, 'demande-1', 'ok')).rejects.toThrow(/au moins dix/);
+    expect(bd.$transaction).not.toHaveBeenCalled();
   });
 
   it("ne laisse le mot de passe temporaire ni dans la reponse ni dans les journaux", async () => {
@@ -683,7 +798,7 @@ describe('valider', () => {
       logger: Record<string, jest.Mock>;
     };
 
-    const resultat = await service.valider(AGENT, 'demande-1');
+    const resultat = await service.valider(AGENT, 'demande-1', MOTIF);
 
     expect(JSON.stringify(resultat)).not.toContain('MotDePasseTemporaire9');
     const journaux = JSON.stringify([
@@ -697,14 +812,14 @@ describe('valider', () => {
   it('refuse de revalider un dossier deja valide', async () => {
     bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ statut: 'VALIDEE' }));
 
-    await expect(service.valider(AGENT, 'demande-1')).rejects.toThrow(/déjà été validé/);
+    await expect(service.valider(AGENT, 'demande-1', MOTIF)).rejects.toThrow(/déjà été validé/);
     expect(bd.$transaction).not.toHaveBeenCalled();
   });
 
   it('refuse de valider un dossier deja refuse', async () => {
     bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({ statut: 'REFUSEE' }));
 
-    await expect(service.valider(AGENT, 'demande-1')).rejects.toThrow(/déjà été refusé/);
+    await expect(service.valider(AGENT, 'demande-1', MOTIF)).rejects.toThrow(/déjà été refusé/);
     expect(bd.$transaction).not.toHaveBeenCalled();
   });
 
@@ -713,7 +828,7 @@ describe('valider', () => {
       { type: TypePieceAgrement.AGREMENT_CREATION },
     ]);
 
-    await expect(service.valider(AGENT, 'demande-1')).rejects.toThrow(/Dossier incomplet/);
+    await expect(service.valider(AGENT, 'demande-1', MOTIF)).rejects.toThrow(/Dossier incomplet/);
     expect(bd.$transaction).not.toHaveBeenCalled();
   });
 
@@ -722,7 +837,7 @@ describe('valider', () => {
       args.where.telephone ? { id: 'autre' } : null,
     );
 
-    await expect(service.valider(AGENT, 'demande-1')).rejects.toThrow(/désormais utilisé/);
+    await expect(service.valider(AGENT, 'demande-1', MOTIF)).rejects.toThrow(/désormais utilisé/);
     expect(bd.$transaction).not.toHaveBeenCalled();
   });
 });
@@ -744,6 +859,19 @@ describe('refuser', () => {
     expect(courriels.envoyerRefusDemandeAgrement).toHaveBeenCalledWith(
       expect.objectContaining({ motif }),
     );
+  });
+
+  it('garde le refus dans l historique, et note le courriel parti', async () => {
+    await service.refuser(AGENT, 'demande-1', MOTIF);
+
+    const donnees = bd.demandeAgrement.update.mock.calls[0]![0].data;
+    expect(donnees.evenements.create).toEqual(
+      expect.objectContaining({ action: 'REFUS', motif: MOTIF, idAuteur: 'agent-1' }),
+    );
+    expect(bd.evenementDemandeAgrement.update).toHaveBeenCalledWith({
+      where: { id: donnees.evenements.create.id },
+      data: { emailEnvoye: true },
+    });
   });
 
   it('refuse un motif trop court pour etre utile', async () => {
@@ -804,5 +932,164 @@ describe('detail', () => {
   it('ne rend pas de dossier inexistant', async () => {
     bd.demandeAgrement.findUnique.mockResolvedValue(null);
     await expect(service.detail('inconnu')).rejects.toThrow(/introuvable/);
+  });
+
+  it('rend l historique dans l ordre, avec l auteur et le sort du courriel', async () => {
+    bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase({
+      type: 'ASSURANCE',
+      codeAssureur: 'SUNU',
+      modeEchange: 'PORTAIL',
+      evenements: [
+        {
+          id: 'e1', action: 'MISE_EN_VERIFICATION', motif: 'Extrait RCCM illisible, merci de le redéposer.',
+          emailEnvoye: true, creeLe: new Date('2026-11-19T09:00:00.000Z'), auteur: { prenom: 'Fanta', nom: 'Camara' },
+        },
+        {
+          id: 'e2', action: 'VALIDATION', motif: MOTIF,
+          emailEnvoye: false, creeLe: new Date('2026-11-20T09:00:00.000Z'), auteur: null,
+        },
+      ],
+    }));
+
+    const vue = await service.detail('demande-1');
+
+    expect(vue.codeAssureur).toBe('SUNU');
+    expect(vue.modeEchange).toBe('PORTAIL');
+    expect(vue.historique).toEqual([
+      expect.objectContaining({ id: 'e1', action: 'MISE_EN_VERIFICATION', emailEnvoye: true, auteur: 'Fanta Camara', creeLe: '2026-11-19T09:00:00.000Z' }),
+      expect.objectContaining({ id: 'e2', action: 'VALIDATION', emailEnvoye: false, auteur: null }),
+    ]);
+  });
+});
+
+// ── Les compagnies d'assurance, en ligne ─────────────────────────
+
+describe('deposer une demande d assurance', () => {
+  it('enregistre le code propose, en majuscules, et le mode d echange', async () => {
+    const resultat = await service.deposer(compagnie(), PIECES_ASSURANCE);
+
+    expect(resultat.statut).toBe('RECUE');
+    const donnees = bd.demandeAgrement.create.mock.calls[0]![0].data;
+    expect(donnees).toEqual(expect.objectContaining({
+      type: 'ASSURANCE', codeAssureur: 'SUNU', modeEchange: 'PORTAIL',
+      numeroAgrementCreation: 'D/2009/CAM/LOA/07',
+      // Pas d'arrete d'exploitation : la seule reference est celle de la BCRG.
+      numeroAgrementExploitation: null,
+    }));
+  });
+
+  it('exige les quatre pieces d une assurance, en nommant celle qui manque', async () => {
+    const sansResidence = PIECES_ASSURANCE.filter((f) => f.fieldname !== 'CERTIFICAT_RESIDENCE_RESPONSABLE');
+
+    await expect(service.deposer(compagnie(), sansResidence)).rejects.toThrow(/certificat de résidence du responsable/);
+    expect(pieces.ecrireFichiers).not.toHaveBeenCalled();
+  });
+
+  it('exige la reference de l agrement de la Banque Centrale', async () => {
+    await expect(service.deposer(compagnie({ numeroAgrementCreation: undefined }), PIECES_ASSURANCE))
+      .rejects.toThrow(/Banque Centrale/);
+    expect(bd.demandeAgrement.create).not.toHaveBeenCalled();
+  });
+
+  it('exige un code de compagnie, avant toute ecriture', async () => {
+    await expect(service.deposer(compagnie({ codeAssureur: undefined }), PIECES_ASSURANCE))
+      .rejects.toThrow(/code de la compagnie/);
+    expect(pieces.ecrireFichiers).not.toHaveBeenCalled();
+  });
+
+  it('refuse un code deja porte par une compagnie, en le nommant', async () => {
+    bd.assureur.findUnique.mockResolvedValue({ id: 'autre' });
+
+    await expect(service.deposer(compagnie(), PIECES_ASSURANCE)).rejects.toThrow(/code SUNU/);
+    expect(pieces.ecrireFichiers).not.toHaveBeenCalled();
+  });
+
+  it('refuse un code deja propose par une autre demande en cours', async () => {
+    dejaEnBase = [{ numero: `DA-${ANNEE}-0003`, telephone: '620999999', statut: 'EN_ANALYSE', codeAssureur: 'SUNU' }];
+
+    await expect(service.deposer(compagnie(), PIECES_ASSURANCE)).rejects.toThrow(/déjà proposé/);
+    expect(pieces.ecrireFichiers).not.toHaveBeenCalled();
+  });
+
+  it('laisse reprendre le code d une demande refusee', async () => {
+    dejaEnBase = [{ numero: `DA-${ANNEE}-0003`, telephone: '620999999', statut: 'REFUSEE', codeAssureur: 'SUNU' }];
+
+    await expect(service.deposer(compagnie(), PIECES_ASSURANCE)).resolves.toBeDefined();
+  });
+
+  it('ignore un code envoye pour un autre type que l assurance', async () => {
+    await service.deposer(officine({ codeAssureur: 'PHARMA', modeEchange: 'API' }), QUATRE_PIECES);
+
+    const donnees = bd.demandeAgrement.create.mock.calls[0]![0].data;
+    expect(donnees.codeAssureur).toBeNull();
+    expect(donnees.modeEchange).toBeNull();
+    expect(bd.assureur.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe('valider une demande d assurance', () => {
+  beforeEach(() => {
+    const assurance = demandeEnBase({ type: 'ASSURANCE', nom: 'Sunu Assurances', codeAssureur: 'SUNU', modeEchange: 'PORTAIL' });
+    bd.demandeAgrement.findUnique.mockResolvedValue(assurance);
+    bd.demandeAgrement.findUniqueOrThrow.mockResolvedValue(assurance);
+    bd.pieceAgrement.findMany.mockResolvedValue(PIECES_ASSURANCE.map((f) => ({ type: f.fieldname })));
+  });
+
+  it('fait naitre la compagnie avec sa structure, dans la meme transaction', async () => {
+    await service.valider(AGENT, 'demande-1', MOTIF);
+
+    expect(tx.assureur.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        nom: 'Sunu Assurances', code: 'SUNU', modeEchange: 'PORTAIL', idStructure: 'structure-1',
+      }),
+    }));
+    expect(tx.utilisateur.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ role: 'ASSUREUR' }) }),
+    );
+    // Comme par la creation directe : une assurance ne recoit pas de commandes.
+    expect(tx.structureSante.create.mock.calls[0]![0].data.estPartenaire).toBeUndefined();
+  });
+
+  it('retient le code corrige par l administration, et l annonce au responsable', async () => {
+    await service.valider(AGENT, 'demande-1', MOTIF, 'sunu-gn');
+
+    expect(tx.assureur.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ code: 'SUNU-GN' }),
+    }));
+    expect(tx.demandeAgrement.update.mock.calls[0]![0].data.codeAssureur).toBe('SUNU-GN');
+    expect(courriels.envoyerValidationDemandeAgrement).toHaveBeenCalledWith(
+      expect.objectContaining({ codeAssureur: 'SUNU-GN' }),
+    );
+  });
+
+  it('refuse un code pris entre le depot et la decision, avant toute ecriture', async () => {
+    bd.assureur.findUnique.mockResolvedValue({ id: 'autre' });
+
+    await expect(service.valider(AGENT, 'demande-1', MOTIF)).rejects.toThrow(/code SUNU/);
+    expect(bd.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('nomme le code quand la base le refuse pendant la transaction', async () => {
+    tx.assureur.create.mockRejectedValue(Object.assign(new Error('Unique constraint failed'), {
+      code: 'P2002', meta: { modelName: 'Assureur', target: ['code'] },
+    }));
+
+    await expect(service.valider(AGENT, 'demande-1', MOTIF)).rejects.toThrow(/code SUNU/);
+  });
+
+  it('refuse un code mal forme', async () => {
+    await expect(service.valider(AGENT, 'demande-1', MOTIF, 'SU NU')).rejects.toThrow(/code de la compagnie/);
+    expect(bd.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('ne cree aucune compagnie pour un autre type', async () => {
+    bd.demandeAgrement.findUnique.mockResolvedValue(demandeEnBase());
+    bd.demandeAgrement.findUniqueOrThrow.mockResolvedValue(demandeEnBase());
+    bd.pieceAgrement.findMany.mockResolvedValue(QUATRE_PIECES.map((f) => ({ type: f.fieldname })));
+
+    await service.valider(AGENT, 'demande-1', MOTIF, 'IGNORE');
+
+    expect(tx.assureur.create).not.toHaveBeenCalled();
+    expect(bd.assureur.findUnique).not.toHaveBeenCalled();
   });
 });

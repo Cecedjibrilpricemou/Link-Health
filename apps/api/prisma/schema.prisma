@@ -421,6 +421,7 @@ model Utilisateur {
   personnesAssureesSaisies  PersonneAssuree[]        @relation("PersonnesAssureesSaisies")
   piecesAgrementDeposees    PieceAgrement[]          @relation("PiecesAgrementDeposees")
   demandesAgrementExaminees DemandeAgrement[]        @relation("DemandesAgrementExaminees")
+  evenementsDemandeAgrement EvenementDemandeAgrement[] @relation("EvenementsDemandeAgrement")
   candidaturesLivreurExaminees CandidatureLivreur[]  @relation("CandidaturesLivreurExaminees")
   /// Le dossier sur lequel ce livreur a ete admis. Absent pour un livreur cree
   /// avant que le dossier soit exige.
@@ -990,10 +991,59 @@ model DemandeAgrement {
   examinePar   Utilisateur? @relation("DemandesAgrementExaminees", fields: [idExaminePar], references: [id], onDelete: SetNull)
   examineLe    DateTime?
 
+  /// Assurance seulement : le code que la compagnie propose pour les cartes de
+  /// ses assures, et son mode d'echange des decomptes. L'administration peut
+  /// corriger le code avant de valider : il doit etre unique, et il a pu etre
+  /// pris entre le depot et la decision.
+  codeAssureur String?
+  modeEchange  ModeEchangeAssureur?
+
+  /// Chaque action de l'administration, avec le motif envoye au candidat.
+  evenements EvenementDemandeAgrement[]
+
   deposeLe DateTime @default(now())
 
   @@index([statut, deposeLe])
   @@map("demandes_agrement")
+}
+
+/// Ce que l'administration peut faire d'une demande. Chaque action porte un
+/// motif, envoye par courriel au responsable.
+enum ActionDemandeAgrement {
+  MISE_EN_VERIFICATION
+  VALIDATION
+  REFUS
+}
+
+/// L'historique d'une demande : qui a fait quoi, quand, et ce qui a ete dit au
+/// candidat.
+///
+/// **Pourquoi une table et non une colonne par action.** Un dossier peut etre
+/// remis en verification plusieurs fois - une piece illisible, puis une
+/// reference a confirmer - et chaque fois le candidat recoit un motif
+/// different. Une colonne n'en garderait que le dernier, et l'agent qui
+/// reprend le dossier ne saurait pas ce qui a deja ete demande.
+model EvenementDemandeAgrement {
+  id String @id @default(cuid())
+
+  idDemande String
+  demande   DemandeAgrement @relation(fields: [idDemande], references: [id], onDelete: Cascade)
+
+  action ActionDemandeAgrement
+  motif  String
+
+  /// Vrai seulement si le courriel est **parti**. L'ecran d'examen le dit :
+  /// une validation dont le courriel a echoue laisse un responsable sans ses
+  /// identifiants, et l'administration doit le savoir pour le rappeler.
+  emailEnvoye Boolean @default(false)
+
+  idAuteur String?
+  auteur   Utilisateur? @relation("EvenementsDemandeAgrement", fields: [idAuteur], references: [id], onDelete: SetNull)
+
+  creeLe DateTime @default(now())
+
+  @@index([idDemande, creeLe])
+  @@map("evenements_demande_agrement")
 }
 
 /// L'etat d'une candidature de motard livreur. Memes etapes, et memes raisons,

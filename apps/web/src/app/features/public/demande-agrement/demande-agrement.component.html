@@ -40,7 +40,7 @@
               </select>
             </label>
             <label class="demande-agrement__field" for="demande-nom">
-              <span>{{ 'PUBLIC.STRUCTURE_REQUEST.NAME' | translate }} *</span>
+              <span>{{ (estAssurance() ? 'PUBLIC.STRUCTURE_REQUEST.NAME_ASSURANCE' : 'PUBLIC.STRUCTURE_REQUEST.NAME') | translate }} *</span>
               <input id="demande-nom" name="nom" required [ngModel]="formulaire().nom"
                      (ngModelChange)="modifierChamp('nom', $event)" />
             </label>
@@ -88,6 +88,40 @@
           </div>
         </section>
 
+        @if (estAssurance()) {
+          <section class="demande-agrement__section" aria-labelledby="demande-compagnie-title">
+            <h2 id="demande-compagnie-title">{{ 'PUBLIC.STRUCTURE_REQUEST.COMPANY' | translate }}</h2>
+            <div class="demande-agrement__grid">
+              <!-- Le code figurera sur les cartes des assures. L'administration
+                   peut le corriger s'il est deja pris. -->
+              <label class="demande-agrement__field" for="demande-code">
+                <span>{{ 'PUBLIC.STRUCTURE_REQUEST.CODE' | translate }} *</span>
+                <input id="demande-code" name="codeAssureur" required maxlength="16" autocomplete="off"
+                       [ngModel]="formulaire().codeAssureur"
+                       (ngModelChange)="modifierChamp('codeAssureur', $event)" />
+              </label>
+              <label class="demande-agrement__field" for="demande-mode">
+                <span>{{ 'PUBLIC.STRUCTURE_REQUEST.MODE' | translate }}</span>
+                <select id="demande-mode" name="modeEchange" [ngModel]="formulaire().modeEchange"
+                        (ngModelChange)="modifierChamp('modeEchange', $event)">
+                  <option value="">{{ 'PUBLIC.STRUCTURE_REQUEST.MODE_NONE' | translate }}</option>
+                  @for (mode of modesEchange; track mode) {
+                    <option [value]="mode">{{ ('ADMIN.ASSURANCE.MODE_' + mode) | translate }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+            @if (codeIncorrect()) {
+              <p class="demande-agrement__error" role="alert">
+                <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                {{ 'PUBLIC.STRUCTURE_REQUEST.CODE_INVALID' | translate }}
+              </p>
+            } @else {
+              <p class="demande-agrement__hint">{{ 'PUBLIC.STRUCTURE_REQUEST.CODE_HINT' | translate }}</p>
+            }
+          </section>
+        }
+
         <section class="demande-agrement__section" aria-labelledby="demande-agrement-title">
           <h2 id="demande-agrement-title">{{ 'AGREMENT.SECTION_TITRE' | translate }}</h2>
 
@@ -96,6 +130,9 @@
                  du commerce, ni arrete d'exploitation a produire. Le serveur
                  efface ces deux champs chez lui ; l'ecran ne les montre pas. -->
             <p class="demande-agrement__hint">{{ 'AGREMENT.HOPITAL_PUBLIC_NOTE' | translate }}</p>
+          }
+          @if (estAssurance()) {
+            <p class="demande-agrement__hint">{{ 'AGREMENT.BCRG_HINT' | translate }}</p>
           }
 
           <div class="demande-agrement__grid">
@@ -109,19 +146,22 @@
             }
             <label class="demande-agrement__field" for="demande-creation">
               <span>
-                {{ (estPublique() ? 'AGREMENT.ACTE_CREATION_LABEL' : 'AGREMENT.CREATION_LABEL') | translate }} *
+                {{ (estPublique() ? 'AGREMENT.ACTE_CREATION_LABEL'
+                    : estAssurance() ? 'AGREMENT.BCRG_LABEL' : 'AGREMENT.CREATION_LABEL') | translate }} *
               </span>
               <input id="demande-creation" name="numeroAgrementCreation" required maxlength="80"
                      [ngModel]="formulaire().numeroAgrementCreation"
                      (ngModelChange)="modifierChamp('numeroAgrementCreation', $event)" />
             </label>
-            @if (!estPublique()) {
+            @if (!estPublique() && !estAssurance()) {
               <label class="demande-agrement__field" for="demande-exploitation">
                 <span>{{ 'AGREMENT.EXPLOITATION_LABEL' | translate }} *</span>
                 <input id="demande-exploitation" name="numeroAgrementExploitation" required maxlength="80"
                        [ngModel]="formulaire().numeroAgrementExploitation"
                        (ngModelChange)="modifierChamp('numeroAgrementExploitation', $event)" />
               </label>
+            }
+            @if (!estPublique()) {
               <label class="demande-agrement__field" for="demande-lieu">
                 <span>{{ 'AGREMENT.LIEU_LABEL' | translate }} *</span>
                 <input id="demande-lieu" name="lieuAutorise" required maxlength="200"

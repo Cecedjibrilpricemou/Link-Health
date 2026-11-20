@@ -20,6 +20,15 @@
     line-height: 1.5;
     i { margin-top: 2px; color: var(--bb-info); }
   }
+  // La classe etait posee sans style : une erreur s'affichait en bleu, comme
+  // une simple information. Un courriel d'identifiants qui n'est pas parti
+  // doit se voir.
+  &__notice--error {
+    border-color: var(--bb-danger-border);
+    background: var(--bb-danger-bg);
+    color: var(--bb-text-primary);
+    i { color: var(--bb-danger); }
+  }
 
   &__tools {
     display: flex;
@@ -163,6 +172,11 @@
     padding: 16px;
     background: rgb(9 20 17 / 62%);
     backdrop-filter: blur(4px);
+    // La barre latérale peint au-dessus du voile quel que soit le z-index :
+    // on décale le voile de sa largeur, comme les autres modales de
+    // l'administration. Sans cela, elle masquait le bord gauche du dossier
+    // - les libellés, et le champ du code d'une compagnie.
+    @media (min-width: 769px) { left: var(--bb-sidebar-width); }
   }
   &__modal {
     width: min(940px, 100%);
@@ -258,9 +272,49 @@
     }
     small { color: var(--bb-danger); }
     button { justify-self: end; }
+    input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--bb-border);
+      border-radius: var(--bb-radius);
+      background: var(--bb-surface-card);
+      color: var(--bb-text-primary);
+      font: inherit;
+      &:focus-visible { outline: var(--bb-focus-ring); }
+      // Le code des cartes : lu tel qu'il sera imprime.
+      &.bb-demandes__code-input { font-family: var(--bb-font-mono); text-transform: uppercase; }
+    }
   }
+  // La meme saisie, aux couleurs de l'action : on ne valide pas dans un
+  // encadre rouge.
+  &__reason--analyse { border-color: var(--bb-info-border); background: var(--bb-info-bg); }
+  &__reason--validation { border-color: var(--bb-success-border); background: var(--bb-success-bg); }
+  &__reason-hint { color: var(--bb-text-muted); font-size: 11.5px; }
+  &__reason-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  &__code { font-family: var(--bb-font-mono); font-weight: 700; }
+  &__confirm { background: var(--bb-primary); color: #fff; }
+  &__confirm:disabled { cursor: not-allowed; opacity: .55; }
   &__confirm-refusal { background: var(--bb-danger); color: #fff; }
   &__confirm-refusal:disabled { cursor: not-allowed; opacity: .55; }
+
+  &__history { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  &__history li {
+    display: grid;
+    gap: 5px;
+    padding: 10px 12px;
+    border: 1px solid var(--bb-border-light);
+    border-left: 3px solid var(--bb-info);
+    border-radius: var(--bb-radius);
+    background: var(--bb-surface-0);
+    &[data-action='VALIDATION'] { border-left-color: var(--bb-success); }
+    &[data-action='REFUS'] { border-left-color: var(--bb-danger); }
+  }
+  &__history-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  &__history-head strong { color: var(--bb-text-primary); font-size: 12.5px; }
+  &__history-head small { color: var(--bb-text-muted); font-size: 11px; }
+  &__history .bb-demandes__reason-text { margin: 0; color: var(--bb-text-secondary); font-size: 12.5px; white-space: pre-line; }
+  &__history-mail { display: inline-flex; align-items: center; gap: 5px; color: var(--bb-success); font-size: 11px; }
+  &__history-mail--echec { color: var(--bb-danger); font-weight: 700; }
 }
 
 :host-context([data-theme='dark']) .bb-demandes {

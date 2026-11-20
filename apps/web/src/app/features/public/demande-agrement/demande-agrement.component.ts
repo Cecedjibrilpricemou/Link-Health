@@ -11,9 +11,16 @@
 //     creation » pour une officine, « acte de creation » pour un CHU.
 // Une liste recopiee finirait par mentir le jour ou l'administration exigera
 // une piece de plus, et personne ne s'en apercevrait avant un refus.
+//
+// **Une compagnie d'assurance depose ici aussi**, depuis le 2026-11-20 : la
+// tuile « Inscrire mon assurance » de l'accueil ouvre ce formulaire deja regle
+// sur ce type (`?type=ASSURANCE`). Elle y propose en plus le code de ses
+// cartes et son mode d'echange ; sa seule reference d'agrement est celle de
+// la Banque Centrale.
 import { Component, type OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import type { PiecesAttenduesView, TypePieceAgrement } from '@baobaoheath/shared-types';
 
@@ -39,6 +46,10 @@ interface FormulaireDemande {
   numeroAgrementCreation: string;
   numeroAgrementExploitation: string;
   lieuAutorise: string;
+  /** Assurance seulement : le code propose pour les cartes des assures. */
+  codeAssureur: string;
+  /** Assurance seulement ; vide tant que la compagnie ne sait pas. */
+  modeEchange: '' | 'MANUEL' | 'PORTAIL' | 'API';
   responsable: {
     prenom: string;
     nom: string;
@@ -46,6 +57,9 @@ interface FormulaireDemande {
     email: string;
   };
 }
+
+/** Le code d'une compagnie, tel que le serveur l'accepte. */
+const FORME_CODE = /^[A-Za-z0-9-]{2,16}$/;
 
 @Component({
   selector: 'app-demande-agrement',
@@ -64,7 +78,10 @@ interface FormulaireDemande {
 export class DemandeAgrementComponent implements OnInit {
   private readonly service = inject(DemandeAgrementService);
   private readonly i18n = inject(I18nService);
+  private readonly route = inject(ActivatedRoute);
   readonly geo = inject(GeographieService);
+
+  readonly modesEchange = ['MANUEL', 'PORTAIL', 'API'] as const;
 
   readonly prefectures = signal<string[]>([]);
   readonly communes = signal<string[]>([]);
@@ -84,6 +101,8 @@ export class DemandeAgrementComponent implements OnInit {
     numeroAgrementCreation: '',
     numeroAgrementExploitation: '',
     lieuAutorise: '',
+    codeAssureur: '',
+    modeEchange: '',
     responsable: { prenom: '', nom: '', telephone: '', email: '' },
   });
 
@@ -120,6 +139,19 @@ export class DemandeAgrementComponent implements OnInit {
   readonly estPublique = computed(() => this.entreeDuType()?.estPublique ?? false);
 
   /**
+   * Une compagnie d'assurance : elle releve de la Banque Centrale, pas du
+   * ministere de la Sante. Une seule reference d'agrement, pas d'arrete
+   * d'exploitation, et le code de ses cartes a proposer.
+   */
+  readonly estAssurance = computed(() => this.formulaire().type === 'ASSURANCE');
+
+  /** Le code propose a-t-il la forme attendue ? Vide, il n'est pas encore faux. */
+  readonly codeIncorrect = computed(() => {
+    const code = this.formulaire().codeAssureur.trim();
+    return code.length > 0 && !FORME_CODE.test(code);
+  });
+
+  /**
    * Les pieces a reclamer, telles que le serveur les exige.
    *
    * Nul tant qu'il n'a pas repondu : le composant des pieces retombe alors sur
@@ -153,8 +185,11 @@ export class DemandeAgrementComponent implements OnInit {
     ];
     const reglementaires = this.estPublique()
       ? [f.numeroAgrementCreation]
-      : [f.rccm, f.numeroAgrementCreation, f.numeroAgrementExploitation, f.lieuAutorise];
-    return [...communs, ...reglementaires].every((v) => v.trim().length > 0) && emailValide;
+      : this.estAssurance()
+        ? [f.rccm, f.numeroAgrementCreation, f.lieuAutorise]
+        : [f.rccm, f.numeroAgrementCreation, f.numeroAgrementExploitation, f.lieuAutorise];
+    const codeValide = !this.estAssurance() || FORME_CODE.test(f.codeAssureur.trim());
+    return [...communs, ...reglementaires].every((v) => v.trim().length > 0) && emailValide && codeValide;
   });
 
   readonly peutEnvoyer = computed(
@@ -162,8 +197,16 @@ export class DemandeAgrementComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    // `?type=ASSURANCE` : la tuile de l'accueil ouvre le formulaire deja
+    // regle. Le type n'est retenu que si le serveur le dit demandable.
+    const typeDemande = this.route.snapshot.queryParamMap.get('type');
     this.service.piecesAttendues().subscribe({
-      next: (r) => this.attendues.set(r.data ?? []),
+      next: (r) => {
+        this.attendues.set(r.data ?? []);
+        if (typeDemande && this.typesProposes().includes(typeDemande)) {
+          this.modifierChamp('type', typeDemande);
+        }
+      },
       // Sans cette liste, le composant des pieces retombe sur sa table locale
       // et le dossier d'un hopital serait refuse par le serveur. On le dit
       // plutot que de laisser le candidat televerser pour rien.
@@ -210,6 +253,7 @@ export class DemandeAgrementComponent implements OnInit {
     const f = this.formulaire();
     const texte = (v: string): string | undefined => (v.trim() ? v.trim() : undefined);
     const hopital = this.estPublique();
+    const assurance = this.estAssurance();
 
     return {
       type: f.type,
@@ -225,10 +269,14 @@ export class DemandeAgrementComponent implements OnInit {
       ...(texte(f.numeroAgrementCreation)
         ? { numeroAgrementCreation: f.numeroAgrementCreation.trim() }
         : {}),
-      ...(hopital || !texte(f.numeroAgrementExploitation)
+      // Une assurance n'a pas d'arrete d'exploitation : sa seule reference
+      // est celle de la Banque Centrale.
+      ...(hopital || assurance || !texte(f.numeroAgrementExploitation)
         ? {}
         : { numeroAgrementExploitation: f.numeroAgrementExploitation.trim() }),
       ...(texte(f.lieuAutorise) ? { lieuAutorise: f.lieuAutorise.trim() } : {}),
+      ...(assurance ? { codeAssureur: f.codeAssureur.trim().toUpperCase() } : {}),
+      ...(assurance && f.modeEchange ? { modeEchange: f.modeEchange } : {}),
       responsable: {
         prenom: f.responsable.prenom.trim(),
         nom: f.responsable.nom.trim(),

@@ -5,14 +5,17 @@
 //     l'ecran, qui ne servirait a rien au telephone ;
 //   - un hopital public ne voit ni RCCM ni arrete d'exploitation, et son
 //     dossier n'en porte pas ;
-//   - une erreur ne lui fait pas perdre sa saisie ni ses fichiers.
+//   - une erreur ne lui fait pas perdre sa saisie ni ses fichiers ;
+//   - une compagnie d'assurance arrive par la tuile de l'accueil sur un
+//     formulaire deja regle, propose son code, et ne declare pas d'arrete
+//     d'exploitation.
 //
 // Les doubles **filtrent sur leurs arguments**. Un double qui repond la meme
 // chose quelle que soit la question ne teste pas l'appel, il teste la question
 // qu'on lui a posee : c'est ainsi qu'un filtre casse passe inapercu.
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import type { PiecesAttenduesView, TypePieceAgrement } from '@baobaoheath/shared-types';
@@ -52,6 +55,17 @@ const ATTENDUES: PiecesAttenduesView[] = [
       { type: 'INSCRIPTION_ORDRE', libelle: "l'attestation d'inscription à l'ordre professionnel" },
     ],
   },
+  {
+    type: 'ASSURANCE',
+    demandable: true,
+    estPublique: false,
+    pieces: [
+      { type: 'AGREMENT_ASSURANCE', libelle: "l'agrément de la Banque Centrale" },
+      { type: 'EXTRAIT_RCCM', libelle: "l'extrait RCCM" },
+      { type: 'PIECE_IDENTITE_RESPONSABLE', libelle: "la carte d'identité ou le passeport du responsable" },
+      { type: 'CERTIFICAT_RESIDENCE_RESPONSABLE', libelle: 'le certificat de résidence du responsable' },
+    ],
+  },
   // Le serveur rend aussi les types que l'administration cree elle-meme : le
   // formulaire public ne doit pas les proposer.
   {
@@ -78,6 +92,8 @@ function pdf(nom: string): File {
 function monter(options: {
   depot?: ReturnType<typeof of>;
   piecesAttendues?: ReturnType<typeof of>;
+  /** Le `?type=` de l'adresse, comme le pose la tuile de l'accueil. */
+  typeDemande?: string;
 } = {}) {
   // Les deux parametres sont declares pour que le dossier envoye soit
   // inspectable : sans eux, le double n'en garde aucune trace.
@@ -102,6 +118,14 @@ function monter(options: {
     providers: [
       provideZonelessChangeDetection(),
       provideRouter([]),
+      {
+        provide: ActivatedRoute,
+        useValue: {
+          snapshot: {
+            queryParamMap: convertToParamMap(options.typeDemande ? { type: options.typeDemande } : {}),
+          },
+        },
+      },
       { provide: DemandeAgrementService, useValue: service },
       { provide: GeographieService, useValue: geo },
       { provide: I18nService, useClass: I18nMaquette },
@@ -135,6 +159,8 @@ function remplir(component: DemandeAgrementComponent, type = 'PHARMACIE'): void 
     numeroAgrementCreation: 'ARR/2026/01',
     numeroAgrementExploitation: 'ARR/2026/02',
     lieuAutorise: 'Kipé, Ratoma',
+    codeAssureur: '',
+    modeEchange: '',
     responsable: {
       prenom: 'Awa',
       nom: 'Bah',
@@ -142,6 +168,20 @@ function remplir(component: DemandeAgrementComponent, type = 'PHARMACIE'): void 
       email: 'awa@example.com',
     },
   });
+}
+
+/** Une compagnie d'assurance, saisie comme le ferait son responsable. */
+function remplirCompagnie(component: DemandeAgrementComponent, code = 'sunu'): void {
+  remplir(component, 'ASSURANCE');
+  component.formulaire.update((f) => ({
+    ...f,
+    nom: 'Sunu Assurances',
+    numeroAgrementCreation: 'D/2009/CAM/LOA/07',
+    // Saisi avant de changer de type : il ne doit pas partir.
+    numeroAgrementExploitation: 'ARR/2026/02',
+    codeAssureur: code,
+    modeEchange: 'PORTAIL',
+  }));
 }
 
 describe('demande publique de rattachement', () => {
@@ -155,7 +195,7 @@ describe('demande publique de rattachement', () => {
   it('ne propose que les types qui se demandent', () => {
     const { component } = monter();
 
-    expect(component.typesProposes()).toEqual(['PHARMACIE', 'CHU']);
+    expect(component.typesProposes()).toEqual(['PHARMACIE', 'CHU', 'ASSURANCE']);
     expect(component.typesProposes()).not.toContain('POSTE');
   });
 
@@ -268,6 +308,75 @@ describe('demande publique de rattachement', () => {
     expect(component.formulaire().nom).toBe('Pharmacie de Ratoma');
     expect(component.pieces()['AGREMENT_CREATION']).toBeDefined();
     expect(component.envoi()).toBe(false);
+  });
+
+  // ── Une compagnie d'assurance ─────────────────────────────────
+
+  it('arrive deja regle sur l assurance depuis la tuile de l accueil', () => {
+    const { component } = monter({ typeDemande: 'ASSURANCE' });
+
+    expect(component.formulaire().type).toBe('ASSURANCE');
+    expect(component.requisesImposees()).toEqual([
+      'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'PIECE_IDENTITE_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE',
+    ] as TypePieceAgrement[]);
+  });
+
+  it('ignore un type d adresse qui ne se demande pas', () => {
+    const { component } = monter({ typeDemande: 'POSTE' });
+    expect(component.formulaire().type).toBe('PHARMACIE');
+  });
+
+  it('demande le code et le mode d echange, sans arrete d exploitation', () => {
+    const { fixture } = monter({ typeDemande: 'ASSURANCE' });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelector('#demande-code')).not.toBeNull();
+    expect(el.querySelector('#demande-mode')).not.toBeNull();
+    expect(el.querySelector('#demande-exploitation')).toBeNull();
+    expect(el.querySelector('#demande-rccm')).not.toBeNull();
+    expect(el.querySelector('#demande-lieu')).not.toBeNull();
+    expect(el.textContent).toContain('AGREMENT.BCRG_LABEL');
+  });
+
+  it('envoie le code en majuscules et le mode, sans arrete d exploitation', () => {
+    const { component, deposer } = monter({ typeDemande: 'ASSURANCE' });
+    remplirCompagnie(component);
+    component.piecesCompletes.set(true);
+
+    component.envoyer();
+
+    const dossier = deposer.mock.calls[0]![0] as unknown as Record<string, unknown>;
+    expect(dossier['type']).toBe('ASSURANCE');
+    expect(dossier['codeAssureur']).toBe('SUNU');
+    expect(dossier['modeEchange']).toBe('PORTAIL');
+    expect(dossier['numeroAgrementExploitation']).toBeUndefined();
+    expect(dossier['numeroAgrementCreation']).toBe('D/2009/CAM/LOA/07');
+  });
+
+  it('bloque l envoi sur un code mal forme, et le dit', () => {
+    const { fixture, component, deposer } = monter({ typeDemande: 'ASSURANCE' });
+    remplirCompagnie(component, 'SU NU');
+    component.piecesCompletes.set(true);
+    fixture.detectChanges();
+
+    expect(component.formulaireValide()).toBe(false);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('PUBLIC.STRUCTURE_REQUEST.CODE_INVALID');
+    component.envoyer();
+    expect(deposer).not.toHaveBeenCalled();
+  });
+
+  it('n envoie pas de code pour un autre type', () => {
+    const { component, deposer } = monter();
+    remplir(component);
+    component.formulaire.update((f) => ({ ...f, codeAssureur: 'SUNU', modeEchange: 'API' }));
+    component.piecesCompletes.set(true);
+
+    component.envoyer();
+
+    const dossier = deposer.mock.calls[0]![0] as unknown as Record<string, unknown>;
+    expect(dossier['codeAssureur']).toBeUndefined();
+    expect(dossier['modeEchange']).toBeUndefined();
   });
 
   it("previent quand la liste des pieces n'a pas pu etre chargee", () => {

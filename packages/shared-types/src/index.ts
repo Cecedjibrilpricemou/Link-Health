@@ -1746,8 +1746,9 @@ export interface PieceExigeeView {
 export interface PiecesAttenduesView {
   type: string;
   /**
-   * Faux pour un poste, un centre et un assureur : l'administration les cree
-   * elle-meme, ils ne se demandent pas par le formulaire public.
+   * Faux pour un poste et un centre : l'administration les cree elle-meme, ils
+   * ne se demandent pas par le formulaire public. Une compagnie d'assurance se
+   * demande depuis le 2026-11-20.
    */
   demandable: boolean;
   /**
@@ -1797,6 +1798,24 @@ export interface PieceDemandeView {
   deposeLe: HorodatageApi;
 }
 
+/** Ce que l'administration peut faire d'une demande, toujours avec un motif. */
+export type ActionDemandeAgrement = 'MISE_EN_VERIFICATION' | 'VALIDATION' | 'REFUS';
+
+/** Une ligne de l'historique d'une demande. */
+export interface EvenementDemandeView {
+  id: string;
+  action: ActionDemandeAgrement;
+  /** Le motif, tel qu'il est parti au candidat. */
+  motif: string;
+  /**
+   * Vrai seulement si le courriel est **parti**. Faux sur une validation : le
+   * responsable n'a pas ses identifiants, il faut le rappeler.
+   */
+  emailEnvoye: boolean;
+  auteur: string | null;
+  creeLe: HorodatageApi;
+}
+
 /** GET /demandes-agrement/:id — le dossier complet, pour decider. */
 export interface DemandeAgrementView {
   id: string;
@@ -1828,6 +1847,11 @@ export interface DemandeAgrementView {
   examineLe: HorodatageApi | null;
   examinePar: string | null;
   idStructureCreee: string | null;
+  /** Assurance seulement : le code propose, ou celui retenu une fois validee. */
+  codeAssureur: string | null;
+  modeEchange: ModeEchangeAssureur | null;
+  /** Chaque action, de la plus ancienne a la plus recente. */
+  historique: EvenementDemandeView[];
   deposeLe: HorodatageApi;
 }
 

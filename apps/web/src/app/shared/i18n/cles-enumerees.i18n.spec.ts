@@ -73,6 +73,13 @@ const FAMILLES: { prefixe: string; valeurs: readonly string[] }[] = [
   // en clair a l'ecran, au milieu d'un formulaire bloquant.
   { prefixe: 'AGREMENT.PIECE.', valeurs: ['AGREMENT_CREATION', 'AGREMENT_EXPLOITATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE', 'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'PIECE_IDENTITE_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE', 'AUTRE'] },
   { prefixe: 'AGREMENT.PIECE.', valeurs: ['AGREMENT_CREATION_AIDE', 'AGREMENT_EXPLOITATION_AIDE', 'DIPLOME_RESPONSABLE_AIDE', 'INSCRIPTION_ORDRE_AIDE', 'AGREMENT_ASSURANCE_AIDE', 'EXTRAIT_RCCM_AIDE', 'PIECE_IDENTITE_RESPONSABLE_AIDE', 'CERTIFICAT_RESIDENCE_RESPONSABLE_AIDE', 'AUTRE_AIDE'] },
+  // L'examen d'une demande construit ses libelles a partir de l'action, et
+  // la liste a partir du type : un oubli s'afficherait en clair a l'agent.
+  { prefixe: 'ADMIN.AGREMENT_REQUESTS.REASON_', valeurs: ['ANALYSE', 'VALIDATION', 'REFUS'] },
+  { prefixe: 'ADMIN.AGREMENT_REQUESTS.CONFIRM_', valeurs: ['ANALYSE', 'VALIDATION', 'REFUS'] },
+  { prefixe: 'ADMIN.AGREMENT_REQUESTS.ACTION_', valeurs: ['MISE_EN_VERIFICATION', 'VALIDATION', 'REFUS'] },
+  { prefixe: 'ADMIN.AGREMENT_REQUESTS.STATE_', valeurs: ['TOUTES', 'RECUE', 'EN_ANALYSE', 'VALIDEE', 'REFUSEE'] },
+  { prefixe: 'PUBLIC.STRUCTURE_REQUEST.TYPE_', valeurs: ['PHARMACIE', 'CLINIQUE', 'LABORATOIRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'ASSURANCE'] },
 ];
 
 const cheminsLangues = Object.fromEntries(

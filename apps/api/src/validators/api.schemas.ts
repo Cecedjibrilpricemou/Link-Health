@@ -485,8 +485,12 @@ export const definirPartenariatSchema = z.object({
  *     celles du type demande - un schema zod ne sait pas dire « le RCCM si
  *     c'est une officine, l'acte de creation si c'est un CHU ».
  */
+/** Le code d'une compagnie : il figure sur la carte de l'assure, court et lisible. */
+const codeCompagnie = z.string().trim().min(2).max(16)
+  .regex(/^[A-Za-z0-9-]+$/, 'Lettres, chiffres et tirets uniquement');
+
 export const demandeAgrementSchema = z.object({
-  type: z.enum(['PHARMACIE', 'CLINIQUE', 'LABORATOIRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU']),
+  type: z.enum(['PHARMACIE', 'CLINIQUE', 'LABORATOIRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'ASSURANCE']),
   nom: z.string().trim().min(2).max(160),
   prefecture: z.string().trim().min(1).max(80),
   commune: z.string().trim().min(1).max(80),
@@ -497,23 +501,43 @@ export const demandeAgrementSchema = z.object({
   numeroAgrementCreation: z.string().trim().max(80).optional(),
   numeroAgrementExploitation: z.string().trim().max(80).optional(),
   lieuAutorise: z.string().trim().max(200).optional(),
+  // Assurance seulement : le code propose pour les cartes, et le mode
+  // d'echange. Le service les ignore pour un autre type.
+  codeAssureur: codeCompagnie.optional(),
+  modeEchange: z.enum(['MANUEL', 'PORTAIL', 'API']).optional(),
   responsable: z.object({
     prenom: z.string().trim().min(1).max(80),
     nom: z.string().trim().min(1).max(80),
     telephone: phone,
     email: z.string().trim().toLowerCase().email().max(160),
   }).strict(),
-}).strict();
+}).strict().refine((d) => d.type !== 'ASSURANCE' || !!d.codeAssureur, {
+  message: 'Proposez le code de la compagnie : il figurera sur les cartes des assurés.',
+  path: ['codeAssureur'],
+});
 
 /**
- * Le refus d'une demande.
+ * Le motif d'une action sur une demande : mise en verification, validation ou
+ * refus. Il part tel quel au candidat, par courriel.
  *
- * Dix caracteres au moins : « non », « refuse » ou « voir avec moi » ne disent
- * rien au candidat, qui redeposerait le meme dossier. La borne haute laisse
- * place a une explication reelle sans ouvrir un champ de texte libre sans fin.
+ * Dix caracteres au moins : « non », « ok » ou « voir avec moi » ne disent
+ * rien au candidat. La borne haute laisse place a une explication reelle sans
+ * ouvrir un champ de texte libre sans fin.
  */
-export const refusDemandeAgrementSchema = z.object({
-  motif: z.string().trim().min(10, 'Le motif doit être explicite.').max(600),
+const motifDemande = z.string().trim().min(10, 'Le motif doit être explicite.').max(600);
+
+export const motifDemandeAgrementSchema = z.object({ motif: motifDemande }).strict();
+
+/** Le refus d'une demande : un motif, rien d'autre. */
+export const refusDemandeAgrementSchema = motifDemandeAgrementSchema;
+
+/**
+ * La validation d'une demande : un motif, et pour une assurance le code de la
+ * compagnie si l'administration corrige celui que le candidat a propose.
+ */
+export const validationDemandeAgrementSchema = z.object({
+  motif: motifDemande,
+  codeAssureur: codeCompagnie.optional(),
 }).strict();
 
 export const createAgentPharmacieSchema = z.object({

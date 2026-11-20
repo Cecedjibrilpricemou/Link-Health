@@ -22,7 +22,9 @@ import * as service from '../services/demande-agrement.service';
 import type { FichierRecu } from '../services/piece-agrement.service';
 import {
   demandeAgrementSchema,
+  motifDemandeAgrementSchema,
   refusDemandeAgrementSchema,
+  validationDemandeAgrementSchema,
 } from '../validators/api.schemas';
 
 const router = Router();
@@ -89,28 +91,47 @@ router.get('/:id', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL'), async (req: Aut
 });
 
 /**
- * Prendre le dossier en charge.
+ * Mettre le dossier en cours de verification, avec un motif envoye au
+ * candidat.
  *
  * Sans ce geste, deux agents instruisent le meme dossier sans le savoir, et
  * le candidat qui rappelle s'entend dire que son dossier « est en attente »
- * alors qu'il est sur un bureau.
+ * alors qu'il est sur un bureau. Le motif lui dit ce qui est verifie, ou ce
+ * qu'on attend de lui.
  */
-router.post('/:id/analyse', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL'), async (req: AuthRequest, res: Response) => {
-  const data = await service.mettreEnAnalyse(req.user!, req.params['id'] as string);
-  res.json({ success: true, data });
-});
+router.post(
+  '/:id/analyse',
+  requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL'),
+  validateBody(motifDemandeAgrementSchema),
+  async (req: AuthRequest, res: Response) => {
+    const data = await service.mettreEnAnalyse(req.user!, req.params['id'] as string, req.body.motif);
+    res.json({ success: true, data });
+  },
+);
 
 /**
- * Valider : la structure et le compte de son responsable naissent ici.
+ * Valider, avec un motif : la structure et le compte de son responsable
+ * naissent ici - et pour une assurance, la compagnie, au code eventuellement
+ * corrige par l'administration.
  *
- * Le mot de passe temporaire part par courriel au responsable. Il n'est
- * **jamais** dans cette reponse : l'agent qui valide n'a aucune raison de
- * connaitre le mot de passe d'un tiers.
+ * Le mot de passe temporaire part par courriel au responsable, avec le motif.
+ * Il n'est **jamais** dans cette reponse : l'agent qui valide n'a aucune
+ * raison de connaitre le mot de passe d'un tiers.
  */
-router.post('/:id/validation', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL'), async (req: AuthRequest, res: Response) => {
-  const data = await service.valider(req.user!, req.params['id'] as string);
-  res.json({ success: true, data });
-});
+router.post(
+  '/:id/validation',
+  requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL'),
+  validateBody(validationDemandeAgrementSchema),
+  async (req: AuthRequest, res: Response) => {
+    const data = await service.valider(
+      req.user!,
+      req.params['id'] as string,
+      req.body.motif,
+      req.body.codeAssureur,
+    );
+    res.json({ success: true, data });
+  },
+);
 
 /** Refuser, avec un motif que le candidat recevra tel quel. */
 router.post(

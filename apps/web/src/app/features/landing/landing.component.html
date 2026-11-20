@@ -36,6 +36,11 @@
         <a href="#how" class="hero-btn">
           <i class="pi pi-question-circle" aria-hidden="true"></i> {{ 'LANDING.HERO_BTN_HOW' | translate }}
         </a>
+        <!-- Le meme formulaire que « Rattacher ma structure », deja regle sur
+             une compagnie d'assurance. -->
+        <a routerLink="/demande-agrement" [queryParams]="{ type: 'ASSURANCE' }" class="hero-btn">
+          <i class="pi pi-shield" aria-hidden="true"></i> {{ 'PUBLIC.LINK_ASSURANCE_REQUEST' | translate }}
+        </a>
       </div>
     </div>
 

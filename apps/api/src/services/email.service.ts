@@ -334,14 +334,16 @@ export async function envoyerAccuseDemandeAgrement(dto: {
 }): Promise<void> {
     const identite = await getIdentitePlateforme();
     const nom = identite.nom;
+    // Le nom et l'etablissement viennent d'un formulaire public : un `<a>`
+    // dans le prenom deviendrait un lien dans un courriel signe de nous.
     const html = gabaritAgrement({
         nom,
         slogan: identite.slogan,
         titre: `Demande reçue - ${dto.numero}`,
-        salutation: `Votre demande est bien arrivée, ${dto.prenomNom}`,
+        salutation: `Votre demande est bien arrivée, ${echapperHtml(dto.prenomNom)}`,
         corps: `
               <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
-                Nous avons reçu la demande de rattachement de <strong>${dto.nomStructure}</strong>
+                Nous avons reçu la demande de rattachement de <strong>${echapperHtml(dto.nomStructure)}</strong>
                 à la plateforme ${nom}, accompagnée de ses pièces justificatives.
               </p>
 
@@ -375,11 +377,6 @@ export async function envoyerAccuseDemandeAgrement(dto: {
  * **Le motif n'est pas une politesse : sans lui, le candidat redépose un
  * dossier identique**, et personne n'y gagne. Il est obligatoire côté API
  * pour cette raison.
- *
- * Il n'y a pas de courriel d'acceptation ici : une demande acceptée fait
- * naître un compte, et `envoyerEmailAdminStructure` annonce déjà cette
- * naissance avec les identifiants. Deux courriels coup sur coup diraient deux
- * fois la même chose.
  */
 export async function envoyerRefusDemandeAgrement(dto: {
     destinataire: string;
@@ -394,17 +391,14 @@ export async function envoyerRefusDemandeAgrement(dto: {
         nom,
         slogan: identite.slogan,
         titre: `Décision sur le dossier ${dto.numero}`,
-        salutation: `Bonjour ${dto.prenomNom},`,
+        salutation: `Bonjour ${echapperHtml(dto.prenomNom)},`,
         corps: `
               <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
-                La demande de rattachement de <strong>${dto.nomStructure}</strong>
+                La demande de rattachement de <strong>${echapperHtml(dto.nomStructure)}</strong>
                 (dossier <strong>${dto.numero}</strong>) n'a pas été retenue en l'état.
               </p>
 
-              <div style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;padding:14px 18px;margin:0 0 24px;">
-                <p style="margin:0 0 6px;color:#92400e;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Motif</p>
-                <p style="margin:0;color:#92400e;font-size:14px;line-height:1.6;">${dto.motif}</p>
-              </div>
+              ${blocMotif(dto.motif)}
 
               <p style="color:#444;font-size:15px;line-height:1.6;margin:0;">
                 Vous pouvez déposer une nouvelle demande une fois ce point corrigé.
@@ -416,6 +410,145 @@ export async function envoyerRefusDemandeAgrement(dto: {
         destinataire: dto.destinataire,
         nomDestinataire: dto.prenomNom,
         sujet: `Décision sur votre dossier ${dto.numero}`,
+        html,
+    });
+}
+
+/**
+ * Le motif d'une action, tel que l'agent l'a ecrit.
+ *
+ * Echappe : il est saisi a la main, et une balise copiee depuis un autre
+ * document ne doit pas devenir du HTML dans un courriel signe de nous.
+ */
+function blocMotif(motif: string): string {
+    return `
+              <div style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;padding:14px 18px;margin:0 0 24px;">
+                <p style="margin:0 0 6px;color:#92400e;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Motif</p>
+                <p style="margin:0;color:#92400e;font-size:14px;line-height:1.6;white-space:pre-line;">${echapperHtml(motif)}</p>
+              </div>`;
+}
+
+/**
+ * Le dossier est en cours de verification, et voici pourquoi.
+ *
+ * **Le candidat n'a aucun compte : ce courriel est tout ce qu'il voit de
+ * l'examen.** Sans lui, il ne sait ni que son dossier est lu, ni ce qu'on
+ * attend de lui - une piece illisible, une reference a confirmer.
+ */
+export async function envoyerSuiviDemandeAgrement(dto: {
+    destinataire: string;
+    prenomNom: string;
+    nomStructure: string;
+    numero: string;
+    motif: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: `Dossier ${dto.numero} en cours de vérification`,
+        salutation: `Bonjour ${echapperHtml(dto.prenomNom)},`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                La demande de rattachement de <strong>${echapperHtml(dto.nomStructure)}</strong>
+                (dossier <strong>${dto.numero}</strong>) est en cours de vérification.
+              </p>
+
+              ${blocMotif(dto.motif)}
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0;">
+                Vous recevrez notre décision à cette même adresse. Rappelez le
+                numéro ci-dessus dans tout échange au sujet de ce dossier.
+              </p>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Dossier ${dto.numero} en cours de vérification`,
+        html,
+    });
+}
+
+/**
+ * La demande est acceptee : le motif, et les identifiants du compte qui vient
+ * de naitre.
+ *
+ * **Un seul courriel, et non deux.** L'acceptation et les identifiants
+ * arrivant coup sur coup, le second ferait douter du premier. Le mot de passe
+ * temporaire est a changer des la premiere connexion.
+ *
+ * Pour une compagnie d'assurance, le code retenu figure aussi : c'est celui
+ * des cartes de ses assures, et l'administration a pu corriger celui que la
+ * compagnie avait propose.
+ */
+export async function envoyerValidationDemandeAgrement(dto: {
+    destinataire: string;
+    prenomNom: string;
+    nomStructure: string;
+    numero: string;
+    motif: string;
+    telephone: string;
+    motDePasseTemporaire: string;
+    codeAssureur?: string | null;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const ligneCode = dto.codeAssureur
+        ? `
+                <tr>
+                  <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+                    <span style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Code de la compagnie</span><br>
+                    <strong style="color:#1e293b;font-size:16px;font-family:monospace;">${echapperHtml(dto.codeAssureur)}</strong>
+                  </td>
+                </tr>`
+        : '';
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: `Dossier ${dto.numero} accepté`,
+        salutation: `Bienvenue, ${echapperHtml(dto.prenomNom)} !`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                La demande de rattachement de <strong>${echapperHtml(dto.nomStructure)}</strong>
+                (dossier <strong>${dto.numero}</strong>) est acceptée. Votre compte
+                responsable est créé sur la plateforme ${nom}.
+              </p>
+
+              ${blocMotif(dto.motif)}
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin:0 0 24px;">${ligneCode}
+                <tr>
+                  <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0;">
+                    <span style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Téléphone</span><br>
+                    <strong style="color:#1e293b;font-size:16px;">${echapperHtml(dto.telephone)}</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 20px;">
+                    <span style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Mot de passe temporaire</span><br>
+                    <strong style="color:#1B5E35;font-size:20px;font-family:monospace;letter-spacing:2px;">${dto.motDePasseTemporaire}</strong>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                Ce mot de passe est à changer dès votre première connexion.
+              </p>
+
+              <div style="text-align:center;margin:0 0 8px;">
+                <a href="${lienConnexion()}"
+                   style="background:#1B5E35;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block;">
+                  Se connecter à ${nom}
+                </a>
+              </div>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Dossier ${dto.numero} accepté - vos identifiants ${nom}`,
         html,
     });
 }
