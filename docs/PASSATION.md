@@ -425,6 +425,32 @@ celui du CSS (`object-fit: cover`).
   `api_uploads` : ils survivent aux redéploiements, mais ne sont pas dans la
   sauvegarde de la base (section 7).
 
+### L'interface unique de l'administrateur de structure
+
+Comme le titulaire d'une officine, l'administrateur d'un hôpital, d'une
+clinique ou d'un centre de santé a **une seule interface** pour tout son
+établissement. Son menu est fait de rubriques, selon ce que la structure
+fait (`admin-structure-nav.ts`) :
+
+| Rubrique | Structures | Écrans |
+|---|---|---|
+| Pilotage | toutes | tableau de bord |
+| Accueil | poste, centre, hôpitaux, CHU, clinique | activité, admissions, rendez-vous à orienter, présences, épisodes |
+| Laboratoire | centre, hôpitaux, CHU, clinique, laboratoire | activité, plateau technique, demandes d'analyse |
+| Équipe | toutes | agents |
+| Établissement | selon le type | pharmacies et assurances (hospitalières), laboratoires conseillés, identités, dossier réglementaire, apparence |
+
+**Les écrans sont ceux du métier**, montés sous `/admin-structure/accueil` et
+`/admin-structure/laboratoire`. Leurs liens partent d'une racine injectée
+(`core/navigation/racines.ts` : `RACINE_ACCUEIL`, `RACINE_LABO`) au lieu d'un
+chemin écrit en dur. Sans elle, un clic ferait basculer l'administrateur dans
+l'interface de l'accueil. **Tout nouveau lien de ces écrans doit partir de
+`racine`.**
+
+L'écran ne lui propose aucun acte de soin : ni prescription, ni clôture, ni
+saisie, validation ou impression de résultats. L'API les lui refuse de toute
+façon (branche `fix/admin-sans-contenu-medical`).
+
 ### La géographie
 
 Le référentiel est **générique**, pour servir un autre pays sans toucher au
@@ -476,6 +502,9 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **L'interface unique de l'administrateur de structure** (branche
+  `feat/admin-interface-complete`, section 6) : accueil, laboratoire, équipe et
+  établissement dans un seul menu, sans acte de soin.
 - **Images des pages publiques modifiables par le super-admin** (branche
   `feat/visuels-publics`, section 6) : neuf emplacements, images vérifiées,
   réduites et converties en WebP, description pour les lecteurs d'écran.

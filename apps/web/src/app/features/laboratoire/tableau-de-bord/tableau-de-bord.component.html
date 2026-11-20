@@ -5,7 +5,7 @@
     <p class="bb-page-head__sub">{{ 'LABO.DASH.SUBTITLE' | translate }}</p>
   </div>
   <div class="bb-page-head__actions">
-    <a matButton="filled" routerLink="/laboratoire/demandes"><i class="pi pi-list" aria-hidden="true"></i> {{ 'LABO.DASH.VOIR_FILE' | translate }}</a>
+    <a matButton="filled" [routerLink]="racine + '/demandes'"><i class="pi pi-list" aria-hidden="true"></i> {{ 'LABO.DASH.VOIR_FILE' | translate }}</a>
   </div>
 </header>
 
@@ -24,15 +24,15 @@
     <section class="bb-labo-groupe" aria-labelledby="labo-groupe-circuit">
       <h2 id="labo-groupe-circuit" class="bb-labo-groupe__titre">{{ 'LABO.DASH.GROUPE_CIRCUIT' | translate }}</h2>
       <div class="bb-stats bb-labo-stats--4">
-        <a class="bb-stat bb-stat--info bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'TRANSMISE' }">
+        <a class="bb-stat bb-stat--info bb-stat--link" [routerLink]="racine + '/demandes'" [queryParams]="{ statut: 'TRANSMISE' }">
           <span class="bb-stat__icon"><i class="pi pi-inbox"></i></span>
           <div><div class="bb-stat__value">{{ d.aRecevoir }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_A_RECEVOIR' | translate }}</div></div>
         </a>
-        <a class="bb-stat bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'RECUE' }">
+        <a class="bb-stat bb-stat--link" [routerLink]="racine + '/demandes'" [queryParams]="{ statut: 'RECUE' }">
           <span class="bb-stat__icon"><i class="pi pi-calendar"></i></span>
           <div><div class="bb-stat__value">{{ d.aPrelever }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_A_PRELEVER' | translate }}</div></div>
         </a>
-        <a class="bb-stat bb-stat--warning bb-stat--link" routerLink="/laboratoire/demandes" [queryParams]="{ statut: 'EN_ANALYSE' }">
+        <a class="bb-stat bb-stat--warning bb-stat--link" [routerLink]="racine + '/demandes'" [queryParams]="{ statut: 'EN_ANALYSE' }">
           <span class="bb-stat__icon"><i class="pi pi-hourglass"></i></span>
           <div><div class="bb-stat__value">{{ d.enAnalyse }}</div><div class="bb-stat__label">{{ 'LABO.DASH.STAT_EN_ANALYSE' | translate }}</div></div>
         </a>
@@ -71,7 +71,7 @@
       } @else {
         <div class="bb-hop-list">
           @for (x of d.fileUrgente; track x.id) {
-            <a class="bb-hop-item" [routerLink]="['/laboratoire/demandes', x.id]">
+            <a class="bb-hop-item" [routerLink]="[racine + '/demandes', x.id]">
               <span class="bb-hop-item__avatar" aria-hidden="true">{{ initiales(x) }}</span>
               <div class="bb-hop-item__body">
                 <p class="bb-hop-item__title">{{ x.patient.prenom }} {{ x.patient.nom }} <span [class]="urgenceClasse(x.urgence)">{{ 'HOPITAL.URGENCE.' + x.urgence | translate }}</span> <span [class]="demandeClasse(x.statut)">{{ 'HOPITAL.DEMANDE_STATUT.' + x.statut | translate }}</span></p>
@@ -92,7 +92,7 @@
       } @else {
         <div class="bb-hop-list">
           @for (x of d.prochainsPrelevements; track x.id) {
-            <a class="bb-hop-item" [routerLink]="['/laboratoire/demandes', x.id]">
+            <a class="bb-hop-item" [routerLink]="[racine + '/demandes', x.id]">
               <div class="bb-hop-item__body">
                 <p class="bb-hop-item__title">{{ x.creneauPrelevement | date:'EEEE d MMM, HH:mm' }} <span class="bb-badge bb-badge--info">{{ 'LABO.LIEU.' + x.lieuPrelevement | translate }}</span></p>
                 <p class="bb-hop-item__sub">{{ x.patient.prenom }} {{ x.patient.nom }} · {{ x.numero }}</p>

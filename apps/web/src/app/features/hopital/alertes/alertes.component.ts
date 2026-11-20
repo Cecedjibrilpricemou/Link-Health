@@ -9,6 +9,7 @@ import type { AlerteCritiqueView } from '@baobaoheath/shared-types';
 import { LaboratoireService } from '../../../core/services/laboratoire.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { RACINE_ACCUEIL } from '../../../core/navigation/racines';
 
 @Component({
   selector: 'app-hopital-alertes',
@@ -17,6 +18,9 @@ import { I18nService } from '../../../shared/services/i18n.service';
   templateUrl: './alertes.component.html',
 })
 export class AlertesComponent implements OnInit {
+  /** /hopital, ou l'interface de l'administrateur : voir core/navigation/racines.ts. */
+  readonly racine = inject(RACINE_ACCUEIL);
+
   private labo   = inject(LaboratoireService);
   private toastr = inject(ToastrService);
   private i18n   = inject(I18nService);

@@ -3,7 +3,7 @@
   <div class="bb-skeleton" style="height:320px;border-radius:20px"></div>
 } @else if (demande(); as d) {
 
-  <a routerLink="/laboratoire/demandes" class="bb-hop-back"><i class="pi pi-arrow-left" aria-hidden="true"></i> {{ 'LABO.DETAIL.BACK' | translate }}</a>
+  <a [routerLink]="racine + '/demandes'" class="bb-hop-back"><i class="pi pi-arrow-left" aria-hidden="true"></i> {{ 'LABO.DETAIL.BACK' | translate }}</a>
 
   <!-- ── En-tete ─────────────────────────────────────────────────────── -->
   <header class="bb-page-head" style="margin-bottom:1rem">
@@ -31,16 +31,16 @@
           <button matButton="outlined" type="button" (click)="ouvrir('planifier')"><i class="pi pi-calendar-plus" aria-hidden="true"></i> {{ 'LABO.DETAIL.ACTION_PLANIFIER' | translate }}</button>
         }
         @case ('PRELEVEE') {
-          <button matButton="outlined" type="button" (click)="compteRendu()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'LABO.DETAIL.ACTION_CR_BROUILLON' | translate }}</button>
+          @if (peutSigner()) { <button matButton="outlined" type="button" (click)="compteRendu()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'LABO.DETAIL.ACTION_CR_BROUILLON' | translate }}</button> }
         }
         @case ('EN_ANALYSE') {
           @if (peutSigner()) {
             <button matButton="filled" type="button" (click)="ouvrir('valider')" [disabled]="!toutSaisi()"><i class="pi pi-verified" aria-hidden="true"></i> {{ 'LABO.DETAIL.ACTION_VALIDER' | translate }}</button>
           }
-          <button matButton="outlined" type="button" (click)="compteRendu()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'LABO.DETAIL.ACTION_CR_BROUILLON' | translate }}</button>
+          @if (peutSigner()) { <button matButton="outlined" type="button" (click)="compteRendu()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'LABO.DETAIL.ACTION_CR_BROUILLON' | translate }}</button> }
         }
         @case ('VALIDEE') {
-          <button matButton="filled" type="button" (click)="compteRendu()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'LABO.DETAIL.ACTION_CR' | translate }}</button>
+          @if (peutSigner()) { <button matButton="filled" type="button" (click)="compteRendu()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'LABO.DETAIL.ACTION_CR' | translate }}</button> }
         }
       }
     </div>

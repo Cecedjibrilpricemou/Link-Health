@@ -55,7 +55,7 @@
           </div>
           <div class="bb-hop-item__actions">
             @if (p.episodeOuvert) {
-              <a matButton="outlined" [routerLink]="['/hopital/episodes', p.episodeOuvert.id]">{{ 'HOPITAL.ADMISSION.VOIR_EPISODE' | translate }} <i class="pi pi-arrow-right" aria-hidden="true"></i></a>
+              <a matButton="outlined" [routerLink]="[racine + '/episodes', p.episodeOuvert.id]">{{ 'HOPITAL.ADMISSION.VOIR_EPISODE' | translate }} <i class="pi pi-arrow-right" aria-hidden="true"></i></a>
             } @else {
               <button matButton="filled" type="button" (click)="choisir(p)"><i class="pi pi-folder-open" aria-hidden="true"></i> {{ 'HOPITAL.ADMISSION.OUVRIR' | translate }}</button>
             }

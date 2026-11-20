@@ -17,6 +17,7 @@ import { I18nService } from '../../../shared/services/i18n.service';
 import { statutDemandeClasse, urgenceClasse } from '../../hopital/hopital.utils';
 import { nbResultatsSaisis } from '../laboratoire.utils';
 import { QrScannerComponent } from '../../../shared/components/qr-scanner/qr-scanner.component';
+import { RACINE_LABO } from '../../../core/navigation/racines';
 
 type Filtre = 'TOUS' | StatutDemandeAnalyse;
 
@@ -27,6 +28,9 @@ type Filtre = 'TOUS' | StatutDemandeAnalyse;
   templateUrl: './demandes.component.html',
 })
 export class LaboDemandesComponent implements OnInit {
+  /** /laboratoire, ou l'interface de l'administrateur : voir core/navigation/racines.ts. */
+  readonly racine = inject(RACINE_LABO);
+
   private labo   = inject(LaboratoireService);
   private route  = inject(ActivatedRoute);
   private toastr = inject(ToastrService);
