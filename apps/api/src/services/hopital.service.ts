@@ -19,6 +19,7 @@ import { hashPassword } from '../utils/password.utils';
 import { initialiserConsentementsParDefaut } from './privacy.service';
 import { envoyerSmsSimule, notifierSansBloquer } from './notification.service';
 import { getIdentitePlateforme } from './parametres.service';
+import { diffuserRendezVous } from '../realtime/rendez-vous.events';
 import type {
   PresenceDuJourView,
   CreateDemandeAnalyseDto,
@@ -850,12 +851,16 @@ export async function pointerPresence(user: JwtPayload, idRendezVous: string): P
     await notifierSansBloquer({
       idUtilisateur: rdv.idMedecin,
       type: 'RAPPEL_RENDEZ_VOUS',
-      titre: 'Votre patient est arrive',
-      contenu: `${rdv.patient.utilisateur.prenom} ${rdv.patient.utilisateur.nom} attend a l'accueil.`,
+      titre: 'Votre patient est arrivé',
+      contenu: `${rdv.patient.utilisateur.prenom} ${rdv.patient.utilisateur.nom} attend à l'accueil.`,
       lienAction: '/medecin/agenda',
       metadonnees: { idRendezVous, idEpisode: rdv.idEpisode },
     });
   }
+
+  // La file du medecin se met a jour sans qu'il recharge sa page, et les
+  // autres agents d'accueil voient le patient passer dans « arrives ».
+  await diffuserRendezVous(idRendezVous);
 
   const maj = await prisma.rendezVous.findUniqueOrThrow({ where: { id: idRendezVous }, include: PRESENCE_INCLUDE });
   return versPresence(maj);

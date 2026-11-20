@@ -15,6 +15,7 @@ import type { OrientationMedecinView, RendezVousMedecinView } from '@baobaoheath
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { withCache, cacheDel } from '../utils/cache';
 import { emitToUser } from '../realtime/socket.server';
+import { diffuserRendezVous } from '../realtime/rendez-vous.events';
 import { envoyerSmsSimule, notifierSansBloquer } from './notification.service';
 import { lancerRecherchePharmacie } from './commande.service';
 import { logger } from '../config/logger';
@@ -665,6 +666,9 @@ export async function changerStatutRendezVous(
         data: { statut },
         include: RDV_MEDECIN_INCLUDE,
     });
+    // L'accueil voit aussitot que le patient a ete appele, ou qu'il est parti :
+    // il sait vers quel bureau l'orienter, et qui attend encore.
+    await diffuserRendezVous(idRendezVous);
     return versRendezVousMedecin(maj);
 }
 

@@ -126,6 +126,34 @@
   }
 
   app-export-liste { display: block; margin-bottom: 4px; }
+
+  // ── La file d'attente : les memes cartes, en tete de page ──────────
+  &__file { margin-bottom: 8px; }
+  &__file-tete {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    .bb-agenda__jour { margin: 26px 0 12px; }
+  }
+  &__compte {
+    min-width: 24px; padding: 2px 8px; border-radius: var(--bb-radius-pill);
+    background: var(--agd-accent-soft); color: var(--agd-accent);
+    font-size: 12px; font-weight: 800; text-align: center;
+  }
+  &__file-note { margin: 0 0 12px; }
+
+  // Le rang dans la file, a la place de l'heure du creneau.
+  &__rang { display: block; font-size: 22px; line-height: 1.1; }
+
+  &__attente {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 6px;
+    font-size: 12px; font-weight: 700; color: var(--agd-accent);
+  }
+
+  // Le patient dans le cabinet : la meme carte, couleur de la consultation.
+  &__card--consultation {
+    border-left-color: var(--bb-info);
+    background: linear-gradient(90deg, var(--bb-info-bg), transparent 45%), var(--bb-surface-card);
+    .bb-agenda__heure { color: var(--bb-info); small { color: var(--bb-info); } }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
