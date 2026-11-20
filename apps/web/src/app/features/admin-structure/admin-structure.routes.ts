@@ -53,6 +53,11 @@ export const ADMIN_STRUCTURE_ROUTES: Routes = [
         path: 'identites',
         loadComponent: () =>
           import('../hopital/identites/identites.component').then(m => m.IdentitesComponent)
+      },
+      {
+        path: 'apparence',
+        loadComponent: () =>
+          import('../../shared/components/apparence-structure/apparence-structure.component').then(m => m.ApparenceStructureComponent)
       }
     ]
   }

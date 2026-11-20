@@ -4548,5 +4548,28 @@
     "DEFAUT_BASE": "Commune",
     "DEFAUT_ELARGISSEMENT": "Préfecture",
     "DEFAUT_LIEU": "Lieu"
+  },
+  "APPARENCE": {
+    "NAV": "Apparence",
+    "TAG": "Apparence",
+    "TITLE": "Couleurs de la structure",
+    "SUB": "Les couleurs de l'interface pour toute votre équipe.",
+    "INTRO_RESPONSABLE": "Choisissez les couleurs de {{structure}}. Toute l'équipe les verra, dès maintenant.",
+    "INTRO_MEMBRE": "Les couleurs de {{structure}}, choisies par son responsable.",
+    "PALETTE_EMERAUDE": "Émeraude",
+    "PALETTE_OCEAN": "Océan",
+    "PALETTE_INDIGO": "Indigo",
+    "PALETTE_SARCELLE": "Sarcelle",
+    "PALETTE_AMETHYSTE": "Améthyste",
+    "PALETTE_ARDOISE": "Ardoise",
+    "USAGE_EMERAUDE": "Le vert d'origine, celui de la croix des officines.",
+    "USAGE_OCEAN": "Un bleu calme et net, familier des hôpitaux.",
+    "USAGE_INDIGO": "Un bleu profond et posé, pour les assurances.",
+    "USAGE_SARCELLE": "Un bleu-vert apaisant, pour les cliniques.",
+    "USAGE_AMETHYSTE": "Un violet doux, chaleureux sans être vif.",
+    "USAGE_ARDOISE": "Un gris-bleu sobre, pour les laboratoires.",
+    "CONSEILLEE": "Conseillée pour vous",
+    "LISIBILITE": "Chaque palette est vérifiée pour que les textes restent lisibles et reposants, en mode clair comme en mode sombre (contraste WCAG AA). Les couleurs des alertes ne changent pas.",
+    "ENREGISTREE": "Palette {{nom}} appliquée pour toute l’équipe."
   }
 }

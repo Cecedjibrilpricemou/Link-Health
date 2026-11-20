@@ -5,7 +5,7 @@ import { Observable, of } from 'rxjs';
 import { tap, map, switchMap } from 'rxjs/operators';
 import { ApiService } from './api.service';
 import { User, LoginPayload, RegisterPayload } from '../models/user.model';
-import type { DemandeChangementTelephoneView, OtpLoginChallenge } from '@baobaoheath/shared-types';
+import type { DemandeChangementTelephoneView, OtpLoginChallenge, PaletteStructure } from '@baobaoheath/shared-types';
 
 interface BackendAckResponse {
   success: boolean;
@@ -138,6 +138,19 @@ export class AuthService {
     return this.api.post<{ success: boolean; data: { url: string }; }>('/uploads/avatar', formData).pipe(
       map(response => response.data)
     );
+  }
+
+  /**
+   * La palette de sa structure vient de changer (son responsable l'a choisie) :
+   * le profil garde en memoire la suit, pour qu'un rechargement ne revienne
+   * pas a l'ancienne.
+   */
+  definirPaletteStructure(palette: PaletteStructure | null): void {
+    const u = this._currentUser();
+    if (!u) return;
+    const maj = { ...u, paletteStructure: palette };
+    this._currentUser.set(maj);
+    localStorage.setItem('currentUser', JSON.stringify(maj));
   }
 
   private clearSession() {

@@ -73,6 +73,11 @@ export const PHARMACIEN_ROUTES: Routes = [
         path: 'dossier',
         loadComponent: () =>
           import('./dossier/dossier.component').then(m => m.PharmacienDossierComponent)
+      },
+      {
+        path: 'apparence',
+        loadComponent: () =>
+          import('../../shared/components/apparence-structure/apparence-structure.component').then(m => m.ApparenceStructureComponent)
       }
     ]
   }

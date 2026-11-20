@@ -106,6 +106,7 @@ export class AdminStructureLayoutComponent {
     items.push({ labelKey: 'ADMIN_STRUCTURE.NAV_DOSSIER', icon: 'pi-folder-open', route: '/admin-structure/dossier' });
     items.push({ labelKey: 'ADMIN_STRUCTURE.NAV_CONSEILLEES', icon: 'pi-sitemap', route: '/admin-structure/conseillees' });
     items.push({ labelKey: 'ADMIN_STRUCTURE.NAV_IDENTITES', icon: 'pi-id-card', route: '/admin-structure/identites' });
+    items.push({ labelKey: 'APPARENCE.NAV', icon: 'pi-palette', route: '/admin-structure/apparence' });
     return items;
   }
 }

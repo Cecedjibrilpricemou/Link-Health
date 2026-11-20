@@ -635,6 +635,12 @@ export interface UserDto {
   doitChangerMotDePasse: boolean;
   /** EF-01-08 : une fois l ordre verifie, le professionnel ne change plus son nom seul. */
   ordreVerifieLe?: string | null;
+  /**
+   * Les couleurs choisies par sa structure : toute son interface les prend.
+   * `null` pour qui n'appartient a aucune structure (patient, administration
+   * nationale, livreur) ou dont la structure garde la palette par defaut.
+   */
+  paletteStructure?: PaletteStructure | null;
   creeLe: string;
   modifieLe: string;
 }
@@ -4901,5 +4907,30 @@ export interface HistoriquePatientView {
   consultations: HistoriqueConsultationView[];
   vaccinations: { vaccin: string; le: HorodatageApi; prochaineDose: HorodatageApi | null }[];
   examensSuivis: ExamenSuiviView[];
+}
+
+// ── Les couleurs de l'interface, par structure ──────────────────────
+//
+// Une liste fermee de palettes, et non un nuancier libre : chacune est
+// construite et verifiee pour que les textes restent lisibles, en clair comme
+// en sombre (contraste WCAG AA). Pas de rouge ni d'orange : ce sont les
+// couleurs du danger et de l'avertissement.
+
+export const PALETTES_STRUCTURE = ['EMERAUDE', 'OCEAN', 'INDIGO', 'SARCELLE', 'AMETHYSTE', 'ARDOISE'] as const;
+export type PaletteStructure = (typeof PALETTES_STRUCTURE)[number];
+/** La palette de qui n'en a pas choisi : le vert d'origine. */
+export const PALETTE_PAR_DEFAUT: PaletteStructure = 'EMERAUDE';
+
+/** Ce que voit l'ecran « Apparence » : la palette, et qui peut la changer. */
+export interface ApparenceStructureView {
+  palette: PaletteStructure;
+  nomStructure: string;
+  typeStructure: TypeStructure;
+  /** Seul le responsable choisit : administrateur, titulaire ou assureur. */
+  peutModifier: boolean;
+}
+
+export interface ChangerPaletteDto {
+  palette: PaletteStructure;
 }
 

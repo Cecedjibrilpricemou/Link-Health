@@ -56,7 +56,7 @@
 
   &--today .rdv-card__content {
     border-left-color: var(--bb-bright);
-    background: color-mix(in srgb, var(--bb-success-bg) 55%, var(--bb-surface-card));
+    background: color-mix(in srgb, var(--bb-accent-bg) 55%, var(--bb-surface-card));
   }
 
   // ✦ Refonte UI : un rendez-vous passe s'efface par sa surface et son

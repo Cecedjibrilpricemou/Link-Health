@@ -351,8 +351,8 @@
   }
 
   &__succes {
-    background: var(--bb-success-bg);
-    border: 1px solid var(--bb-success-border);
+    background: var(--bb-accent-bg);
+    border: 1px solid var(--bb-accent-border);
     color: var(--bb-primary);
   }
 
@@ -391,7 +391,7 @@
     background: var(--bb-surface-1);
     color: var(--bb-text-secondary);
 
-    &--SATISFAITE { background: var(--bb-success-bg); color: var(--bb-primary); }
+    &--SATISFAITE { background: var(--bb-accent-bg); color: var(--bb-primary); }
     &--REFUSEE { background: color-mix(in srgb, var(--bb-danger) 12%, transparent); color: var(--bb-danger); }
   }
 

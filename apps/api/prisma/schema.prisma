@@ -814,6 +814,13 @@ model StructureSante {
   /// apparaitre close, elle n'a simplement rien dit. Saisi par le titulaire.
   horaires Json?
 
+  /// Les couleurs de l'interface pour le personnel de la structure : l'une des
+  /// palettes de `PALETTES_STRUCTURE` (shared-types), choisie par son
+  /// responsable. Nul : la palette par defaut. Une chaine plutot qu'une
+  /// enumeration : ajouter une palette ne demande pas de migration, et le
+  /// serveur refuse tout nom qu'il ne connait pas.
+  palette String?
+
   telephone   String?
   photoUrl    String?
   estActive   Boolean       @default(true)

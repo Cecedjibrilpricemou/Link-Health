@@ -31,6 +31,11 @@ export const ASSUREUR_ROUTES: Routes = [
         path: 'pharmacies',
         loadComponent: () =>
           import('./pharmacies/pharmacies.component').then(m => m.AssureurPharmaciesComponent)
+      },
+      {
+        path: 'apparence',
+        loadComponent: () =>
+          import('../../shared/components/apparence-structure/apparence-structure.component').then(m => m.ApparenceStructureComponent)
       }
     ]
   }

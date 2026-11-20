@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PALETTES_STRUCTURE } from '@baobaoheath/shared-types';
 import {
   CategorieProduit, ConsentScope, MotifBrisDeGlace, NiveauIdentite, Role, StatutDemandeRgpd, TypeDemandeRgpd, TypePieceIdentite,
 } from '../config/generated/client/client';
@@ -1094,6 +1095,11 @@ export const validerResultatsSchema = z.object({
 export const evolutionQuerySchema = z.object({
   codeLoinc: z.string().trim().min(1).max(20),
   idPatient: id.optional(),
+});
+
+// Les couleurs de l'interface : une palette de la liste fermee, rien d'autre.
+export const changerPaletteSchema = z.object({
+  palette: z.enum(PALETTES_STRUCTURE),
 });
 
 export const notificationsQuerySchema = paginationQuerySchema.extend({

@@ -1,0 +1,99 @@
+// shared/components/apparence-structure — meme grammaire que les autres ecrans
+// (cartes a bord fin, titres en display). Les vignettes portent leurs propres
+// couleurs : elles montrent chaque palette, pas la palette active.
+
+:host { display: block; }
+
+.bb-app {
+  max-width: 1040px;
+  margin: 0 auto;
+
+  &__muted { color: var(--bb-text-secondary); font-size: 13.5px; }
+
+  &__intro {
+    margin: 0 0 20px;
+    font-size: 14px; line-height: 1.6; color: var(--bb-text-secondary);
+  }
+
+  &__grille {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+
+  &__carte {
+    position: relative;
+    display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+    padding: 12px 12px 14px; text-align: left;
+    font: inherit; color: inherit; cursor: pointer;
+    background: var(--bb-surface-card);
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-lg);
+    box-shadow: var(--bb-shadow-sm);
+    transition: border-color var(--bb-transition), box-shadow var(--bb-transition), transform var(--bb-transition);
+
+    &:hover:not(:disabled) { box-shadow: var(--bb-shadow-hover); transform: translateY(-1px); }
+    &:focus-visible { outline: 3px solid var(--bb-focus-ring-color); outline-offset: 2px; }
+    &:disabled { cursor: default; }
+
+    &--active {
+      border-color: var(--bb-primary);
+      box-shadow: 0 0 0 2px var(--bb-primary), var(--bb-shadow-sm);
+    }
+  }
+
+  :host-context([data-theme="dark"]) &__carte--active {
+    border-color: var(--bb-bright);
+    box-shadow: 0 0 0 2px var(--bb-bright), var(--bb-shadow-sm);
+  }
+
+  &__vignette {
+    display: flex; height: 96px; margin-bottom: 6px;
+    border-radius: var(--bb-radius); overflow: hidden;
+    border: 1px solid var(--bb-border-light);
+  }
+
+  &__menu {
+    display: flex; flex-direction: column; gap: 6px;
+    width: 34%; padding: 12px 8px;
+  }
+
+  &__menu-ligne {
+    height: 6px; border-radius: 3px;
+    background: rgba(255, 255, 255, .35);
+    &--active { height: 8px; }
+  }
+
+  &__page {
+    flex: 1; display: flex; flex-direction: column; gap: 7px;
+    padding: 14px 12px;
+  }
+
+  &__titre { width: 70%; height: 8px; border-radius: 4px; }
+  &__texte { width: 90%; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, .12); }
+  &__bouton { width: 46%; height: 14px; margin-top: auto; border-radius: 5px; }
+
+  &__nom {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-family: var(--bb-font-display); font-size: 15px; font-weight: 800;
+    letter-spacing: -.2px; color: var(--bb-text-primary);
+  }
+
+  &__coche { color: var(--bb-primary); font-size: 17px; }
+  :host-context([data-theme="dark"]) &__coche { color: var(--bb-bright); }
+
+  &__usage { font-size: 12.5px; line-height: 1.5; color: var(--bb-text-muted); }
+
+  &__conseil {
+    align-self: flex-start;
+    padding: 3px 9px; border-radius: var(--bb-radius-pill);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    background: var(--bb-surface-2); color: var(--bb-text-secondary);
+  }
+
+  &__note {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 22px 0 0;
+    font-size: 12.5px; line-height: 1.55; color: var(--bb-text-muted);
+    i { margin-top: 2px; }
+  }
+}
