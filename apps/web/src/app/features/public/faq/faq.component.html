@@ -13,7 +13,7 @@
           @for (question of groupe.questions; track question) {
             <details class="pub-faq__item">
               <summary>
-                <span>{{ 'PUBLIC.FAQ.' + groupe.cle + '.' + question + '.QUESTION' | translate }}</span>
+                <span>{{ 'PUBLIC.FAQ.' + groupe.cle + '.' + question + '.QUESTION' | translate: params() }}</span>
                 <span class="pub-faq__toggle" aria-hidden="true"><i class="pi pi-plus"></i></span>
               </summary>
               <div class="pub-faq__answer">

@@ -3880,8 +3880,8 @@
       "PLATFORM": {
         "TITLE": "Découvrir la plateforme",
         "Q1": {
-          "QUESTION": "À quoi sert Baobao Health ?",
-          "ANSWER": "Baobao Health facilite le suivi du parcours de soins et le partage des informations utiles entre le patient et les professionnels qui le prennent en charge."
+          "QUESTION": "À quoi sert {{nom}} ?",
+          "ANSWER": "{{nom}} facilite le suivi du parcours de soins et le partage des informations utiles entre le patient et les professionnels qui le prennent en charge."
         },
         "Q2": {
           "QUESTION": "Qui peut utiliser la plateforme ?",

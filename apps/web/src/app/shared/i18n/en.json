@@ -3880,8 +3880,8 @@
       "PLATFORM": {
         "TITLE": "About the platform",
         "Q1": {
-          "QUESTION": "What is Baobao Health for?",
-          "ANSWER": "Baobao Health supports care follow-up and helps patients and the professionals caring for them share relevant information."
+          "QUESTION": "What is {{nom}} for?",
+          "ANSWER": "{{nom}} supports care follow-up and helps patients and the professionals caring for them share relevant information."
         },
         "Q2": {
           "QUESTION": "Who can use the platform?",
