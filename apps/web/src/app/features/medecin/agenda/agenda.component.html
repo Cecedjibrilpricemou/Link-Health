@@ -14,6 +14,93 @@
     [nomFichier]="'agenda'" />
 
 
+  @if (!isLoading()) {
+    <!-- La salle d'attente, dans l'ordre d'arrivee. Elle se met a jour
+         d'elle-meme quand l'accueil pointe un patient. -->
+    <section class="bb-agenda__file" aria-labelledby="file-attente-titre">
+      <div class="bb-agenda__file-tete">
+        <h2 id="file-attente-titre" class="bb-agenda__jour">
+          {{ 'MEDECIN.AGENDA.FILE_TITRE' | translate }}
+          <span class="bb-agenda__compte">{{ fileAttente().length }}</span>
+        </h2>
+        <button matButton="filled" type="button" class="bb-agenda__suivant"
+                [disabled]="fileAttente().length === 0 || !!enConsultation() || !!enCours()"
+                (click)="appelerSuivant()">
+          <i class="pi pi-megaphone" aria-hidden="true"></i>
+          {{ 'MEDECIN.AGENDA.APPELER_SUIVANT' | translate }}
+        </button>
+      </div>
+
+      @if (enConsultation(); as c) {
+        <article class="bb-agenda__card bb-agenda__card--consultation">
+          <div class="bb-agenda__heure">
+            <i class="pi pi-user" aria-hidden="true"></i>
+            <small>{{ 'MEDECIN.AGENDA.EN_CONSULTATION' | translate }}</small>
+          </div>
+          <div class="bb-agenda__corps">
+            <span class="bb-agenda__patient">{{ c.patient.prenom }} {{ c.patient.nom }}</span>
+            <span class="bb-agenda__meta">
+              @if (age(c.patient.dateNaissance); as a) { {{ a }} ans · }
+              {{ c.patient.sexe }}
+            </span>
+            @if (c.motif) { <span class="bb-agenda__motif">{{ c.motif }}</span> }
+          </div>
+          <div class="bb-agenda__droite">
+            <div class="bb-agenda__actions">
+              @if (c.idEpisode) {
+                <a class="bb-agenda__lien" [routerLink]="['/medecin/dossier', c.idEpisode]">
+                  {{ 'MEDECIN.DOSSIER.TITLE' | translate }}
+                </a>
+              }
+              <button matButton="filled" type="button" [disabled]="enCours() === c.id" (click)="changer(c, 'TERMINE')">
+                {{ 'MEDECIN.AGENDA.TERMINER' | translate }}
+              </button>
+            </div>
+          </div>
+        </article>
+        @if (fileAttente().length > 0) {
+          <p class="bb-agenda__muted bb-agenda__file-note">{{ 'MEDECIN.AGENDA.TERMINER_AVANT' | translate }}</p>
+        }
+      }
+
+      @for (r of fileAttente(); track r.id; let rang = $index) {
+        <article class="bb-agenda__card bb-agenda__card--attend" [attr.data-id]="r.id">
+          <div class="bb-agenda__heure" [attr.aria-label]="'MEDECIN.AGENDA.RANG' | translate: { n: rang + 1 }">
+            <span class="bb-agenda__rang">{{ rang + 1 }}</span>
+            <small>{{ 'MEDECIN.AGENDA.ARRIVE' | translate }} {{ r.arriveeLe | date:'HH:mm' }}</small>
+          </div>
+          <div class="bb-agenda__corps">
+            <span class="bb-agenda__patient">{{ r.patient.prenom }} {{ r.patient.nom }}</span>
+            <span class="bb-agenda__meta">
+              @if (age(r.patient.dateNaissance); as a) { {{ a }} ans · }
+              {{ r.patient.sexe }} · {{ 'MEDECIN.AGENDA.PREVU' | translate }} {{ r.prevuLe | date:'HH:mm' }}
+            </span>
+            @if (r.motif) { <span class="bb-agenda__motif">{{ r.motif }}</span> }
+            <span class="bb-agenda__attente"><i class="pi pi-clock" aria-hidden="true"></i> {{ attente(r) }}</span>
+          </div>
+          <div class="bb-agenda__droite">
+            <div class="bb-agenda__actions">
+              @if (r.idEpisode) {
+                <a class="bb-agenda__lien" [routerLink]="['/medecin/dossier', r.idEpisode]">
+                  {{ 'MEDECIN.DOSSIER.TITLE' | translate }}
+                </a>
+              }
+              <button matButton type="button" class="bb-agenda__appeler"
+                      [disabled]="!!enConsultation() || enCours() === r.id"
+                      (click)="changer(r, 'EN_CONSULTATION')">
+                {{ 'MEDECIN.AGENDA.APPELER' | translate }}
+              </button>
+            </div>
+          </div>
+        </article>
+      } @empty {
+        @if (!enConsultation()) {
+          <p class="bb-agenda__muted bb-agenda__file-note">{{ 'MEDECIN.AGENDA.FILE_VIDE' | translate }}</p>
+        }
+      }
+    </section>
+  }
+
   @if (isLoading()) {
     <p class="bb-agenda__muted">{{ 'COMMON.LOADING' | translate }}</p>
   } @else if (rdvs().length === 0) {

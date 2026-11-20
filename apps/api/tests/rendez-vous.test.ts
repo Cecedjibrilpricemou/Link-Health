@@ -31,6 +31,7 @@ jest.mock('../src/services/parametres.service', () => ({
 }));
 jest.mock('../src/utils/cache', () => ({ withCache: jest.fn(), cacheDel: jest.fn() }));
 jest.mock('../src/realtime/socket.server', () => ({ emitToUser: jest.fn() }));
+jest.mock('../src/realtime/rendez-vous.events', () => ({ diffuserRendezVous: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('../src/services/access-control.service', () => ({
   assertCanAccessConsultation: jest.fn(),
   buildPatientWhereForUser: jest.fn().mockResolvedValue({}),
@@ -49,6 +50,7 @@ const { notifierSansBloquer, envoyerSmsSimule } = jest.requireMock('../src/servi
   notifierSansBloquer: M; envoyerSmsSimule: M;
 };
 const { getIdentitePlateforme } = jest.requireMock('../src/services/parametres.service') as { getIdentitePlateforme: M };
+const { diffuserRendezVous } = jest.requireMock('../src/realtime/rendez-vous.events') as { diffuserRendezVous: M };
 
 const medecin: JwtPayload = { userId: 'med-1', role: 'MEDECIN', sessionId: 's' } as JwtPayload;
 const agent: JwtPayload = { userId: 'agent-1', role: 'AGENT_ACCUEIL', sessionId: 's' } as JwtPayload;
@@ -184,6 +186,16 @@ describe('changerStatutRendezVous', () => {
     expect(prisma.rendezVous.update.mock.calls[0][0].data).toEqual({ statut: 'TERMINE' });
     expect(vue.statut).toBe('TERMINE');
   });
+
+  // L'accueil voit en direct que le medecin a appele le patient.
+  it('diffuse l appel du patient a l accueil, en direct', async () => {
+    prisma.rendezVous.findFirst.mockResolvedValue({ id: 'rdv-1', statut: 'PRESENT' });
+    prisma.rendezVous.update.mockResolvedValue({ ...rdvRow, statut: 'EN_CONSULTATION' });
+
+    await changerStatutRendezVous('med-1', 'rdv-1', 'EN_CONSULTATION');
+
+    expect(diffuserRendezVous).toHaveBeenCalledWith('rdv-1');
+  });
 });
 
 describe('presencesDuJour et pointerPresence — l assistante', () => {
@@ -250,5 +262,20 @@ describe('presencesDuJour et pointerPresence — l assistante', () => {
 
     await expect(pointerPresence(agent, 'rdv-1')).rejects.toBeInstanceOf(ConflictError);
     expect(notifierSansBloquer).not.toHaveBeenCalled();
+    expect(diffuserRendezVous).not.toHaveBeenCalled();
+  });
+
+  // La file du medecin bouge des que l'accueil pointe, sans rechargement.
+  it('met a jour en direct la file du medecin', async () => {
+    prisma.rendezVous.findFirst.mockResolvedValue({
+      id: 'rdv-1', statut: 'PLANIFIE', idMedecin: 'med-1', idEpisode: 'ep-1',
+      patient: { utilisateur: { prenom: 'Maomou', nom: 'Conde' } },
+    });
+    prisma.rendezVous.updateMany.mockResolvedValue({ count: 1 });
+    prisma.rendezVous.findUniqueOrThrow.mockResolvedValue({ ...rdvRow, statut: 'PRESENT' });
+
+    await pointerPresence(agent, 'rdv-1');
+
+    expect(diffuserRendezVous).toHaveBeenCalledWith('rdv-1');
   });
 });

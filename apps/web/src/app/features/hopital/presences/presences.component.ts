@@ -5,13 +5,16 @@
 //
 // C'est son seul geste sur un rendez-vous : elle ne le crée pas et n'en change
 // pas l'heure — cela appartient au médecin.
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { ToastrService } from 'ngx-toastr';
 import type { PresenceDuJourView } from '@baobaoheath/shared-types';
 
 import { HopitalService } from '../../../core/services/hopital.service';
+import { SocketService } from '../../../core/services/socket.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
@@ -27,6 +30,8 @@ export class PresencesComponent implements OnInit {
   private hopital = inject(HopitalService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);
+  private socket = inject(SocketService);
+  private destroyRef = inject(DestroyRef);
 
   presences = signal<PresenceDuJourView[]>([]);
   isLoading = signal(true);
@@ -61,6 +66,14 @@ export class PresencesComponent implements OnInit {
 
   ngOnInit() {
     this.charger();
+
+    // Le medecin appelle un patient, ou un collegue en pointe un autre :
+    // l'ecran le montre aussitot, sans rechargement. L'agent sait vers quel
+    // bureau orienter, et qui attend encore.
+    this.socket
+      .on('rendez-vous:maj')
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.charger());
   }
 
   private charger() {

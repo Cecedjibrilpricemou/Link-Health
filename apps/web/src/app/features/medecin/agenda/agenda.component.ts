@@ -4,7 +4,15 @@
 // requête (`@@index([idMedecin, prevuLe])`) : il ne manquait que l'écran.
 //
 // Aujourd'hui d'abord, parce que c'est la vue dont il se sert le matin.
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+//
+// **La file d'attente, en tete.** L'accueil pointe l'arrivee d'un patient :
+// il entre aussitot dans la file du medecin, sans rechargement, dans l'ordre
+// d'arrivee - le premier arrive est le premier appele. Le medecin voit depuis
+// combien de temps chacun attend, et appelle le suivant d'un geste ; l'accueil
+// le voit en direct, et sait vers quel bureau orienter le patient.
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,11 +20,22 @@ import { ToastrService } from 'ngx-toastr';
 import type { RendezVousMedecinView, StatutRendezVous } from '@baobaoheath/shared-types';
 
 import { MedecinService } from '../../../core/services/medecin.service';
+import { SocketService } from '../../../core/services/socket.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 
 type Groupe = { cle: string; libelle: string; rdvs: RendezVousMedecinView[] };
+
+/** L'evenement emis par l'API a chaque pointage, appel, fin ou absence. */
+export const EVENEMENT_RENDEZ_VOUS = 'rendez-vous:maj';
+
+/** Le temps d'attente se recalcule toutes les trente secondes. */
+const RAFRAICHISSEMENT_ATTENTE_MS = 30_000;
+
+function estAujourdhui(iso: string | Date, maintenant: number): boolean {
+  return new Date(iso).toDateString() === new Date(maintenant).toDateString();
+}
 
 @Component({
   selector: 'app-medecin-agenda',
@@ -29,6 +48,11 @@ export class AgendaComponent implements OnInit {
   private service = inject(MedecinService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);
+  private socket = inject(SocketService);
+  private destroyRef = inject(DestroyRef);
+
+  /** L'heure courante, pour le temps d'attente : elle avance toute seule. */
+  readonly maintenant = signal(Date.now());
 
   rdvs = signal<RendezVousMedecinView[]>([]);
 
@@ -64,12 +88,66 @@ export class AgendaComponent implements OnInit {
     }));
   });
 
+  /**
+   * Les patients pointes aujourd'hui et pas encore appeles, **dans l'ordre
+   * d'arrivee** : c'est l'ordre de la salle d'attente, pas celui des creneaux.
+   * Un patient venu en avance pour 11 h ne passe pas devant celui qui attend
+   * depuis 9 h.
+   */
+  readonly fileAttente = computed(() =>
+    this.rdvs()
+      .filter((r) => r.statut === 'PRESENT' && !!r.arriveeLe && estAujourdhui(r.arriveeLe, this.maintenant()))
+      .sort((a, b) => new Date(a.arriveeLe!).getTime() - new Date(b.arriveeLe!).getTime()),
+  );
+
+  /** Le patient dans le cabinet, s'il y en a un. */
+  readonly enConsultation = computed(() =>
+    this.rdvs().find((r) => r.statut === 'EN_CONSULTATION' && estAujourdhui(r.prevuLe, this.maintenant())) ?? null,
+  );
+
   ngOnInit() {
     this.charger();
+
+    // Un pointage a l'accueil, ou un changement fait depuis un autre poste :
+    // la file se met a jour d'elle-meme. Plusieurs evenements rapproches ne
+    // donnent qu'un rechargement.
+    this.socket
+      .on(EVENEMENT_RENDEZ_VOUS)
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.charger(false));
+
+    const minuterie = setInterval(() => this.maintenant.set(Date.now()), RAFRAICHISSEMENT_ATTENTE_MS);
+    this.destroyRef.onDestroy(() => clearInterval(minuterie));
   }
 
-  private charger() {
-    this.isLoading.set(true);
+  /** Depuis combien de temps ce patient attend, en clair. */
+  attente(r: RendezVousMedecinView): string {
+    if (!r.arriveeLe) return '';
+    const minutes = Math.max(0, Math.floor((this.maintenant() - new Date(r.arriveeLe).getTime()) / 60_000));
+    if (minutes < 1) return this.i18n.t('MEDECIN.AGENDA.ATTENTE_INSTANT');
+    if (minutes < 60) return this.i18n.t('MEDECIN.AGENDA.ATTENTE_MIN', { n: minutes });
+    return this.i18n.t('MEDECIN.AGENDA.ATTENTE_H', {
+      h: Math.floor(minutes / 60),
+      m: String(minutes % 60).padStart(2, '0'),
+    });
+  }
+
+  /**
+   * Appeler le premier de la file.
+   *
+   * Pas tant qu'un patient est dans le cabinet : un medecin n'en recoit qu'un
+   * a la fois, et un second « en consultation » ferait croire a l'accueil que
+   * le bureau est libre pour deux.
+   */
+  appelerSuivant() {
+    const suivant = this.fileAttente()[0];
+    if (!suivant || this.enConsultation()) return;
+    this.changer(suivant, 'EN_CONSULTATION');
+  }
+
+  private charger(afficherChargement = true) {
+    // Un rechargement venu de la socket ne fait pas clignoter l'ecran.
+    if (afficherChargement) this.isLoading.set(true);
     this.service.getAgenda().subscribe({
       next: (r) => {
         this.rdvs.set(r.data ?? []);
