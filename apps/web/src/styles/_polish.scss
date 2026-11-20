@@ -139,6 +139,24 @@ a:not([class]) {
 
 .mat-mdc-form-field-error { font-size: 12px; }
 
+// **L'aide et l'erreur respirent sous le champ.** Material les pose au ras
+// du contour : « L'identifiant du dossier… », « Court et stable… »
+// semblaient entrer dans le champ du dessus. 6 px les en detachent, partout
+// a la fois, comme l'aide des formulaires publics. Prefixe par le champ :
+// Material injecte ses styles apres celui-ci, avec `padding: 0 16px` sur une
+// seule classe, et l'emporterait a specificite egale.
+.mat-mdc-form-field .mat-mdc-form-field-hint-wrapper,
+.mat-mdc-form-field .mat-mdc-form-field-error-wrapper {
+  padding-top: 6px;
+}
+
+// En taille fixe, l'aide est posee en absolu dans une hauteur reservee :
+// descendue de 6 px, elle venait toucher le champ suivant. On reserve ces
+// 6 px sous elle, seulement quand une aide ou une erreur est la.
+.mat-mdc-form-field .mat-mdc-form-field-subscript-wrapper:not(.mat-mdc-form-field-subscript-dynamic-size):has(.mat-mdc-form-field-hint, .mat-mdc-form-field-error) {
+  margin-bottom: 6px;
+}
+
 // ── CHAMPS NATIFS ──────────────────────────────────────────────────
 // Harmonisation des champs qui ne sont pas rendus par Angular Material.
 :where(input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='range']):not(.mat-mdc-input-element), select, textarea) {
