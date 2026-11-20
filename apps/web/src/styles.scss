@@ -1348,7 +1348,9 @@ body {
 }
 
 // ── VALIDATION FORMULAIRE ─────────────────────────────────────────
-input.ng-invalid.ng-dirty,
+// Pas les champs Material : leur contour passe deja au rouge. Ce cadre-ci
+// s'ajoutait a l'interieur, autour du texte (connexion, inscription).
+input.ng-invalid.ng-dirty:not(.mat-mdc-input-element),
 p-inputnumber.ng-invalid.ng-dirty .p-inputtext,
 p-select.ng-invalid.ng-dirty .p-select {
   border-color: var(--bb-danger) !important;
