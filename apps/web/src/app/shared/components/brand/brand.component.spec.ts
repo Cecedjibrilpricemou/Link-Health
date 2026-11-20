@@ -98,4 +98,45 @@ describe('la marque en tete de l interface', () => {
     fixture.detectChanges();
     expect(plateforme.entrerEspace).toHaveBeenLastCalledWith(null);
   });
+
+  // Un fichier de logo disparu (volume perdu, reseau coupe) : jamais une
+  // image cassee en tete de l'interface.
+  it('un logo introuvable laisse place aux initiales', () => {
+    const { el, fixture } = monter({ role: 'MEDECIN', structure: { ...STRUCTURE, logoUrl: '/uploads/structures/perdu.png' } });
+    el.querySelector('img')!.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    expect(el.querySelector('img')).toBeNull();
+    expect(el.querySelector('.bb-brand__mono')?.textContent?.trim()).toBe('CHU');
+  });
+
+  it('un nouveau logo est de nouveau essaye', () => {
+    const utilisateur = signal<Partial<UserDto> | null>({ role: 'MEDECIN', structure: { ...STRUCTURE, logoUrl: '/uploads/structures/perdu.png' } });
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [Hote],
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: AuthService, useValue: { currentUser: utilisateur } },
+        { provide: PlateformeService, useValue: { nom: signal('KÈNÈYA'), logoUrl: signal(''), entrerEspace: vi.fn() } },
+        { provide: I18nService, useClass: I18nMaquette },
+      ],
+    });
+    const fixture = TestBed.createComponent(Hote);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector('img')!.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    utilisateur.set({ role: 'MEDECIN', structure: { ...STRUCTURE, logoUrl: '/uploads/structures/nouveau.png' } });
+    fixture.detectChanges();
+    expect(el.querySelector('img')?.getAttribute('src')).toMatch(/nouveau\.png$/);
+  });
+
+  it('le logo de la plateforme introuvable : le nom seul', () => {
+    const { el, fixture } = monter(null, 'plateforme');
+    el.querySelector('img')!.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    expect(el.querySelector('img')).toBeNull();
+    expect(nom(el)).toBe('KÈNÈYA');
+  });
 });
+

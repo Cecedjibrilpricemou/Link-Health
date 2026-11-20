@@ -63,6 +63,8 @@ export class ApparenceStructureComponent implements OnInit {
   readonly logo = computed(() => urlMedia(this.vue()?.logoUrl ?? ''));
   readonly initiales = computed(() => monogramme(this.vue()?.nomStructure ?? ''));
   envoiLogo = signal(false);
+  /** Un logo introuvable : l'apercu montre les initiales, pas une image cassee. */
+  logoCasse = signal<string | null>(null);
 
   readonly conseillee = computed(() => {
     const v = this.vue();
