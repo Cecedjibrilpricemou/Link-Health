@@ -425,6 +425,28 @@ celui du CSS (`object-fit: cover`).
   `api_uploads` : ils survivent aux redéploiements, mais ne sont pas dans la
   sauvegarde de la base (section 7).
 
+### L'administrateur de structure et le secret médical
+
+**L'administrateur dirige tout, sauf le soin.** Il voit les admissions, les
+rendez-vous, les épisodes, le plateau et la file du laboratoire, l'avancement
+des analyses. Il ne lit ni les consultations, ni la fiche médicale, ni les
+résultats, ni les commentaires du laboratoire ou du médecin, et ne fait aucun
+acte de soin (prescrire, ouvrir une consultation, clore une prise en charge,
+saisir un résultat). S'il est aussi médecin, il a un compte médecin à part.
+
+- **Le filtre est posé une fois, sur le routeur** :
+  `sansValeursDAnalysePour(...)` (`middlewares/secret-medical.middleware.ts`)
+  retire les valeurs et les commentaires cliniques de **toute** réponse JSON
+  de l'accueil (`/hopital`, pour l'accueil et l'administration) et du
+  laboratoire (`/laboratoire`, pour l'administration). Une nouvelle route de
+  ces routeurs en hérite sans rien faire.
+- **Les routes de soin ne laissent plus passer `ADMIN_STRUCTURE`** :
+  actes médicaux de l'hôpital, saisie et compte rendu du laboratoire, espace
+  médecin, consultations, fiche patient, résultats, export FHIR,
+  synchronisation hors ligne, rappels de vaccination nominatifs.
+- Ce qui lui reste ouvert : son administration, les chiffres (statistiques,
+  couverture vaccinale), la relecture des accès d'urgence de son personnel.
+
 ### La géographie
 
 Le référentiel est **générique**, pour servir un autre pays sans toucher au
@@ -476,6 +498,10 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **L'administrateur de structure sans contenu médical** (branche
+  `fix/admin-sans-contenu-medical`, section 6) : actes et lectures de soin
+  fermés, valeurs d'analyse retirées de toute réponse de l'accueil et du
+  laboratoire.
 - **Images des pages publiques modifiables par le super-admin** (branche
   `feat/visuels-publics`, section 6) : neuf emplacements, images vérifiées,
   réduites et converties en WebP, description pour les lecteurs d'écran.

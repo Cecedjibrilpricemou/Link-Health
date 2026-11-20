@@ -133,8 +133,10 @@ router.get('/me/resultats/evolution', authenticate, requireRole('PATIENT'), asyn
   res.json({ success: true, data });
 });
 
-router.get('/', authenticate, requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'ADMIN_STRUCTURE'), getPatientsController);
+// La fiche medicale (allergies, maladies chroniques) est au soin. L'accueil
+// et l'administration retrouvent un patient par /hopital/patients/recherche.
+router.get('/', authenticate, requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN'), getPatientsController);
 router.get('/qr/:qrCode', authenticate, requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN'), getPatientByQrCodeController);
-router.get('/:id', authenticate, requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'ADMIN_STRUCTURE'), getPatientByIdController);
+router.get('/:id', authenticate, requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN'), getPatientByIdController);
 
 export default router;

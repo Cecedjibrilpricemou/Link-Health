@@ -34,7 +34,9 @@ router.post(
 
 router.get(
   '/rappels',
-  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'ADMIN_STRUCTURE'),
+  // Qui doit quel vaccin : nominatif, donc au soin. Les chiffres (/stats)
+  // restent a l'administration.
+  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN'),
   getRappelsVaccinationController
 );
 
