@@ -9,11 +9,14 @@
 //
 // Tous les champs sont des signaux : l'application est zoneless.
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { ToastrService } from 'ngx-toastr';
 import { PALETTES_STRUCTURE } from '@baobaoheath/shared-types';
 import type { ApparenceStructureView, PaletteStructure, TypeStructure } from '@baobaoheath/shared-types';
 
 import { APERCUS } from '../../../core/theme/palettes-structure';
+import { monogramme } from '../../utils/monogramme';
+import { urlMedia } from '../../utils/url-media';
 import { PaletteStructureService } from '../../services/palette-structure.service';
 import { I18nService } from '../../services/i18n.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
@@ -37,7 +40,7 @@ export const PALETTE_CONSEILLEE: Record<TypeStructure, PaletteStructure> = {
 @Component({
   selector: 'app-apparence-structure',
   standalone: true,
-  imports: [TranslatePipe],
+  imports: [TranslatePipe, MatButtonModule],
   templateUrl: './apparence-structure.component.html',
   styleUrl: './apparence-structure.component.scss',
 })
@@ -55,6 +58,11 @@ export class ApparenceStructureComponent implements OnInit {
 
   /** La palette affichee : celle de l'ecran, apercu compris. */
   readonly active = this.palette.active;
+
+  /** Le logo, ou les initiales qui en tiennent lieu. */
+  readonly logo = computed(() => urlMedia(this.vue()?.logoUrl ?? ''));
+  readonly initiales = computed(() => monogramme(this.vue()?.nomStructure ?? ''));
+  envoiLogo = signal(false);
 
   readonly conseillee = computed(() => {
     const v = this.vue();
@@ -82,6 +90,43 @@ export class ApparenceStructureComponent implements OnInit {
         );
       },
       error: (err) => { this.enCours.set(false); this.erreur(err); },
+    });
+  }
+
+  choisirLogo(evenement: Event) {
+    const champ = evenement.target as HTMLInputElement;
+    const fichier = champ.files?.[0];
+    champ.value = '';
+    if (!fichier || this.envoiLogo()) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(fichier.type)) {
+      this.toastr.error(this.i18n.t('APPARENCE.LOGO_ERR_TYPE'), this.i18n.t('COMMON.ERROR_TITLE'));
+      return;
+    }
+    if (fichier.size > 3 * 1024 * 1024) {
+      this.toastr.error(this.i18n.t('APPARENCE.LOGO_ERR_POIDS'), this.i18n.t('COMMON.ERROR_TITLE'));
+      return;
+    }
+    this.envoiLogo.set(true);
+    this.palette.televerserLogo(fichier).subscribe({
+      next: (r) => {
+        this.envoiLogo.set(false);
+        if (r.data) this.vue.set(r.data);
+        this.toastr.success(this.i18n.t('APPARENCE.LOGO_ENREGISTRE'), this.i18n.t('COMMON.SUCCESS'));
+      },
+      error: (err) => { this.envoiLogo.set(false); this.erreur(err); },
+    });
+  }
+
+  retirerLogo() {
+    if (this.envoiLogo()) return;
+    this.envoiLogo.set(true);
+    this.palette.retirerLogo().subscribe({
+      next: (r) => {
+        this.envoiLogo.set(false);
+        if (r.data) this.vue.set(r.data);
+        this.toastr.success(this.i18n.t('APPARENCE.LOGO_RETIRE'), this.i18n.t('COMMON.SUCCESS'));
+      },
+      error: (err) => { this.envoiLogo.set(false); this.erreur(err); },
     });
   }
 

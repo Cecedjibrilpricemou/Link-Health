@@ -8,7 +8,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { PatientService } from '../../../core/services/patient.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
-import { PlateformeService } from '../../../shared/services/plateforme.service';
+import { EspaceService } from '../../../shared/services/espace.service';
 import { Patient } from '../../../core/models/patient.model';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import QRCode from 'qrcode';
@@ -25,7 +25,8 @@ export class QrCodeComponent implements OnInit {
   private authService = inject(AuthService);
   private patientService = inject(PatientService);
   private i18n = inject(I18nService);
-  readonly plateforme = inject(PlateformeService);
+  /** La structure du patient : sa carte la lui rappelle. */
+  readonly espace = inject(EspaceService).espace;
 
   currentUser  = this.authService.currentUser;
   patientInfo  = signal<Patient | null>(null);
@@ -98,7 +99,7 @@ export class QrCodeComponent implements OnInit {
   shareQrCode() {
     const url = this.qrCodeUrl();
     if (url && navigator.share) {
-      navigator.share({ title: `Mon QR Code ${this.plateforme.nom()}`, url }).catch(() => {});
+      navigator.share({ title: this.espace()?.estStructure ? `Mon QR Code — ${this.espace()!.nom}` : 'Mon QR Code', url }).catch(() => {});
     }
   }
 }

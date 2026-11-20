@@ -2,7 +2,7 @@ import { prisma } from '../config/prisma';
 import { JwtPayload } from '../types/auth.types';
 import { NotFoundError, ValidationError } from '../utils/app-error';
 import { echapper } from './hopital.service';
-import { getIdentitePlateforme } from './parametres.service';
+import { identiteDocument, structureDeConsultation } from './document-emetteur.service';
 
 /** Le mode lisible par le patient, pas le code de l'enumeration. */
 const LIBELLE_MODE: Record<string, string> = {
@@ -41,7 +41,8 @@ export async function documentRecu(user: JwtPayload, idFacture: string): Promise
     throw new ValidationError("Cette facture n'est pas payee : aucun recu ne peut etre emis");
   }
 
-  const identite = await getIdentitePlateforme();
+  // L'en-tete : la structure qui a encaisse, celle de la consultation.
+  const identite = await identiteDocument(await structureDeConsultation(facture.idConsultation));
   const coordonnees = [identite.telephone, identite.emailContact].filter(Boolean).map(echapper).join(' &middot; ');
   const montant = new Intl.NumberFormat('fr-FR').format(facture.montantGnf);
   const p = facture.patient;

@@ -14,6 +14,33 @@
       {{ (v.peutModifier ? 'APPARENCE.INTRO_RESPONSABLE' : 'APPARENCE.INTRO_MEMBRE') | translate: { structure: v.nomStructure } }}
     </p>
 
+    <!-- Le logo : il remplace celui de la plateforme dans l'interface de toute
+         l'equipe, et en tete des documents imprimes. Sans logo, les initiales. -->
+    <section class="bb-app__logo">
+      <span class="bb-app__logo-apercu" aria-hidden="true">
+        @if (logo()) { <img [src]="logo()" alt="" /> } @else { <span class="bb-app__logo-mono">{{ initiales() }}</span> }
+      </span>
+      <div class="bb-app__logo-texte">
+        <h2 class="bb-app__logo-titre">{{ 'APPARENCE.LOGO_TITRE' | translate }}</h2>
+        <p class="bb-app__logo-aide">{{ (v.peutModifier ? 'APPARENCE.LOGO_AIDE' : 'APPARENCE.LOGO_AIDE_MEMBRE') | translate }}</p>
+        @if (v.peutModifier) {
+          <div class="bb-app__logo-actions">
+            <input #champLogo type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="choisirLogo($event)" />
+            <button matButton="outlined" type="button" class="bb-app__logo-envoyer" [disabled]="envoiLogo()" (click)="champLogo.click()">
+              <i class="pi pi-upload" aria-hidden="true"></i>
+              {{ (v.logoUrl ? 'APPARENCE.LOGO_REMPLACER' : 'APPARENCE.LOGO_AJOUTER') | translate }}
+            </button>
+            @if (v.logoUrl) {
+              <button matButton type="button" class="bb-app__logo-retirer" [disabled]="envoiLogo()" (click)="retirerLogo()">
+                <i class="pi pi-times" aria-hidden="true"></i> {{ 'APPARENCE.LOGO_RETIRER' | translate }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <h2 class="bb-app__soustitre">{{ 'APPARENCE.COULEURS_TITRE' | translate }}</h2>
     <div class="bb-app__grille" role="radiogroup" [attr.aria-label]="'APPARENCE.TITLE' | translate">
       @for (p of palettes; track p) {
         <button type="button" role="radio" class="bb-app__carte"

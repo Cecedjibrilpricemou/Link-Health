@@ -494,7 +494,7 @@
       "BIRTH_DATE": "Date of birth",
       "BLOOD_TYPE": "Blood type",
       "SECURITY_TITLE": "Secure QR Code",
-      "SECURITY_TEXT": "This code identifies your record. Only show it to authorised {{nom}} healthcare professionals: it lets them look up your record.",
+      "SECURITY_TEXT": "This code identifies your record. Only show it to authorised healthcare professionals: it lets them look up your record.",
       "NOT_AVAILABLE": "QR Code not available",
       "LOADING": "Loading...",
       "IMG_ALT": "Patient identification QR Code to present at a pharmacy or health facility",
@@ -4603,8 +4603,8 @@
   "APPARENCE": {
     "NAV": "Appearance",
     "TAG": "Appearance",
-    "TITLE": "Facility colours",
-    "SUB": "The interface colours for your whole team.",
+    "TITLE": "Logo and colours",
+    "SUB": "Your facility's image in your whole team's interface.",
     "INTRO_RESPONSABLE": "Choose the colours of {{structure}}. Your whole team will see them right away.",
     "INTRO_MEMBRE": "The colours of {{structure}}, chosen by its manager.",
     "PALETTE_EMERAUDE": "Emerald",
@@ -4621,6 +4621,22 @@
     "USAGE_ARDOISE": "A sober blue-grey, for laboratories.",
     "CONSEILLEE": "Recommended for you",
     "LISIBILITE": "Every palette is checked so text stays readable and easy on the eyes, in light and dark mode (WCAG AA contrast). Alert colours never change.",
-    "ENREGISTREE": "{{nom}} palette applied for the whole team."
+    "ENREGISTREE": "{{nom}} palette applied for the whole team.",
+    "LOGO_TITRE": "Facility logo",
+    "LOGO_AIDE": "It replaces the platform name at the top of your team's interface, and appears on your prescriptions, reports and test orders. PNG, JPEG or WebP, preferably square, 3 MB max. Without a logo, your initials.",
+    "LOGO_AIDE_MEMBRE": "Your facility's logo, chosen by its manager.",
+    "LOGO_AJOUTER": "Add a logo",
+    "LOGO_REMPLACER": "Replace logo",
+    "LOGO_RETIRER": "Remove logo",
+    "LOGO_ENREGISTRE": "Logo saved for the whole team.",
+    "LOGO_RETIRE": "Logo removed: your initials replace it.",
+    "LOGO_ERR_TYPE": "Unsupported format: choose a PNG, JPEG or WebP image.",
+    "LOGO_ERR_POIDS": "Image too large: 3 MB max.",
+    "COULEURS_TITRE": "Interface colours"
+  },
+  "ESPACE": {
+    "PATIENT": "My health space",
+    "LIVREUR": "Courier space",
+    "PROFESSIONNEL": "My space"
   }
 }
