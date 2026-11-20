@@ -178,7 +178,9 @@ async function relationDeSoin(user: JwtPayload, utilisateur: Profils): Promise<P
           ordonnances: {
             some: {
               statut: 'EN_ATTENTE',
-              commande: { is: { OR: parCommande } },
+              // Une ordonnance peut avoir sa commande d'origine et un
+              // reliquat, servis par deux officines differentes.
+              commandes: { some: { OR: parCommande } },
             },
           },
         },

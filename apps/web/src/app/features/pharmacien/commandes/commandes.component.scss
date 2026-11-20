@@ -1,3 +1,43 @@
+// ── Le stock, verifie a l'arrivee de l'appel ─────────────────────────
+// Le bilan d'abord, en couleur : on sait d'un coup d'oeil si l'on peut
+// prendre. Les couleurs disent un etat, pas une alarme : une partie n'est pas
+// une faute.
+.bb-cmd__stock {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 10px; padding: 8px 12px;
+  border-radius: var(--bb-radius);
+  font-size: 13px; font-weight: 700;
+  &[data-etat='COMPLETE'] { background: var(--bb-success-bg); color: var(--bb-success); }
+  &[data-etat='PARTIELLE'] { background: var(--bb-warning-bg); color: var(--bb-warning); }
+  &[data-etat='AUCUNE'] { background: var(--bb-danger-bg); color: var(--bb-danger); }
+}
+
+// L'etat d'une ligne, sous son nom : la grille quantite / prix ne bouge pas.
+.bb-cmd__stock-ligne {
+  display: block; margin-top: 2px;
+  font-size: 12px; font-weight: 700;
+  &[data-etat='DISPONIBLE'] { color: var(--bb-success); }
+  &[data-etat='INSUFFISANT'] { color: var(--bb-warning); }
+  &[data-etat='ABSENT'] { color: var(--bb-danger); }
+}
+
+.bb-cmd__equivalent {
+  display: flex; align-items: center; gap: 5px; margin-top: 2px;
+  font-size: 12px; color: var(--bb-text-muted);
+  i { font-size: 11px; }
+}
+
+// Les lignes a cocher de la proposition partielle.
+.bb-cmd__selection { list-style: none; margin: 14px 0 0; padding: 0; }
+.bb-cmd__selection-ligne {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start;
+  column-gap: 10px; padding: 9px 0;
+  border-bottom: 1px solid var(--bb-border-light);
+  cursor: pointer; font-size: 13.5px;
+  input { margin-top: 3px; accent-color: var(--bb-primary); }
+  .bb-cmd__stock-ligne { grid-column: 2; }
+}
+
 .bb-cmd__note--erreur {
   color: var(--bb-danger, #991b1b);
   border-inline-start: .25rem solid currentColor;

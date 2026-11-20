@@ -621,9 +621,19 @@ export const alertesPrescriptionSchema = z.object({
 export const lancerRechercheSchema = z.object({ idOrdonnance: id }).strict();
 
 export const repondreDisponibiliteSchema = z.object({
-  // Une pharmacie repond oui ou non : il n'y a pas de « peut-etre ». La
-  // reponse partielle se traite par la delivrance ligne a ligne, plus tard.
+  // Une pharmacie prend tout, ou refuse. Ne servir qu'une partie se propose
+  // par sa propre route : le patient doit l'accepter.
   aTousLesProduits: z.boolean(),
+}).strict();
+
+/** Les lignes d'ordonnance qu'une pharmacie peut servir, et elles seules. */
+export const propositionPartielleSchema = z.object({
+  lignes: z.array(id).min(1, 'Choisissez au moins un produit').max(50),
+}).strict();
+
+/** Le choix du patient devant une proposition partielle. */
+export const reponsePartielleSchema = z.object({
+  reponse: z.enum(['ACCEPTER_ET_RELANCER', 'ACCEPTER_SEUL', 'REFUSER']),
 }).strict();
 
 export const retirerPriseEnChargeSchema = z.object({

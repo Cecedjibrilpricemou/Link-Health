@@ -3,7 +3,7 @@ import { detecterEtPersisterAlertesEpidemiques } from './analytics.service';
 import { verifierRappelsAEnvoyer } from './notification.service';
 import { expirerSessionsUssd } from './ussd.service';
 import { traiterAlertesCritiques } from './laboratoire.service';
-import { conclureCommandesExpirees, elargirCommandesEnAttente } from './commande.service';
+import { conclureCommandesExpirees, elargirCommandesEnAttente, expirerPropositionsPartielles } from './commande.service';
 import { conclureCoursesExpirees, elargirCoursesEnAttente } from './course.service';
 import { getValeursParametres } from './parametres.service';
 import { logger } from '../config/logger';
@@ -98,6 +98,13 @@ export function startBackgroundJobs() {
         logger.info('[JOB] appels arretes au delai final', {
           commandes: commandesConclues.conclues, courses: coursesConclues.conclues,
         });
+      }
+      // Une proposition partielle sans reponse du patient sous deux heures :
+      // la commande retourne au quartier, comme apres un refus. Apres la
+      // conclusion des appels : une erreur ici ne la bloque pas.
+      const propositions = await expirerPropositionsPartielles();
+      if (propositions.expirees > 0 || isVerboseJobsEnabled()) {
+        logger.info('[JOB] propositions partielles expirees', propositions);
       }
     }).catch((error: unknown) => logger.error('[JOB] elargissement failed', { error }));
   };

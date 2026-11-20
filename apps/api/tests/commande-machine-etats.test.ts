@@ -165,6 +165,9 @@ const COMMANDE_PARTAGEE = {
   remiseLe: null,
   clotureeLe: null,
   motifAnnulation: null,
+  // Les champs de la prise partielle (2026-11-20), a leurs valeurs par defaut.
+  lignesOrdonnance: [], lignesProposees: [], idCommandeOrigine: null, commandeOrigine: null,
+  propositionPartielleLe: null, choixPartiel: null, choixPartielLe: null,
   lignes: [],
   pharmacie: { id: 'ph1', nom: 'Pharmacie Essai', quartier: 'Donka' },
   reponses: [],

@@ -12,3 +12,31 @@
   .bb-cmd__offre { grid-template-columns: 1fr 1fr; }
   .bb-cmd__offre .bb-cmd__btn { grid-column: 1 / -1; }
 }
+
+// ── La proposition partielle : ce qui est la, ce qui manque ──────────
+// Les deux listes sous des intitules colores, et les trois choix en pile sur
+// telephone : chacun doit se lire en entier, aucun ne doit etre devine.
+.bb-cmd__partiel {
+  margin-top: 4px; padding: 14px 16px;
+  border: 1px solid var(--bb-warning-border); border-radius: var(--bb-radius-lg);
+  background: color-mix(in srgb, var(--bb-warning-bg) 60%, var(--bb-surface-card));
+}
+
+.bb-cmd__partiel-titre {
+  margin: 0 0 6px; font-family: var(--bb-font-display); font-size: 14.5px; font-weight: 800;
+  color: var(--bb-text-primary);
+}
+
+.bb-cmd__partiel-sous {
+  display: flex; align-items: center; gap: 6px; margin: 12px 0 2px;
+  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+  &[data-etat='DISPONIBLE'] { color: var(--bb-success); }
+  &[data-etat='ABSENT'] { color: var(--bb-danger); }
+}
+
+.bb-cmd__choix-partiel {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 14px;
+  @media (max-width: 600px) { flex-direction: column; .bb-cmd__btn { justify-content: center; } }
+}
+
+.bb-cmd__reliquat { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-weight: 700; }

@@ -67,7 +67,8 @@ function ordonnanceSignee(etat: Record<string, unknown> = {}) {
   prisma.ordonnance.findUnique.mockResolvedValue({
     id: 'ord-1', numero: 'OR-2026-000001',
     signeLe: new Date('2026-09-20'),
-    commande: null,
+    // Les commandes d'origine de l'ordonnance (plusieurs depuis le reliquat).
+    commandes: [],
     lignes: [{ id: 'l1' }],
     consultation: {
       idMedecinValideur: 'u-med',
@@ -92,6 +93,10 @@ function commandeRelue(etat: Record<string, unknown> = {}) {
     id: 'cmd-1', numero: 'CM-2026-000001', statut: 'RECHERCHE_PHARMACIE',
     quartierRecherche: 'Kipé', prefectureRecherche: 'Conakry', communeRecherche: 'Ratoma',
     idPharmacie: null, modeRemise: null,
+    // Les champs de la prise partielle (2026-11-20), a leurs valeurs par
+    // defaut : une commande qui sert toute son ordonnance, sans proposition.
+    lignesOrdonnance: [], lignesProposees: [], idCommandeOrigine: null, commandeOrigine: null,
+    propositionPartielleLe: null, choixPartiel: null, choixPartielLe: null,
     creeLe: new Date('2026-10-09T08:00:00Z'),
     reponses: [],
     pharmacie: null,
@@ -241,7 +246,7 @@ describe('lancerRecherchePharmacie', () => {
   });
 
   it('refuse une seconde commande sur la meme ordonnance', async () => {
-    ordonnanceSignee({ commande: { id: 'cmd-existante' } });
+    ordonnanceSignee({ commandes: [{ id: 'cmd-existante' }] });
 
     await expect(lancerRecherchePharmacie('ord-1')).rejects.toBeInstanceOf(ConflictError);
   });
@@ -936,7 +941,11 @@ describe('delai final de l appel', () => {
     await conclureCommandesExpirees(60, MAINTENANT);
 
     expect(prisma.commande.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { statut: 'RECHERCHE_PHARMACIE', creeLe: { lte: new Date('2026-11-12T09:00:00Z') } },
+      where: {
+        statut: 'RECHERCHE_PHARMACIE',
+        creeLe: { lte: new Date('2026-11-12T09:00:00Z') },
+        OR: [{ choixPartielLe: null }, { choixPartielLe: { lte: new Date('2026-11-12T09:00:00Z') } }],
+      },
     }));
   });
 

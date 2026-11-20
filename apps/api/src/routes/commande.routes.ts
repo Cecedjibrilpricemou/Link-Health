@@ -14,7 +14,9 @@ import {
   encaisserCommandeSchema,
   lancerRechercheSchema,
   payerCommandeSchema,
+  propositionPartielleSchema,
   repondreDisponibiliteSchema,
+  reponsePartielleSchema,
   retirerPriseEnChargeSchema,
 } from '../validators/api.schemas';
 
@@ -59,6 +61,35 @@ router.post(
       String(req.params.id),
       req.body.aTousLesProduits
     );
+    res.json({ success: true, data });
+  }
+);
+
+/**
+ * La pharmacie ne detient qu'une partie des produits et propose de la servir.
+ * La commande lui est reservee le temps que le patient choisisse.
+ */
+router.post(
+  '/:id/proposition-partielle',
+  requireRole('PHARMACIEN'),
+  requirePersonnelClinique,
+  validateBody(propositionPartielleSchema),
+  async (req: AuthRequest, res: Response) => {
+    const data = await commande.proposerPrisePartielle(req.user!, String(req.params.id), req.body.lignes);
+    res.json({ success: true, data });
+  }
+);
+
+/**
+ * Le patient repond : accepter et relancer le manquant, accepter seul, ou
+ * refuser. Rien n'est servi ni paye sans cette reponse.
+ */
+router.post(
+  '/:id/reponse-partielle',
+  requireRole('PATIENT'),
+  validateBody(reponsePartielleSchema),
+  async (req: AuthRequest, res: Response) => {
+    const data = await commande.repondrePropositionPartielle(req.user!, String(req.params.id), req.body.reponse);
     res.json({ success: true, data });
   }
 );

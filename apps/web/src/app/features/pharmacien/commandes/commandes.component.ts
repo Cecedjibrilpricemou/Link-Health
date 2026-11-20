@@ -11,10 +11,16 @@
 //
 // **Répondre « je n'ai pas tout » est définitif pour cette officine** : l'appel
 // disparaît de sa file. L'écran le dit avant, pas après.
+//
+// **Le stock est vérifié pour elle à l'arrivée de l'appel** : elle voit tout
+// de suite si elle a tout, une partie ou rien, ligne par ligne, avec les
+// équivalents qu'elle détient - sans fouiller ses rayons avant de répondre.
+// La vérification éclaire, elle ne décide pas : c'est le pharmacien qui prend,
+// propose une partie au patient, ou refuse.
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
-import type { CommandeView } from '@baobaoheath/shared-types';
+import type { CommandeView, DisponibiliteLigneView } from '@baobaoheath/shared-types';
 import { CourseService } from '../../../core/services/course.service';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { PharmacienService } from '../../../core/services/pharmacien.service';
@@ -59,6 +65,10 @@ export class PharmacienCommandesComponent implements OnInit {
   enCours = signal<string | null>(null);
   /** Celle dont on s'apprête à dire qu'on ne l'a pas : on demande confirmation. */
   confirmeRefus = signal<CommandeView | null>(null);
+
+  /** Celle dont on propose une partie, et les lignes cochées. */
+  propositionPour = signal<CommandeView | null>(null);
+  lignesChoisies = signal<ReadonlySet<string>>(new Set());
 
   /** Les appels auxquels cette officine n'a pas encore répondu. */
   readonly appels = computed(() =>
@@ -320,6 +330,69 @@ export class PharmacienCommandesComponent implements OnInit {
 
   demanderRefus(c: CommandeView): void {
     this.confirmeRefus.set(c);
+  }
+
+  // ── Le stock, et la prise partielle ────────────────────────────────
+
+  /** Ce que le stock dit d'une ligne de cet appel. */
+  ligneStock(c: CommandeView, idLigne: string): DisponibiliteLigneView | null {
+    return c.disponibilite?.lignes.find((l) => l.idLigneOrdonnance === idLigne) ?? null;
+  }
+
+  /**
+   * Ouvrir la proposition partielle, avec les lignes que le stock dit
+   * disponibles deja cochees. Le pharmacien corrige : son rayon fait foi.
+   */
+  ouvrirProposition(c: CommandeView): void {
+    const disponibles = (c.disponibilite?.lignes ?? []).filter((l) => l.etat === 'DISPONIBLE').map((l) => l.idLigneOrdonnance);
+    this.lignesChoisies.set(new Set(disponibles));
+    this.propositionPour.set(c);
+  }
+
+  fermerProposition(): void {
+    this.propositionPour.set(null);
+  }
+
+  basculerLigne(id: string): void {
+    this.lignesChoisies.update((s) => {
+      const copie = new Set(s);
+      if (copie.has(id)) copie.delete(id); else copie.add(id);
+      return copie;
+    });
+  }
+
+  /** Une partie : au moins un produit, et pas tous - sinon c'est une prise complète. */
+  peutProposer(): boolean {
+    const c = this.propositionPour();
+    const n = this.lignesChoisies().size;
+    return !!c && !this.enCours() && n > 0 && n < c.lignes.length;
+  }
+
+  confirmerProposition(): void {
+    const c = this.propositionPour();
+    if (!c || !this.peutProposer()) return;
+    this.enCours.set(c.id);
+    // Dans l'ordre de l'ordonnance, pas dans l'ordre des clics.
+    const lignes = c.lignes.map((l) => l.id).filter((id) => this.lignesChoisies().has(id));
+    this.pharma.proposerPrisePartielle(c.id, lignes).subscribe({
+      next: () => {
+        this.enCours.set(null);
+        this.propositionPour.set(null);
+        this.toastr.success(this.i18n.t('PHARMACIEN.COMMANDES.PARTIEL_OK'));
+        this.charger();
+      },
+      error: (err) => {
+        this.enCours.set(null);
+        const e = err as { status?: number; error?: { error?: string } };
+        if (e?.status === 409) {
+          this.propositionPour.set(null);
+          this.toastr.info(this.i18n.t('PHARMACIEN.COMMANDES.TROP_TARD'));
+          this.charger();
+        } else {
+          this.toastr.error(e?.error?.error ?? this.i18n.t('COMMON.ERROR_GENERIC'));
+        }
+      },
+    });
   }
 
   fermerRefus(): void {

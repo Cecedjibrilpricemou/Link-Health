@@ -9,6 +9,7 @@ import type {
   CommandeView,
   FactureView,
   ModeRemise,
+  ReponsePartielle,
   PayerCommandeDto,
   CreerDemandeRendezVousDto, DemandeRendezVousView, CarteAssuranceView } from '@baobaoheath/shared-types';
 import { ApiService } from './api.service';
@@ -125,6 +126,14 @@ export class PatientService {
   }
 
   /** Retrait ou livraison. **Le retrait n'est pas un repli.** */
+  /**
+   * Repondre a une proposition partielle : accepter et faire relancer le
+   * manquant, accepter seul, ou refuser.
+   */
+  repondrePropositionPartielle(idCommande: string, reponse: ReponsePartielle): Observable<ApiResponse<CommandeView>> {
+    return this.api.post<ApiResponse<CommandeView>>(`/commandes/${idCommande}/reponse-partielle`, { reponse });
+  }
+
   choisirModeRemise(idCommande: string, mode: ModeRemise): Observable<ApiResponse<CommandeView>> {
     return this.api.post<ApiResponse<CommandeView>>(`/commandes/${idCommande}/mode-remise`, { mode });
   }
