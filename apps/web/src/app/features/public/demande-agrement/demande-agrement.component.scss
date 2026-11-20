@@ -58,6 +58,11 @@
   }
 
   &__hint { margin: -8px 0 14px; color: var(--bb-text-muted); font-size: 13px; line-height: 1.5; }
+  // La marge negative rapproche l'aide du titre qu'elle suit. Sous une grille
+  // de champs, elle la faisait entrer dans les champs du dessus : « Tout
+  // passe par cette adresse » chevauchait le telephone et le courriel.
+  &__grid + &__hint,
+  &__grid + &__error { margin-top: 12px; }
 
   &__autres {
     margin-top: 22px;

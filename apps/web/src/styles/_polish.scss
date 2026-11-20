@@ -27,9 +27,17 @@ p { text-wrap: pretty; }
 }
 
 // Les champs natifs ne passent pas par l'indicateur de focus de Material.
+// **Le meme aspect que le formulaire public** : la bordure passe au vert et
+// un halo l'entoure, colle au champ. L'ancien contour decale de 2 px faisait
+// un second cadre autour du premier.
+//
+// En `outline` et non en `box-shadow` : un champ loge dans un cadre qui
+// montre lui-meme le focus (recherche, pieces) le neutralise deja par
+// `outline: none`, et n'aura donc toujours qu'un anneau.
 :where(input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='range']):not(.mat-mdc-input-element), select, textarea):focus-visible {
-  outline: 2px solid var(--bb-primary);
-  outline-offset: 2px;
+  outline: 3px solid var(--bb-focus-ring-color);
+  outline-offset: 0;
+  border-color: var(--bb-primary);
 }
 
 // Les boutons Material gerent leur propre indicateur : on harmonise sa couleur.
@@ -114,6 +122,17 @@ a:not([class]) {
   border-radius: 12px;
   box-shadow: 0 0 0 4px rgba(62, 187, 112, 0.14);
   transition: box-shadow var(--bb-transition);
+}
+
+// **Un seul cadre par champ.** Dans un champ Material, c'est le contour et
+// son halo qui disent le focus. Plusieurs ecrans posaient en plus un anneau
+// sur le controle lui-meme (`:where(button, input, mat-select):focus-visible`
+// dans Assurances, Pharmacies, Agents, Courses) : il apparaissait comme un
+// second rectangle a l'interieur du champ. `!important` parce que ces regles
+// d'ecran sont encapsulees, donc plus specifiques que celle-ci.
+.mat-mdc-form-field :is(.mat-mdc-input-element, .mat-mdc-select, input, textarea, select):focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .mat-mdc-form-field-error { font-size: 12px; }
