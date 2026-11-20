@@ -13,6 +13,14 @@
 // on rattache des polices tous les jours — mais le second n'a aucun sens
 // avant le premier, et les melanger dans un seul formulaire les rendrait tous
 // deux illisibles.
+//
+// **Une compagnie se cree en une fois, ici.** Il fallait trois gestes dans
+// deux ecrans - la structure dans « Structures », puis la compagnie et son
+// rattachement ici - et personne ne devinait l'enchainement. Le formulaire de
+// creation fait naitre ensemble la structure, son dossier, la compagnie et le
+// compte du responsable, comme une pharmacie nait avec son titulaire. Le
+// rattachement a une structure existante reste, pour les assurances
+// anterieures, mais ce n'est plus le chemin normal.
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -26,11 +34,16 @@ import type {
   AssureurView,
   CategorieProduit,
   ContratAssuranceView,
+  CreerAssuranceDto,
   ModeEchangeAssureur,
   PatientContratRechercheView,
+  PiecesAttenduesView,
   StructureAdminView,
+  TypePieceAgrement,
 } from '@baobaoheath/shared-types';
 import { AdminService } from '../../../core/services/admin.service';
+import { DemandeAgrementService } from '../../../core/services/demande-agrement.service';
+import { PiecesAgrementComponent } from '../../../shared/components/pieces-agrement/pieces-agrement.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
@@ -43,15 +56,41 @@ const CATEGORIES: CategorieProduit[] = [
   'HYGIENE', 'PARAPHARMACIE', 'DISPOSITIF_MEDICAL', 'AUTRE',
 ];
 
+/** Le code imprime sur la carte : la meme regle que le serveur. */
+const FORME_CODE = /^[A-Za-z0-9-]{2,16}$/;
+const FORME_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Le contenu de la modale de succes : le mot de passe n'existe que la. */
+interface CompagnieCreee {
+  compagnieNom: string;
+  responsableNom: string;
+  responsableTelephone: string;
+  motDePasse: string;
+  emailEnvoye: string;
+}
+
+function assuranceVide() {
+  return {
+    nom: '', code: '', modeEchange: 'MANUEL' as ModeEchangeAssureur, telephone: '',
+    prefecture: '', commune: '', quartier: '', adresse: '',
+    rccm: '', numeroAgrementCreation: '', lieuAutorise: '',
+    responsable: { prenom: '', nom: '', telephone: '', email: '' },
+  };
+}
+
 @Component({
   selector: 'app-admin-assurance',
   standalone: true,
   imports: [ListeRechercheComponent, 
     CommonModule, FormsModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatCheckboxModule, TranslatePipe, SuggestionsLieuxComponent,
+    PiecesAgrementComponent,
   ],
   templateUrl: './assurance.component.html',
-  styleUrl: './assurance.component.scss',
+  // Le formulaire de creation reprend les classes de l'ecran des structures,
+  // lues a la source : les deux formulaires de creation se ressemblent, et
+  // une copie finirait par diverger.
+  styleUrls: ['./assurance.component.scss', '../structures/structures.component.scss'],
 })
 export class AssuranceComponent implements OnInit {
   /** Structures « assurance » : la compagnie porte l'agrement de la Banque Centrale. */
@@ -61,10 +100,31 @@ export class AssuranceComponent implements OnInit {
     this.assureurs().map((a) => ({ valeur: a.id, libelle: `${a.code} — ${a.nom}` })));
 
   private admin = inject(AdminService);
+  private demandes = inject(DemandeAgrementService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);
   /** R9 : le nom du niveau (« Prefecture », « LGA »...) et ses lieux viennent du pays installe. */
   readonly geo = inject(GeographieService);
+
+  // ── Creer une compagnie en une fois ────────────────────────────────
+  readonly formAssurance = signal(false);
+
+  /**
+   * Un objet ordinaire, lie aux champs par `ngModel`. **Tout ce qui le lit est
+   * une methode, jamais un `computed`** : un `computed` qui lit une propriete
+   * non signal est evalue une fois puis fige (voir PASSATION, section 5).
+   */
+  nouvelleAssurance = assuranceVide();
+
+  /** Les fichiers retenus et leur completude, rendus par le bloc des pieces. */
+  readonly piecesAssurance = signal<Partial<Record<TypePieceAgrement, File>>>({});
+  readonly piecesAssuranceCompletes = signal(false);
+
+  /** Ce que le serveur exige d'une assurance : lu, jamais recopie. */
+  readonly attendues = signal<PiecesAttenduesView[]>([]);
+
+  /** La modale de succes. Le mot de passe ne vit que la, jusqu'a sa fermeture. */
+  readonly compagnieCreee = signal<CompagnieCreee | null>(null);
 
   // ── Les assureurs ──────────────────────────────────────────────────
   assureurs = signal<AssureurView[]>([]);
@@ -129,6 +189,140 @@ export class AssuranceComponent implements OnInit {
   ngOnInit(): void {
     this.chargerAssureurs();
     this.chargerStructuresAssurance();
+    this.demandes.piecesAttendues().subscribe({
+      next: (r) => this.attendues.set(r.data ?? []),
+      // Sans la liste, le bloc des pieces retombe sur sa table, et la raison
+      // du blocage dit seulement que le dossier est incomplet.
+      error: () => this.attendues.set([]),
+    });
+  }
+
+  // ── Creer une compagnie en une fois ────────────────────────────────
+  ouvrirCreation(): void {
+    this.formAssureur.set(false);
+    this.formAssurance.set(true);
+  }
+
+  ouvrirRattachement(): void {
+    this.formAssurance.set(false);
+    this.formAssureur.set(true);
+  }
+
+  fermerCreation(): void {
+    this.formAssurance.set(false);
+  }
+
+  private entreeAssurance(): PiecesAttenduesView | null {
+    return this.attendues().find((a) => a.type === 'ASSURANCE') ?? null;
+  }
+
+  /** Les pieces a reclamer, telles que le serveur les donne - ou `null`. */
+  requisesImposees(): readonly TypePieceAgrement[] | null {
+    const entree = this.entreeAssurance();
+    return entree ? entree.pieces.map((p) => p.type) : null;
+  }
+
+  libellesImposes(): Partial<Record<TypePieceAgrement, string>> {
+    const libelles: Partial<Record<TypePieceAgrement, string>> = {};
+    for (const piece of this.entreeAssurance()?.pieces ?? []) libelles[piece.type] = piece.libelle;
+    return libelles;
+  }
+
+  /**
+   * Pourquoi le bouton ne part pas, en une phrase, ou `null` s'il part.
+   *
+   * Un bouton grise qui ne dit rien laisse chercher : la phrase nomme ce qui
+   * manque, et pour le dossier, ou on en est. Elle s'affiche juste au-dessus
+   * du bouton, la ou le regard se pose quand il ne repond pas.
+   */
+  raisonBlocage(): string | null {
+    if (this.enregistre()) return null;
+    const a = this.nouvelleAssurance;
+    if (a.nom.trim().length < 2) return this.i18n.t('ADMIN.ASSURANCE.BLOCAGE_NOM');
+    if (!FORME_CODE.test(a.code.trim())) return this.i18n.t('ADMIN.ASSURANCE.BLOCAGE_CODE');
+    if (!a.prefecture.trim() || !a.commune.trim()) {
+      return this.i18n.t('ADMIN.ASSURANCE.BLOCAGE_LIEU', {
+        zone: this.geo.libelle('elargissement'),
+        base: this.geo.libelle('base'),
+      });
+    }
+    if (!a.rccm.trim() || !a.lieuAutorise.trim() || !a.numeroAgrementCreation.trim()) {
+      return this.i18n.t('ADMIN.ASSURANCE.BLOCAGE_IDENTIFIANTS');
+    }
+    const r = a.responsable;
+    if (!r.prenom.trim() || !r.nom.trim() || !r.telephone.trim() || !FORME_EMAIL.test(r.email.trim())) {
+      return this.i18n.t('ADMIN.ASSURANCE.BLOCAGE_RESPONSABLE');
+    }
+    if (!this.piecesAssuranceCompletes()) {
+      const requises = this.requisesImposees();
+      // Sans la liste du serveur, on ne peut pas compter : pas de total invente.
+      if (!requises) return this.i18n.t('AGREMENT.ERR_PIECES');
+      const jointes = requises.filter((type) => !!this.piecesAssurance()[type]).length;
+      return this.i18n.t('ADMIN.ASSURANCE.BLOCAGE_PIECES', { jointes, total: requises.length });
+    }
+    return null;
+  }
+
+  peutCreerAssurance(): boolean {
+    return !this.enregistre() && this.raisonBlocage() === null;
+  }
+
+  creerAssurance(): void {
+    if (!this.peutCreerAssurance()) return;
+    this.enregistre.set(true);
+    const a = this.nouvelleAssurance;
+    const facultatif = (v: string) => v.trim() || undefined;
+    const dto: CreerAssuranceDto = {
+      nom: a.nom.trim(),
+      code: a.code.trim().toUpperCase(),
+      modeEchange: a.modeEchange,
+      prefecture: a.prefecture.trim(),
+      commune: a.commune.trim(),
+      ...(facultatif(a.quartier) ? { quartier: a.quartier.trim() } : {}),
+      ...(facultatif(a.adresse) ? { adresse: a.adresse.trim() } : {}),
+      ...(facultatif(a.telephone) ? { telephone: a.telephone.trim() } : {}),
+      rccm: a.rccm.trim(),
+      lieuAutorise: a.lieuAutorise.trim(),
+      numeroAgrementCreation: a.numeroAgrementCreation.trim(),
+      responsable: {
+        prenom: a.responsable.prenom.trim(),
+        nom: a.responsable.nom.trim(),
+        telephone: a.responsable.telephone.trim(),
+        email: a.responsable.email.trim(),
+      },
+    };
+    this.admin.creerAssurance(dto, this.piecesAssurance()).subscribe({
+      next: (r) => {
+        this.enregistre.set(false);
+        const data = r.data;
+        if (!data) {
+          this.toastr.error(this.i18n.t('COMMON.ERROR_GENERIC'));
+          return;
+        }
+        this.compagnieCreee.set({
+          compagnieNom: data.assureur.nom,
+          responsableNom: `${data.responsable.prenom} ${data.responsable.nom}`,
+          responsableTelephone: data.responsable.telephone,
+          motDePasse: data.motDePasseTemporaire,
+          emailEnvoye: data.responsable.email ?? dto.responsable.email,
+        });
+        this.toastr.success(this.i18n.t('ADMIN.ASSURANCE.COMPAGNIE_CREEE', { nom: data.assureur.nom }));
+        // Les fichiers retenus partent avec le formulaire : les garder
+        // joindrait l'agrement d'une compagnie a la suivante.
+        this.nouvelleAssurance = assuranceVide();
+        this.piecesAssurance.set({});
+        this.piecesAssuranceCompletes.set(false);
+        this.formAssurance.set(false);
+        this.chargerAssureurs();
+        this.chargerStructuresAssurance();
+      },
+      error: (err) => this.echec(err),
+    });
+  }
+
+  /** Fermer la modale efface le mot de passe : il ne s'affiche qu'une fois. */
+  fermerCompagnieCreee(): void {
+    this.compagnieCreee.set(null);
   }
 
   private chargerStructuresAssurance(): void {

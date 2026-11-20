@@ -13,6 +13,8 @@ import type {
   AssureurView,
   CatalogueAssureursView,
   ContratAssuranceView,
+  CreerAssuranceDto,
+  CreationAssuranceView,
   CreerAssureurDto,
   CreerContratDto,
   CreerRegleCouvertureDto,
@@ -221,6 +223,19 @@ export class AdminService {
     return this.api.delete<ApiResponse<void>>(`/assurance/assureurs/${idAssureur}/convention`);
   }
 
+  /**
+   * Creer une compagnie d'assurance en une fois : structure, dossier,
+   * compagnie et compte du responsable. Multipart des que l'agrement est joint.
+   */
+  creerAssurance(
+    payload: CreerAssuranceDto,
+    pieces: Partial<Record<TypePieceAgrement, File>> = {},
+  ): Observable<ApiResponse<CreationAssuranceView>> {
+    const corps = this.corpsAvecPieces(payload as unknown as Record<string, unknown>, pieces);
+    return this.api.post<ApiResponse<CreationAssuranceView>>('/assurance/compagnies', corps);
+  }
+
+  /** Rattacher une compagnie a une structure ASSURANCE deja existante. */
   creerAssureur(payload: CreerAssureurDto): Observable<ApiResponse<AssureurView>> {
     return this.api.post<ApiResponse<AssureurView>>('/assurance/assureurs', payload);
   }

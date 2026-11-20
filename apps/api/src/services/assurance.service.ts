@@ -24,8 +24,13 @@ import { hashPassword } from '../utils/password.utils';
 import { JwtPayload } from '../types/auth.types';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { logger } from '../config/logger';
-import { estStructureHospitaliere, estStructureOfficinale } from '../utils/officine.util';
-import { dossierDe } from './piece-agrement.service';
+import { estStructureHospitaliere, estStructureOfficinale, roleDuResponsable } from '../utils/officine.util';
+import {
+  dossierDe, ecrireFichiers, supprimerFichiers, validerIdentifiants, validerPieces,
+  type FichierRecu, type IdentifiantsRecus,
+} from './piece-agrement.service';
+import { envoyerEmailAdminStructure } from './email.service';
+import { verifierCoordonnees } from '../utils/coordonnees';
 import type {
   AgentAssureurCreeView,
   AssureView,
@@ -1071,6 +1076,205 @@ export async function creerAssureur(dto: CreerAssureurDto): Promise<AssureurView
     include: ASSUREUR_INCLUDE,
   });
   return versAssureurView(cree);
+}
+
+// ── Une assurance en une seule fois ────────────────────────────────────
+
+/** Ce que l'onglet Assurances envoie pour creer une compagnie entiere. */
+export interface CreationAssuranceRecue extends IdentifiantsRecus {
+  nom: string;
+  prefecture: string;
+  commune: string;
+  quartier?: string | undefined;
+  adresse?: string | undefined;
+  latitude?: number | undefined;
+  longitude?: number | undefined;
+  telephone?: string | undefined;
+  /** Le code imprime sur la carte de l'assure. Unique. */
+  code: string;
+  modeEchange?: ModeEchangeAssureur | undefined;
+  responsable: { prenom: string; nom: string; telephone: string; email: string };
+}
+
+/**
+ * Le champ qu'un doublon a heurte, lu sur l'erreur Prisma.
+ *
+ * Le modele suffit a trancher : dans cette transaction, un doublon sur
+ * `Assureur` ne peut porter que sur le code - `idStructure` designe une
+ * structure qu'elle vient de creer. Sur `Utilisateur`, c'est le telephone ou
+ * l'email du responsable.
+ */
+function champEnDoublon(e: unknown): 'code' | 'telephone' | 'email' | null {
+  const err = e as { code?: string; meta?: Record<string, unknown> } | null;
+  if (err?.code !== 'P2002') return null;
+  const meta = JSON.stringify(err.meta ?? {});
+  if (/"modelName":"Assureur"/.test(meta)) return 'code';
+  if (/telephone/.test(meta)) return 'telephone';
+  if (/email/.test(meta)) return 'email';
+  return null;
+}
+
+/** Le refus d'un code deja pris : il nomme le champ, pas la contrainte. */
+function conflitCode(code: string): ConflictError {
+  return new ConflictError(
+    `Le code ${code} est déjà utilisé par une autre compagnie : choisissez-en un autre, il figurera sur les cartes des assurés.`,
+  );
+}
+
+const TELEPHONE_PRIS = 'Le numéro de téléphone du responsable est déjà utilisé par un compte.';
+const EMAIL_PRIS = "L'adresse email du responsable est déjà utilisée par un compte.";
+
+/**
+ * Creer une compagnie d'assurance **en une fois** : sa structure, son dossier,
+ * la compagnie elle-meme et le compte de son responsable.
+ *
+ * **Ce qu'il fallait jusque-la : trois gestes dans deux ecrans.** Creer une
+ * structure de type ASSURANCE dans l'ecran des structures - qui creait aussi
+ * le compte du responsable -, puis aller dans l'onglet Assurances creer la
+ * compagnie et la rattacher a cette structure. Personne ne devinait
+ * l'enchainement, et qui s'arretait au premier geste laissait un responsable
+ * qui se connectait pour lire « Cette structure n'est rattachee a aucune
+ * compagnie d'assurance ».
+ *
+ * Meme geste que `creerPharmacieAvecPharmacien` pour une officine, et memes
+ * garanties : tout ce qui peut refuser passe avant la premiere ecriture, les
+ * pieces partent sur le disque avant la transaction, et un echec de la
+ * transaction efface les fichiers deja ecrits. Si la compagnie ne peut pas
+ * naitre, la structure ne reste pas.
+ *
+ * `creerAssureur` garde sa place pour rattacher une compagnie a une structure
+ * deja existante - les assurances anterieures -, mais ce n'est plus le chemin
+ * normal.
+ */
+export async function creerAssuranceAvecResponsable(
+  dto: CreationAssuranceRecue,
+  pieces: readonly FichierRecu[] = [],
+  libelles: Readonly<Record<string, string | undefined>> = {},
+) {
+  verifierCoordonnees(dto.latitude, dto.longitude);
+
+  // Refuser avant toute ecriture : un dossier incomplet ne laisse ni
+  // structure, ni compagnie, ni compte, ni fichier.
+  const identifiants = validerIdentifiants(TypeStructure.ASSURANCE, dto);
+  const validees = validerPieces(TypeStructure.ASSURANCE, pieces, libelles);
+
+  const code = dto.code.trim().toUpperCase();
+  const codePris = await prisma.assureur.findUnique({ where: { code }, select: { id: true } });
+  if (codePris) throw conflitCode(code);
+
+  const telephone = dto.responsable.telephone.trim();
+  const email = dto.responsable.email.trim().toLowerCase();
+  const telPris = await prisma.utilisateur.findUnique({ where: { telephone }, select: { id: true } });
+  if (telPris) throw new ConflictError(TELEPHONE_PRIS);
+  const emailPris = await prisma.utilisateur.findUnique({ where: { email }, select: { id: true } });
+  if (emailPris) throw new ConflictError(EMAIL_PRIS);
+
+  const motDePasseTemp = genererMotDePasseTemp();
+  const motDePasseHash = await hashPassword(motDePasseTemp);
+
+  const fichiersEcrits = await ecrireFichiers(validees);
+
+  let resultat;
+  try {
+    resultat = await prisma.$transaction(async (tx) => {
+      const structure = await tx.structureSante.create({
+        data: {
+          nom: dto.nom.trim(),
+          type: TypeStructure.ASSURANCE,
+          prefecture: dto.prefecture.trim(),
+          commune: dto.commune.trim(),
+          quartier: dto.quartier?.trim() || null,
+          adresse: dto.adresse?.trim() || null,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          telephone: dto.telephone?.trim() || null,
+          estActive: true,
+          ...identifiants,
+        },
+      });
+
+      if (fichiersEcrits.length > 0) {
+        await tx.pieceAgrement.createMany({
+          data: fichiersEcrits.map((p) => ({ ...p, idStructure: structure.id })),
+        });
+      }
+
+      // La compagnie porte la configuration metier - le code de la carte, le
+      // mode d'echange ; la structure porte l'agrement. Les deux naissent
+      // ensemble : l'une sans l'autre est precisement le trou qu'on ferme.
+      const assureur = await tx.assureur.create({
+        data: {
+          nom: dto.nom.trim(),
+          code,
+          telephone: dto.telephone?.trim() || null,
+          modeEchange: dto.modeEchange ?? ModeEchangeAssureur.MANUEL,
+          idStructure: structure.id,
+        },
+        include: ASSUREUR_INCLUDE,
+      });
+
+      // Le role vient de la correspondance unique entre le metier d'une
+      // structure et celui de son responsable : on la lit, on ne la redecide
+      // pas.
+      const responsable = await tx.utilisateur.create({
+        data: {
+          telephone,
+          email,
+          motDePasseHash,
+          prenom: dto.responsable.prenom.trim(),
+          nom: dto.responsable.nom.trim(),
+          role: roleDuResponsable(TypeStructure.ASSURANCE),
+          idStructure: structure.id,
+          doitChangerMotDePasse: true,
+        },
+        select: { id: true, prenom: true, nom: true, telephone: true, email: true, role: true },
+      });
+
+      return { structure, assureur, responsable };
+    });
+  } catch (e) {
+    // Rien n'est cree : les pieces ne doivent pas survivre a la structure.
+    await supprimerFichiers(fichiersEcrits.map((p) => p.fichier));
+    // Un doublon peut encore survenir entre les controles et la transaction,
+    // quand deux agents creent la meme compagnie a la meme seconde : on le
+    // dit comme le controle l'aurait dit, et non par une erreur de base.
+    const champ = champEnDoublon(e);
+    if (champ === 'code') throw conflitCode(code);
+    if (champ === 'telephone') throw new ConflictError(TELEPHONE_PRIS);
+    if (champ === 'email') throw new ConflictError(EMAIL_PRIS);
+    throw e;
+  }
+
+  // Ni le mot de passe ni l'identite du responsable dans le journal.
+  logger.info('[ASSURANCE] compagnie creee avec son responsable', {
+    idStructure: resultat.structure.id,
+    code,
+    pieces: fichiersEcrits.length,
+  });
+
+  // Le courriel part apres le commit, et son echec n'annule rien : le mot de
+  // passe est rendu une fois a l'administration, qui peut le transmettre.
+  try {
+    await envoyerEmailAdminStructure({
+      destinataire: email,
+      prenomNom: `${resultat.responsable.prenom} ${resultat.responsable.nom}`,
+      nomStructure: resultat.structure.nom,
+      telephone,
+      motDePasseTemporaire: motDePasseTemp,
+    });
+  } catch (e) {
+    logger.error('[ASSURANCE] identifiants du responsable non envoyes', {
+      idStructure: resultat.structure.id,
+      erreur: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  return {
+    structure: resultat.structure,
+    assureur: versAssureurView(resultat.assureur),
+    responsable: resultat.responsable,
+    motDePasseTemporaire: motDePasseTemp,
+  };
 }
 
 export async function listerAssureurs(): Promise<AssureurView[]> {

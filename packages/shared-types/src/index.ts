@@ -3382,6 +3382,43 @@ export interface CreerAssureurDto {
   idStructure?: string;
 }
 
+/**
+ * POST /assurance/compagnies, en multipart : ces champs dans `donnees`, la
+ * piece `AGREMENT_ASSURANCE` sous son type.
+ *
+ * Une compagnie d'assurance creee **en une fois** : sa structure, son dossier,
+ * la compagnie et le compte de son responsable. C'est le chemin normal ;
+ * `CreerAssureurDto` ne sert plus qu'a rattacher une compagnie a une structure
+ * deja existante.
+ */
+export interface CreerAssuranceDto {
+  nom: string;
+  prefecture: string;
+  commune: string;
+  quartier?: string;
+  adresse?: string;
+  latitude?: number;
+  longitude?: number;
+  telephone?: string;
+  rccm?: string;
+  /** La reference de l'agrement de la Banque Centrale. */
+  numeroAgrementCreation?: string;
+  lieuAutorise?: string;
+  /** Le code imprime sur la carte de l'assure. Unique. */
+  code: string;
+  modeEchange?: ModeEchangeAssureur;
+  /** L'email est exige : un assureur se connecte par lui. */
+  responsable: { prenom: string; nom: string; telephone: string; email: string };
+}
+
+/** La reponse : le mot de passe temporaire n'est rendu qu'ici, une fois. */
+export interface CreationAssuranceView {
+  structure: StructureAdminView;
+  assureur: AssureurView;
+  responsable: CompteCreeView;
+  motDePasseTemporaire: string;
+}
+
 export interface AssureurView extends AssureurResumeView {
   telephone?: string | null;
   email?: string | null;

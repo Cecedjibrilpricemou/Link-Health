@@ -1071,6 +1071,37 @@ export const simulerPriseEnChargeSchema = z.object({
   montantNetGnf: nonNegativeInt.max(1_000_000_000),
 }).strict();
 
+/**
+ * Une compagnie d'assurance creee en une fois : sa structure, son dossier, la
+ * compagnie et le compte de son responsable.
+ *
+ * L'email du responsable est **exige** : un assureur est un professionnel, il
+ * se connecte par son email et recoit un code a usage unique. Sans email, le
+ * compte cree ne pourrait jamais servir.
+ */
+const assuranceBase = z.object({
+  nom: z.string().trim().min(2).max(160),
+  prefecture: z.string().trim().min(1).max(80),
+  commune: z.string().trim().min(1).max(80),
+  quartier: z.string().trim().max(80).optional(),
+  ...identifiantsReglementaires,
+  adresse: z.string().trim().max(200).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  telephone: phone.optional(),
+  // Le code figure sur la carte de l'assure : court, sans espace, lisible.
+  code: z.string().trim().min(2).max(16).regex(/^[A-Za-z0-9-]+$/, 'Lettres, chiffres et tirets uniquement'),
+  modeEchange: z.enum(['MANUEL', 'PORTAIL', 'API']).optional(),
+  responsable: z.object({
+    prenom: z.string().trim().min(1).max(80),
+    nom: z.string().trim().min(1).max(80),
+    telephone: phone,
+    email: z.string().trim().toLowerCase().email().max(160),
+  }).strict(),
+}).strict();
+
+export const creerAssuranceSchema = assuranceBase.refine(pasLePointZero, messagePointZero);
+
 export const creerAssureurSchema = z.object({
   nom: z.string().trim().min(2).max(120),
   // Le code figure sur la carte de l'assure : court, sans espace, lisible.

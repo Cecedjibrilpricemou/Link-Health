@@ -313,7 +313,7 @@
       <span class="sr-only">{{ 'ADMIN.STRUCTURES.FILTRE_TYPE_ARIA' | translate }}</span>
       <select class="bb-struct__filtre-type" [value]="filtreType()" (change)="filtreType.set($any($event.target).value)">
         <option value="">{{ 'ADMIN.STRUCTURES.TOUS_TYPES' | translate }}</option>
-        @for (opt of typeOptions; track opt.value) {
+        @for (opt of typesAffiches; track opt.value) {
           <option [value]="opt.value">{{ opt.label }}</option>
         }
       </select>

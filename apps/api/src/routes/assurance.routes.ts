@@ -5,10 +5,12 @@ import { requireRole } from '../middlewares/rbac.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
 import * as assurance from '../services/assurance.service';
 import * as personnes from '../services/personne-assuree.service';
-import { uploadPhotoAssure } from '../middlewares/upload.middleware';
+import { corpsJsonMultipart, recevoirPiecesAgrement, uploadPhotoAssure } from '../middlewares/upload.middleware';
+import type { FichierRecu } from '../services/piece-agrement.service';
 import { ValidationError } from '../utils/app-error';
 import {
   creerAgentAssureurSchema,
+  creerAssuranceSchema,
   creerAssureurSchema,
   creerReglementSchema,
   creerContratAssuranceSchema,
@@ -29,6 +31,7 @@ import {
 } from '../validators/api.schemas';
 import type {
   AgentAssureurCreeView,
+  CreationAssuranceView,
   AssureView,
   AssureurView,
   MonAssureurView,
@@ -245,6 +248,33 @@ router.delete(
   }
 );
 
+/**
+ * Creer une compagnie d'assurance en une fois : structure, dossier, compagnie
+ * et compte du responsable, dans une seule transaction.
+ *
+ * C'est le chemin normal. Multipart, comme toute creation qui porte un
+ * dossier : `multer` lit le corps, `corpsJsonMultipart` remet a sa place
+ * l'objet envoye dans `donnees` (le responsable y est imbrique), puis
+ * seulement la validation. Le mot de passe temporaire n'est rendu qu'ici, une
+ * fois.
+ */
+router.post(
+  '/compagnies',
+  requireRole('ADMIN_NATIONAL', 'SUPER_ADMIN'),
+  recevoirPiecesAgrement,
+  corpsJsonMultipart,
+  validateBody(creerAssuranceSchema),
+  async (req: AuthRequest, res: Response) => {
+    const fichiers = (req.files ?? []) as FichierRecu[];
+    const data: CreationAssuranceView = await assurance.creerAssuranceAvecResponsable(req.body, fichiers);
+    res.status(201).json({ success: true, data, message: `Compagnie ${data.assureur.code} creee` });
+  }
+);
+
+/**
+ * Rattacher une compagnie a une structure ASSURANCE **deja existante** - les
+ * assurances creees avant la porte unique. Ce n'est plus le chemin normal.
+ */
 router.post(
   '/assureurs',
   requireRole('ADMIN_NATIONAL', 'SUPER_ADMIN'),
