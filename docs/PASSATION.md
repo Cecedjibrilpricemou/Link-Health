@@ -398,6 +398,33 @@ vert d'origine.
   `var(--bb-bright)`, ou `color-mix(in srgb, var(--bb-bright) 14%, transparent)`
   pour une transparence.
 
+### Les images des pages publiques
+
+Le super-admin les remplace depuis **Paramètres > Images**, emplacement par
+emplacement : la photo de la page d'accueil, celle des écrans de connexion,
+et une par étape de « Comment ça marche » (neuf en tout,
+`EMPLACEMENTS_VISUELS`). Il change l'image, pas la page : le cadrage reste
+celui du CSS (`object-fit: cover`).
+
+- **Rien n'est gardé tel que reçu.** L'API refuse une image trop petite pour
+  son emplacement (elle serait floue) ou trop allongée, la redresse, la
+  réduit, la convertit en WebP et en fait une version pour petits écrans
+  (`visuels.service.ts`). L'original et ses métadonnées (lieu de prise de vue)
+  ne sont jamais écrits. Pas de SVG : ce sont des photos.
+- **Une adresse d'image ne se saisit pas** : seul le téléversement en
+  enregistre une, avec un chemin qu'il fabrique. Le PUT des paramètres ne
+  laisse pas passer la section `visuels`.
+- **L'image remplacée reste servie dix minutes** (`DELAI_CONSERVATION_MS`),
+  puis part au changement suivant : `/parametres/publics` reste une minute
+  dans les navigateurs, et une suppression immédiate afficherait une image
+  cassée à qui vient de charger la page.
+- **Les images d'origine** sont déclarées dans
+  `shared/utils/visuels-publics.ts`, qui sert aussi de repli tant que l'API
+  n'a pas répondu. Une étape sans photo garde son icône.
+- Les fichiers vivent dans `uploads/visuels/`, donc dans le volume
+  `api_uploads` : ils survivent aux redéploiements, mais ne sont pas dans la
+  sauvegarde de la base (section 7).
+
 ### La géographie
 
 Le référentiel est **générique**, pour servir un autre pays sans toucher au
@@ -449,6 +476,9 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **Images des pages publiques modifiables par le super-admin** (branche
+  `feat/visuels-publics`, section 6) : neuf emplacements, images vérifiées,
+  réduites et converties en WebP, description pour les lecteurs d'écran.
 - **Couleurs de l'interface par structure** (branche `feat/theme-structure`,
   section 6) : six palettes vérifiées pour la lisibilité, choisies par le
   responsable, appliquées sans rechargement.

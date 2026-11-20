@@ -1097,6 +1097,11 @@ export const evolutionQuerySchema = z.object({
   idPatient: id.optional(),
 });
 
+// La description d'une image des pages publiques : une phrase, ou rien.
+export const decrireVisuelSchema = z.object({
+  description: z.string().max(400),
+}).strict();
+
 // Les couleurs de l'interface : une palette de la liste fermee, rien d'autre.
 export const changerPaletteSchema = z.object({
   palette: z.enum(PALETTES_STRUCTURE),

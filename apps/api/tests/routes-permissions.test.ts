@@ -598,3 +598,11 @@ describe('les couleurs de la structure', () => {
     expect(rolesPour(apparence, 'put', '/')).toEqual(['ADMIN_STRUCTURE', 'PHARMACIEN', 'ASSUREUR']);
   });
 });
+
+describe('les images des pages publiques', () => {
+  it('se remplacent, se decrivent et se retablissent par le super-admin seul', () => {
+    expect(rolesPour(adminStructure, 'post', '/parametres/visuels/:emplacement')).toEqual(['SUPER_ADMIN']);
+    expect(rolesPour(adminStructure, 'put', '/parametres/visuels/:emplacement/description')).toEqual(['SUPER_ADMIN']);
+    expect(rolesPour(adminStructure, 'delete', '/parametres/visuels/:emplacement')).toEqual(['SUPER_ADMIN']);
+  });
+});

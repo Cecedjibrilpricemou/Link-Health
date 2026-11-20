@@ -24,14 +24,14 @@
 
         <!-- Une photo quand elle illustre vraiment l'etape ; sinon la pastille
              d'icone. Une image approximative vaut moins qu'aucune image. -->
-        @if (step.image) {
+        @if (plateforme.image(step.emplacement); as img) {
           <div class="step__media">
             <img
               class="step__photo"
-              [src]="step.image + '-800.webp'"
-              [attr.srcset]="step.image + '-480.webp 480w, ' + step.image + '-800.webp 800w'"
+              [src]="img.src"
+              [attr.srcset]="img.srcset || null"
               sizes="(max-width: 640px) 92vw, (max-width: 1100px) 46vw, 400px"
-              [alt]="(step.imageAltKey ?? '') | translate"
+              [alt]="img.description || (img.descriptionCle ? (img.descriptionCle | translate) : '')"
               width="480"
               height="320"
               loading="lazy"

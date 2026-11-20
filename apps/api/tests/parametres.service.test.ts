@@ -4,6 +4,8 @@ import {
   getIdentitePlateforme,
   getParametres,
   getValeursParametres,
+  getParametresPublics,
+  enregistrerVisuel,
   mentionCopyright,
   modifierLogo,
   modifierParametres,
@@ -414,6 +416,51 @@ describe('modifierLogo', () => {
   });
 });
 
+describe('les images des pages publiques', () => {
+  it('par defaut, chaque emplacement garde l image d origine', () => {
+    expect(Object.keys(PARAMETRES_PAR_DEFAUT.visuels)).toHaveLength(9);
+    for (const v of Object.values(PARAMETRES_PAR_DEFAUT.visuels)) {
+      expect(v).toEqual({ url: '', urlPetite: '', description: '' });
+    }
+  });
+
+  // Une adresse d'image saisie a la main pourrait pointer n'importe ou : seul
+  // le televersement, qui fabrique ses propres chemins, en enregistre une.
+  it('le PUT des parametres ne laisse pas passer une image', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { updateParametresSystemeSchema } = require('../src/validators/api.schemas');
+    const r = updateParametresSystemeSchema.safeParse({ visuels: { ACCUEIL: { url: 'https://ailleurs.example/x.jpg' } } });
+    expect(!r.success || !('visuels' in r.data)).toBe(true);
+  });
+
+  it('enregistrerVisuel change un emplacement, sans toucher au reste', async () => {
+    prisma.parametresSysteme.findUnique.mockResolvedValue({
+      id: 'global',
+      valeurs: { identite: { nom: 'OmniCare' }, visuels: { CONNEXION: { url: '/uploads/visuels/c.webp', urlPetite: '/uploads/visuels/c-p.webp', description: 'Accueil' } } },
+    });
+    prisma.parametresSysteme.upsert.mockResolvedValue({});
+    const v = { url: '/uploads/visuels/a.webp', urlPetite: '/uploads/visuels/a-p.webp', description: '' };
+
+    const visuels = await enregistrerVisuel('admin-1', 'ACCUEIL', v);
+
+    expect(visuels.ACCUEIL).toEqual(v);
+    expect(visuels.CONNEXION.url).toBe('/uploads/visuels/c.webp');
+    const ecrit = prisma.parametresSysteme.upsert.mock.calls[0][0].update;
+    expect(ecrit.valeurs.identite.nom).toBe('OmniCare');
+    expect(ecrit.idModifiePar).toBe('admin-1');
+  });
+
+  it('getParametresPublics rend l identite et les images', async () => {
+    prisma.parametresSysteme.findUnique.mockResolvedValue({
+      id: 'global', valeurs: { visuels: { ETAPE_1: { url: '/uploads/visuels/e1.webp', urlPetite: '/uploads/visuels/e1-p.webp', description: 'x' } } },
+    });
+    const p = await getParametresPublics();
+    expect(p.nom).toBe(PARAMETRES_PAR_DEFAUT.identite.nom);
+    expect(p.visuels.ETAPE_1.url).toBe('/uploads/visuels/e1.webp');
+    expect(p.visuels.ACCUEIL.url).toBe('');
+  });
+});
+
 describe('getValeursParametres', () => {
   it('retourne des valeurs completes pour les consommateurs internes', async () => {
     prisma.parametresSysteme.findUnique.mockResolvedValue({
@@ -440,7 +487,8 @@ describe('sections de parametres', () => {
   it('le schema de mise a jour accepte toutes les sections du contrat', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { updateParametresSystemeSchema } = require('../src/validators/api.schemas');
-    for (const section of Object.keys(PARAMETRES_PAR_DEFAUT)) {
+    // Sauf les images : elles ne s'enregistrent que par le televersement.
+    for (const section of Object.keys(PARAMETRES_PAR_DEFAUT).filter((s) => s !== 'visuels')) {
       const r = updateParametresSystemeSchema.safeParse({ [section]: {} });
       expect({ section, ok: r.success }).toEqual({ section, ok: true });
     }

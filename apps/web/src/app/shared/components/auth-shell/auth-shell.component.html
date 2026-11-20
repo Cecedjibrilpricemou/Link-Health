@@ -29,7 +29,10 @@
   <aside class="bb-auth__visual" aria-hidden="true">
     <div class="bb-auth__visual-card">
       <div class="bb-auth__visual-photo">
-        <img src="assets/images/loginimage.webp" alt="" width="736" height="1051" loading="lazy" decoding="async" />
+        @if (plateforme.image('CONNEXION'); as img) {
+          <img [src]="img.src" [attr.srcset]="img.srcset || null" sizes="(max-width: 980px) 0px, 440px"
+               alt="" width="736" height="1051" loading="lazy" decoding="async" />
+        }
       </div>
       <span class="bb-auth__visual-chip bb-auth__visual-chip--top">
         <i class="pi pi-shield"></i> {{ 'LANDING.TRUST_SECURE' | translate }}

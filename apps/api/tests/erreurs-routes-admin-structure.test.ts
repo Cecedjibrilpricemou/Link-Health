@@ -26,7 +26,7 @@ jest.mock('../src/config/prisma', () => ({ prisma: {} }));
 jest.mock('../src/config/redis', () => ({ getRedis: () => null }));
 jest.mock('../src/config/sentry', () => ({ captureError: jest.fn() }));
 jest.mock('../src/services/admin-structure.service', () => ({ getStructuresPubliques: jest.fn() }));
-jest.mock('../src/services/parametres.service', () => ({ getIdentitePlateforme: jest.fn() }));
+jest.mock('../src/services/parametres.service', () => ({ getParametresPublics: jest.fn() }));
 
 import adminStructureRoutes from '../src/routes/admin-structure.routes';
 import parametresRoutes from '../src/routes/parametres.routes';
@@ -36,7 +36,7 @@ import * as adminService from '../src/services/admin-structure.service';
 import * as parametresService from '../src/services/parametres.service';
 
 const structuresPubliques = adminService.getStructuresPubliques as jest.Mock;
-const identite = parametresService.getIdentitePlateforme as jest.Mock;
+const identite = parametresService.getParametresPublics as jest.Mock;
 
 let base = '';
 let serveur: ReturnType<express.Express['listen']>;

@@ -2603,6 +2603,7 @@ export interface ParametresSystemeValeurs {
   pharmacie: ParametresPharmacieView;
   zones: ParametresZonesView;
   pays: ParametresPaysView;
+  visuels: ParametresVisuelsView;
 }
 
 /** GET/PUT /admin-structure/parametres */
@@ -4932,5 +4933,42 @@ export interface ApparenceStructureView {
 
 export interface ChangerPaletteDto {
   palette: PaletteStructure;
+}
+
+// ── Les images des pages publiques ───────────────────────────────────
+//
+// Des emplacements fixes, ceux que la mise en page prevoit : la photo de la
+// page d'accueil, celle des ecrans de connexion, et une par etape de « Comment
+// ca marche ». Le super-admin remplace l'image d'un emplacement ; il ne cree
+// pas d'emplacement, la mise en page ne bouge pas.
+
+export const EMPLACEMENTS_VISUELS = [
+  'ACCUEIL', 'CONNEXION',
+  'ETAPE_1', 'ETAPE_2', 'ETAPE_3', 'ETAPE_4', 'ETAPE_5', 'ETAPE_6', 'ETAPE_7',
+] as const;
+export type EmplacementVisuel = (typeof EMPLACEMENTS_VISUELS)[number];
+
+/**
+ * L'image d'un emplacement. Chemins vides : l'image d'origine (ou l'icone,
+ * pour une etape qui n'en a pas).
+ */
+export interface VisuelPublicView {
+  /** La version large, en WebP (/uploads/visuels/...). */
+  url: string;
+  /** La version pour petits ecrans, du meme fichier source. */
+  urlPetite: string;
+  /** Ce que montre l'image, pour qui ne la voit pas. Vide : la description d'origine. */
+  description: string;
+}
+
+export type ParametresVisuelsView = Record<EmplacementVisuel, VisuelPublicView>;
+
+/** GET /parametres/publics : l'identite, et les images des pages publiques. */
+export interface ParametresPublicsView extends IdentitePlateformeView {
+  visuels: ParametresVisuelsView;
+}
+
+export interface DecrireVisuelDto {
+  description: string;
 }
 

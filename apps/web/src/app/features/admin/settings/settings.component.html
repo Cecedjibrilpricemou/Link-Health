@@ -629,6 +629,17 @@
         </div>
       }
 
+      <!-- ONGLET : IMAGES DES PAGES PUBLIQUES -->
+      @if (activeTab() === 'visuels') {
+        <div class="settings-panel">
+          <h2>{{ 'ADMIN.SETTINGS.VISUELS_TITLE' | translate }}</h2>
+          <p class="panel-desc">{{ 'ADMIN.SETTINGS.VISUELS_DESC' | translate }}</p>
+          @if (visuelsCharges(); as v) {
+            <app-settings-visuels [initiaux]="v" />
+          }
+        </div>
+      }
+
       }
     </div>
   </div>
