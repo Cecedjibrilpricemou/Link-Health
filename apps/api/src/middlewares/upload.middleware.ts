@@ -69,6 +69,27 @@ export const uploadVisuel = multer({
 export const VISUELS_PUBLIC_PATH = '/uploads/visuels';
 export { VISUELS_DIR };
 
+// Le logo d'une structure (Apparence) : il remplace celui de la plateforme
+// dans l'interface de son equipe et sur ses documents. Pas de SVG ici : il
+// est reencode en PNG, et une image matricielle ne porte pas de code.
+const LOGOS_STRUCTURES_DIR = path.join(process.cwd(), 'uploads', 'structures');
+fs.mkdirSync(LOGOS_STRUCTURES_DIR, { recursive: true });
+
+export const uploadLogoStructure = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 3 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!TYPES_IMAGE_ACCEPTES.includes(file.mimetype)) {
+      cb(new Error('Format non supporté — utilisez une image PNG, JPEG ou WebP.'));
+      return;
+    }
+    cb(null, true);
+  },
+}).single('logo');
+
+export const LOGOS_STRUCTURES_PUBLIC_PATH = '/uploads/structures';
+export { LOGOS_STRUCTURES_DIR };
+
 // Photo d'identite d'une personne assuree. En memoire : elle est recadree par
 // sharp puis ecrite dans le stockage prive (jamais sous `uploads/`, public).
 export const uploadPhotoAssure = multer({

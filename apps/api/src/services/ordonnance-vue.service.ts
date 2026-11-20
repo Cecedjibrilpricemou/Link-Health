@@ -14,7 +14,7 @@ import { NotFoundError } from '../utils/app-error';
 import { assertCanAccessConsultation } from './access-control.service';
 import { echapper } from './hopital.service';
 import { estExpiree, renouvellementsRestants } from './ordonnance.service';
-import { getIdentitePlateforme } from './parametres.service';
+import { identiteDocument, structureDeConsultation } from './document-emetteur.service';
 import type { OrdonnanceView } from '@baobaoheath/shared-types';
 
 const ORDONNANCE_INCLUDE = {
@@ -112,7 +112,8 @@ export async function documentOrdonnance(user: JwtPayload, idOrdonnance: string)
   await assertCanAccessConsultation(user, ordonnance.idConsultation);
 
   const o = versVue(ordonnance);
-  const identite = await getIdentitePlateforme();
+  // L'en-tete : la structure ou l'ordonnance a ete redigee.
+  const identite = await identiteDocument(await structureDeConsultation(ordonnance.idConsultation));
   const p = ordonnance.consultation.patient;
 
   const date = (v: string | Date) =>

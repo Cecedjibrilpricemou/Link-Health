@@ -153,6 +153,15 @@ export class AuthService {
     localStorage.setItem('currentUser', JSON.stringify(maj));
   }
 
+  /** Le logo de sa structure vient de changer : la barre laterale suit. */
+  definirLogoStructure(logoUrl: string): void {
+    const u = this._currentUser();
+    if (!u?.structure) return;
+    const maj = { ...u, structure: { ...u.structure, logoUrl } };
+    this._currentUser.set(maj);
+    localStorage.setItem('currentUser', JSON.stringify(maj));
+  }
+
   private clearSession() {
     this._currentUser.set(null);
     localStorage.removeItem('currentUser');

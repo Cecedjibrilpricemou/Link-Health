@@ -19,6 +19,7 @@ import { hashPassword } from '../utils/password.utils';
 import { initialiserConsentementsParDefaut } from './privacy.service';
 import { envoyerSmsSimule, notifierSansBloquer } from './notification.service';
 import { getIdentitePlateforme } from './parametres.service';
+import { identiteDocument, structureDeDemandeAnalyse } from './document-emetteur.service';
 import { diffuserRendezVous } from '../realtime/rendez-vous.events';
 import type {
   PresenceDuJourView,
@@ -663,7 +664,8 @@ export async function documentDemandeAnalyse(user: JwtPayload, idDemande: string
 }
 
 async function rendreBonExamen(d: DemandeAnalyseView): Promise<string> {
-  const identite = await getIdentitePlateforme();
+  // L'en-tete : l'hopital qui prescrit, pas la plateforme.
+  const identite = await identiteDocument(await structureDeDemandeAnalyse(d.id));
   const patient = await prisma.patientProfile.findUnique({ where: { id: d.patient.id }, select: { sexe: true, dateNaissance: true, qrCode: true, utilisateur: { select: { telephone: true } } } });
   const date = (v: string | Date) => new Date(v).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const lignes = d.lignes.map((l) => `<tr><td>${echapper(l.examen.codeLoinc)}</td><td>${echapper(l.examen.libelle)}</td><td>${echapper(l.examen.specimen)}</td><td>${echapper(l.commentaire)}</td></tr>`).join('');
