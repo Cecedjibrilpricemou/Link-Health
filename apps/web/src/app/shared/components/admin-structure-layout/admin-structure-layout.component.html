@@ -14,10 +14,11 @@
     </div>
 
 
-    <p class="bb-nav__section">{{ 'COMMON.NAVIGATION' | translate }}</p>
+    @for (rubrique of rubriques(); track rubrique.titreKey) {
+    <p class="bb-nav__section">{{ rubrique.titreKey | translate }}</p>
 
     <mat-nav-list class="bb-nav__list">
-      @for (item of navItems; track item.route) {
+      @for (item of rubrique.items; track item.route) {
         <a
           mat-list-item
           class="bb-nav__item"
@@ -30,6 +31,7 @@
         </a>
       }
     </mat-nav-list>
+    }
     @if (pharmaciesNavError()) {
       <p class="bb-nav__section" role="status">{{ 'ADMIN_STRUCTURE.NAV_LOAD_ERROR' | translate }}</p>
     }

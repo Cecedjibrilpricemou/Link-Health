@@ -5,7 +5,7 @@
     <p class="bb-page-head__sub">{{ 'HOPITAL.DASH.SUBTITLE' | translate }}</p>
   </div>
   <div class="bb-page-head__actions">
-    <a matButton="filled" routerLink="/hopital/admission"><i class="pi pi-user-plus" aria-hidden="true"></i> {{ 'HOPITAL.DASH.NEW_ADMISSION' | translate }}</a>
+    <a matButton="filled" [routerLink]="racine + '/admission'"><i class="pi pi-user-plus" aria-hidden="true"></i> {{ 'HOPITAL.DASH.NEW_ADMISSION' | translate }}</a>
   </div>
 </header>
 
@@ -44,7 +44,7 @@
     } @else {
       <div class="bb-hop-list">
         @for (e of d.derniersEpisodes; track e.id) {
-          <a class="bb-hop-item" [routerLink]="['/hopital/episodes', e.id]">
+          <a class="bb-hop-item" [routerLink]="[racine + '/episodes', e.id]">
             <span class="bb-hop-item__avatar" aria-hidden="true">{{ initiales(e.patient.prenom, e.patient.nom) }}</span>
             <div class="bb-hop-item__body">
               <p class="bb-hop-item__title">{{ e.patient.prenom }} {{ e.patient.nom }} <span [class]="statutClasse(e.statut)">{{ 'HOPITAL.STATUT.' + e.statut | translate }}</span></p>
@@ -55,7 +55,7 @@
           </a>
         }
       </div>
-      <p style="margin:12px 0 0"><a routerLink="/hopital/episodes" class="bb-hop-back" style="margin:0">{{ 'HOPITAL.DASH.VOIR_TOUT' | translate }} <i class="pi pi-arrow-right"></i></a></p>
+      <p style="margin:12px 0 0"><a [routerLink]="racine + '/episodes'" class="bb-hop-back" style="margin:0">{{ 'HOPITAL.DASH.VOIR_TOUT' | translate }} <i class="pi pi-arrow-right"></i></a></p>
     }
   </section>
 }

@@ -32,7 +32,7 @@
               </p>
             </div>
             <div class="bb-hop-item__actions">
-              <a matButton [routerLink]="['/hopital/episodes', a.demande.idEpisode]"><i class="pi pi-folder-open" aria-hidden="true"></i> {{ 'HOPITAL.ALERTES.VOIR_EPISODE' | translate }}</a>
+              <a matButton [routerLink]="[racine + '/episodes', a.demande.idEpisode]"><i class="pi pi-folder-open" aria-hidden="true"></i> {{ 'HOPITAL.ALERTES.VOIR_EPISODE' | translate }}</a>
               <button matButton="outlined" type="button" (click)="compteRendu(a)"><i class="pi pi-print" aria-hidden="true"></i> {{ 'HOPITAL.ALERTES.CR' | translate }}</button>
               <button matButton="filled" type="button" (click)="accuser(a)" [disabled]="enCours() === a.id"><i [class]="enCours() === a.id ? 'pi pi-spinner pi-spin' : 'pi pi-check'" aria-hidden="true"></i> {{ 'HOPITAL.ALERTES.ACCUSER' | translate }}</button>
             </div>
@@ -47,7 +47,7 @@
       <h2 class="bb-card__title"><i class="pi pi-history" aria-hidden="true"></i> {{ 'HOPITAL.ALERTES.HISTORIQUE' | translate }}</h2>
       <div class="bb-hop-list">
         @for (a of accusees(); track a.id) {
-          <a class="bb-hop-item" [routerLink]="['/hopital/episodes', a.demande.idEpisode]">
+          <a class="bb-hop-item" [routerLink]="[racine + '/episodes', a.demande.idEpisode]">
             <div class="bb-hop-item__body">
               <p class="bb-hop-item__title">{{ a.demande.patient.prenom }} {{ a.demande.patient.nom }} <span class="bb-badge bb-badge--success">{{ 'HOPITAL.ALERTES.ACCUSEE' | translate }}</span></p>
               <p class="bb-hop-item__sub">{{ a.resultat.libelle }} : {{ a.resultat.valeur }} {{ a.resultat.unite ?? '' }}</p>

@@ -10,6 +10,7 @@ import { LaboratoireService } from '../../../core/services/laboratoire.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { statutDemandeClasse, urgenceClasse } from '../../hopital/hopital.utils';
+import { RACINE_LABO } from '../../../core/navigation/racines';
 
 @Component({
   selector: 'app-labo-tableau-de-bord',
@@ -19,6 +20,9 @@ import { statutDemandeClasse, urgenceClasse } from '../../hopital/hopital.utils'
   styleUrl: './tableau-de-bord.component.scss',
 })
 export class LaboTableauDeBordComponent implements OnInit {
+  /** /laboratoire, ou l'interface de l'administrateur : voir core/navigation/racines.ts. */
+  readonly racine = inject(RACINE_LABO);
+
   private labo   = inject(LaboratoireService);
   private toastr = inject(ToastrService);
   private i18n   = inject(I18nService);

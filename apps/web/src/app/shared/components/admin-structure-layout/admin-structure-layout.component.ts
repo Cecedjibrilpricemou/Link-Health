@@ -1,5 +1,7 @@
 // shared/components/admin-structure-layout/admin-structure-layout.component.ts
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import type { TypeStructure } from '@baobaoheath/shared-types';
+import { rubriquesAdmin } from './admin-structure-nav';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -49,6 +51,11 @@ export class AdminStructureLayoutComponent {
   showProfil            = signal(false);
   pharmaciesNavEnabled  = signal(false);
   pharmaciesNavError    = signal(false);
+  /** Le type de la structure : il dit quelles rubriques elle a (accueil, laboratoire). */
+  typeStructure         = signal<TypeStructure | null>(null);
+
+  /** Le menu, par rubriques : tout l'etablissement, sauf le soin. */
+  readonly rubriques = computed(() => rubriquesAdmin(this.typeStructure(), this.pharmaciesNavEnabled()));
 
   constructor(iconRegistry: MatIconRegistry) {
     // PrimeIcons est déjà embarqué localement : on l'expose comme font set
@@ -56,8 +63,11 @@ export class AdminStructureLayoutComponent {
     iconRegistry.registerFontClassAlias('pi', 'pi');
     // Le menu lit la structure seule, pas les statistiques : un calcul de
     // compteurs en echec ne doit pas retirer des entrees du menu.
-    this.api.get<{ data?: { hospitaliere?: boolean } }>('/admin-structure/ma-structure').subscribe({
-      next: response => this.pharmaciesNavEnabled.set(response.data?.hospitaliere === true),
+    this.api.get<{ data?: { hospitaliere?: boolean; type?: TypeStructure } }>('/admin-structure/ma-structure').subscribe({
+      next: response => {
+        this.pharmaciesNavEnabled.set(response.data?.hospitaliere === true);
+        this.typeStructure.set(response.data?.type ?? null);
+      },
       error: () => this.pharmaciesNavError.set(true),
     });
   }
@@ -94,19 +104,9 @@ export class AdminStructureLayoutComponent {
     return `${u.prenom?.charAt(0) ?? ''}${u.nom?.charAt(0) ?? ''}`.toUpperCase();
   }
 
+  /** Toutes les entrees a plat : le fil d'Ariane du haut de page les lit. */
   get navItems() {
-    const items = [
-      { labelKey: 'ADMIN_STRUCTURE.NAV_DASHBOARD', icon: 'pi-home', route: '/admin-structure/dashboard' },
-      { labelKey: 'ADMIN_STRUCTURE.NAV_AGENTS', icon: 'pi-users', route: '/admin-structure/agents' },
-    ];
-    if (this.pharmaciesNavEnabled()) {
-      items.push({ labelKey: 'ADMIN_STRUCTURE.NAV_PHARMACIES', icon: 'pi-building', route: '/admin-structure/pharmacies' });
-      items.push({ labelKey: 'ADMIN_STRUCTURE.NAV_ASSURANCES', icon: 'pi-shield', route: '/admin-structure/assurances' });
-    }
-    items.push({ labelKey: 'ADMIN_STRUCTURE.NAV_DOSSIER', icon: 'pi-folder-open', route: '/admin-structure/dossier' });
-    items.push({ labelKey: 'ADMIN_STRUCTURE.NAV_CONSEILLEES', icon: 'pi-sitemap', route: '/admin-structure/conseillees' });
-    items.push({ labelKey: 'ADMIN_STRUCTURE.NAV_IDENTITES', icon: 'pi-id-card', route: '/admin-structure/identites' });
-    items.push({ labelKey: 'APPARENCE.NAV', icon: 'pi-palette', route: '/admin-structure/apparence' });
-    return items;
+    return this.rubriques().flatMap((r) => r.items);
   }
+
 }

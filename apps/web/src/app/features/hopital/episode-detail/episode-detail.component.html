@@ -3,7 +3,7 @@
   <div class="bb-skeleton" style="height:260px;border-radius:20px"></div>
 } @else if (episode(); as ep) {
 
-  <a routerLink="/hopital/episodes" class="bb-hop-back"><i class="pi pi-arrow-left" aria-hidden="true"></i> {{ 'HOPITAL.DETAIL.BACK' | translate }}</a>
+  <a [routerLink]="racine + '/episodes'" class="bb-hop-back"><i class="pi pi-arrow-left" aria-hidden="true"></i> {{ 'HOPITAL.DETAIL.BACK' | translate }}</a>
 
   <!-- ── En-tete de l'episode ─────────────────────────────────────── -->
   <header class="bb-page-head" style="margin-bottom:1rem">
@@ -187,7 +187,7 @@
                 }
               </div>
               @if (d.commentaireLaboratoire) { <div class="bb-hop-sub__consignes"><strong>{{ 'LABO.DETAIL.CONCLUSION' | translate }} — {{ d.valideur?.prenom }} {{ d.valideur?.nom }}</strong>{{ '\n' + d.commentaireLaboratoire }}</div> }
-              @if (d.alerteCritiqueEnAttente) { <p class="bb-hop-sub__line" style="color:var(--bb-danger);font-weight:700"><i class="pi pi-bell" aria-hidden="true"></i> {{ 'HOPITAL.DETAIL.CRITIQUE_A_ACCUSER' | translate }} <a routerLink="/hopital/alertes">{{ 'HOPITAL.NAV_ALERTES' | translate }}</a></p> }
+              @if (d.alerteCritiqueEnAttente && !estAccueil()) { <p class="bb-hop-sub__line" style="color:var(--bb-danger);font-weight:700"><i class="pi pi-bell" aria-hidden="true"></i> {{ 'HOPITAL.DETAIL.CRITIQUE_A_ACCUSER' | translate }} <a [routerLink]="racine + '/alertes'">{{ 'HOPITAL.NAV_ALERTES' | translate }}</a></p> }
             } @else {
               <div class="bb-hop-sub__tags">@for (l of d.lignes; track l.id) { <span class="bb-badge bb-badge--neutral" [title]="l.examen.codeLoinc">{{ l.examen.libelle }}@if (l.commentaire) { — {{ l.commentaire }} }</span> }</div>
             }

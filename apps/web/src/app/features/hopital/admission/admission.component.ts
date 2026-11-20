@@ -17,6 +17,7 @@ import { I18nService } from '../../../shared/services/i18n.service';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
 import { GeographieService } from '../../../core/services/geographie.service';
+import { RACINE_ACCUEIL } from '../../../core/navigation/racines';
 
 @Component({
   selector: 'app-hopital-admission',
@@ -25,6 +26,9 @@ import { GeographieService } from '../../../core/services/geographie.service';
   templateUrl: './admission.component.html',
 })
 export class AdmissionComponent implements OnInit {
+  /** /hopital, ou l'interface de l'administrateur : voir core/navigation/racines.ts. */
+  readonly racine = inject(RACINE_ACCUEIL);
+
   /** Les medecins : on cherche par nom ou par specialite. */
   readonly optionsMedecins = computed<OptionListe[]>(() =>
     this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: m.specialite ?? undefined })));
@@ -186,7 +190,7 @@ export class AdmissionComponent implements OnInit {
       next: (r) => {
         this.isSaving.set(false);
         this.toastr.success(this.i18n.t('HOPITAL.ADMISSION.SUCCESS', { numero: r.data?.numero ?? '' }), this.i18n.t('COMMON.SUCCESS'));
-        if (r.data) this.router.navigate(['/hopital/episodes', r.data.id]);
+        if (r.data) this.router.navigate([this.racine + '/episodes', r.data.id]);
       },
       error: (err) => {
         this.isSaving.set(false);

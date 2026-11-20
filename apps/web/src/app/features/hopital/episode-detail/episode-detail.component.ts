@@ -21,6 +21,7 @@ import { statutDemandeClasse, statutEpisodeClasse, urgenceClasse } from '../hopi
 import { LaboratoireService } from '../../../core/services/laboratoire.service';
 import { interpretationClasse, referenceLisible } from '../../laboratoire/laboratoire.utils';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
+import { RACINE_ACCUEIL } from '../../../core/navigation/racines';
 
 type Panneau = 'aucun' | 'orientation' | 'analyse';
 
@@ -31,6 +32,9 @@ type Panneau = 'aucun' | 'orientation' | 'analyse';
   templateUrl: './episode-detail.component.html',
 })
 export class EpisodeDetailComponent implements OnInit {
+  /** /hopital, ou l'interface de l'administrateur : voir core/navigation/racines.ts. */
+  readonly racine = inject(RACINE_ACCUEIL);
+
   /** Les medecins : on cherche par nom ou par specialite. */
   readonly optionsMedecins = computed<OptionListe[]>(() =>
     this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: m.specialite ?? undefined })));
@@ -50,9 +54,13 @@ export class EpisodeDetailComponent implements OnInit {
    * cloturer sont passes au medecin. L'API refuse deja ces appels — masquer
    * les boutons evite de lui proposer des actions qui echoueront.
    *
-   * L'ecran reste partage avec l'administrateur de structure, qui les garde.
+   * L'administrateur de la structure non plus : il dirige l'etablissement, il
+   * ne soigne pas. Pour lui aussi l'API refuse ces actes.
    */
-  readonly estAccueil = computed(() => this.auth.currentUser()?.role === 'AGENT_ACCUEIL');
+  readonly estAccueil = computed(() => {
+    const role = this.auth.currentUser()?.role;
+    return role === 'AGENT_ACCUEIL' || role === 'ADMIN_STRUCTURE';
+  });
 
   readonly statutClasse = statutEpisodeClasse;
   readonly demandeClasse = statutDemandeClasse;
@@ -109,7 +117,7 @@ export class EpisodeDetailComponent implements OnInit {
   private charger(id: string) {
     this.hopital.getEpisode(id).subscribe({
       next: (r) => { this.episode.set(r.data ?? null); this.isLoading.set(false); },
-      error: (err) => { this.isLoading.set(false); this.erreur(err); this.router.navigate(['/hopital/episodes']); },
+      error: (err) => { this.isLoading.set(false); this.erreur(err); this.router.navigate([this.racine + '/episodes']); },
     });
   }
 

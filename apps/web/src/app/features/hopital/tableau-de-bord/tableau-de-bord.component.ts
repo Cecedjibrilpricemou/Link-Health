@@ -9,6 +9,7 @@ import { HopitalService } from '../../../core/services/hopital.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { statutEpisodeClasse } from '../hopital.utils';
+import { RACINE_ACCUEIL } from '../../../core/navigation/racines';
 
 @Component({
   selector: 'app-hopital-tableau-de-bord',
@@ -17,6 +18,9 @@ import { statutEpisodeClasse } from '../hopital.utils';
   templateUrl: './tableau-de-bord.component.html',
 })
 export class TableauDeBordComponent implements OnInit {
+  /** /hopital, ou l'interface de l'administrateur : voir core/navigation/racines.ts. */
+  readonly racine = inject(RACINE_ACCUEIL);
+
   private hopital = inject(HopitalService);
   private toastr  = inject(ToastrService);
   private i18n    = inject(I18nService);

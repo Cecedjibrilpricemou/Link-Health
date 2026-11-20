@@ -5,7 +5,7 @@
     <p class="bb-page-head__sub">{{ 'HOPITAL.EPISODES.SUBTITLE' | translate: { count: total() } }}</p>
   </div>
   <div class="bb-page-head__actions">
-    <a matButton="filled" routerLink="/hopital/admission"><i class="pi pi-user-plus" aria-hidden="true"></i> {{ 'HOPITAL.DASH.NEW_ADMISSION' | translate }}</a>
+    <a matButton="filled" [routerLink]="racine + '/admission'"><i class="pi pi-user-plus" aria-hidden="true"></i> {{ 'HOPITAL.DASH.NEW_ADMISSION' | translate }}</a>
   </div>
 </header>
   <app-export-liste
@@ -35,7 +35,7 @@
 } @else {
   <div class="bb-hop-list">
     @for (e of items(); track e.id) {
-      <a class="bb-hop-item" [routerLink]="['/hopital/episodes', e.id]">
+      <a class="bb-hop-item" [routerLink]="[racine + '/episodes', e.id]">
         <span class="bb-hop-item__avatar" aria-hidden="true">{{ initiales(e) }}</span>
         <div class="bb-hop-item__body">
           <p class="bb-hop-item__title">{{ e.patient.prenom }} {{ e.patient.nom }} <span [class]="statutClasse(e.statut)">{{ 'HOPITAL.STATUT.' + e.statut | translate }}</span></p>

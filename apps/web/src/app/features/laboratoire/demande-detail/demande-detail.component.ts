@@ -21,6 +21,7 @@ import { I18nService } from '../../../shared/services/i18n.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { dateLocaleParDefaut, statutDemandeClasse, urgenceClasse } from '../../hopital/hopital.utils';
 import { ETAPES_DEMANDE, apercuInterpretation, indexEtape, interpretationClasse, referenceLisible } from '../laboratoire.utils';
+import { RACINE_LABO } from '../../../core/navigation/racines';
 
 type Panneau = 'aucun' | 'planifier' | 'prelever' | 'valider';
 type Saisie = { valeur: string; commentaire: string; idEchantillon: string };
@@ -33,6 +34,9 @@ type Saisie = { valeur: string; commentaire: string; idEchantillon: string };
   styleUrl: './demande-detail.component.scss',
 })
 export class LaboDemandeDetailComponent implements OnInit {
+  /** /laboratoire, ou l'interface de l'administrateur : voir core/navigation/racines.ts. */
+  readonly racine = inject(RACINE_LABO);
+
   private route  = inject(ActivatedRoute);
   private router = inject(Router);
   private labo   = inject(LaboratoireService);
@@ -56,7 +60,15 @@ export class LaboDemandeDetailComponent implements OnInit {
   /** Qui peut valider : le laborantin, depuis la suppression du role biologiste. */
   readonly peutSigner = computed(() => this.auth.currentUser()?.role === 'TECHNICIEN_LABO');
   readonly etapeCourante = computed(() => { const d = this.demande(); return d ? indexEtape(d.statut) : -1; });
-  readonly peutSaisir = computed(() => { const s = this.demande()?.statut; return s === 'PRELEVEE' || s === 'EN_ANALYSE'; });
+  /**
+   * Saisir les resultats et imprimer le compte rendu : au laborantin. L'ecran
+   * sert aussi l'administrateur de la structure, qui suit l'activite sans
+   * lire les valeurs (l'API les lui retire, et refuse la saisie).
+   */
+  readonly peutSaisir = computed(() => {
+    const s = this.demande()?.statut;
+    return this.peutSigner() && (s === 'PRELEVEE' || s === 'EN_ANALYSE');
+  });
   readonly toutSaisi = computed(() => { const d = this.demande(); return !!d && d.lignes.length > 0 && d.lignes.every((l) => l.resultat); });
   readonly peutValider = computed(() => this.peutSigner() && this.demande()?.statut === 'EN_ANALYSE' && this.toutSaisi());
   readonly saisieModifiee = computed(() => {
@@ -81,7 +93,7 @@ export class LaboDemandeDetailComponent implements OnInit {
   private charger(id: string) {
     this.labo.getDemande(id).subscribe({
       next: (r) => { this.appliquer(r.data ?? null); this.isLoading.set(false); },
-      error: (err) => { this.isLoading.set(false); this.erreur(err); this.router.navigate(['/laboratoire/demandes']); },
+      error: (err) => { this.isLoading.set(false); this.erreur(err); this.router.navigate([this.racine + '/demandes']); },
     });
   }
 

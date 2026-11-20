@@ -38,7 +38,7 @@
       <p class="bb-scan__vide">{{ 'LABO.SCAN_AUCUNE' | translate }}</p>
     } @else {
       @for (d of s.demandes; track d.id) {
-        <a class="bb-scan__demande" [routerLink]="['/laboratoire/demandes', d.id]">
+        <a class="bb-scan__demande" [routerLink]="[racine + '/demandes', d.id]">
           <span class="bb-scan__num">{{ d.numero }}</span>
           <span [class]="urgenceClasse(d.urgence)">{{ 'HOPITAL.URGENCE.' + d.urgence | translate }}</span>
           <span [class]="demandeClasse(d.statut)">{{ 'HOPITAL.DEMANDE_STATUT.' + d.statut | translate }}</span>
@@ -69,7 +69,7 @@
 } @else {
   <div class="bb-hop-list">
     @for (d of items(); track d.id) {
-      <a class="bb-hop-item" [routerLink]="['/laboratoire/demandes', d.id]" [class.bb-hop-item--urgent]="d.urgence !== 'ROUTINE' && d.statut !== 'VALIDEE' && d.statut !== 'ANNULEE'">
+      <a class="bb-hop-item" [routerLink]="[racine + '/demandes', d.id]" [class.bb-hop-item--urgent]="d.urgence !== 'ROUTINE' && d.statut !== 'VALIDEE' && d.statut !== 'ANNULEE'">
         <span class="bb-hop-item__avatar" aria-hidden="true">{{ initiales(d) }}</span>
         <div class="bb-hop-item__body">
           <p class="bb-hop-item__title">
