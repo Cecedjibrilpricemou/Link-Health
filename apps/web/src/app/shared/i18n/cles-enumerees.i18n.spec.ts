@@ -36,6 +36,8 @@ const FAMILLES: { prefixe: string; valeurs: readonly string[] }[] = [
   { prefixe: 'HOPITAL.DEMANDE_STATUT_', valeurs: ['TRANSMISE', 'RECUE', 'PRELEVEE', 'EN_ANALYSE', 'VALIDEE', 'ANNULEE'] },
   { prefixe: 'ADMIN.STRUCTURES.TYPE_', valeurs: ['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE', 'PHARMACIE', 'LABORATOIRE', 'ASSURANCE'] },
   { prefixe: 'PATIENT.CONSENTS.SENS_', valeurs: ['ACCORDE', 'RETIRE'] },
+  { prefixe: 'APPARENCE.PALETTE_', valeurs: ['EMERAUDE', 'OCEAN', 'INDIGO', 'SARCELLE', 'AMETHYSTE', 'ARDOISE'] },
+  { prefixe: 'APPARENCE.USAGE_', valeurs: ['EMERAUDE', 'OCEAN', 'INDIGO', 'SARCELLE', 'AMETHYSTE', 'ARDOISE'] },
   { prefixe: 'PATIENT.ACCES_DOSSIER.STATUT_', valeurs: ['DEMANDEE', 'ACCORDEE', 'REFUSEE', 'RETIREE', 'EXPIREE'] },
   { prefixe: 'MEDECIN.DOSSIER.HISTORIQUE.ETAT_', valeurs: ['AUCUNE', 'DEMANDEE', 'ACCORDEE', 'REFUSEE', 'RETIREE', 'EXPIREE'] },
   { prefixe: 'MEDECIN.DOSSIER.HISTORIQUE.BADGE_', valeurs: ['AUCUNE', 'DEMANDEE', 'ACCORDEE', 'REFUSEE', 'RETIREE', 'EXPIREE'] },

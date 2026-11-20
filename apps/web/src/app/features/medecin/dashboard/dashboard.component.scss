@@ -129,9 +129,9 @@
     box-shadow: var(--bb-shadow-sm);
 
     &--warning { --c-accent: var(--bb-warning); --c-accent-soft: var(--bb-warning-bg); --c-icon-bg: var(--bb-warning-bg); }
-    &--success { --c-accent: var(--bb-primary); --c-accent-soft: var(--bb-success-bg); --c-icon-bg: var(--bb-success-bg); }
+    &--success { --c-accent: var(--bb-primary); --c-accent-soft: var(--bb-accent-bg); --c-icon-bg: var(--bb-accent-bg); }
     &--info    { --c-accent: var(--bb-info);    --c-accent-soft: var(--bb-info-bg);    --c-icon-bg: var(--bb-info-bg); }
-    &--primary { --c-accent: var(--bb-primary); --c-accent-soft: var(--bb-success-bg); --c-icon-bg: var(--bb-success-bg); }
+    &--primary { --c-accent: var(--bb-primary); --c-accent-soft: var(--bb-accent-bg); --c-icon-bg: var(--bb-accent-bg); }
     // Rien a signaler : ni couleur d'etat, ni halo.
     &--neutre  { --c-accent: var(--bb-text-secondary); --c-accent-soft: var(--bb-border-light); --c-icon-bg: var(--bb-surface-card); }
   }

@@ -18,7 +18,7 @@
   // vert clair en sombre ; panneau visuel dans le vert des bandeaux.
   // ✦ Refonte UI : derives des jetons de marque (plus de hex)
   --auth-accent: var(--bb-primary);
-  --auth-accent-soft: var(--bb-success-bg);
+  --auth-accent-soft: var(--bb-accent-bg);
   --auth-panel: linear-gradient(160deg, var(--bb-primary) 0%, var(--bb-mid) 55%, var(--bb-deep) 100%);
   --auth-chip-bg: color-mix(in srgb, #fff 82%, transparent);
   --auth-chip-text: var(--bb-deep);

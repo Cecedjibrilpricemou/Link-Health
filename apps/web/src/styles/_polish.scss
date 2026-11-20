@@ -16,7 +16,16 @@ p { text-wrap: pretty; }
 .bb-stat__value, .bb-hop-stat__value, .bb-stat-card__value, .hero-stat__value,
 .bb-badge, table td { font-variant-numeric: tabular-nums; }
 
-::selection { background: rgba(62, 187, 112, 0.28); color: inherit; }
+// Le passage d'une palette de structure a l'autre : un fondu bref, pose le
+// temps du changement par PaletteStructureService, jamais au chargement.
+html.bb-palette-transition,
+html.bb-palette-transition *,
+html.bb-palette-transition *::before,
+html.bb-palette-transition *::after {
+  transition: background-color .35s ease, border-color .35s ease, color .35s ease, fill .35s ease, box-shadow .35s ease !important;
+}
+
+::selection { background: color-mix(in srgb, var(--bb-bright) 28%, transparent); color: inherit; }
 
 // ── FOCUS CLAVIER ──────────────────────────────────────────────────
 // Un seul anneau, visible uniquement a la navigation clavier.
@@ -65,18 +74,18 @@ p { text-wrap: pretty; }
 
 // Bouton plein : leger soulevement + ombre teintee au survol.
 .mat-mdc-unelevated-button:not(:disabled) {
-  box-shadow: 0 1px 2px rgba(11, 38, 24, 0.10);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--bb-deep) 10%, transparent);
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 20px -6px rgba(45, 125, 70, 0.45);
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--bb-primary) 45%, transparent);
   }
 }
 
 // Bouton contour : la bordure prend la couleur de marque au survol.
 .mat-mdc-outlined-button:not(:disabled):hover {
   border-color: var(--bb-primary);
-  background-color: var(--bb-success-bg);
+  background-color: var(--bb-accent-bg);
 }
 
 .mat-mdc-icon-button { transition: transform var(--bb-transition), background-color var(--bb-transition); }
@@ -120,7 +129,7 @@ a:not([class]) {
 // Halo doux autour du champ actif : on voit tout de suite ou l'on ecrit.
 .mat-mdc-form-field.mat-focused .mdc-notched-outline {
   border-radius: 12px;
-  box-shadow: 0 0 0 4px rgba(62, 187, 112, 0.14);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--bb-bright) 14%, transparent);
   transition: box-shadow var(--bb-transition);
 }
 
@@ -217,7 +226,7 @@ a.bb-stat, a.bb-hop-stat, button.bb-stat, .bb-stat--link,
 
 // ── HERO DE PAGE : RESPONSIVE ──────────────────────────────────────
 .page-hero {
-  box-shadow: 0 18px 40px -22px rgba(26, 92, 53, 0.65);
+  box-shadow: 0 18px 40px -22px color-mix(in srgb, var(--bb-mid) 65%, transparent);
 
   @media (max-width: 768px) {
     padding: 22px 20px 20px;

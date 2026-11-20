@@ -1,0 +1,59 @@
+<div class="bb-app">
+  <header class="bb-page-head">
+    <div class="bb-page-head__text">
+      <span class="bb-page-head__tag"><i class="pi pi-palette" aria-hidden="true"></i> {{ 'APPARENCE.TAG' | translate }}</span>
+      <h1 class="bb-page-head__title">{{ 'APPARENCE.TITLE' | translate }}</h1>
+      <p class="bb-page-head__sub">{{ 'APPARENCE.SUB' | translate }}</p>
+    </div>
+  </header>
+
+  @if (isLoading()) {
+    <p class="bb-app__muted">{{ 'COMMON.LOADING' | translate }}</p>
+  } @else if (vue(); as v) {
+    <p class="bb-app__intro">
+      {{ (v.peutModifier ? 'APPARENCE.INTRO_RESPONSABLE' : 'APPARENCE.INTRO_MEMBRE') | translate: { structure: v.nomStructure } }}
+    </p>
+
+    <div class="bb-app__grille" role="radiogroup" [attr.aria-label]="'APPARENCE.TITLE' | translate">
+      @for (p of palettes; track p) {
+        <button type="button" role="radio" class="bb-app__carte"
+                [class.bb-app__carte--active]="active() === p"
+                [attr.aria-checked]="active() === p"
+                [attr.data-palette-choix]="p"
+                [disabled]="!v.peutModifier || enCours()"
+                (click)="choisir(p)">
+          <!-- La vignette : le menu, la barre, un titre, un bouton. Ce que
+               l'equipe verra, en petit. -->
+          <span class="bb-app__vignette" aria-hidden="true" [style.background]="apercus[p].fond">
+            <span class="bb-app__menu" [style.background]="'linear-gradient(180deg, ' + apercus[p].menuHaut + ' 0%, ' + apercus[p].menuBas + ' 100%)'">
+              <span class="bb-app__menu-ligne bb-app__menu-ligne--active" [style.background]="apercus[p].vif"></span>
+              <span class="bb-app__menu-ligne"></span>
+              <span class="bb-app__menu-ligne"></span>
+            </span>
+            <span class="bb-app__page">
+              <span class="bb-app__titre" [style.background]="apercus[p].texte"></span>
+              <span class="bb-app__texte"></span>
+              <span class="bb-app__bouton" [style.background]="apercus[p].primaire"></span>
+            </span>
+          </span>
+
+          <span class="bb-app__nom">
+            {{ 'APPARENCE.PALETTE_' + p | translate }}
+            @if (active() === p) {
+              <i class="pi pi-check-circle bb-app__coche" aria-hidden="true"></i>
+            }
+          </span>
+          <span class="bb-app__usage">{{ 'APPARENCE.USAGE_' + p | translate }}</span>
+          @if (conseillee() === p) {
+            <span class="bb-app__conseil">{{ 'APPARENCE.CONSEILLEE' | translate }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <p class="bb-app__note">
+      <i class="pi pi-eye" aria-hidden="true"></i>
+      {{ 'APPARENCE.LISIBILITE' | translate }}
+    </p>
+  }
+</div>

@@ -40,7 +40,7 @@ $rythme: clamp(64px, 9vw, 120px);
   // accents et des bandeaux plus profonds pour ne pas eblouir.
   // ✦ Refonte UI : bandeaux derives des jetons de marque (plus de hex)
   --land-accent: var(--bb-primary);          // titres bicolores, icones, liens
-  --land-accent-soft: var(--bb-success-bg);  // pastilles derriere les icones
+  --land-accent-soft: var(--bb-accent-bg);  // pastilles derriere les icones
   --land-band: var(--bb-primary);            // bandeaux verts (chiffres, structures)
   --land-band-2: var(--bb-mid);              // fin de degrade (CTA)
   --land-band-text: #FFFFFF;

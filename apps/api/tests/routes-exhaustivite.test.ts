@@ -41,7 +41,7 @@ type Couche = {
  * le trou que ce test est censé fermer.
  */
 const FICHIERS = [
-  'admin-structure', 'analytics', 'asc', 'assurance', 'auth', 'bris-de-glace',
+  'admin-structure', 'analytics', 'apparence', 'asc', 'assurance', 'auth', 'bris-de-glace',
   'candidature-livreur', 'commande', 'compte', 'consentement', 'consultation', 'course', 'demande-agrement',
   'fhir', 'geographie', 'hopital',
   'identite', 'journal', 'laboratoire', 'medecin', 'medicament', 'notification',
@@ -113,6 +113,7 @@ const TOUS_ROLES_CONNECTES: Record<string, string> = {
   'auth POST /telephone/demande': 'son propre numero ; exige son mot de passe actuel, aucun identifiant de cible en entree',
   'auth POST /telephone/confirmer': 'sa propre demande en cours, prouvee par le code recu au nouveau numero',
   'upload POST /avatar': 'enregistre la photo du porteur du jeton ; aucun identifiant de cible en entree',
+  'apparence GET /': 'les couleurs de sa propre structure, resolue depuis le porteur du jeton ; aucun identifiant de cible en entree',
 
   // ── Ses propres notifications, filtrées sur l'identifiant du jeton.
   'notification GET /me': 'filtré sur user.userId',

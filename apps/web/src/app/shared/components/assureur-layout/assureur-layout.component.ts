@@ -96,5 +96,6 @@ export class AssureurLayoutComponent {
     { labelKey: 'ASSUREUR.NAV_ASSURES',     icon: 'pi-users',      route: '/assureur/assures' },
     { labelKey: 'ASSUREUR.NAV_CONTRATS',    icon: 'pi-briefcase',  route: '/assureur/contrats' },
     { labelKey: 'ASSUREUR.NAV_PHARMACIES',  icon: 'pi-building',   route: '/assureur/pharmacies' },
+    { labelKey: 'APPARENCE.NAV',            icon: 'pi-palette',    route: '/assureur/apparence' },
   ];
 }

@@ -370,6 +370,34 @@ suivis, export FHIR. **Elle ne vise que le rôle `MEDECIN`** : l'ASC et
 l'administration gardent leurs règles. La lecture d'une consultation par son
 identifiant reste ouverte à la structure ; c'est un choix, pas un oubli.
 
+### Les couleurs de l'interface, par structure
+
+**Une structure, une palette**, choisie par son responsable (administrateur,
+titulaire d'officine, assureur) depuis « Apparence ». Tout son personnel la
+voit dès son chargement suivant ; le responsable la voit changer sous ses yeux.
+Les patients, l'administration nationale et les pages publiques gardent le
+vert d'origine.
+
+- **Une liste fermée** (`PALETTES_STRUCTURE`, shared-types) : Émeraude,
+  Océan, Indigo, Sarcelle, Améthyste, Ardoise. Pas de rouge ni d'orange :
+  ce sont les couleurs du danger et de l'avertissement. Le serveur refuse tout
+  autre nom.
+- **Construites, pas choisies à l'œil** : chaque palette reprend les
+  luminosités de l'émeraude (en OKLCH) et change seulement la teinte.
+  `core/theme/palettes-structure.spec.ts` remesure les contrastes (WCAG AA, en
+  clair et en sombre, Material compris) : une couleur retouchée à la main qui
+  rendrait un texte difficile à lire ne passe pas.
+- **Rien n'est recompilé** : la palette pose `data-palette` et une feuille
+  de style sur `<html>`, qui redéfinit les jetons `--bb-*` et `--mat-sys-*`.
+  Émeraude ne pose rien : c'est la feuille de style elle-même.
+- **Les couleurs sémantiques ne bougent jamais** (`--bb-success`, `danger`,
+  `warning`, `info`). Pour une teinte de marque (étiquette, survol, liseré),
+  utilisez `--bb-accent-bg` / `--bb-accent-border`, **pas** `--bb-success-bg` :
+  ils ont la même valeur en émeraude, mais seul le premier suit la palette.
+  De même, n'écrivez plus de vert en dur : `var(--bb-primary)`,
+  `var(--bb-bright)`, ou `color-mix(in srgb, var(--bb-bright) 14%, transparent)`
+  pour une transparence.
+
 ### La géographie
 
 Le référentiel est **générique**, pour servir un autre pays sans toucher au
@@ -421,6 +449,9 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **Couleurs de l'interface par structure** (branche `feat/theme-structure`,
+  section 6) : six palettes vérifiées pour la lisibilité, choisies par le
+  responsable, appliquées sans rechargement.
 - **L'historique du patient sur son accord** (branche
   `feat/acces-dossier-accord`, section 6) : demande envoyée avec le
   rendez-vous, page « Accès à mon dossier » côté patient, panneau

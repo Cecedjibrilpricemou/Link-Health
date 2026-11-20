@@ -39,7 +39,7 @@ $pub-rythme: clamp(56px, 8vw, 104px);
 // porte donc ses propres variables.
 .pub, .pub-nav {
   --pub-accent: var(--bb-primary);
-  --pub-accent-soft: var(--bb-success-bg);
+  --pub-accent-soft: var(--bb-accent-bg);
   --pub-band: var(--bb-primary);
   --pub-band-2: var(--bb-mid);
   --pub-glass: color-mix(in srgb, var(--bb-surface-card) 74%, transparent);

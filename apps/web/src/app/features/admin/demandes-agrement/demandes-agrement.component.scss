@@ -3,7 +3,7 @@
 
 .bb-demandes {
   --demande-accent: var(--bb-primary);
-  --demande-accent-soft: var(--bb-success-bg);
+  --demande-accent-soft: var(--bb-accent-bg);
   color: var(--bb-text-primary);
 
   &__notice {

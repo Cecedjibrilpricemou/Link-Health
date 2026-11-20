@@ -225,7 +225,7 @@
     border: 1px solid var(--bb-border);
     animation: bb-ordo-drop 0.3s var(--bb-ease) both;
 
-    &--ok { background: var(--bb-success-bg); border-color: var(--bb-success-border); border-left: 4px solid var(--bb-bright); }
+    &--ok { background: var(--bb-accent-bg); border-color: var(--bb-accent-border); border-left: 4px solid var(--bb-bright); }
     // ✦ Refonte UI : rgba code en dur remplace par les tokens de danger
     &--ko { background: var(--bb-danger-bg); border-color: var(--bb-danger-border); border-left: 4px solid var(--bb-danger); }
   }

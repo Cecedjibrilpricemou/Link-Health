@@ -37,7 +37,7 @@
   &__row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   &__num {
     width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
-    background: var(--bb-success-bg); color: var(--bb-primary); font-family: var(--bb-font-display); font-size: 12px; font-weight: 800;
+    background: var(--bb-accent-bg); color: var(--bb-primary); font-family: var(--bb-font-display); font-size: 12px; font-weight: 800;
   }
 }
 

@@ -33,6 +33,7 @@ import ussdRoutes from './routes/ussd.routes';
 import statsRoutes from './routes/stats.routes';
 import uploadRoutes from './routes/upload.routes';
 import parametresRoutes from './routes/parametres.routes';
+import apparenceRoutes from './routes/apparence.routes';
 import hopitalRoutes from './routes/hopital.routes';
 import laboratoireRoutes from './routes/laboratoire.routes';
 import resultatsRoutes from './routes/resultats.routes';
@@ -300,6 +301,7 @@ app.use('/api/v1/ussd', ussdRoutes);
 app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/v1/parametres', parametresRoutes);
+app.use('/api/v1/apparence', apparenceRoutes);
 // A1 : sans authentification, comme /parametres/publics.
 app.use('/api/v1/recherche', rechercheRoutes);
 app.use('/api/v1/hopital', hopitalRoutes);

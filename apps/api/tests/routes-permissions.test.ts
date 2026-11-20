@@ -85,6 +85,7 @@ const identites = require('../src/routes/identite.routes').default as { stack: C
 const adminStructure = require('../src/routes/admin-structure.routes').default as { stack: Couche[] };
 const consultations = require('../src/routes/consultation.routes').default as { stack: Couche[] };
 const courses = require('../src/routes/course.routes').default as { stack: Couche[] };
+const apparence = require('../src/routes/apparence.routes').default as { stack: Couche[] };
 
 describe('disponibilite et zone du motard (M4)', () => {
   it('les trois routes ne sont ouvertes qu au livreur', () => {
@@ -586,5 +587,14 @@ describe('la verification d identite est le geste de celui qui recoit', () => {
     expect(rolesPour(identites, 'get', '/')).not.toBeNull();
     expect(rolesPour(identites, 'post', '/:id/verifier')).not.toBeNull();
     expect(rolesPour(identites, 'post', '/:id/traits')).not.toBeNull();
+  });
+});
+
+describe('les couleurs de la structure', () => {
+  // Lire : tout membre authentifie (le service rend 404 hors structure).
+  // Changer : les responsables ; le titulaire est verifie par le service.
+  it('changer la palette est reserve aux roles de responsable', () => {
+    expect(rolesPour(apparence, 'get', '/')).toEqual([]);
+    expect(rolesPour(apparence, 'put', '/')).toEqual(['ADMIN_STRUCTURE', 'PHARMACIEN', 'ASSUREUR']);
   });
 });

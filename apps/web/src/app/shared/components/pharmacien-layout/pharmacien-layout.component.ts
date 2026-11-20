@@ -107,6 +107,8 @@ export class PharmacienLayoutComponent {
     // qui redepose l'agrement quand il est renouvele, et les pieces portent
     // son diplome et l'adresse exacte du local.
     { labelKey: 'PHARMACIEN.NAV_DOSSIER', icon: 'pi-folder', route: '/pharmacien/dossier', roles: ['TITULAIRE'] },
+    // Les couleurs de l'officine, pour toute l'equipe : le titulaire choisit.
+    { labelKey: 'APPARENCE.NAV', icon: 'pi-palette', route: '/pharmacien/apparence', roles: ['TITULAIRE'] },
   ];
 
   get navItems() {

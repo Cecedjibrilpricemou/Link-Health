@@ -4548,5 +4548,28 @@
     "DEFAUT_BASE": "Commune",
     "DEFAUT_ELARGISSEMENT": "Prefecture",
     "DEFAUT_LIEU": "Place"
+  },
+  "APPARENCE": {
+    "NAV": "Appearance",
+    "TAG": "Appearance",
+    "TITLE": "Facility colours",
+    "SUB": "The interface colours for your whole team.",
+    "INTRO_RESPONSABLE": "Choose the colours of {{structure}}. Your whole team will see them right away.",
+    "INTRO_MEMBRE": "The colours of {{structure}}, chosen by its manager.",
+    "PALETTE_EMERAUDE": "Emerald",
+    "PALETTE_OCEAN": "Ocean",
+    "PALETTE_INDIGO": "Indigo",
+    "PALETTE_SARCELLE": "Teal",
+    "PALETTE_AMETHYSTE": "Amethyst",
+    "PALETTE_ARDOISE": "Slate",
+    "USAGE_EMERAUDE": "The original green, the colour of the pharmacy cross.",
+    "USAGE_OCEAN": "A calm, crisp blue, familiar in hospitals.",
+    "USAGE_INDIGO": "A deep, steady blue, for insurers.",
+    "USAGE_SARCELLE": "A soothing blue-green, for clinics.",
+    "USAGE_AMETHYSTE": "A soft violet, warm without being loud.",
+    "USAGE_ARDOISE": "A sober blue-grey, for laboratories.",
+    "CONSEILLEE": "Recommended for you",
+    "LISIBILITE": "Every palette is checked so text stays readable and easy on the eyes, in light and dark mode (WCAG AA contrast). Alert colours never change.",
+    "ENREGISTREE": "{{nom}} palette applied for the whole team."
   }
 }

@@ -14,8 +14,8 @@
     animation: bb-confirm-pop 0.3s var(--bb-ease) both;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: var(--bb-success-bg);
-    border: 1px solid var(--bb-success-border);
+    background: var(--bb-accent-bg);
+    border: 1px solid var(--bb-accent-border);
     color: var(--bb-primary);
 
     &--danger {
