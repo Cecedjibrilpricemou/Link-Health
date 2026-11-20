@@ -4323,6 +4323,12 @@
       "INSCRIPTION_ORDRE_AIDE": "L'attestation d'inscription à l'ordre professionnel compétent.",
       "AGREMENT_ASSURANCE": "Agrément de la Banque Centrale",
       "AGREMENT_ASSURANCE_AIDE": "La décision d'agrément délivrée par la BCRG pour les branches exercées.",
+      "EXTRAIT_RCCM": "Extrait RCCM",
+      "EXTRAIT_RCCM_AIDE": "L'extrait du Registre du commerce et du crédit mobilier de la compagnie.",
+      "PIECE_IDENTITE_RESPONSABLE": "Pièce d'identité du responsable",
+      "PIECE_IDENTITE_RESPONSABLE_AIDE": "Carte nationale d'identité ou passeport, en cours de validité.",
+      "CERTIFICAT_RESIDENCE_RESPONSABLE": "Certificat de résidence du responsable",
+      "CERTIFICAT_RESIDENCE_RESPONSABLE_AIDE": "Délivré par la commune où réside le responsable.",
       "AUTRE": "Pièce complémentaire",
       "AUTRE_AIDE": "Tout autre document réclamé par la direction compétente.",
       "VIDE": "Ce fichier est vide."

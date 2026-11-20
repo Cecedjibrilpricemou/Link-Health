@@ -61,6 +61,11 @@ const bd = prisma as unknown as {
 const disque = pieces as unknown as { ecrireFichiers: M; supprimerFichiers: M };
 
 const AGREMENT = { fieldname: 'AGREMENT_ASSURANCE', originalname: 'agrement.pdf', buffer: Buffer.from('%PDF-1.4 bcrg') };
+const pdf = (fieldname: string) => ({ fieldname, originalname: `${fieldname}.pdf`, buffer: Buffer.from('%PDF-1.4 x') });
+/** Le dossier complet : l'agrement, l'extrait RCCM, l'identite et la residence du responsable. */
+const DOSSIER = [
+  AGREMENT, pdf('EXTRAIT_RCCM'), pdf('PIECE_IDENTITE_RESPONSABLE'), pdf('CERTIFICAT_RESIDENCE_RESPONSABLE'),
+];
 const FICHIER_ECRIT = { type: 'AGREMENT_ASSURANCE', fichier: 'abc.pdf', taille: 13, libelle: null };
 
 const DTO: CreationAssuranceRecue = {
@@ -98,7 +103,7 @@ describe('creer une assurance en une fois', () => {
   // (1) Les trois naissent ensemble, et sur la meme structure : c'est ce qui
   // manquait a celui qui s'arretait au premier geste.
   it('cree la structure, sa piece, la compagnie rattachee et le compte ASSUREUR, dans une transaction', async () => {
-    const r = await creerAssuranceAvecResponsable(DTO, [AGREMENT]);
+    const r = await creerAssuranceAvecResponsable(DTO, DOSSIER);
 
     expect(bd.$transaction).toHaveBeenCalledTimes(1);
     expect(bd.structureSante.create).toHaveBeenCalledWith({
@@ -122,7 +127,7 @@ describe('creer une assurance en une fois', () => {
   });
 
   it('ne journalise jamais le mot de passe', async () => {
-    await creerAssuranceAvecResponsable(DTO, [AGREMENT]);
+    await creerAssuranceAvecResponsable(DTO, DOSSIER);
 
     const journal = JSON.stringify([
       ...(logger.info as M).mock.calls, ...(logger.error as M).mock.calls, ...(logger.warn as M).mock.calls,
@@ -141,10 +146,19 @@ describe('creer une assurance en une fois', () => {
     expect(bd.utilisateur.create).not.toHaveBeenCalled();
   });
 
+  it('refuse sans la piece d identite du responsable, en la nommant, et n ecrit rien', async () => {
+    const sansIdentite = DOSSIER.filter((f) => f.fieldname !== 'PIECE_IDENTITE_RESPONSABLE');
+
+    await expect(creerAssuranceAvecResponsable(DTO, sansIdentite))
+      .rejects.toThrow(/carte d'identité ou le passeport du responsable/);
+    expect(disque.ecrireFichiers).not.toHaveBeenCalled();
+    expect(bd.$transaction).not.toHaveBeenCalled();
+  });
+
   it('refuse sans la reference de l agrement, et n ecrit rien', async () => {
     const sansReference = { ...DTO, numeroAgrementCreation: undefined };
 
-    await expect(creerAssuranceAvecResponsable(sansReference, [AGREMENT]))
+    await expect(creerAssuranceAvecResponsable(sansReference, DOSSIER))
       .rejects.toThrow(/Banque Centrale/);
     expect(disque.ecrireFichiers).not.toHaveBeenCalled();
     expect(bd.$transaction).not.toHaveBeenCalled();
@@ -154,7 +168,7 @@ describe('creer une assurance en une fois', () => {
   it('refuse un code deja pris en le nommant, avant toute ecriture', async () => {
     bd.assureur.findUnique.mockResolvedValue({ id: 'autre' });
 
-    const erreur = await creerAssuranceAvecResponsable(DTO, [AGREMENT]).catch((e: unknown) => e);
+    const erreur = await creerAssuranceAvecResponsable(DTO, DOSSIER).catch((e: unknown) => e);
 
     expect(erreur).toBeInstanceOf(ConflictError);
     expect((erreur as Error).message).toMatch(/code SUNU/);
@@ -169,7 +183,7 @@ describe('creer une assurance en une fois', () => {
       code: 'P2002', meta: { modelName: 'Assureur', target: ['code'] },
     }));
 
-    const erreur = await creerAssuranceAvecResponsable(DTO, [AGREMENT]).catch((e: unknown) => e);
+    const erreur = await creerAssuranceAvecResponsable(DTO, DOSSIER).catch((e: unknown) => e);
 
     expect(erreur).toBeInstanceOf(ConflictError);
     expect((erreur as Error).message).toMatch(/code SUNU/);
@@ -200,7 +214,7 @@ describe('creer une assurance en une fois', () => {
       }
     });
 
-    await expect(creerAssuranceAvecResponsable(DTO, [AGREMENT])).rejects.toThrow('echec du compte');
+    await expect(creerAssuranceAvecResponsable(DTO, DOSSIER)).rejects.toThrow('echec du compte');
 
     expect(persistees).toEqual([]);
     expect(disque.supprimerFichiers).toHaveBeenCalledWith(['abc.pdf']);
@@ -209,7 +223,7 @@ describe('creer une assurance en une fois', () => {
   // La modale ne doit pas affirmer un envoi qui a echoue : l'administrateur
   // fermerait sans noter le mot de passe, et le responsable resterait dehors.
   it('dit que le courriel est parti quand il est parti', async () => {
-    const r = await creerAssuranceAvecResponsable(DTO, [AGREMENT]);
+    const r = await creerAssuranceAvecResponsable(DTO, DOSSIER);
     expect(r.emailEnvoye).toBe(true);
   });
 
@@ -217,7 +231,7 @@ describe('creer une assurance en une fois', () => {
     const courriels = jest.requireMock('../src/services/email.service') as { envoyerEmailAdminStructure: M };
     courriels.envoyerEmailAdminStructure.mockRejectedValueOnce(new Error('aucun expediteur configure'));
 
-    const r = await creerAssuranceAvecResponsable(DTO, [AGREMENT]);
+    const r = await creerAssuranceAvecResponsable(DTO, DOSSIER);
 
     expect(r.emailEnvoye).toBe(false);
     expect(r.motDePasseTemporaire).toBe('Kq7m-Xw3P-abcd-EFGH');
@@ -227,7 +241,7 @@ describe('creer une assurance en une fois', () => {
     bd.utilisateur.findUnique.mockImplementation(async ({ where }: { where: { telephone?: string } }) =>
       (where.telephone ? { id: 'deja' } : null));
 
-    await expect(creerAssuranceAvecResponsable(DTO, [AGREMENT])).rejects.toBeInstanceOf(ConflictError);
+    await expect(creerAssuranceAvecResponsable(DTO, DOSSIER)).rejects.toBeInstanceOf(ConflictError);
     expect(disque.ecrireFichiers).not.toHaveBeenCalled();
   });
 });

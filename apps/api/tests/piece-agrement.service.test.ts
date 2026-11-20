@@ -144,9 +144,22 @@ describe('qui doit produire un dossier', () => {
   });
 
   // L'assureur releve de la Banque Centrale, pas du ministere de la Sante : il
-  // n'a ni diplome ni ordre professionnel a produire.
-  it('l assureur ne produit que son agrement de la Banque Centrale', () => {
-    expect(piecesRequisesPour('ASSURANCE')).toEqual(['AGREMENT_ASSURANCE']);
+  // n'a ni diplome ni ordre professionnel a produire. Mais la compagnie prouve
+  // son existence, et son responsable son identite et sa residence.
+  it('l assureur produit son agrement, son extrait RCCM, et l identite et la residence de son responsable', () => {
+    expect(piecesRequisesPour('ASSURANCE')).toEqual([
+      'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'PIECE_IDENTITE_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE',
+    ]);
+    expect(piecesRequisesPour('ASSURANCE')).not.toContain('DIPLOME_RESPONSABLE');
+    expect(piecesRequisesPour('ASSURANCE')).not.toContain('INSCRIPTION_ORDRE');
+  });
+
+  it('nomme chaque piece manquante d une assurance', () => {
+    const agrementSeul = [{ fieldname: 'AGREMENT_ASSURANCE', buffer: Buffer.from('%PDF-1.4 bcrg') }];
+    expect(() => validerPieces('ASSURANCE', agrementSeul)).toThrow(
+      "Dossier incomplet : il manque l'extrait RCCM, la carte d'identité ou le passeport du responsable, "
+      + 'le certificat de résidence du responsable.',
+    );
   });
 
   it('reconnait les structures nees d un acte de l Etat', () => {

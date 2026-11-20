@@ -1686,6 +1686,10 @@ export type TypePieceAgrement =
   | 'INSCRIPTION_ORDRE'
   /** L'assureur releve de la Banque Centrale, pas du ministere de la Sante. */
   | 'AGREMENT_ASSURANCE'
+  | 'EXTRAIT_RCCM'
+  /** Carte nationale d'identite ou passeport : l'une ou l'autre. */
+  | 'PIECE_IDENTITE_RESPONSABLE'
+  | 'CERTIFICAT_RESIDENCE_RESPONSABLE'
   | 'AUTRE';
 
 /** Une piece deposee. Le contenu ne passe jamais par le JSON : voir `GET /pieces/:id`. */
