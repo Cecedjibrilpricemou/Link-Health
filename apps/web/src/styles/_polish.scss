@@ -124,13 +124,15 @@ a:not([class]) {
   transition: box-shadow var(--bb-transition);
 }
 
-// **Un seul cadre par champ.** Dans un champ Material, c'est le contour et
-// son halo qui disent le focus. Plusieurs ecrans posaient en plus un anneau
-// sur le controle lui-meme (`:where(button, input, mat-select):focus-visible`
-// dans Assurances, Pharmacies, Agents, Courses) : il apparaissait comme un
-// second rectangle a l'interieur du champ. `!important` parce que ces regles
-// d'ecran sont encapsulees, donc plus specifiques que celle-ci.
-.mat-mdc-form-field :is(.mat-mdc-input-element, .mat-mdc-select, input, textarea, select):focus-visible {
+// **Un seul cadre par champ, dans tous ses etats.** Dans un champ Material,
+// c'est le contour et son halo qui disent le focus, et ce meme contour qui
+// passe au rouge en cas d'erreur. Des regles posaient en plus un cadre sur le
+// controle lui-meme, qui apparaissait comme un second rectangle a
+// l'interieur du champ : l'anneau de focus de plusieurs ecrans (Assurances,
+// Pharmacies, Agents, Courses), et le cadre rouge de validation sur les pages
+// de connexion et d'inscription. `!important` parce que ces regles sont
+// encapsulees ou deja marquees `!important`.
+.mat-mdc-form-field :is(.mat-mdc-input-element, .mat-mdc-select, input, textarea, select) {
   outline: none !important;
   box-shadow: none !important;
 }
