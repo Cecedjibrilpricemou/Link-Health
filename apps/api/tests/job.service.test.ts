@@ -13,6 +13,7 @@ jest.mock('../src/services/laboratoire.service', () => ({
 jest.mock('../src/services/commande.service', () => ({
   elargirCommandesEnAttente: jest.fn().mockResolvedValue({ elargies: 0 }),
   conclureCommandesExpirees: jest.fn().mockResolvedValue({ conclues: 0 }),
+  expirerPropositionsPartielles: jest.fn().mockResolvedValue({ expirees: 0 }),
 }));
 jest.mock('../src/services/course.service', () => ({
   elargirCoursesEnAttente: jest.fn().mockResolvedValue({ elargies: 0 }),

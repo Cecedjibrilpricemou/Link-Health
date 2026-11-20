@@ -172,6 +172,37 @@ tout ce qui lit cette entrée se rejoue en boucle.
 veut le supprimer**. Retirez ce `DROP INDEX` à la main avant d'appliquer une
 migration, sinon la recherche de médicaments tombe en production.
 
+**Même règle pour `commandes_origine_par_ordonnance`** (migration
+`20261120180000_commande_prise_partielle`) : un index unique **partiel**
+(`WHERE "idCommandeOrigine" IS NULL`), écrit en SQL brut parce que Prisma ne
+sait pas les déclarer. Il garantit **une seule commande d'origine par
+ordonnance** depuis que les reliquats y ont droit à plusieurs commandes. Si une
+migration générée propose de le supprimer, retirez la ligne : sans lui, deux
+lancements simultanés feraient deux commandes complètes pour la même
+ordonnance.
+
+### Commandes : le stock vérifié, et la prise partielle
+
+Quand une commande arrive, chaque ligne est confrontée au stock de la
+pharmacie (`disponibilite-stock.service.ts`) : **seuls les lots non périmés
+comptent**, une ligne est disponible, insuffisante ou absente, et un
+**équivalent** (même DCI, même dosage, comparés sans casse ni espaces) est
+**signalé, jamais substitué**. Le bilan éclaire, il ne décide pas.
+
+La pharmacie peut **prendre tout**, **proposer une partie** ou **refuser**. Une
+proposition réserve la commande (`ATTENTE_ACCORD_PATIENT`) ; le patient choisit
+sous **deux heures** (`DELAI_REPONSE_PARTIELLE_MINUTES`) :
+
+| Choix | Suite |
+|---|---|
+| Accepter et relancer | la commande ne sert plus que les lignes proposées (`lignesOrdonnance`) ; le manquant devient un **reliquat**, seconde commande sur la même ordonnance (`idCommandeOrigine`), appelée sans la pharmacie d'origine |
+| Accepter seul | même chose, sans reliquat |
+| Refuser, ou pas de réponse | retour au quartier ; la pharmacie qui a proposé n'est plus sollicitée, et le délai final repart du retour |
+
+`lignesOrdonnance` vide veut dire « toutes les lignes » : c'est le cas de
+toute commande antérieure. Le chiffrage, la vue et le stock ne lisent que les
+lignes servies. Les notifications ne nomment aucun produit (P9).
+
 ### Connexion : l'email est obligatoire pour les professionnels
 
 Seuls **PATIENT** et **LIVREUR** peuvent se connecter avec leur téléphone. Tous
@@ -379,6 +410,8 @@ Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 - **Dossier réglementaire obligatoire pour toutes les structures**.
 - **Demandes d'agrément** de bout en bout : dépôt public, examen, validation ou
   refus motivé.
+- **Commandes : stock vérifié à l'arrivée, prise partielle** avec accord du
+  patient sous deux heures, et reliquat relancé aux autres pharmacies.
 - **Demandes d'assurance en ligne**, motif obligatoire et envoyé à chaque action,
   historique des actions avec le sort de chaque courriel.
 - **La fenêtre d'examen ne passe plus sous le menu latéral** (agréments et
@@ -392,8 +425,9 @@ Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
 Par ordre de risque décroissant.
 
-1. **L'index trigramme non déclaré** (section 5) — une migration distraite fait
-   tomber la recherche de médicaments en production.
+1. **Les deux index en SQL brut** (section 5) — l'index trigramme et
+   `commandes_origine_par_ordonnance`. Une migration distraite fait tomber la
+   recherche de médicaments, ou laisse doubler une commande.
 2. **Les sauvegardes** (section 7) — ni les PDF d'agrément ni les pièces des
    livreurs ne sont sauvegardés nulle part.
 3. **Les comptes déjà créés** gardent leur ancien rôle : un responsable

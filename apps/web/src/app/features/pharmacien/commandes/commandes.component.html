@@ -54,6 +54,18 @@
               </span>
             </div>
 
+            <!-- Le stock, verifie pour elle a l'arrivee de l'appel : plus
+                 besoin de fouiller les rayons avant de repondre. -->
+            @if (c.disponibilite; as d) {
+              <p class="bb-cmd__stock" [attr.data-etat]="d.etat" role="status">
+                <i class="pi" aria-hidden="true"
+                   [class.pi-check-circle]="d.etat === 'COMPLETE'"
+                   [class.pi-exclamation-circle]="d.etat === 'PARTIELLE'"
+                   [class.pi-times-circle]="d.etat === 'AUCUNE'"></i>
+                {{ ('PHARMACIEN.COMMANDES.STOCK_' + d.etat) | translate: { n: d.disponibles, total: d.total } }}
+              </p>
+            }
+
             <!-- La liste exacte : c'est sur elle qu'on s'engage. -->
             <ul class="bb-cmd__lignes">
               @for (l of c.lignes; track l.id) {
@@ -62,6 +74,19 @@
                     {{ l.libelle }}
                     @if (dosageUtile(l.libelle, l.dosage); as d) {
                       <span class="bb-cmd__dosage">{{ d }}</span>
+                    }
+                    @if (ligneStock(c, l.id); as s) {
+                      <span class="bb-cmd__stock-ligne" [attr.data-etat]="s.etat">
+                        {{ ('PHARMACIEN.COMMANDES.LIGNE_' + s.etat) | translate: { n: s.quantiteEnStock } }}
+                      </span>
+                      <!-- Signale, jamais substitue : la substitution se decide
+                           avec le patient, au comptoir. -->
+                      @for (e of s.equivalents; track e.idMedicament) {
+                        <span class="bb-cmd__equivalent">
+                          <i class="pi pi-arrow-right-arrow-left" aria-hidden="true"></i>
+                          {{ 'PHARMACIEN.COMMANDES.EQUIVALENT' | translate: { produit: e.libelle, n: e.quantiteEnStock } }}
+                        </span>
+                      }
                     }
                   </span>
                   <span class="bb-cmd__qte">× {{ l.quantite }}</span>
@@ -83,6 +108,14 @@
                       (click)="demanderRefus(c)" [disabled]="enCours() === c.id">
                 {{ 'PHARMACIEN.COMMANDES.PAS_TOUT' | translate }}
               </button>
+              <!-- Une partie seulement : le patient choisit, sous deux heures. -->
+              @if (c.lignes.length > 1) {
+                <button class="bb-cmd__btn bb-cmd__btn--plat bb-cmd__partiel" type="button"
+                        (click)="ouvrirProposition(c)" [disabled]="enCours() === c.id">
+                  <i class="pi pi-list-check" aria-hidden="true"></i>
+                  {{ 'PHARMACIEN.COMMANDES.PARTIEL' | translate }}
+                </button>
+              }
               <button class="bb-cmd__btn" type="button"
                       (click)="jePrends(c)" [disabled]="enCours() === c.id">
                 <i class="pi pi-check" aria-hidden="true"></i>
@@ -156,7 +189,9 @@
 
             <!-- Le patient n'a pas encore dit comment il veut être servi : le
                  retrait n'est pas un repli, la livraison n'est pas imposée. -->
-            @if (!c.modeRemise) {
+            <!-- Pas pendant une proposition partielle : le mode se choisit
+                 apres l'accord du patient, pas avant. -->
+            @if (!c.modeRemise && c.statut !== 'ATTENTE_ACCORD_PATIENT') {
               <p class="bb-cmd__note">
                 <i class="pi pi-clock" aria-hidden="true"></i>
                 {{ 'PHARMACIEN.COMMANDES.ATTEND_MODE' | translate }}
@@ -192,6 +227,12 @@
                  chercher la panne du mauvais cote. -->
             <div class="bb-cmd__actions">
               @switch (c.statut) {
+                @case ('ATTENTE_ACCORD_PATIENT') {
+                  <p class="bb-cmd__note">
+                    <i class="pi pi-clock" aria-hidden="true"></i>
+                    {{ 'PHARMACIEN.COMMANDES.ATTEND_ACCORD' | translate: { heure: (c.propositionPartielle?.expireLe | date:'HH:mm') ?? '' } }}
+                  </p>
+                }
                 @case ('PRISE_EN_CHARGE') {
                   <button class="bb-cmd__btn bb-cmd__btn--plat" type="button"
                           (click)="rendre(c)" [disabled]="enCours() === c.id">
@@ -312,6 +353,48 @@
         <button class="bb-cmd__btn bb-cmd__btn--danger" type="button"
                 (click)="confirmerRefus()" [disabled]="!!enCours()">
           {{ 'PHARMACIEN.COMMANDES.REFUS_CONFIRMER' | translate }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
+<!-- La prise partielle : les lignes que l'officine peut servir. Les
+     disponibles d'apres le stock sont cochees d'avance ; le rayon fait foi. -->
+@if (propositionPour(); as c) {
+  <div class="bb-cmd__voile" role="dialog" aria-modal="true" aria-labelledby="cmd-partiel-titre">
+    <section class="bb-cmd__modale">
+      <h2 id="cmd-partiel-titre" class="bb-cmd__modale-titre">{{ 'PHARMACIEN.COMMANDES.PARTIEL_TITRE' | translate }}</h2>
+      <p class="bb-cmd__modale-texte">
+        {{ 'PHARMACIEN.COMMANDES.PARTIEL_TEXTE' | translate: { patient: c.patient.prenom + ' ' + c.patient.nom } }}
+      </p>
+      <ul class="bb-cmd__selection">
+        @for (l of c.lignes; track l.id) {
+          <li>
+            <label class="bb-cmd__selection-ligne">
+              <input type="checkbox" [checked]="lignesChoisies().has(l.id)" (change)="basculerLigne(l.id)" />
+              <span class="bb-cmd__produit">{{ l.libelle }} <span class="bb-cmd__dosage">× {{ l.quantite }}</span></span>
+              @if (ligneStock(c, l.id); as s) {
+                <span class="bb-cmd__stock-ligne" [attr.data-etat]="s.etat">
+                  {{ ('PHARMACIEN.COMMANDES.LIGNE_' + s.etat) | translate: { n: s.quantiteEnStock } }}
+                </span>
+              }
+            </label>
+          </li>
+        }
+      </ul>
+      <p class="bb-cmd__note">
+        <i class="pi pi-info-circle" aria-hidden="true"></i>
+        {{ 'PHARMACIEN.COMMANDES.PARTIEL_AIDE' | translate }}
+      </p>
+      <div class="bb-cmd__actions">
+        <button class="bb-cmd__btn bb-cmd__btn--plat" type="button"
+                (click)="fermerProposition()" [disabled]="!!enCours()">
+          {{ 'COMMON.CANCEL' | translate }}
+        </button>
+        <button class="bb-cmd__btn bb-cmd__confirmer-partiel" type="button"
+                (click)="confirmerProposition()" [disabled]="!peutProposer()">
+          {{ 'PHARMACIEN.COMMANDES.PARTIEL_CONFIRMER' | translate: { n: lignesChoisies().size, total: c.lignes.length } }}
         </button>
       </div>
     </section>

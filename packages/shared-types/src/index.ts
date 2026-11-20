@@ -244,6 +244,69 @@ export interface CommandeView {
   remiseLe?: HorodatageApi | null;
   clotureeLe?: HorodatageApi | null;
   motifAnnulation?: string | null;
+
+  /** Le numero de la commande (CM-2026-000123). */
+  numero?: string;
+  /**
+   * Un reliquat : les produits manquants d'une autre commande, relances aux
+   * pharmacies de la zone. Il porte le numero de la commande d'origine.
+   */
+  numeroCommandeOrigine?: string | null;
+  /**
+   * La proposition partielle d'une pharmacie, et ce que le patient en a
+   * fait. Presente des qu'une pharmacie a propose une partie.
+   */
+  propositionPartielle?: PropositionPartielleView | null;
+  /**
+   * Ce que **cette** pharmacie a en stock pour la commande, calcule pour
+   * elle seule quand l'appel lui arrive. Absent pour tout autre lecteur.
+   */
+  disponibilite?: DisponibiliteCommandeView;
+}
+
+/** Une ligne de la proposition : le produit et sa quantite, sans prix. */
+export interface LignePropositionView {
+  idLigneOrdonnance: string;
+  libelle: string;
+  quantite: number;
+}
+
+/** Ce que le patient a fait d'une proposition partielle. */
+export type ChoixPatientPartiel = 'ACCEPTE_ET_RELANCE' | 'ACCEPTE_SEUL' | 'REFUSE' | 'EXPIRE';
+
+/** Les trois reponses possibles du patient. */
+export type ReponsePartielle = 'ACCEPTER_ET_RELANCER' | 'ACCEPTER_SEUL' | 'REFUSER';
+
+export interface PropositionPartielleView {
+  /** Ce que la pharmacie peut servir. */
+  disponibles: LignePropositionView[];
+  /** Ce qui manque, et que le patient peut faire relancer. */
+  manquants: LignePropositionView[];
+  proposeeLe: HorodatageApi;
+  /** Sans reponse a cette heure, la commande retourne au quartier. */
+  expireLe: HorodatageApi;
+  choix: ChoixPatientPartiel | null;
+  choixLe: HorodatageApi | null;
+}
+
+export type EtatLigneStock = 'DISPONIBLE' | 'INSUFFISANT' | 'ABSENT';
+
+export interface DisponibiliteLigneView {
+  idLigneOrdonnance: string;
+  libelle: string;
+  quantiteDemandee: number;
+  /** Lots non perimes seulement. */
+  quantiteEnStock: number;
+  etat: EtatLigneStock;
+  /** Meme molecule, meme dosage, autre marque : signales, jamais substitues. */
+  equivalents: { idMedicament: string; libelle: string; quantiteEnStock: number }[];
+}
+
+export interface DisponibiliteCommandeView {
+  etat: 'COMPLETE' | 'PARTIELLE' | 'AUCUNE';
+  disponibles: number;
+  total: number;
+  lignes: DisponibiliteLigneView[];
 }
 
 /**
@@ -258,6 +321,8 @@ export interface CommandeView {
 export type StatutCommande =
   | 'RECHERCHE_PHARMACIE'
   | 'PRISE_EN_CHARGE'
+  /** Une pharmacie propose une partie : le patient choisit, sous deux heures. */
+  | 'ATTENTE_ACCORD_PATIENT'
   | 'A_PAYER'
   | 'PAYEE'
   | 'EN_PREPARATION'

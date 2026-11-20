@@ -9,8 +9,11 @@ import { ConflictError } from '../utils/app-error';
  * mode et l'etat ensemble.
  */
 const TRANSITIONS: Readonly<Record<StatutCommande, readonly StatutCommande[]>> = {
-  RECHERCHE_PHARMACIE: ['PRISE_EN_CHARGE', 'SANS_PHARMACIE', 'ANNULEE'],
+  RECHERCHE_PHARMACIE: ['PRISE_EN_CHARGE', 'ATTENTE_ACCORD_PATIENT', 'SANS_PHARMACIE', 'ANNULEE'],
   PRISE_EN_CHARGE: ['A_PAYER', 'RECHERCHE_PHARMACIE', 'ANNULEE'],
+  // Le patient accepte (la partie est servie), refuse ou laisse passer le
+  // delai (retour au quartier), ou renonce.
+  ATTENTE_ACCORD_PATIENT: ['PRISE_EN_CHARGE', 'RECHERCHE_PHARMACIE', 'ANNULEE'],
   A_PAYER: ['PAYEE', 'ANNULEE'],
   PAYEE: ['EN_PREPARATION', 'ANNULEE'],
   EN_PREPARATION: ['PRETE_POUR_RETRAIT', 'PRETE_POUR_LIVRAISON', 'ANNULEE'],
@@ -25,6 +28,7 @@ const TRANSITIONS: Readonly<Record<StatutCommande, readonly StatutCommande[]>> =
 const LIBELLES: Readonly<Record<StatutCommande, string>> = {
   RECHERCHE_PHARMACIE: 'en recherche de pharmacie',
   PRISE_EN_CHARGE: 'prise en charge',
+  ATTENTE_ACCORD_PATIENT: "en attente de l'accord du patient",
   A_PAYER: 'en attente de paiement',
   PAYEE: 'payee',
   EN_PREPARATION: 'en preparation',

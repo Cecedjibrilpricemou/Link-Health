@@ -38,16 +38,28 @@
               {{ c.pharmacie?.nom || ('PATIENT.COMMANDES.UNE_PHARMACIE' | translate) }}
             </p>
             <p class="bb-cmd__meta">
-              {{ 'PATIENT.COMMANDES.A_VOS_PRODUITS' | translate }}
+              {{ (c.statut === 'ATTENTE_ACCORD_PATIENT' ? 'PATIENT.COMMANDES.UNE_PARTIE' : 'PATIENT.COMMANDES.A_VOS_PRODUITS') | translate }}
               · {{ c.numeroOrdonnance }}
             </p>
+            <!-- Un reliquat : les produits manquants d'une autre commande. -->
+            @if (c.numeroCommandeOrigine) {
+              <p class="bb-cmd__meta bb-cmd__reliquat">
+                <i class="pi pi-link" aria-hidden="true"></i>
+                {{ 'PATIENT.COMMANDES.RELIQUAT' | translate: { numero: c.numeroCommandeOrigine } }}
+              </p>
+            }
             <p class="bb-cmd__etat">{{ libelleEtat(c.statut) }}</p>
           </div>
-          <span class="bb-cmd__boites">
-            {{ 'PATIENT.COMMANDES.BOITES' | translate: { n: totalBoites(c) } }}
-          </span>
+          <!-- Pendant une proposition, le compte de toute l'ordonnance ne dit
+               rien : le detail disponible / manquant est juste dessous. -->
+          @if (c.statut !== 'ATTENTE_ACCORD_PATIENT') {
+            <span class="bb-cmd__boites">
+              {{ 'PATIENT.COMMANDES.BOITES' | translate: { n: totalBoites(c) } }}
+            </span>
+          }
         </div>
 
+        @if (c.statut !== 'ATTENTE_ACCORD_PATIENT') {
         <ul class="bb-cmd__lignes">
           @for (l of c.lignes; track l.id) {
             <li class="bb-cmd__ligne">
@@ -68,6 +80,22 @@
             </li>
           }
         </ul>
+        }
+
+        <!-- Une commande acceptee en partie : le patient sait ce qui manque, et
+             ce qui en est fait. -->
+        @if (c.statut !== 'ATTENTE_ACCORD_PATIENT' && c.propositionPartielle?.choix === 'ACCEPTE_ET_RELANCE') {
+          <p class="bb-cmd__note">
+            <i class="pi pi-search" aria-hidden="true"></i>
+            {{ 'PATIENT.COMMANDES.PARTIEL_RELANCE_NOTE' | translate: { n: c.propositionPartielle!.manquants.length } }}
+          </p>
+        }
+        @if (c.statut !== 'ATTENTE_ACCORD_PATIENT' && c.propositionPartielle?.choix === 'ACCEPTE_SEUL') {
+          <p class="bb-cmd__note">
+            <i class="pi pi-info-circle" aria-hidden="true"></i>
+            {{ 'PATIENT.COMMANDES.PARTIEL_SEUL_NOTE' | translate: { n: c.propositionPartielle!.manquants.length } }}
+          </p>
+        }
 
         <!-- **Le montant avant le paiement, jamais apres.** Un patient doit
              savoir ce qu'il va debourser avant d'ouvrir son porte-monnaie. -->
@@ -79,6 +107,68 @@
         }
 
         @switch (c.statut) {
+          @case ('ATTENTE_ACCORD_PATIENT') {
+            @if (c.propositionPartielle; as p) {
+              <!-- Ce que la pharmacie a, ce qui manque, et jusqu'a quand
+                   repondre. Rien n'est servi ni paye sans la reponse. -->
+              <section class="bb-cmd__partiel" aria-labelledby="partiel-{{ c.id }}">
+                <p id="partiel-{{ c.id }}" class="bb-cmd__partiel-titre">
+                  {{ 'PATIENT.COMMANDES.PARTIEL_TITRE' | translate: {
+                    pharmacie: c.pharmacie?.nom || ('PATIENT.COMMANDES.UNE_PHARMACIE' | translate),
+                    n: p.disponibles.length, total: p.disponibles.length + p.manquants.length } }}
+                </p>
+
+                <p class="bb-cmd__partiel-sous" data-etat="DISPONIBLE">
+                  <i class="pi pi-check-circle" aria-hidden="true"></i>
+                  {{ 'PATIENT.COMMANDES.PARTIEL_DISPONIBLES' | translate }}
+                </p>
+                <ul class="bb-cmd__lignes">
+                  @for (l of p.disponibles; track l.idLigneOrdonnance) {
+                    <li class="bb-cmd__ligne">
+                      <span class="bb-cmd__produit">{{ l.libelle }}</span>
+                      <span class="bb-cmd__qte">× {{ l.quantite }}</span>
+                    </li>
+                  }
+                </ul>
+
+                <p class="bb-cmd__partiel-sous" data-etat="ABSENT">
+                  <i class="pi pi-times-circle" aria-hidden="true"></i>
+                  {{ 'PATIENT.COMMANDES.PARTIEL_MANQUANTS' | translate }}
+                </p>
+                <ul class="bb-cmd__lignes">
+                  @for (l of p.manquants; track l.idLigneOrdonnance) {
+                    <li class="bb-cmd__ligne">
+                      <span class="bb-cmd__produit">{{ l.libelle }}</span>
+                      <span class="bb-cmd__qte">× {{ l.quantite }}</span>
+                    </li>
+                  }
+                </ul>
+
+                <p class="bb-cmd__note">
+                  <i class="pi pi-clock" aria-hidden="true"></i>
+                  {{ 'PATIENT.COMMANDES.PARTIEL_DELAI' | translate: { heure: (p.expireLe | date:'HH:mm') ?? '' } }}
+                </p>
+
+                <div class="bb-cmd__choix-partiel">
+                  <button class="bb-cmd__btn" type="button" data-reponse="ACCEPTER_ET_RELANCER"
+                          (click)="repondrePartiel(c, 'ACCEPTER_ET_RELANCER')" [disabled]="enCours() === c.id">
+                    <i class="pi pi-search" aria-hidden="true"></i>
+                    {{ 'PATIENT.COMMANDES.PARTIEL_ACCEPTER_RELANCER' | translate }}
+                  </button>
+                  <button class="bb-cmd__btn bb-cmd__btn--plat" type="button" data-reponse="ACCEPTER_SEUL"
+                          (click)="repondrePartiel(c, 'ACCEPTER_SEUL')" [disabled]="enCours() === c.id">
+                    <i class="pi pi-check" aria-hidden="true"></i>
+                    {{ 'PATIENT.COMMANDES.PARTIEL_ACCEPTER_SEUL' | translate }}
+                  </button>
+                  <button class="bb-cmd__btn bb-cmd__btn--plat" type="button" data-reponse="REFUSER"
+                          (click)="repondrePartiel(c, 'REFUSER')" [disabled]="enCours() === c.id">
+                    <i class="pi pi-replay" aria-hidden="true"></i>
+                    {{ 'PATIENT.COMMANDES.PARTIEL_REFUSER' | translate }}
+                  </button>
+                </div>
+              </section>
+            }
+          }
           @case ('PRISE_EN_CHARGE') {
             <p class="bb-cmd__note">
               <i class="pi pi-clock" aria-hidden="true"></i>
@@ -178,9 +268,11 @@
             <i class="pi pi-check-circle" aria-hidden="true"></i>
             {{ 'PATIENT.COMMANDES.MODE_CHOISI' | translate: { mode: libelleMode(c.modeRemise) } }}
           </p>
-        } @else {
+        } @else if (c.statut !== 'ATTENTE_ACCORD_PATIENT') {
           <!-- Les deux à égalité, aucun présélectionné : beaucoup de patients
-               habitent à côté d'une pharmacie et iront chercher eux-mêmes. -->
+               habitent à côté d'une pharmacie et iront chercher eux-mêmes.
+               Pas pendant une proposition partielle : le patient n'a pas
+               encore dit s'il l'accepte, et le serveur refuserait ce choix. -->
           <p class="bb-cmd__question">{{ 'PATIENT.COMMANDES.QUESTION' | translate }}</p>
           <div class="bb-cmd__choix">
             <button class="bb-cmd__option" type="button"
@@ -210,6 +302,13 @@
               {{ c.numeroOrdonnance }}
               @if (c.quartierRecherche) { · {{ c.quartierRecherche }} }
             </p>
+            <!-- Un reliquat : les produits manquants d'une autre commande. -->
+            @if (c.numeroCommandeOrigine) {
+              <p class="bb-cmd__meta bb-cmd__reliquat">
+                <i class="pi pi-link" aria-hidden="true"></i>
+                {{ 'PATIENT.COMMANDES.RELIQUAT' | translate: { numero: c.numeroCommandeOrigine } }}
+              </p>
+            }
           </div>
           <span class="bb-cmd__boites">
             {{ 'PATIENT.COMMANDES.BOITES' | translate: { n: totalBoites(c) } }}
@@ -219,6 +318,14 @@
           <i class="pi pi-clock" aria-hidden="true"></i>
           {{ 'PATIENT.COMMANDES.RECHERCHE_AIDE' | translate }}
         </p>
+        <!-- Revenue au quartier apres une proposition partielle : on dit
+             pourquoi elle cherche encore. -->
+        @if (c.propositionPartielle?.choix === 'REFUSE' || c.propositionPartielle?.choix === 'EXPIRE') {
+          <p class="bb-cmd__note">
+            <i class="pi pi-replay" aria-hidden="true"></i>
+            {{ ('PATIENT.COMMANDES.PARTIEL_RETOUR_' + c.propositionPartielle!.choix) | translate }}
+          </p>
+        }
       </article>
     }
 

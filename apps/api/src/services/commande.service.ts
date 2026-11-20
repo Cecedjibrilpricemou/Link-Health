@@ -13,6 +13,7 @@
 // conditionnel — celui qui obtient `count === 1` a la commande, les autres
 // obtiennent 0 et l'apprennent immédiatement.
 import {
+  ChoixPatientPartiel,
   ModeRemise,
   Prisma,
   Role,
@@ -34,6 +35,7 @@ import { assertTransition, transitionPermise } from './commande.transitions';
 import { voisinsDe } from './geographie.service';
 export { assertTransition, transitionPermise } from './commande.transitions';
 import { notifierLivreursCourse, ouvrirCourse } from './course.service';
+import { disponibilitesDansMonStock } from './disponibilite-stock.service';
 
 /**
  * Ce qu'une commande montre, et ou s'arrete le partage.
@@ -51,6 +53,11 @@ export function versCommandeView(
   idPharmacieLectrice?: string,
 ): CommandeView {
   const patient = c.ordonnance.consultation?.patient;
+  // Un reliquat, ou une commande acceptee en partie, ne sert que certaines
+  // lignes de l'ordonnance : on ne montre qu'elles.
+  const servies = c.lignesOrdonnance.length > 0
+    ? c.ordonnance.lignes.filter((l) => c.lignesOrdonnance.includes(l.id))
+    : c.ordonnance.lignes;
   return {
     id: c.id,
     idCourse: c.courses?.[0]?.id ?? null,
@@ -82,7 +89,7 @@ export function versCommandeView(
             montantGnf: l.montantGnf,
           };
         })
-      : c.ordonnance.lignes.map((l) => ({
+      : servies.map((l) => ({
           id: l.id,
           libelle: l.medicament.libelle,
           dosage: l.medicament.dosage,
@@ -105,8 +112,38 @@ export function versCommandeView(
     remiseLe: c.remiseLe?.toISOString() ?? null,
     clotureeLe: c.clotureeLe?.toISOString() ?? null,
     motifAnnulation: c.motifAnnulation,
+    numero: c.numero,
+    numeroCommandeOrigine: c.commandeOrigine?.numero ?? null,
+    propositionPartielle: versPropositionView(c, servies),
     ...(idPharmacieLectrice ? { estLaMienne: c.idPharmacie === idPharmacieLectrice } : {}),
     ...livreurPourLaPharmacie(c, idPharmacieLectrice),
+  };
+}
+
+/**
+ * La proposition partielle, telle que le patient doit la lire pour choisir :
+ * ce qui est disponible, ce qui manque, et jusqu'a quand repondre.
+ */
+function versPropositionView(
+  c: CommandeAvecInclude,
+  servies: CommandeAvecInclude['ordonnance']['lignes'],
+): CommandeView['propositionPartielle'] {
+  if (!c.propositionPartielleLe) return null;
+  const ligne = (l: CommandeAvecInclude['ordonnance']['lignes'][number]) => ({
+    idLigneOrdonnance: l.id, libelle: l.medicament.libelle, quantite: l.quantite,
+  });
+  // En attente, la proposition se lit sur `lignesProposees` ; une fois
+  // acceptee, la commande ne sert plus que ces lignes, et le manquant est ce
+  // que l'ordonnance prescrivait en plus.
+  const proposees = c.statut === StatutCommande.ATTENTE_ACCORD_PATIENT ? c.lignesProposees : c.lignesOrdonnance;
+  const reference = c.statut === StatutCommande.ATTENTE_ACCORD_PATIENT ? servies : c.ordonnance.lignes;
+  return {
+    disponibles: reference.filter((l) => proposees.includes(l.id)).map(ligne),
+    manquants: reference.filter((l) => !proposees.includes(l.id)).map(ligne),
+    proposeeLe: c.propositionPartielleLe.toISOString(),
+    expireLe: new Date(c.propositionPartielleLe.getTime() + DELAI_REPONSE_PARTIELLE_MINUTES * 60_000).toISOString(),
+    choix: c.choixPartiel,
+    choixLe: c.choixPartielLe?.toISOString() ?? null,
   };
 }
 
@@ -157,6 +194,7 @@ const COMMANDE_INCLUDE = {
   },
   lignes: { orderBy: { creeLe: 'asc' } },
   pharmacie: { select: { id: true, nom: true, prefecture: true, commune: true, quartier: true } },
+  commandeOrigine: { select: { numero: true } },
   courses: {
     where: { statut: { notIn: STATUTS_COURSE_TERMINAUX } },
     select: {
@@ -212,7 +250,8 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
   const ordonnance = await prisma.ordonnance.findUnique({
     where: { id: idOrdonnance },
     include: {
-      commande: { select: { id: true } },
+      // La commande d'origine : les reliquats s'y ajoutent, ils ne comptent pas.
+      commandes: { where: { idCommandeOrigine: null }, select: { id: true } },
       lignes: { select: { id: true } },
       consultation: {
         select: {
@@ -225,35 +264,14 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
     },
   });
   if (!ordonnance) throw new NotFoundError('Ordonnance non trouvee');
-  if (ordonnance.commande) throw new ConflictError('Une commande existe deja pour cette ordonnance');
+  if (ordonnance.commandes.length > 0) throw new ConflictError('Une commande existe deja pour cette ordonnance');
   if (!ordonnance.signeLe) throw new ValidationError('Ordonnance non signee : elle ne peut pas circuler');
   if (ordonnance.lignes.length === 0) {
     throw new ValidationError('Ordonnance sans medicament');
   }
 
   const { prefecture, commune, quartier } = ordonnance.consultation.patient;
-  let pharmacies = await pharmaciesDeLaZone({ prefecture, commune, quartier });
-  // M1-C puis M5 : aucune partenaire dans la commune, l'appel part d'emblee
-  // vers les communes voisines, a defaut vers toute la prefecture, plutot
-  // que de renvoyer le patient les mains vides.
-  let voisinesLe: Date | null = null;
-  let communesVoisines: string[] = [];
-  let elargieLe: Date | null = null;
-  if (pharmacies.length === 0) {
-    const voisines = await voisinsDe(prefecture, commune);
-    const chezLesVoisines = await pharmaciesDesCommunes(prefecture, voisines);
-    if (chezLesVoisines.length > 0) {
-      pharmacies = chezLesVoisines;
-      voisinesLe = new Date();
-      communesVoisines = voisines.map(cleLieu);
-    } else {
-      const dansLaPrefecture = await pharmaciesDeLaPrefecture(prefecture);
-      if (dansLaPrefecture.length > 0) {
-        pharmacies = dansLaPrefecture;
-        elargieLe = new Date();
-      }
-    }
-  }
+  const { pharmacies, voisinesLe, communesVoisines, elargieLe } = await trouverPharmacies({ prefecture, commune, quartier });
 
   const commande = await prisma.commande.create({
     data: {
@@ -279,6 +297,38 @@ export async function lancerRecherchePharmacie(idOrdonnance: string) {
 
   await appelerPharmacies(pharmacies.map((p) => p.id), ordonnance.numero, commande, voisinesLe !== null || elargieLe !== null);
   return getCommande(commande.id);
+}
+
+/**
+ * Les pharmacies a appeler pour une zone, et jusqu'ou l'appel a du s'etendre.
+ *
+ * M1-C puis M5 : aucune partenaire dans la commune, l'appel part d'emblee
+ * vers les communes voisines, a defaut vers toute la prefecture, plutot que
+ * de renvoyer le patient les mains vides. `exclure` ecarte une officine qui a
+ * deja dit ne pas avoir les produits (le reliquat d'une prise partielle).
+ */
+async function trouverPharmacies(zone: Lieu, exclure?: string) {
+  const garder = (liste: { id: string; nom: string }[]) => liste.filter((p) => p.id !== exclure);
+  let pharmacies = garder(await pharmaciesDeLaZone(zone));
+  let voisinesLe: Date | null = null;
+  let communesVoisines: string[] = [];
+  let elargieLe: Date | null = null;
+  if (pharmacies.length === 0) {
+    const voisines = await voisinsDe(zone.prefecture, zone.commune);
+    const chezLesVoisines = garder(await pharmaciesDesCommunes(zone.prefecture, voisines));
+    if (chezLesVoisines.length > 0) {
+      pharmacies = chezLesVoisines;
+      voisinesLe = new Date();
+      communesVoisines = voisines.map(cleLieu);
+    } else {
+      const dansLaPrefecture = garder(await pharmaciesDeLaPrefecture(zone.prefecture));
+      if (dansLaPrefecture.length > 0) {
+        pharmacies = dansLaPrefecture;
+        elargieLe = new Date();
+      }
+    }
+  }
+  return { pharmacies, voisinesLe, communesVoisines, elargieLe };
 }
 
 /**
@@ -650,7 +700,24 @@ export async function commandesDeLaPharmacie(user: JwtPayload): Promise<Commande
     orderBy: { creeLe: 'desc' },
     take: 50,
   });
-  return commandes.map((c) => versCommandeView(c, pharmacie.id));
+
+  // **Le stock, verifie pour elle a l'arrivee de l'appel** : elle voit tout
+  // de suite si elle a tout, une partie ou rien, sans fouiller ses rayons.
+  const appels = commandes
+    .filter((c) => c.statut === StatutCommande.RECHERCHE_PHARMACIE)
+    .map((c) => ({
+      id: c.id,
+      lignes: (c.lignesOrdonnance.length > 0
+        ? c.ordonnance.lignes.filter((l) => c.lignesOrdonnance.includes(l.id))
+        : c.ordonnance.lignes),
+    }));
+  const disponibilites = await disponibilitesDansMonStock(pharmacie.id, appels);
+
+  return commandes.map((c) => {
+    const vue = versCommandeView(c, pharmacie.id);
+    const disponibilite = disponibilites.get(c.id);
+    return disponibilite ? { ...vue, disponibilite } : vue;
+  });
 }
 
 // ── Interne ─────────────────────────────────────────────────────────
@@ -737,7 +804,14 @@ export async function conclureCommandesExpirees(
 ): Promise<{ conclues: number }> {
   const limite = new Date(maintenant.getTime() - delaiFinalMinutes * 60_000);
   const expirees = await prisma.commande.findMany({
-    where: { statut: StatutCommande.RECHERCHE_PHARMACIE, creeLe: { lte: limite } },
+    where: {
+      statut: StatutCommande.RECHERCHE_PHARMACIE,
+      creeLe: { lte: limite },
+      // Une commande revenue au quartier apres une proposition partielle a
+      // droit a son delai complet : sans cela, elle serait conclue « sans
+      // pharmacie » a l'instant meme ou les autres officines la revoient.
+      OR: [{ choixPartielLe: null }, { choixPartielLe: { lte: limite } }],
+    },
     select: { id: true },
     orderBy: { creeLe: 'asc' },
     take: 100,
@@ -825,7 +899,11 @@ async function destinatairesDeLaCommande(idCommande: string) {
     o.signePar ?? o.consultation.idMedecinValideur,
   ].filter((v): v is string => Boolean(v));
 
-  return { utilisateurs: [...new Set(utilisateurs)], numeroOrdonnance: o.numero };
+  return {
+    utilisateurs: [...new Set(utilisateurs)],
+    numeroOrdonnance: o.numero,
+    idPatient: o.consultation.patient.idUtilisateur,
+  };
 }
 
 async function journaliserRetractation(idCommande: string, nomPharmacie: string, motif: string) {
@@ -929,9 +1007,10 @@ export async function assertPeutLireCommande(user: JwtPayload, idCommande: strin
   throw new ForbiddenError("Cette commande ne vous concerne pas");
 }
 
+/** La commande d'origine d'une ordonnance ; ses reliquats sont a part. */
 export async function commandeDeLOrdonnance(idOrdonnance: string) {
-  return prisma.commande.findUnique({
-    where: { idOrdonnance },
+  return prisma.commande.findFirst({
+    where: { idOrdonnance, idCommandeOrigine: null },
     include: COMMANDE_INCLUDE,
   });
 }
@@ -976,6 +1055,7 @@ export async function chiffrerCommande(user: JwtPayload, idCommande: string): Pr
   const complete = await prisma.commande.findUniqueOrThrow({
     where: { id: idCommande },
     select: {
+      lignesOrdonnance: true,
       ordonnance: {
         select: {
           lignes: {
@@ -991,16 +1071,22 @@ export async function chiffrerCommande(user: JwtPayload, idCommande: string): Pr
     },
   });
 
+  // Une commande acceptee en partie, ou un reliquat, ne chiffre que ses
+  // lignes : le patient ne paie pas ce qu'on ne lui remettra pas.
+  const servies = complete.lignesOrdonnance.length > 0
+    ? complete.ordonnance.lignes.filter((l) => complete.lignesOrdonnance.includes(l.id))
+    : complete.ordonnance.lignes;
+
   const stocks = await prisma.stock.findMany({
     where: {
       idStructure: pharmacie.id,
-      idMedicament: { in: complete.ordonnance.lignes.map((l) => l.idMedicament) },
+      idMedicament: { in: servies.map((l) => l.idMedicament) },
     },
     select: { idMedicament: true, margeGnf: true },
   });
   const margeParProduit = new Map(stocks.map((s) => [s.idMedicament, s.margeGnf]));
 
-  const absents = complete.ordonnance.lignes
+  const absents = servies
     .filter((l) => !margeParProduit.has(l.idMedicament))
     .map((l) => l.medicament.libelle);
   if (absents.length > 0) {
@@ -1010,7 +1096,7 @@ export async function chiffrerCommande(user: JwtPayload, idCommande: string): Pr
     );
   }
 
-  const lignes = complete.ordonnance.lignes.map((l) => {
+  const lignes = servies.map((l) => {
     const prixUnitaireGnf = l.medicament.prixUnitaireGnf + (margeParProduit.get(l.idMedicament) ?? 0);
     return {
       idCommande,
@@ -1290,6 +1376,330 @@ async function avecLaPharmacie(idCommande: string, utilisateurs: string[]): Prom
     select: { id: true },
   });
   return [...new Set([...utilisateurs, ...pharmaciens.map((p) => p.id)])];
+}
+
+// ── La prise partielle ──────────────────────────────────────────────
+//
+// **Ce qui manquait.** Une pharmacie qui n'avait que deux produits sur trois
+// ne pouvait que refuser : le patient perdait une officine qui pouvait le
+// servir en grande partie, et finissait souvent sans rien. Elle peut
+// desormais le proposer ; le patient choisit, sous deux heures :
+//   - accepter, et faire relancer le manquant aux autres pharmacies de la
+//     zone - un reliquat, seconde commande sur la meme ordonnance ;
+//   - accepter seul, et chercher le reste lui-meme ;
+//   - refuser : la commande retourne au quartier, pour une pharmacie qui a
+//     tout.
+// Rien n'est servi ni paye sans son accord. Sans reponse dans le delai, la
+// commande retourne au quartier, comme apres un refus.
+
+/** Le delai de reponse du patient a une proposition partielle. */
+export const DELAI_REPONSE_PARTIELLE_MINUTES = 120;
+
+/** L'heure limite de reponse, telle qu'on la lit a Conakry. */
+function heureLimite(proposeeLe: Date): string {
+  return new Date(proposeeLe.getTime() + DELAI_REPONSE_PARTIELLE_MINUTES * 60_000)
+    .toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Conakry' });
+}
+
+/** Les lignes d'ordonnance qu'une commande couvre : les siennes, ou toutes. */
+function lignesCouvertes(c: { lignesOrdonnance: string[] }, lignesOrdonnance: { id: string }[]): string[] {
+  return c.lignesOrdonnance.length > 0 ? c.lignesOrdonnance : lignesOrdonnance.map((l) => l.id);
+}
+
+/**
+ * Une pharmacie propose de servir une partie de la commande.
+ *
+ * La commande lui est **reservee** le temps que le patient choisisse : la
+ * prise est atomique, comme une prise complete. Sa reponse compte comme un
+ * « non » pour la totalite : si le patient refuse, elle n'est plus sollicitee
+ * pour la meme commande.
+ */
+export async function proposerPrisePartielle(
+  user: JwtPayload,
+  idCommande: string,
+  idsLignes: string[],
+): Promise<CommandeView> {
+  const pharmacie = await pharmacieDuPharmacien(user.userId);
+  const commande = await prisma.commande.findUnique({
+    where: { id: idCommande },
+    select: {
+      id: true, statut: true, idPharmacie: true, numero: true, lignesOrdonnance: true,
+      prefectureRecherche: true, communeRecherche: true, quartierRecherche: true, elargieLe: true,
+      voisinesLe: true, communesVoisines: true,
+      ordonnance: { select: { lignes: { select: { id: true } } } },
+    },
+  });
+  if (!commande) throw new NotFoundError('Commande non trouvee');
+  if ((commande.quartierRecherche || commande.communeRecherche) && !pharmacieAppelee(pharmacie, commande)) {
+    throw new ForbiddenError('Cette commande ne releve pas de votre zone');
+  }
+  if (commande.idPharmacie && commande.idPharmacie !== pharmacie.id) {
+    throw new ConflictError('Une autre pharmacie a deja pris cette commande');
+  }
+  assertTransition(commande.statut, StatutCommande.ATTENTE_ACCORD_PATIENT);
+
+  const couvertes = lignesCouvertes(commande, commande.ordonnance.lignes);
+  const proposees = [...new Set(idsLignes)];
+  if (proposees.length === 0) {
+    throw new ValidationError("Choisissez au moins un produit que vous pouvez servir, ou refusez la commande.");
+  }
+  if (proposees.some((id) => !couvertes.includes(id))) {
+    throw new ValidationError("Un produit propose n'appartient pas a cette commande.");
+  }
+  if (proposees.length === couvertes.length) {
+    throw new ValidationError('Vous avez tous les produits : prenez la commande entiere.');
+  }
+
+  await prisma.reponsePharmacie.upsert({
+    where: { idCommande_idStructure: { idCommande, idStructure: pharmacie.id } },
+    update: { aTousLesProduits: false, repondueLe: new Date() },
+    create: { idCommande, idStructure: pharmacie.id, aTousLesProduits: false },
+  });
+
+  const maintenant = new Date();
+  const prise = await prisma.commande.updateMany({
+    where: { id: idCommande, idPharmacie: null, statut: StatutCommande.RECHERCHE_PHARMACIE },
+    data: {
+      idPharmacie: pharmacie.id,
+      statut: StatutCommande.ATTENTE_ACCORD_PATIENT,
+      lignesProposees: proposees,
+      propositionPartielleLe: maintenant,
+      choixPartiel: null,
+      choixPartielLe: null,
+    },
+  });
+  if (prise.count === 0) throw new ConflictError('Une autre pharmacie a ete plus rapide');
+
+  await notifierPropositionPartielle(idCommande, pharmacie.nom, proposees.length, couvertes.length, maintenant);
+  return getCommande(idCommande, pharmacie.id);
+}
+
+export type ReponsePartielle = 'ACCEPTER_ET_RELANCER' | 'ACCEPTER_SEUL' | 'REFUSER';
+
+/** Le patient repond a la proposition partielle. */
+export async function repondrePropositionPartielle(
+  user: JwtPayload,
+  idCommande: string,
+  reponse: ReponsePartielle,
+): Promise<CommandeView> {
+  const commande = await prisma.commande.findUnique({
+    where: { id: idCommande },
+    select: {
+      id: true, statut: true, idPharmacie: true, lignesOrdonnance: true, lignesProposees: true,
+      ordonnance: {
+        select: {
+          lignes: { select: { id: true } },
+          consultation: { select: { patient: { select: { idUtilisateur: true } } } },
+        },
+      },
+    },
+  });
+  if (!commande) throw new NotFoundError('Commande non trouvee');
+  if (commande.ordonnance.consultation.patient.idUtilisateur !== user.userId) {
+    throw new ForbiddenError('Cette commande ne vous appartient pas');
+  }
+  if (commande.statut !== StatutCommande.ATTENTE_ACCORD_PATIENT) {
+    throw new ConflictError("Cette proposition n'attend plus de reponse.");
+  }
+
+  if (reponse === 'REFUSER') {
+    await retournerAuQuartier(idCommande, ChoixPatientPartiel.REFUSE);
+    return getCommande(idCommande);
+  }
+
+  const couvertes = lignesCouvertes(commande, commande.ordonnance.lignes);
+  const manquantes = couvertes.filter((id) => !commande.lignesProposees.includes(id));
+  const choix = reponse === 'ACCEPTER_ET_RELANCER' ? ChoixPatientPartiel.ACCEPTE_ET_RELANCE : ChoixPatientPartiel.ACCEPTE_SEUL;
+  const maintenant = new Date();
+
+  // La commande ne sert plus que la partie disponible : le chiffrage, le
+  // paiement et la remise ne porteront que sur elle.
+  const acceptee = await prisma.commande.updateMany({
+    where: { id: idCommande, statut: StatutCommande.ATTENTE_ACCORD_PATIENT },
+    data: {
+      statut: StatutCommande.PRISE_EN_CHARGE,
+      priseEnChargeLe: maintenant,
+      lignesOrdonnance: commande.lignesProposees,
+      choixPartiel: choix,
+      choixPartielLe: maintenant,
+    },
+  });
+  if (acceptee.count !== 1) throw new ConflictError("Cette proposition n'attend plus de reponse.");
+
+  await notifierChoixPartiel(idCommande, choix);
+  if (choix === ChoixPatientPartiel.ACCEPTE_ET_RELANCE && manquantes.length > 0 && commande.idPharmacie) {
+    await lancerReliquat(idCommande, manquantes, commande.idPharmacie);
+  }
+  return getCommande(idCommande);
+}
+
+/**
+ * Le manquant, relance aux pharmacies de la zone.
+ *
+ * Une seconde commande sur la meme ordonnance, limitee aux lignes manquantes.
+ * La pharmacie de la commande d'origine n'y est pas sollicitee : elle vient
+ * de dire qu'elle ne les a pas. Sa reponse est donc posee d'avance, sans quoi
+ * l'appel attendrait d'elle une reponse qu'elle ne donnera jamais.
+ */
+async function lancerReliquat(idOrigine: string, lignes: string[], idPharmacieOrigine: string): Promise<void> {
+  const origine = await prisma.commande.findUniqueOrThrow({
+    where: { id: idOrigine },
+    select: {
+      idOrdonnance: true, prefectureRecherche: true, communeRecherche: true, quartierRecherche: true,
+      ordonnance: { select: { numero: true } },
+    },
+  });
+  const zone = { prefecture: origine.prefectureRecherche, commune: origine.communeRecherche, quartier: origine.quartierRecherche };
+  const trouvees = await trouverPharmacies(zone, idPharmacieOrigine);
+
+  const reliquat = await prisma.commande.create({
+    data: {
+      numero: await prochainNumero('CM'),
+      idOrdonnance: origine.idOrdonnance,
+      idCommandeOrigine: idOrigine,
+      lignesOrdonnance: lignes,
+      quartierRecherche: origine.quartierRecherche,
+      prefectureRecherche: origine.prefectureRecherche,
+      communeRecherche: origine.communeRecherche,
+      voisinesLe: trouvees.voisinesLe,
+      communesVoisines: trouvees.communesVoisines,
+      elargieLe: trouvees.elargieLe,
+      statut: trouvees.pharmacies.length === 0 ? StatutCommande.SANS_PHARMACIE : StatutCommande.RECHERCHE_PHARMACIE,
+      reponses: { create: { idStructure: idPharmacieOrigine, aTousLesProduits: false } },
+    },
+  });
+
+  if (trouvees.pharmacies.length === 0) {
+    await avertirIndisponibilite(reliquat.id, 'refus');
+    return;
+  }
+  await appelerPharmacies(
+    trouvees.pharmacies.map((p) => p.id),
+    origine.ordonnance.numero,
+    reliquat,
+    trouvees.voisinesLe !== null || trouvees.elargieLe !== null,
+  );
+}
+
+/**
+ * La commande retourne au quartier : le patient a refuse la proposition, ou
+ * n'a pas repondu dans le delai.
+ *
+ * Conditionnelle, comme toute ecriture d'etat ici : le patient qui accepte a
+ * la seconde ou le delai expire garde son acceptation. La pharmacie qui a
+ * propose n'est plus sollicitee - elle a dit ne pas tout avoir.
+ */
+async function retournerAuQuartier(idCommande: string, cause: ChoixPatientPartiel): Promise<boolean> {
+  const commande = await prisma.commande.findUnique({ where: { id: idCommande }, select: { idPharmacie: true } });
+  const retour = await prisma.commande.updateMany({
+    where: { id: idCommande, statut: StatutCommande.ATTENTE_ACCORD_PATIENT },
+    data: {
+      statut: StatutCommande.RECHERCHE_PHARMACIE,
+      idPharmacie: null,
+      lignesProposees: [],
+      choixPartiel: cause,
+      choixPartielLe: new Date(),
+    },
+  });
+  if (retour.count !== 1) return false;
+
+  await notifierRetourAuQuartier(idCommande, cause, commande?.idPharmacie ?? null);
+  await verifierEpuisementDesReponses(idCommande);
+  return true;
+}
+
+/** Le job : les propositions restees sans reponse au-dela du delai. */
+export async function expirerPropositionsPartielles(
+  delaiMinutes = DELAI_REPONSE_PARTIELLE_MINUTES,
+  maintenant = new Date(),
+): Promise<{ expirees: number }> {
+  const limite = new Date(maintenant.getTime() - delaiMinutes * 60_000);
+  const enAttente = await prisma.commande.findMany({
+    where: { statut: StatutCommande.ATTENTE_ACCORD_PATIENT, propositionPartielleLe: { lte: limite } },
+    select: { id: true },
+    orderBy: { propositionPartielleLe: 'asc' },
+    take: 100,
+  });
+  let expirees = 0;
+  for (const { id } of enAttente) {
+    if (await retournerAuQuartier(id, ChoixPatientPartiel.EXPIRE)) expirees++;
+  }
+  return { expirees };
+}
+
+async function notifierPropositionPartielle(
+  idCommande: string,
+  nomPharmacie: string,
+  disponibles: number,
+  total: number,
+  proposeeLe: Date,
+) {
+  const d = await destinatairesDeLaCommande(idCommande);
+  if (!d) return;
+  // Le patient seul : c'est a lui de choisir. Aucun nom de produit (P9).
+  await notifierSansBloquer({
+    idUtilisateur: d.idPatient,
+    type: 'COMMANDE_PRISE_EN_CHARGE',
+    titre: 'Une pharmacie peut servir une partie de votre ordonnance',
+    contenu: `${nomPharmacie} peut servir ${disponibles} produit(s) sur ${total} de l'ordonnance ${d.numeroOrdonnance}. `
+      + `Choisissez avant ${heureLimite(proposeeLe)} : sans reponse, la commande retournera aux pharmacies du quartier.`,
+    lienAction: '/patient/commandes',
+    metadonnees: { idCommande },
+  });
+}
+
+async function notifierChoixPartiel(idCommande: string, choix: ChoixPatientPartiel) {
+  const d = await destinatairesDeLaCommande(idCommande);
+  if (!d) return;
+  const suite = choix === ChoixPatientPartiel.ACCEPTE_ET_RELANCE
+    ? 'Le patient accepte la partie disponible ; le reste est relance aux autres pharmacies.'
+    : 'Le patient accepte la partie disponible.';
+  for (const idUtilisateur of await avecLaPharmacie(idCommande, d.utilisateurs)) {
+    await notifierSansBloquer({
+      idUtilisateur,
+      type: 'COMMANDE_PRISE_EN_CHARGE',
+      titre: 'Proposition partielle acceptee',
+      contenu: `Ordonnance ${d.numeroOrdonnance} : ${suite}`,
+      lienAction: idUtilisateur === d.idPatient ? '/patient/commandes' : '/pharmacien/commandes',
+      metadonnees: { idCommande, choix },
+    });
+  }
+}
+
+async function notifierRetourAuQuartier(idCommande: string, cause: ChoixPatientPartiel, idPharmacie: string | null) {
+  const d = await destinatairesDeLaCommande(idCommande);
+  if (!d) return;
+  const constat = cause === ChoixPatientPartiel.EXPIRE
+    ? "le patient n'a pas repondu dans le delai"
+    : 'le patient a refuse la proposition partielle';
+  const pharmaciens = idPharmacie
+    ? await prisma.utilisateur.findMany({
+        where: { role: Role.PHARMACIEN, estActif: true, idStructure: idPharmacie },
+        select: { id: true },
+      })
+    : [];
+  for (const { id } of pharmaciens) {
+    await notifierSansBloquer({
+      idUtilisateur: id,
+      type: 'COMMANDE_A_SERVIR',
+      titre: 'La commande retourne au quartier',
+      contenu: `Ordonnance ${d.numeroOrdonnance} : ${constat}. Elle est proposee aux autres pharmacies.`,
+      lienAction: '/pharmacien/commandes',
+      metadonnees: { idCommande },
+    });
+  }
+  // Apres un delai depasse, le patient l'apprend aussi : il n'a rien decide.
+  if (cause === ChoixPatientPartiel.EXPIRE) {
+    await notifierSansBloquer({
+      idUtilisateur: d.idPatient,
+      type: 'COMMANDE_A_SERVIR',
+      titre: 'Votre commande est proposee aux autres pharmacies',
+      contenu: `Ordonnance ${d.numeroOrdonnance} : sans reponse de votre part, la proposition partielle a expire. `
+        + 'La commande est proposee aux autres pharmacies du quartier.',
+      lienAction: '/patient/commandes',
+      metadonnees: { idCommande },
+    });
+  }
 }
 
 export { StatutCommande, ModeRemise, StatutOrdonnance };

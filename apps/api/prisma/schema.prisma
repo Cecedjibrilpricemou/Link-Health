@@ -1659,7 +1659,8 @@ model Ordonnance {
 
   lignes         LigneOrdonnance[]
   ventesComptoir VenteComptoir[]
-  commande       Commande?
+  /// La commande d'origine, et ses reliquats eventuels.
+  commandes      Commande[]
 
   @@index([idConsultation])
   @@index([statut])
@@ -2694,6 +2695,11 @@ enum StatutCommande {
   RECHERCHE_PHARMACIE
   /// Une pharmacie a declare detenir la totalite : elle a la commande.
   PRISE_EN_CHARGE
+  /// Une pharmacie ne detient qu'une partie des produits et le propose : la
+  /// commande lui est reservee le temps que le patient choisisse - accepter
+  /// et relancer le manquant, accepter seul, ou refuser. Sans reponse sous
+  /// deux heures, elle retourne au quartier.
+  ATTENTE_ACCORD_PATIENT
   /// Le panier est chiffre, ligne par ligne, aux prix de cette officine.
   /// Le patient sait ce qu'il va payer avant de payer.
   A_PAYER
@@ -2715,6 +2721,19 @@ enum StatutCommande {
   /// partenaire. Le patient repart avec son ordonnance.
   SANS_PHARMACIE
   ANNULEE
+}
+
+/// Ce que le patient a fait d'une proposition partielle.
+enum ChoixPatientPartiel {
+  /// La partie disponible est servie ; le manquant part, en reliquat, aux
+  /// autres pharmacies de la zone.
+  ACCEPTE_ET_RELANCE
+  /// La partie disponible est servie ; le patient cherche le reste lui-meme.
+  ACCEPTE_SEUL
+  /// Le patient refuse : la commande retourne au quartier.
+  REFUSE
+  /// Le patient n'a pas repondu dans le delai : meme suite qu'un refus.
+  EXPIRE
 }
 
 enum StatutCourse {
@@ -2762,8 +2781,28 @@ model Commande {
   creeLe    DateTime @default(now())
   modifieLe DateTime @updatedAt
 
-  idOrdonnance String     @unique
+  /// Plus unique depuis la prise partielle : une ordonnance peut avoir sa
+  /// commande d'origine et le reliquat des produits manquants, chacun servi
+  /// par une pharmacie differente.
+  idOrdonnance String
   ordonnance   Ordonnance @relation(fields: [idOrdonnance], references: [id], onDelete: Cascade)
+
+  /// Les lignes de l'ordonnance que cette commande sert. **Vide : toutes**,
+  /// ce qui est le cas de toute commande anterieure a la prise partielle.
+  lignesOrdonnance String[] @default([])
+
+  /// Un reliquat pointe vers la commande dont il reprend les manquants.
+  idCommandeOrigine String?
+  commandeOrigine   Commande?  @relation("ReliquatCommande", fields: [idCommandeOrigine], references: [id], onDelete: SetNull)
+  reliquats         Commande[] @relation("ReliquatCommande")
+
+  /// La proposition partielle d'une pharmacie : les lignes qu'elle peut
+  /// servir, et quand elle l'a proposee - le delai de reponse du patient en
+  /// part.
+  lignesProposees        String[]             @default([])
+  propositionPartielleLe DateTime?
+  choixPartiel           ChoixPatientPartiel?
+  choixPartielLe         DateTime?
 
   /// La pharmacie qui a pris la commande. Nul tant que personne n'a declare
   /// detenir la totalite â€” c'est ce champ qui porte le verrou d'attribution.
@@ -2793,6 +2832,8 @@ model Commande {
 
   @@index([statut])
   @@index([idPharmacie])
+  @@index([idOrdonnance])
+  @@index([idCommandeOrigine])
   @@map("commandes")
 }
 

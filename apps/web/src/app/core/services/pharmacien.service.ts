@@ -237,6 +237,15 @@ export class PharmacienService {
       `/commandes/${idCommande}/disponibilite`, { aTousLesProduits });
   }
 
+  /**
+   * Proposer de servir une partie : les lignes d'ordonnance que l'officine
+   * peut remettre. La commande lui est reservee le temps que le patient
+   * choisisse (deux heures).
+   */
+  proposerPrisePartielle(idCommande: string, lignes: string[]): Observable<ApiResponse<CommandeView>> {
+    return this.api.post<ApiResponse<CommandeView>>(`/commandes/${idCommande}/proposition-partielle`, { lignes });
+  }
+
   /** Rendre une commande prise par erreur : le verrou se rouvre. */
   retirerPriseEnCharge(idCommande: string, motif: string): Observable<ApiResponse<CommandeView>> {
     return this.api.post<ApiResponse<CommandeView>>(`/commandes/${idCommande}/retirer`, { motif });

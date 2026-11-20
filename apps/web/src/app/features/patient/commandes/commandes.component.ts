@@ -10,10 +10,15 @@
 // Le patient ne voyait rien jusqu'ici : l'appel partait, une pharmacie
 // prenait la commande, et c'est à lui de dire comment être servi — sans
 // qu'aucun écran ne le lui demande.
+//
+// **Une pharmacie peut ne proposer qu'une partie.** Le patient voit ce
+// qu'elle a, ce qui manque, et jusqu'à quand répondre ; il choisit d'accepter
+// et de faire chercher le reste ailleurs, d'accepter seul, ou de refuser.
+// Rien n'est servi ni payé sans sa réponse.
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
-import type { CommandeView, ModePaiement, ModeRemise, OffreCourseView } from '@baobaoheath/shared-types';
+import type { CommandeView, ModePaiement, ModeRemise, OffreCourseView, ReponsePartielle } from '@baobaoheath/shared-types';
 import { CourseService } from '../../../core/services/course.service';
 import { PatientService } from '../../../core/services/patient.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
@@ -336,6 +341,26 @@ export class PatientCommandesComponent implements OnInit {
   dosageUtile(libelle: string, dosage?: string | null): string | null {
     if (!dosage) return null;
     return libelle.toLowerCase().includes(dosage.toLowerCase()) ? null : dosage;
+  }
+
+  /** La reponse a une proposition partielle : le serveur fait le reste. */
+  repondrePartiel(c: CommandeView, reponse: ReponsePartielle): void {
+    if (this.enCours()) return;
+    this.enCours.set(c.id);
+    this.patient.repondrePropositionPartielle(c.id, reponse).subscribe({
+      next: () => {
+        this.enCours.set(null);
+        this.toastr.success(this.i18n.t(`PATIENT.COMMANDES.PARTIEL_OK_${reponse}`));
+        this.charger();
+      },
+      error: (err) => {
+        this.enCours.set(null);
+        const e = err as { error?: { error?: string } };
+        // Le delai a pu expirer pendant qu'il hesitait : le serveur le dit.
+        this.toastr.error(e?.error?.error ?? this.i18n.t('COMMON.ERROR_GENERIC'));
+        this.charger();
+      },
+    });
   }
 
   choisir(c: CommandeView, mode: ModeRemise): void {
