@@ -20,6 +20,7 @@ import type {
   CreationStructureView,
   ParametresSystemeView,
   ParametresVisuelsView,
+  ReinitialisationMotDePasseView,
   StructureAdminView,
   MaStructureView, StatsStructureView,
   StructurePubliqueView,
@@ -34,6 +35,7 @@ import {
   updateStructureSchema,
   definirPartenariatSchema,
   decrireVisuelSchema,
+  modifierProfilAgentSchema,
 } from '../validators/api.schemas';
 
 const router = Router();
@@ -119,6 +121,23 @@ router.put('/agents/:id/bureau', requireRole('ADMIN_STRUCTURE'), validateBody(de
 router.put('/agents/:id/desactiver', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
   await service.desactiverAgent(req.user!.userId, String(req.params.id));
   res.json({ success: true, message: 'Agent desactive' });
+});
+
+router.put('/agents/:id/reactiver', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
+  const data = await service.reactiverAgent(req.user!.userId, String(req.params.id));
+  res.json({ success: true, data, message: `Compte de ${data.nomComplet} réactivé.` });
+});
+
+// Le metier d'un medecin : specialite, numero d'ordre.
+router.put('/agents/:id/profil', requireRole('ADMIN_STRUCTURE'), validateBody(modifierProfilAgentSchema), async (req: AuthRequest, res: Response) => {
+  const data = await service.modifierProfilAgent(req.user!.userId, String(req.params.id), req.body);
+  res.json({ success: true, data, message: `Profil de ${data.nomComplet} enregistré.` });
+});
+
+// Un mot de passe temporaire, rendu une fois ; ses sessions sont fermees.
+router.post('/agents/:id/mot-de-passe', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
+  const data: ReinitialisationMotDePasseView = await service.reinitialiserMotDePasseAgent(req.user!.userId, String(req.params.id));
+  res.json({ success: true, data });
 });
 
 /** Ce que le menu doit savoir de la structure : son type, sans statistiques. */

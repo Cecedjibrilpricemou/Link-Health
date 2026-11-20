@@ -844,3 +844,48 @@ export async function envoyerDemandeAccesDossier(dto: {
         html,
     });
 }
+
+/**
+ * Le mot de passe d'un agent vient d'etre reinitialise par l'administrateur
+ * de sa structure. Temporaire : a changer des la connexion.
+ */
+export async function envoyerReinitialisationAgent(dto: {
+    destinataire: string;
+    prenomNom: string;
+    nomStructure: string;
+    motDePasseTemporaire: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: 'Votre mot de passe a été réinitialisé',
+        salutation: `Bonjour ${echapperHtml(dto.prenomNom)},`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
+                L'administrateur de <strong>${echapperHtml(dto.nomStructure)}</strong> a réinitialisé
+                votre mot de passe. Voici votre mot de passe temporaire :
+              </p>
+              <p style="font-family:monospace;font-size:20px;font-weight:700;letter-spacing:1px;text-align:center;margin:0 0 16px;">
+                ${echapperHtml(dto.motDePasseTemporaire)}
+              </p>
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                Il est à changer dès votre prochaine connexion. Si vous n'êtes pas à
+                l'origine de cette demande, prévenez votre administrateur.
+              </p>
+              <div style="text-align:center;margin:0 0 8px;">
+                <a href="${lienConnexion()}"
+                   style="background:#1B5E35;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block;">
+                  Se connecter
+                </a>
+              </div>`,
+    });
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Votre mot de passe ${nom} a été réinitialisé`,
+        html,
+    });
+}
+

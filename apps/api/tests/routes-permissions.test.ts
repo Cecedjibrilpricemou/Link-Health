@@ -608,3 +608,14 @@ describe('les images des pages publiques', () => {
     expect(rolesPour(adminStructure, 'delete', '/parametres/visuels/:emplacement')).toEqual(['SUPER_ADMIN']);
   });
 });
+
+describe('le personnel de la structure', () => {
+  // Reactiver, modifier le metier, reinitialiser un mot de passe :
+  // l'administrateur de la structure, et lui seul.
+  it('les gestes sur un compte sont reserves a l administrateur de structure', () => {
+    expect(rolesPour(adminStructure, 'put', '/agents/:id/reactiver')).toEqual(['ADMIN_STRUCTURE']);
+    expect(rolesPour(adminStructure, 'put', '/agents/:id/profil')).toEqual(['ADMIN_STRUCTURE']);
+    expect(rolesPour(adminStructure, 'post', '/agents/:id/mot-de-passe')).toEqual(['ADMIN_STRUCTURE']);
+  });
+});
+

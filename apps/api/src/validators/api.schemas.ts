@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PALETTES_STRUCTURE } from '@baobaoheath/shared-types';
+import { PALETTES_STRUCTURE, SPECIALITES_MEDICALES } from '@baobaoheath/shared-types';
 import {
   CategorieProduit, ConsentScope, MotifBrisDeGlace, NiveauIdentite, Role, StatutDemandeRgpd, TypeDemandeRgpd, TypePieceIdentite,
 } from '../config/generated/client/client';
@@ -293,7 +293,12 @@ export const libererResultatsSchema = z.object({
   commentaire: z.string().trim().max(2000).optional(),
 });
 
-export const roleAgentStructureSchema = z.enum(['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'PHARMACIEN', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO']);
+// Pas de PHARMACIEN : le personnel d'une pharmacie est cree par son titulaire,
+// et une pharmacie d'hopital passe par une demande validee par l'administration.
+export const roleAgentStructureSchema = z.enum(['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO']);
+
+/** Le numero d'inscription a l'ordre : lettres, chiffres, tirets, barres. */
+const numeroOrdre = z.string().trim().max(40).regex(/^[A-Za-z0-9 ./-]*$/, "Numero d'ordre : lettres, chiffres, tirets et barres seulement");
 
 export const createAgentStructureSchema = z.object({
   telephone: phone,
@@ -302,6 +307,10 @@ export const createAgentStructureSchema = z.object({
   prenom: z.string().trim().min(1).max(80),
   nom: z.string().trim().min(1).max(80),
   role: roleAgentStructureSchema,
+  // Le metier d'un medecin (ignore pour les autres roles) : generaliste par
+  // defaut, specialiste, chirurgien-dentiste.
+  specialite: z.enum(SPECIALITES_MEDICALES).optional(),
+  numeroOrdre: numeroOrdre.optional(),
   // Ou le patient devra se rendre. **Facultatif** : beaucoup d'hopitaux ne
   // numerotent pas leurs bureaux, et l'agent accompagne a pied. Ignore pour
   // les roles autres que MEDECIN.
@@ -349,6 +358,11 @@ export const creerReglementSchema = z.object({
 });
 
 /** Un bureau change : un medecin demenage, un service est redecoupe. */
+export const modifierProfilAgentSchema = z.object({
+  specialite: z.enum(SPECIALITES_MEDICALES).optional(),
+  numeroOrdre: numeroOrdre.nullable().optional(),
+}).strict().refine((d) => d.specialite !== undefined || d.numeroOrdre !== undefined, { message: 'Rien a modifier' });
+
 export const definirBureauSchema = z.object({
   bureau: z.string().trim().min(1).max(120).nullable(),
 }).strict();

@@ -20,6 +20,7 @@ import { initialiserConsentementsParDefaut } from './privacy.service';
 import { envoyerSmsSimule, notifierSansBloquer } from './notification.service';
 import { getIdentitePlateforme } from './parametres.service';
 import { identiteDocument, structureDeDemandeAnalyse } from './document-emetteur.service';
+import { normaliserSpecialite } from '../utils/specialite.util';
 import { diffuserRendezVous } from '../realtime/rendez-vous.events';
 import type {
   PresenceDuJourView,
@@ -564,7 +565,7 @@ export async function listerMedecinsDeLaStructure(user: JwtPayload) {
     where: { role: Role.MEDECIN, estActif: true, OR: [{ idStructure }, { medecinProfile: { idStructure } }] },
     select: { ...PERSONNE_SELECT, medecinProfile: { select: { specialite: true } } },
     orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
-  }).then((rows) => rows.map((m) => ({ id: m.id, prenom: m.prenom, nom: m.nom, role: m.role, specialite: m.medecinProfile?.specialite ?? null })));
+  }).then((rows) => rows.map((m) => ({ id: m.id, prenom: m.prenom, nom: m.nom, role: m.role, specialite: normaliserSpecialite(m.medecinProfile?.specialite) })));
 }
 
 // ── EF-03-03 / EF-03-04 : demande d'analyse structuree ───────────────
