@@ -9,7 +9,7 @@
 // `espace` : la structure de l'utilisateur, son logo ou son monogramme, et
 // l'onglet du navigateur a son nom. La plateforme n'apparait plus dans les
 // interfaces des structures.
-import { Component, OnDestroy, computed, effect, inject, input } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { PlateformeService } from '../../services/plateforme.service';
 import { EspaceService } from '../../services/espace.service';
 
@@ -18,9 +18,9 @@ import { EspaceService } from '../../services/espace.service';
   standalone: true,
   template: `
     @if (espaceAffiche(); as e) {
-      @if (e.logo) {
+      @if (e.logo && e.logo !== logoCasse()) {
         <span class="bb-brand__logo-wrap">
-          <img class="bb-brand__logo" [src]="e.logo" [alt]="e.nom" />
+          <img class="bb-brand__logo" [src]="e.logo" [alt]="e.nom" (error)="logoCasse.set(e.logo)" />
         </span>
       } @else if (e.monogramme) {
         <span class="bb-brand__mono" aria-hidden="true">{{ e.monogramme }}</span>
@@ -29,9 +29,9 @@ import { EspaceService } from '../../services/espace.service';
       }
       <span class="bb-brand__name bb-brand__name--espace" [attr.title]="e.nom">{{ e.nom }}</span>
     } @else {
-      @if (plateforme.logoUrl()) {
+      @if (plateforme.logoUrl() && plateforme.logoUrl() !== logoCasse()) {
         <span class="bb-brand__logo-wrap">
-          <img class="bb-brand__logo" [src]="plateforme.logoUrl()" [alt]="plateforme.nom()" />
+          <img class="bb-brand__logo" [src]="plateforme.logoUrl()" [alt]="plateforme.nom()" (error)="logoCasse.set(plateforme.logoUrl())" />
         </span>
       }
       <span class="bb-brand__name">{{ plateforme.nom() }}</span>
@@ -81,6 +81,14 @@ export class BrandComponent implements OnDestroy {
 
   /** `espace` dans les interfaces des structures et des patients. */
   portee = input<'plateforme' | 'espace'>('plateforme');
+
+  /**
+   * Le logo qui n'a pas pu etre charge (fichier disparu, reseau coupe).
+   * **Jamais une image cassee en tete de l'interface** : on retombe sur les
+   * initiales, ou sur le nom seul pour la plateforme. Un autre logo (celui
+   * qu'on vient de televerser) est de nouveau essaye.
+   */
+  readonly logoCasse = signal<string | null>(null);
 
   readonly espaceAffiche = computed(() => (this.portee() === 'espace' ? this.espaces.espace() : null));
 

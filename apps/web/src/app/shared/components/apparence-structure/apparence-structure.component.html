@@ -18,7 +18,7 @@
          l'equipe, et en tete des documents imprimes. Sans logo, les initiales. -->
     <section class="bb-app__logo">
       <span class="bb-app__logo-apercu" aria-hidden="true">
-        @if (logo()) { <img [src]="logo()" alt="" /> } @else { <span class="bb-app__logo-mono">{{ initiales() }}</span> }
+        @if (logo() && logo() !== logoCasse()) { <img [src]="logo()" alt="" (error)="logoCasse.set(logo())" /> } @else { <span class="bb-app__logo-mono">{{ initiales() }}</span> }
       </span>
       <div class="bb-app__logo-texte">
         <h2 class="bb-app__logo-titre">{{ 'APPARENCE.LOGO_TITRE' | translate }}</h2>
