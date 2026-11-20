@@ -786,3 +786,61 @@ export async function envoyerEmailAgent(dto: {
         html,
     });
 }
+
+// ── L'acces d'un medecin a l'historique du patient ──────────────────
+/**
+ * Le medecin d'un rendez-vous demande a lire l'historique du patient.
+ *
+ * **Le courriel propose, il ne decide pas** : le lien mene a la page ou le
+ * patient accepte ou refuse, une fois connecte. Aucun bouton du courriel
+ * n'accorde quoi que ce soit, sans quoi un courriel transfere suffirait a
+ * ouvrir un dossier.
+ *
+ * Ni structure ni motif : un courriel peut etre lu par d'autres que le patient.
+ */
+export async function envoyerDemandeAccesDossier(dto: {
+    destinataire: string;
+    prenomNom: string;
+    medecin: string;
+    quand: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const nom = identite.nom;
+    const lien = `${env.FRONTEND_URL.replace(/\/+$/, '')}/patient/acces-dossier`;
+    const html = gabaritAgrement({
+        nom,
+        slogan: identite.slogan,
+        titre: "Un médecin demande l'accès à votre dossier",
+        salutation: `Bonjour ${echapperHtml(dto.prenomNom)},`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
+                Vous avez rendez-vous le <strong>${echapperHtml(dto.quand)}</strong>
+                avec <strong>${echapperHtml(dto.medecin)}</strong>.
+              </p>
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
+                Pour mieux vous soigner, ce médecin demande à consulter votre
+                historique : consultations passées, résultats d'examens,
+                vaccinations. Sans votre accord, il ne voit que la visite en cours.
+              </p>
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                L'accès dure jusqu'à la fin de votre prise en charge, plus trente
+                jours. Vous pouvez le retirer à tout moment.
+              </p>
+
+              <div style="text-align:center;margin:0 0 8px;">
+                <a href="${lien}"
+                   style="background:#1B5E35;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block;">
+                  Répondre à la demande
+                </a>
+              </div>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: `Un médecin demande l'accès à votre dossier ${nom}`,
+        html,
+    });
+}

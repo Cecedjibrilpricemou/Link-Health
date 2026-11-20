@@ -6,6 +6,11 @@
 // c'est l'écran qui manquait.
 //
 // Le médecin arrive ici depuis ses orientations ou ses résultats à libérer.
+//
+// **La visite, sans rien demander ; l'historique, sur l'accord du patient.**
+// Le panneau « Historique » dit où en est cet accord (demandé avec le
+// rendez-vous), permet de relancer une fois par jour, et rappelle la seule
+// autre porte : le bris de glace, déclaré et relu.
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
@@ -16,10 +21,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ToastrService } from 'ngx-toastr';
-import type { DemandeAnalyseView, EpisodeSoinsView, ExamenView, Urgence } from '@baobaoheath/shared-types';
+import type {
+  DemandeAnalyseView, EpisodeSoinsView, EtatAccesDossierView, ExamenView, HistoriquePatientView, Urgence,
+} from '@baobaoheath/shared-types';
 
 import { HopitalService } from '../../../core/services/hopital.service';
 import { LaboratoireService } from '../../../core/services/laboratoire.service';
+import { MedecinService } from '../../../core/services/medecin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -43,6 +51,7 @@ export class DossierComponent implements OnInit {
   private router  = inject(Router);
   private hopital = inject(HopitalService);
   private labo    = inject(LaboratoireService);
+  private medecin = inject(MedecinService);
   private toastr  = inject(ToastrService);
   private i18n    = inject(I18nService);
   private dialog  = inject(MatDialog);
@@ -65,6 +74,13 @@ export class DossierComponent implements OnInit {
   });
 
   examens = signal<ExamenView[]>([]);
+
+  // ── L'historique, sur l'accord du patient ─────────────────────────
+  acces = signal<EtatAccesDossierView | null>(null);
+  historique = signal<HistoriquePatientView | null>(null);
+  historiqueOuvert = signal(false);
+  chargeHistorique = signal(false);
+  relance = signal(false);
 
   demande = { urgence: 'ROUTINE' as Urgence, indicationClinique: '', consignesPatient: '' };
   filtreExamens = signal('');
@@ -97,7 +113,11 @@ export class DossierComponent implements OnInit {
 
   private charger(id: string) {
     this.hopital.getEpisode(id).subscribe({
-      next: (r) => { this.episode.set(r.data ?? null); this.isLoading.set(false); },
+      next: (r) => {
+        this.episode.set(r.data ?? null);
+        this.isLoading.set(false);
+        if (r.data) this.chargerAcces(r.data.patient.id);
+      },
       error: (err) => {
         this.isLoading.set(false);
         this.erreur(err);
@@ -116,6 +136,48 @@ export class DossierComponent implements OnInit {
       e?.error?.error ?? e?.error?.message ?? this.i18n.t('COMMON.ERROR_GENERIC'),
       this.i18n.t('COMMON.ERROR_TITLE')
     );
+  }
+
+  // ── L'historique du patient ──────────────────────────────────────
+  private chargerAcces(idPatient: string) {
+    this.medecin.getAccesDossier(idPatient).subscribe({
+      next: (r) => this.acces.set(r.data ?? null),
+      // L'état de l'accord est un plus : son absence n'empêche pas de soigner.
+      error: () => this.acces.set(null),
+    });
+  }
+
+  basculerHistorique() {
+    const ep = this.episode();
+    if (!ep) return;
+    if (this.historiqueOuvert()) { this.historiqueOuvert.set(false); return; }
+    this.historiqueOuvert.set(true);
+    if (this.historique() || this.chargeHistorique()) return;
+    this.chargeHistorique.set(true);
+    this.medecin.getHistoriquePatient(ep.patient.id).subscribe({
+      next: (r) => { this.historique.set(r.data ?? null); this.chargeHistorique.set(false); },
+      error: (err) => {
+        this.chargeHistorique.set(false);
+        this.historiqueOuvert.set(false);
+        this.erreur(err);
+        // Retiré entre-temps : l'état affiché doit le dire.
+        this.chargerAcces(ep.patient.id);
+      },
+    });
+  }
+
+  relancer() {
+    const ep = this.episode();
+    if (!ep || this.relance()) return;
+    this.relance.set(true);
+    this.medecin.relancerAccesDossier(ep.patient.id).subscribe({
+      next: (r) => {
+        this.relance.set(false);
+        this.acces.set(r.data ?? this.acces());
+        this.toastr.success(this.i18n.t('MEDECIN.DOSSIER.HISTORIQUE.RELANCE_OK'), this.i18n.t('COMMON.SUCCESS'));
+      },
+      error: (err) => { this.relance.set(false); this.erreur(err); },
+    });
   }
 
   // ── La consultation ──────────────────────────────────────────────

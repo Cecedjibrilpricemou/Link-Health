@@ -55,6 +55,127 @@
       }
     </section>
 
+    <!-- ── L'historique, sur l'accord du patient ─────────────────────
+         La visite se soigne sans rien demander ; au-delà, le patient
+         choisit. Le panneau dit où en est son accord. -->
+    @if (acces(); as a) {
+      <section class="bb-dossier__histo">
+        <div class="bb-dossier__histo-head">
+          <h2 class="bb-hop-card__title"><i class="pi pi-history" aria-hidden="true"></i> {{ 'MEDECIN.DOSSIER.HISTORIQUE.TITRE' | translate }}</h2>
+          <span class="bb-dossier__histo-etat" [attr.data-etat]="a.etat">{{ 'MEDECIN.DOSSIER.HISTORIQUE.BADGE_' + a.etat | translate }}</span>
+        </div>
+
+        <p class="bb-dossier__histo-texte">
+          {{ 'MEDECIN.DOSSIER.HISTORIQUE.ETAT_' + a.etat | translate }}
+          @if (a.etat === 'ACCORDEE' && a.expireLe) {
+            {{ 'MEDECIN.DOSSIER.HISTORIQUE.JUSQU_AU' | translate: { date: (a.expireLe | date:'longDate') ?? '' } }}
+          }
+        </p>
+        @if (a.brisDeGlaceJusquau) {
+          <p class="bb-dossier__alerte">
+            <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+            {{ 'MEDECIN.DOSSIER.HISTORIQUE.BRIS_JUSQU_AU' | translate: { heure: (a.brisDeGlaceJusquau | date:'shortTime') ?? '' } }}
+          </p>
+        }
+
+        <div class="bb-dossier__actions">
+          @if (a.peutLire) {
+            <button matButton="filled" type="button" class="bb-dossier__histo-voir" [disabled]="chargeHistorique()" (click)="basculerHistorique()">
+              <i class="pi" [class.pi-eye]="!historiqueOuvert()" [class.pi-eye-slash]="historiqueOuvert()" aria-hidden="true"></i>
+              {{ (historiqueOuvert() ? 'MEDECIN.DOSSIER.HISTORIQUE.MASQUER' : 'MEDECIN.DOSSIER.HISTORIQUE.AFFICHER') | translate }}
+            </button>
+          }
+          @if (a.etat === 'DEMANDEE') {
+            <button matButton type="button" class="bb-dossier__histo-relancer" [disabled]="!a.peutRelancer || relance()" (click)="relancer()">
+              <i class="pi pi-bell" aria-hidden="true"></i> {{ 'MEDECIN.DOSSIER.HISTORIQUE.RELANCER' | translate }}
+            </button>
+          }
+          @if (!a.peutLire) {
+            <a matButton class="bb-dossier__histo-urgence" [routerLink]="['/medecin/bris-de-glace']" [queryParams]="{ patient: ep.patient.id }">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i> {{ 'MEDECIN.DOSSIER.HISTORIQUE.URGENCE' | translate }}
+            </a>
+          }
+        </div>
+        @if (a.etat === 'DEMANDEE' && !a.peutRelancer) {
+          <p class="bb-dossier__histo-aide">{{ 'MEDECIN.DOSSIER.HISTORIQUE.RELANCE_PLUS_TARD' | translate }}</p>
+        }
+
+        @if (historiqueOuvert()) {
+          @if (chargeHistorique()) {
+            <p class="bb-dossier__muted">{{ 'COMMON.LOADING' | translate }}</p>
+          } @else if (historique(); as h) {
+            <div class="bb-dossier__histo-corps">
+              <h3 class="bb-dossier__histo-sous">{{ 'MEDECIN.DOSSIER.HISTORIQUE.FICHE' | translate }}</h3>
+              <dl class="bb-dossier__fiche">
+                <dt>{{ 'MEDECIN.DOSSIER.HISTORIQUE.GROUPE' | translate }}</dt>
+                <dd>{{ h.patient.groupeSanguin ?? ('MEDECIN.DOSSIER.HISTORIQUE.NON_RENSEIGNE' | translate) }}</dd>
+                <dt>{{ 'MEDECIN.DOSSIER.HISTORIQUE.ALLERGIES' | translate }}</dt>
+                <dd>{{ h.patient.allergies.length ? h.patient.allergies.join(', ') : ('MEDECIN.DOSSIER.HISTORIQUE.AUCUNE_CONNUE' | translate) }}</dd>
+                <dt>{{ 'MEDECIN.DOSSIER.HISTORIQUE.CHRONIQUES' | translate }}</dt>
+                <dd>{{ h.patient.maladiesChroniques.length ? h.patient.maladiesChroniques.join(', ') : ('MEDECIN.DOSSIER.HISTORIQUE.AUCUNE_CONNUE' | translate) }}</dd>
+              </dl>
+
+              <h3 class="bb-dossier__histo-sous">{{ 'MEDECIN.DOSSIER.HISTORIQUE.CONSULTATIONS' | translate }}</h3>
+              @if (h.consultations.length === 0) {
+                <p class="bb-dossier__muted">{{ 'MEDECIN.DOSSIER.HISTORIQUE.AUCUNE_CONSULTATION' | translate }}</p>
+              }
+              @for (c of h.consultations; track c.id) {
+                <div class="bb-hop-sub">
+                  <div class="bb-hop-sub__head">
+                    <span class="bb-hop-sub__num">{{ c.date | date:'mediumDate' }}</span>
+                    <span class="bb-dossier__meta">
+                      @if (c.structure) { {{ c.structure }} }
+                      @if (c.medecin) { · {{ c.medecin }} }
+                    </span>
+                  </div>
+                  <p class="bb-hop-sub__line">{{ c.motif }}</p>
+                  @if (c.diagnostics.length) {
+                    <p class="bb-hop-sub__line">
+                      <strong>{{ 'MEDECIN.DOSSIER.HISTORIQUE.DIAGNOSTIC' | translate }} :</strong> {{ c.diagnostics.join(', ') }}
+                    </p>
+                  }
+                  @if (c.traitements.length) {
+                    <div class="bb-hop-sub__tags">
+                      @for (t of c.traitements; track $index) {
+                        <span class="bb-badge bb-badge--neutral">{{ t.produit }} · {{ t.posologie }} · {{ t.frequence }} · {{ 'MEDECIN.DOSSIER.HISTORIQUE.JOURS' | translate: { n: t.dureeJours } }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              <h3 class="bb-dossier__histo-sous">{{ 'MEDECIN.DOSSIER.HISTORIQUE.RESULTATS' | translate }}</h3>
+              @if (h.examensSuivis.length === 0) {
+                <p class="bb-dossier__muted">{{ 'MEDECIN.DOSSIER.HISTORIQUE.AUCUN_RESULTAT' | translate }}</p>
+              } @else {
+                <div class="bb-hop-sub__tags">
+                  @for (e of h.examensSuivis; track e.codeLoinc) {
+                    <span class="bb-badge bb-badge--neutral">{{ e.libelle }} · {{ 'MEDECIN.DOSSIER.HISTORIQUE.MESURES' | translate: { n: e.nbPoints } }}</span>
+                  }
+                </div>
+              }
+
+              <h3 class="bb-dossier__histo-sous">{{ 'MEDECIN.DOSSIER.HISTORIQUE.VACCINATIONS' | translate }}</h3>
+              @if (h.vaccinations.length === 0) {
+                <p class="bb-dossier__muted">{{ 'MEDECIN.DOSSIER.HISTORIQUE.AUCUNE_VACCINATION' | translate }}</p>
+              } @else {
+                <ul class="bb-dossier__vaccins">
+                  @for (v of h.vaccinations; track $index) {
+                    <li>
+                      <strong>{{ v.vaccin }}</strong> · {{ v.le | date:'mediumDate' }}
+                      @if (v.prochaineDose) {
+                        · {{ 'MEDECIN.DOSSIER.HISTORIQUE.PROCHAINE' | translate: { date: (v.prochaineDose | date:'mediumDate') ?? '' } }}
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        }
+      </section>
+    }
+
     <!-- ── Prescrire des analyses ────────────────────────────────── -->
     @if (prescrit() && !termine()) {
       <section class="bb-hop-panel">

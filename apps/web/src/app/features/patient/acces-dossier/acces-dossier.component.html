@@ -1,0 +1,98 @@
+<div class="bb-acces">
+  <header class="bb-page-head">
+    <div class="bb-page-head__text">
+      <span class="bb-page-head__tag"><i class="pi pi-lock-open" aria-hidden="true"></i> {{ 'PATIENT.ROLE' | translate }}</span>
+      <h1 class="bb-page-head__title">{{ 'PATIENT.ACCES_DOSSIER.TITLE' | translate }}</h1>
+      <p class="bb-page-head__sub">{{ 'PATIENT.ACCES_DOSSIER.SUB' | translate }}</p>
+    </div>
+  </header>
+
+  <!-- Ce que l'accord ouvre, et ce qu'il n'ouvre pas : le patient décide en
+       connaissance de cause. -->
+  <p class="bb-acces__explication">{{ 'PATIENT.ACCES_DOSSIER.EXPLICATION' | translate }}</p>
+
+  @if (isLoading()) {
+    <p class="bb-acces__muted">{{ 'COMMON.LOADING' | translate }}</p>
+  } @else if (autorisations().length === 0) {
+    <div class="bb-acces__vide">
+      <i class="pi pi-shield" aria-hidden="true"></i>
+      <p>{{ 'PATIENT.ACCES_DOSSIER.VIDE' | translate }}</p>
+    </div>
+  } @else {
+
+    <!-- ── Les demandes qui attendent une réponse ────────────────────── -->
+    @if (enAttente().length > 0) {
+      <h2 class="bb-acces__section">{{ 'PATIENT.ACCES_DOSSIER.EN_ATTENTE' | translate }}</h2>
+      @for (a of enAttente(); track a.id) {
+        <section class="bb-acces__carte bb-acces__carte--attente">
+          <div class="bb-acces__head">
+            <span class="bb-acces__medecin">{{ a.medecin }}</span>
+            <span class="bb-acces__statut" [attr.data-statut]="a.statut">{{ 'PATIENT.ACCES_DOSSIER.STATUT_' + a.statut | translate }}</span>
+          </div>
+          <p class="bb-acces__meta">
+            @if (a.structure) { {{ a.structure }} · }
+            @if (a.rendezVousLe) {
+              {{ 'PATIENT.ACCES_DOSSIER.RDV_LE' | translate: { date: (a.rendezVousLe | date:'d MMMM, HH:mm') ?? '' } }}
+            } @else {
+              {{ 'PATIENT.ACCES_DOSSIER.DEMANDEE_LE' | translate: { date: (a.demandeeLe | date:'shortDate') ?? '' } }}
+            }
+          </p>
+          <p class="bb-acces__question">{{ 'PATIENT.ACCES_DOSSIER.QUESTION' | translate: { medecin: a.medecin } }}</p>
+          <div class="bb-acces__actions">
+            <button matButton="filled" type="button" [disabled]="enCours() === a.id" (click)="accorder(a)">
+              <i class="pi pi-check" aria-hidden="true"></i> {{ 'PATIENT.ACCES_DOSSIER.ACCORDER' | translate }}
+            </button>
+            <button matButton type="button" [disabled]="enCours() === a.id" (click)="refuser(a)">
+              {{ 'PATIENT.ACCES_DOSSIER.REFUSER' | translate }}
+            </button>
+          </div>
+        </section>
+      }
+    }
+
+    <!-- ── Les décisions déjà prises ─────────────────────────────────── -->
+    @if (decidees().length > 0) {
+      <h2 class="bb-acces__section">{{ 'PATIENT.ACCES_DOSSIER.DECISIONS' | translate }}</h2>
+      @for (a of decidees(); track a.id) {
+        <section class="bb-acces__carte" [class.bb-acces__carte--close]="a.statut !== 'ACCORDEE'">
+          <div class="bb-acces__head">
+            <span class="bb-acces__medecin">{{ a.medecin }}</span>
+            <span class="bb-acces__statut" [attr.data-statut]="a.statut">{{ 'PATIENT.ACCES_DOSSIER.STATUT_' + a.statut | translate }}</span>
+          </div>
+          <p class="bb-acces__meta">
+            @if (a.structure) { {{ a.structure }} · }
+            @if (a.statut === 'ACCORDEE') {
+              @if (a.expireLe) {
+                {{ 'PATIENT.ACCES_DOSSIER.JUSQU_AU' | translate: { date: (a.expireLe | date:'longDate') ?? '' } }}
+              } @else {
+                {{ 'PATIENT.ACCES_DOSSIER.TANT_QUE' | translate }}
+              }
+            } @else {
+              {{ 'PATIENT.ACCES_DOSSIER.DEMANDEE_LE' | translate: { date: (a.demandeeLe | date:'shortDate') ?? '' } }}
+            }
+          </p>
+          @if (a.statut === 'ACCORDEE') {
+            <div class="bb-acces__actions">
+              <button matButton type="button" [disabled]="enCours() === a.id" (click)="retirer(a)">
+                <i class="pi pi-lock" aria-hidden="true"></i> {{ 'PATIENT.ACCES_DOSSIER.RETIRER' | translate }}
+              </button>
+            </div>
+          } @else if (peutAccorder(a)) {
+            <div class="bb-acces__actions">
+              <button matButton type="button" [disabled]="enCours() === a.id" (click)="accorder(a)">
+                {{ 'PATIENT.ACCES_DOSSIER.REACCORDER' | translate }}
+              </button>
+            </div>
+          }
+        </section>
+      }
+    }
+  }
+
+  <!-- L'urgence existe : le taire ferait croire que l'accord est la seule
+       porte. Elle est déclarée, et le patient en est prévenu. -->
+  <p class="bb-acces__urgence">
+    <i class="pi pi-info-circle" aria-hidden="true"></i>
+    {{ 'PATIENT.ACCES_DOSSIER.URGENCE' | translate }}
+  </p>
+</div>

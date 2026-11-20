@@ -16,6 +16,7 @@ import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '.
 import { withCache, cacheDel } from '../utils/cache';
 import { emitToUser } from '../realtime/socket.server';
 import { diffuserRendezVous } from '../realtime/rendez-vous.events';
+import { demanderAccesDossier } from './acces-dossier.service';
 import { envoyerSmsSimule, notifierSansBloquer } from './notification.service';
 import { lancerRecherchePharmacie } from './commande.service';
 import { logger } from '../config/logger';
@@ -628,6 +629,11 @@ export async function fixerRendezVous(
         // et le patient le retrouve dans son espace.
         await envoyerSmsSimule(patientUser.telephone, messageRendezVous(nomCourt, quand, episode.structure.nom));
     }
+
+    // L'historique, au-dela de cette visite, demande l'accord du patient : la
+    // demande part avec le rendez-vous. Elle n'est pas refaite pour un meme
+    // episode, et ne fait jamais echouer la prise du rendez-vous.
+    await demanderAccesDossier({ idPatient: episode.idPatient, idMedecin: userId, idEpisode, idRendezVous: rdv.id, prevuLe });
 
     return versRendezVousMedecin(rdv);
 }

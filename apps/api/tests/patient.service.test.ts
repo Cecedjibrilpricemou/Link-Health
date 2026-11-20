@@ -4,6 +4,7 @@
 import {
   createPatient,
   getPatientById,
+  getPatients,
   getPatientByQrCode,
   updateMyProfile,
   updateStructurePreferee,
@@ -14,7 +15,7 @@ import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '.
 jest.mock('../src/config/prisma', () => ({
   prisma: {
     utilisateur: { findUnique: jest.fn(), update: jest.fn() },
-    patientProfile: { findUnique: jest.fn(), update: jest.fn() },
+    patientProfile: { findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn(), count: jest.fn() },
     structureSante: { findUnique: jest.fn() },
     session: { create: jest.fn() },
     $transaction: jest.fn(),
@@ -23,6 +24,10 @@ jest.mock('../src/config/prisma', () => ({
 jest.mock('../src/services/access-control.service', () => ({
   assertCanAccessPatient: jest.fn(),
   buildPatientWhereForUser: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../src/services/acces-dossier.service', () => ({
+  assertHistoriqueSiMedecin: jest.fn(),
+  filtrePatientsLisibles: jest.fn(),
 }));
 jest.mock('../src/services/sync.service', () => ({ recordSyncEvent: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('../src/services/privacy.service', () => ({ initialiserConsentementsParDefaut: jest.fn().mockResolvedValue(undefined) }));
@@ -34,13 +39,16 @@ jest.mock('../src/utils/jwt.utils', () => ({
 const { prisma } = jest.requireMock('../src/config/prisma') as {
   prisma: {
     utilisateur: { findUnique: jest.Mock; update: jest.Mock };
-    patientProfile: { findUnique: jest.Mock; update: jest.Mock };
+    patientProfile: { findUnique: jest.Mock; update: jest.Mock; findMany: jest.Mock; count: jest.Mock };
     structureSante: { findUnique: jest.Mock };
     session: { create: jest.Mock };
     $transaction: jest.Mock;
   };
 };
 const { assertCanAccessPatient } = jest.requireMock('../src/services/access-control.service') as { assertCanAccessPatient: jest.Mock };
+const { assertHistoriqueSiMedecin, filtrePatientsLisibles } = jest.requireMock('../src/services/acces-dossier.service') as {
+  assertHistoriqueSiMedecin: jest.Mock; filtrePatientsLisibles: jest.Mock;
+};
 const { initialiserConsentementsParDefaut } = jest.requireMock('../src/services/privacy.service') as { initialiserConsentementsParDefaut: jest.Mock };
 const { recordSyncEvent } = jest.requireMock('../src/services/sync.service') as { recordSyncEvent: jest.Mock };
 const { generateTokenPair } = jest.requireMock('../src/utils/jwt.utils') as { generateTokenPair: jest.Mock };
@@ -107,6 +115,35 @@ describe('acces au dossier', () => {
     prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p1', qrCode: 'qr-1' });
     await getPatientByQrCode(ASC, 'qr-1');
     expect(assertCanAccessPatient).toHaveBeenCalledWith(ASC, 'p1');
+    expect(assertHistoriqueSiMedecin).toHaveBeenCalledWith(ASC, 'p1');
+  });
+
+  // La fiche (allergies, maladies chroniques) est de l'historique : pour un
+  // medecin, elle suit l'accord du patient.
+  it('getPatientById passe par le garde de l historique, avant toute lecture', async () => {
+    assertHistoriqueSiMedecin.mockRejectedValue(new ForbiddenError('accord'));
+    await expect(getPatientById(ASC, 'p1')).rejects.toBeInstanceOf(ForbiddenError);
+    expect(assertHistoriqueSiMedecin).toHaveBeenCalledWith(ASC, 'p1');
+    expect(prisma.patientProfile.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('getPatients ajoute le filtre des patients lisibles, a la liste comme au total', async () => {
+    const lisibles = { OR: [{ marque: 'accord' }] };
+    filtrePatientsLisibles.mockReturnValue(lisibles);
+    prisma.patientProfile.findMany.mockResolvedValue([]);
+    prisma.patientProfile.count.mockResolvedValue(0);
+
+    await getPatients(ASC, { page: 1, limit: 5 });
+
+    expect(filtrePatientsLisibles).toHaveBeenCalledWith(ASC);
+    expect(prisma.patientProfile.findMany.mock.calls[0][0].where.AND).toContainEqual(lisibles);
+    expect(prisma.patientProfile.count.mock.calls[0][0].where.AND).toContainEqual(lisibles);
+  });
+
+  it('getPatientByQrCode ne rend pas le patient trouve sans l accord', async () => {
+    prisma.patientProfile.findUnique.mockResolvedValue({ id: 'p1', qrCode: 'qr-1' });
+    assertHistoriqueSiMedecin.mockRejectedValue(new ForbiddenError('accord'));
+    await expect(getPatientByQrCode(ASC, 'qr-1')).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
 

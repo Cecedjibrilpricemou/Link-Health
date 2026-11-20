@@ -31,6 +31,7 @@ import {
 import * as ussd from '../services/ussd.service';
 import * as adresse from '../services/patient-adresse.service';
 import * as demandeCorrection from '../services/demande-correction.service';
+import * as accesDossier from '../services/acces-dossier.service';
 import type { AdressePatientView, DemandeCorrectionIdentiteView } from '@baobaoheath/shared-types';
 import { demanderCorrectionIdentiteSchema } from '../validators/api.schemas';
 
@@ -90,6 +91,21 @@ router.post('/me/demandes-rendez-vous/:id/annuler', authenticate, requireRole('P
   res.json({ success: true, data });
 });
 router.get('/me/consultations', authenticate, requireRole('PATIENT'), getMesConsultationsController);
+
+// L'acces des medecins a son historique : les demandes recues, les accords
+// donnes, et les gestes pour accepter, refuser ou retirer.
+router.get('/me/acces-dossier', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await accesDossier.mesAutorisations(req.user!.userId) });
+});
+router.post('/me/acces-dossier/:id/accorder', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await accesDossier.accorderAcces(req.user!.userId, req.params['id'] as string) });
+});
+router.post('/me/acces-dossier/:id/refuser', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await accesDossier.refuserAcces(req.user!.userId, req.params['id'] as string) });
+});
+router.post('/me/acces-dossier/:id/retirer', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await accesDossier.retirerAcces(req.user!.userId, req.params['id'] as string) });
+});
 
 // P1 — parcours hospitalier du patient : episodes, demandes d'analyse, orientations.
 router.get('/me/episodes', authenticate, requireRole('PATIENT'), async (req: AuthRequest, res: Response) => {

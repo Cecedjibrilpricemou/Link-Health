@@ -748,6 +748,14 @@ export async function examensSuivisPourPatient(userId: string): Promise<ExamenSu
   return examensSuivis(p.id, true);
 }
 
+/**
+ * Les examens suivis d'un patient, sans controle : l'appelant a deja verifie
+ * l'acces (l'historique accorde par le patient).
+ */
+export async function examensSuivisDuPatient(idPatient: string): Promise<ExamenSuiviView[]> {
+  return examensSuivis(idPatient, false);
+}
+
 /** Cote professionnel : soumis au controle d'acces au dossier. */
 async function patientAccessible(user: JwtPayload, idPatient: string): Promise<string> {
   const where = await buildPatientWhereForUser(user);

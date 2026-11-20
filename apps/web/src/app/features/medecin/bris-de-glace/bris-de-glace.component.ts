@@ -12,6 +12,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -51,6 +52,7 @@ const DUREE_HEURES = 4;
 })
 export class BrisDeGlaceComponent implements OnInit {
   private service = inject(BrisDeGlaceService);
+  private route = inject(ActivatedRoute);
   private i18n = inject(I18nService);
 
   motifs = MOTIFS;
@@ -81,6 +83,10 @@ export class BrisDeGlaceComponent implements OnInit {
   }
 
   ngOnInit() {
+    // Venu du dossier de la visite : le patient est deja connu, le soignant
+    // n'a plus qu'a dire pourquoi.
+    const patient = this.route.snapshot.queryParamMap.get('patient');
+    if (patient) this.idPatient.set(patient);
     this.charger();
   }
 

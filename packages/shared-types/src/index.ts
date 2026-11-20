@@ -139,7 +139,9 @@ export type TypeNotification =
   | 'OFFRE_COURSE'
   | 'COURSE_ATTRIBUEE'
   | 'COURSE_SANS_MOTARD'
-  | 'IDENTITE_DEMANDE_TRAITEE';
+  | 'IDENTITE_DEMANDE_TRAITEE'
+  | 'ACCES_DOSSIER_DEMANDE'
+  | 'ACCES_DOSSIER_ACCORDE';
 
 /** Statut d'une commande pharmacie (EF-07). */
 // ═══════════════════════════════════════════════════════════════════
@@ -4769,3 +4771,70 @@ export interface HorairesOfficineView {
 export interface DefinirHorairesDto {
   horaires: HorairesView;
 }
+
+// ── L'acces d'un medecin a l'historique du patient ──────────────────
+//
+// Le medecin soigne la visite qu'il recoit sans rien demander. L'historique,
+// au-dela de cette visite, suit l'accord du patient : demande a la prise du
+// rendez-vous, valable jusqu'a la cloture de l'episode plus trente jours,
+// retirable a tout moment.
+
+/** `EXPIREE` est calcule : un accord dont l'episode est clos depuis trente jours. */
+export type StatutAutorisationAcces = 'DEMANDEE' | 'ACCORDEE' | 'REFUSEE' | 'RETIREE' | 'EXPIREE';
+
+/** Une demande ou un accord, vu par le patient. */
+export interface AutorisationAccesDossierView {
+  id: string;
+  statut: StatutAutorisationAcces;
+  medecin: string;
+  structure: string | null;
+  rendezVousLe: HorodatageApi | null;
+  demandeeLe: HorodatageApi;
+  decideeLe: HorodatageApi | null;
+  retireeLe: HorodatageApi | null;
+  /** Connue une fois l'episode clos ; `null` tant qu'il court. */
+  expireLe: HorodatageApi | null;
+}
+
+/** Ou en est l'acces de ce medecin a l'historique de ce patient. */
+export interface EtatAccesDossierView {
+  etat: StatutAutorisationAcces | 'AUCUNE';
+  expireLe: HorodatageApi | null;
+  /** Une demande sans reponse, pas relancee depuis vingt-quatre heures. */
+  peutRelancer: boolean;
+  brisDeGlaceJusquau: HorodatageApi | null;
+  peutLire: boolean;
+}
+
+export interface HistoriqueConsultationView {
+  id: string;
+  date: HorodatageApi;
+  motif: string;
+  structure: string | null;
+  medecin: string | null;
+  diagnostics: string[];
+  traitements: {
+    produit: string;
+    posologie: string;
+    frequence: string;
+    dureeJours: number;
+    quantite: number;
+  }[];
+}
+
+/** L'historique du patient, pour le medecin qu'il a autorise. */
+export interface HistoriquePatientView {
+  patient: {
+    prenom: string;
+    nom: string;
+    dateNaissance: HorodatageApi;
+    sexe: string;
+    groupeSanguin: string | null;
+    allergies: string[];
+    maladiesChroniques: string[];
+  };
+  consultations: HistoriqueConsultationView[];
+  vaccinations: { vaccin: string; le: HorodatageApi; prochaineDose: HorodatageApi | null }[];
+  examensSuivis: ExamenSuiviView[];
+}
+
