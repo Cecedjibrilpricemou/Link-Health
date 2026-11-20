@@ -19,6 +19,8 @@ import type {
   ReferencementATraiterView,
   ReferralStatus,
   RepondreReferencementDto,
+  EtatAccesDossierView,
+  HistoriquePatientView,
 } from '@baobaoheath/shared-types';
 
 @Injectable({ providedIn: 'root' })
@@ -27,6 +29,22 @@ export class MedecinService {
 
   getPatientDossier(idPatient: string): Observable<ApiResponse<Patient>> {
     return this.api.get<ApiResponse<Patient>>(`/patients/${idPatient}`);
+  }
+
+  // ── L'historique du patient, sur son accord ──────────────────────
+  /** Ou en est l'acces : accorde, demande, refuse... et si l'on peut relancer. */
+  getAccesDossier(idPatient: string): Observable<ApiResponse<EtatAccesDossierView>> {
+    return this.api.get<ApiResponse<EtatAccesDossierView>>(`/medecin/patients/${idPatient}/acces`);
+  }
+
+  /** Relancer une demande restee sans reponse : une fois par jour au plus. */
+  relancerAccesDossier(idPatient: string): Observable<ApiResponse<EtatAccesDossierView>> {
+    return this.api.post<ApiResponse<EtatAccesDossierView>>(`/medecin/patients/${idPatient}/acces/relancer`, {});
+  }
+
+  /** L'historique, une fois accorde (ou en bris de glace). */
+  getHistoriquePatient(idPatient: string): Observable<ApiResponse<HistoriquePatientView>> {
+    return this.api.get<ApiResponse<HistoriquePatientView>>(`/medecin/patients/${idPatient}/historique`);
   }
 
   /** Les resultats valides que le patient ne voit pas encore (addendum 2026-09-28). */

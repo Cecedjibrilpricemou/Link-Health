@@ -342,6 +342,34 @@ côté web, `core/services/candidature-livreur.service.ts`, qui porte aussi le
 contrôle des fichiers partagé par les deux écrans. Les pièces vivent dans
 `stockage-prive/livreurs/`.
 
+### L'accès du médecin à l'historique du patient
+
+**La visite se soigne sans rien demander ; l'historique suit l'accord du
+patient.** Le médecin d'un rendez-vous voit l'épisode, le rendez-vous, la
+consultation du jour et les analyses de cette visite. Au-delà, il lui faut
+l'accord du patient, donné à ce médecin pour cet épisode : consultations
+passées (toutes structures), fiche médicale, résultats suivis, vaccinations,
+export FHIR.
+
+| Moment | Ce qui se passe |
+|---|---|
+| Rendez-vous fixé (`fixerRendezVous`, `accepterDemande`) | une demande `DEMANDEE` est créée, avec une notification et un courriel au patient s'il a une adresse. Elle n'est pas refaite pour un même épisode. Si elle échoue, le rendez-vous est quand même pris. |
+| Le patient répond (`/patient/acces-dossier`) | accepter, refuser, ou retirer plus tard (effet immédiat). Il peut accorder après un refus ou un retrait. |
+| Durée | jusqu'à la clôture de l'épisode, **plus trente jours** (`JOURS_APRES_CLOTURE`) |
+| Sans réponse | le médecin relance, **une fois par jour au plus** |
+| Urgence | le bris de glace, inchangé : déclaré, notifié, relu |
+
+Le courriel **ne permet pas d'accepter** : son lien ouvre l'application, où le
+patient se connecte. Un courriel transféré ne doit pas suffire à ouvrir un
+dossier. Ni le courriel ni la notification ne nomment la structure.
+
+La règle est écrite une seule fois, dans `acces-dossier.service.ts`
+(`peutLireHistorique`, `filtrePatientsLisibles`), puis posée sur les lectures
+existantes : fiche patient, recherche par QR, liste des patients, résultats
+suivis, export FHIR. **Elle ne vise que le rôle `MEDECIN`** : l'ASC et
+l'administration gardent leurs règles. La lecture d'une consultation par son
+identifiant reste ouverte à la structure ; c'est un choix, pas un oubli.
+
 ### La géographie
 
 Le référentiel est **générique**, pour servir un autre pays sans toucher au
@@ -393,6 +421,10 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **L'historique du patient sur son accord** (branche
+  `feat/acces-dossier-accord`, section 6) : demande envoyée avec le
+  rendez-vous, page « Accès à mon dossier » côté patient, panneau
+  « Historique » dans le dossier de la visite côté médecin.
 - **Candidatures des livreurs de bout en bout** (branche
   `feat/candidature-livreur-serveur`) : tables, dépôt public, écran d'examen,
   dossier exigé à la création par l'administration (section 6). Vérifié contre

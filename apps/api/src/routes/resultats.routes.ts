@@ -4,6 +4,7 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/rbac.middleware';
+import { assertHistoriqueSiMedecin } from '../services/acces-dossier.service';
 import { validateQuery } from '../middlewares/validate.middleware';
 import * as labo from '../services/laboratoire.service';
 import { evolutionQuerySchema } from '../validators/api.schemas';
@@ -33,12 +34,16 @@ router.get('/demandes/:id/compte-rendu', async (req: AuthRequest, res: Response)
   res.type('html').send(html);
 });
 
+// L'evolution des resultats est de l'historique : pour un medecin, elle suit
+// l'accord du patient.
 router.get('/patients/:idPatient/examens-suivis', async (req: AuthRequest, res: Response) => {
+  await assertHistoriqueSiMedecin(req.user!, req.params['idPatient'] as string);
   const data: ExamenSuiviView[] = await labo.examensSuivisPourProfessionnel(req.user!, req.params['idPatient'] as string);
   res.json({ success: true, data });
 });
 
 router.get('/patients/:idPatient/evolution', validateQuery(evolutionQuerySchema), async (req: AuthRequest, res: Response) => {
+  await assertHistoriqueSiMedecin(req.user!, req.params['idPatient'] as string);
   const codeLoinc = req.query['codeLoinc'];
   if (typeof codeLoinc !== 'string') throw new ValidationError('codeLoinc requis');
   const data: EvolutionResultatView = await labo.evolutionPourProfessionnel(req.user!, req.params['idPatient'] as string, codeLoinc);

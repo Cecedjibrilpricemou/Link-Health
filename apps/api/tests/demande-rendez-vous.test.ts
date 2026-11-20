@@ -32,6 +32,7 @@ jest.mock('../src/config/prisma', () => {
   return { prisma };
 });
 jest.mock('../src/config/redis', () => ({ getRedis: () => null }));
+jest.mock('../src/services/acces-dossier.service', () => ({ demanderAccesDossier: jest.fn() }));
 jest.mock('../src/services/notification.service', () => ({
   notifierSansBloquer: jest.fn(), envoyerSmsSimule: jest.fn(),
 }));
@@ -57,6 +58,7 @@ const { notifierSansBloquer, envoyerSmsSimule } = jest.requireMock('../src/servi
 };
 const { getIdentitePlateforme } = jest.requireMock('../src/services/parametres.service') as { getIdentitePlateforme: M };
 const { prochainNumero } = jest.requireMock('../src/services/numero.service') as { prochainNumero: M };
+const { demanderAccesDossier } = jest.requireMock('../src/services/acces-dossier.service') as { demanderAccesDossier: M };
 
 const agent: JwtPayload = { userId: 'agent-1', role: 'AGENT_ACCUEIL', sessionId: 's' } as JwtPayload;
 
@@ -267,12 +269,18 @@ describe('accepterDemande — accepter, c est fixer l heure', () => {
     prisma.demandeRendezVous.findFirst.mockResolvedValue(recue);
     prisma.demandeRendezVous.updateMany.mockResolvedValue({ count: 1 });
     prisma.episodeSoins.create.mockResolvedValue({ id: 'ep-9' });
-    prisma.rendezVous.create.mockResolvedValue({});
+    prisma.rendezVous.create.mockResolvedValue({ id: 'rdv-9' });
     prisma.demandeRendezVous.update.mockResolvedValue({});
     prisma.utilisateur.findFirst.mockResolvedValue({ id: 'pat-u', telephone: '620100010' });
     prisma.demandeRendezVous.findUniqueOrThrow.mockResolvedValue({ ...demandeRow, statut: 'ACCEPTEE' });
 
     await accepterDemande('med-1', 'dr-1', { prevuLe: '2026-10-05T09:00:00Z' });
+
+    // L'historique suit l'accord du patient : la demande part avec le rendez-vous.
+    expect(demanderAccesDossier).toHaveBeenCalledWith({
+      idPatient: 'pat-1', idMedecin: 'med-1', idEpisode: 'ep-9', idRendezVous: 'rdv-9',
+      prevuLe: new Date('2026-10-05T09:00:00Z'),
+    });
 
     expect(prisma.episodeSoins.create.mock.calls[0][0].data).toMatchObject({
       numero: 'EP-2026-000042', idStructure: 'struct-A', idPatient: 'pat-1',
@@ -295,6 +303,7 @@ describe('accepterDemande — accepter, c est fixer l heure', () => {
     await expect(accepterDemande('med-1', 'dr-1', { prevuLe: '2026-10-05T09:00:00Z' }))
       .rejects.toBeInstanceOf(ConflictError);
     expect(prisma.episodeSoins.create).not.toHaveBeenCalled();
+    expect(demanderAccesDossier).not.toHaveBeenCalled();
   });
 });
 

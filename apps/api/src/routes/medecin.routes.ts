@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import * as demandeRdv from '../services/demande-rendez-vous.service';
+import * as accesDossier from '../services/acces-dossier.service';
 import type { DemandeRendezVousView } from '@baobaoheath/shared-types';
 import {
   getDashboardStatsController,
@@ -84,5 +85,19 @@ router.put('/referencements/:id/repondre', validateBody(repondreReferencementSch
 // ─── Messagerie ───────────────────────────────────────────
 router.get('/messages', getMessagesController);
 router.post('/messages', validateBody(sendMessageSchema), sendMessageController);
+
+// ── L'historique du patient, sur son accord ──────────────────────────
+// Ou en est l'acces, relancer une demande restee sans reponse, et lire
+// l'historique une fois accorde. Le service refuse sans accord ni bris de
+// glace : la garde de role dit « un medecin », pas « ce medecin-la ».
+router.get('/patients/:idPatient/acces', requireRole('MEDECIN'), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await accesDossier.etatAcces(req.user!, req.params['idPatient'] as string) });
+});
+router.post('/patients/:idPatient/acces/relancer', requireRole('MEDECIN'), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await accesDossier.relancerDemande(req.user!, req.params['idPatient'] as string) });
+});
+router.get('/patients/:idPatient/historique', requireRole('MEDECIN'), async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await accesDossier.historiquePatient(req.user!, req.params['idPatient'] as string) });
+});
 
 export default router;

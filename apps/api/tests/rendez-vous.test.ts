@@ -21,6 +21,7 @@ jest.mock('../src/config/prisma', () => {
   return { prisma };
 });
 jest.mock('../src/config/redis', () => ({ getRedis: () => null }));
+jest.mock('../src/services/acces-dossier.service', () => ({ demanderAccesDossier: jest.fn() }));
 jest.mock('../src/services/notification.service', () => ({
   notifierSansBloquer: jest.fn().mockResolvedValue(undefined),
   envoyerSmsSimule: jest.fn().mockResolvedValue(undefined),
@@ -51,6 +52,7 @@ const { notifierSansBloquer, envoyerSmsSimule } = jest.requireMock('../src/servi
 };
 const { getIdentitePlateforme } = jest.requireMock('../src/services/parametres.service') as { getIdentitePlateforme: M };
 const { diffuserRendezVous } = jest.requireMock('../src/realtime/rendez-vous.events') as { diffuserRendezVous: M };
+const { demanderAccesDossier } = jest.requireMock('../src/services/acces-dossier.service') as { demanderAccesDossier: M };
 
 const medecin: JwtPayload = { userId: 'med-1', role: 'MEDECIN', sessionId: 's' } as JwtPayload;
 const agent: JwtPayload = { userId: 'agent-1', role: 'AGENT_ACCUEIL', sessionId: 's' } as JwtPayload;
@@ -119,6 +121,22 @@ describe('fixerRendezVous — le medecin pose le creneau', () => {
     // Le SMS ne porte aucun detail medical.
     expect(envoyerSmsSimule.mock.calls[0][1]).not.toMatch(/Maux de tete/i);
     expect(vue.patient.prenom).toBe('Maomou');
+  });
+
+  // L'historique, au-dela de cette visite, suit l'accord du patient : la
+  // demande part avec le rendez-vous, pour ce medecin et cet episode.
+  it('demande au patient l acces a son historique', async () => {
+    prisma.episodeSoins.findFirst.mockResolvedValue(episodeRow);
+    prisma.rendezVous.updateMany.mockResolvedValue({ count: 0 });
+    prisma.rendezVous.create.mockResolvedValue(rdvRow);
+    prisma.utilisateur.findFirst.mockResolvedValue({ id: 'pat-u', telephone: '620100010' });
+
+    await fixerRendezVous('med-1', 'ep-1', { prevuLe: '2026-10-01T09:00:00Z' });
+
+    expect(demanderAccesDossier).toHaveBeenCalledWith({
+      idPatient: 'pat-1', idMedecin: 'med-1', idEpisode: 'ep-1', idRendezVous: 'rdv-1',
+      prevuLe: new Date('2026-10-01T09:00:00Z'),
+    });
   });
 
   // Deplacer un creneau le remplace, il ne s'y ajoute pas.

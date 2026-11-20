@@ -87,6 +87,58 @@
     @media (max-width: 600px) { > * { flex: 1 1 100%; } }
   }
 
+  // ── L'historique, sur l'accord du patient ─────────────────────────
+  &__histo {
+    background: var(--bb-surface-card);
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-xl); padding: 1.2rem 1.5rem;
+    margin-bottom: 16px; box-shadow: var(--bb-shadow-sm);
+    @media (max-width: 600px) { padding: 1.1rem; }
+
+    .bb-hop-card__title { margin: 0; }
+    .bb-dossier__actions { margin-top: 12px; padding-top: 12px; }
+  }
+
+  &__histo-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 8px;
+  }
+
+  &__histo-etat {
+    padding: 4px 11px; border-radius: var(--bb-radius-pill);
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; white-space: nowrap;
+    background: var(--bb-surface-2); color: var(--bb-text-secondary);
+
+    &[data-etat='ACCORDEE'] { background: var(--dos-accent-soft); color: var(--dos-accent); }
+    &[data-etat='DEMANDEE'] { background: var(--bb-warning-bg); color: var(--bb-warning); }
+    &[data-etat='REFUSEE'], &[data-etat='RETIREE'] { background: var(--bb-danger-bg); color: var(--bb-danger); }
+  }
+
+  &__histo-texte { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--bb-text-secondary); }
+  &__histo-aide { margin: 8px 0 0; font-size: 12px; color: var(--bb-text-muted); }
+
+  &__histo-corps { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--bb-border-light); }
+
+  &__histo-sous {
+    margin: 16px 0 8px;
+    font-size: 13px; font-weight: 800; letter-spacing: .02em;
+    text-transform: uppercase; color: var(--bb-text-secondary);
+  }
+
+  &__fiche {
+    display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px;
+    margin: 0; font-size: 13.5px;
+    dt { color: var(--bb-text-muted); }
+    dd { margin: 0; color: var(--bb-text-primary); font-weight: 600; }
+    @media (max-width: 600px) { grid-template-columns: 1fr; dd { margin-bottom: 6px; } }
+  }
+
+  &__vaccins {
+    margin: 0; padding-left: 18px;
+    font-size: 13.5px; line-height: 1.7; color: var(--bb-text-primary);
+  }
+
   // Résultats validés que le patient ne voit pas encore : le dire ici évite
   // au médecin d'aller vérifier ailleurs.
   &__alerte {

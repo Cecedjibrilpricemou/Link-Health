@@ -95,6 +95,7 @@ export class PatientLayoutComponent {
     { labelKey: 'PATIENT.NAV_PROFIL',    icon: 'pi-user',   route: '/patient/profil'    },
     { labelKey: 'PATIENT.NAV_QR_CODE',   icon: 'pi-qrcode', route: '/patient/qr-code'   },
     { labelKey: 'PATIENT.NAV_CARTES_ASSURANCE', icon: 'pi-id-card', route: '/patient/cartes-assurance' },
+    { labelKey: 'PATIENT.NAV_ACCES_DOSSIER', icon: 'pi-lock-open', route: '/patient/acces-dossier' },
     { labelKey: 'PATIENT.NAV_CONSENTS',  icon: 'pi-shield', route: '/patient/consentements' }
   ];
 

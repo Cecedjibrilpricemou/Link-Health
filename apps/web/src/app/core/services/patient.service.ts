@@ -11,7 +11,8 @@ import type {
   ModeRemise,
   ReponsePartielle,
   PayerCommandeDto,
-  CreerDemandeRendezVousDto, DemandeRendezVousView, CarteAssuranceView } from '@baobaoheath/shared-types';
+  CreerDemandeRendezVousDto, DemandeRendezVousView, CarteAssuranceView,
+  AutorisationAccesDossierView } from '@baobaoheath/shared-types';
 import { ApiService } from './api.service';
 import { Patient, PatientCreatePayload, PatientUpdatePayload, Consultation } from '../models/patient.model';
 import { ApiResponse, PaginatedData } from '../models/api.model';
@@ -154,5 +155,16 @@ export class PatientService {
   /** Renoncer, avec un motif. */
   annulerCommande(idCommande: string, motif: string): Observable<ApiResponse<CommandeView>> {
     return this.api.post<ApiResponse<CommandeView>>(`/commandes/${idCommande}/annuler`, { motif });
+  }
+
+  // ── L'acces des medecins a son historique ─────────────────────────
+  /** Les demandes recues et les accords donnes, en attente d'abord. */
+  mesAccesDossier(): Observable<ApiResponse<AutorisationAccesDossierView[]>> {
+    return this.api.get<ApiResponse<AutorisationAccesDossierView[]>>('/patients/me/acces-dossier');
+  }
+
+  /** Accepter, refuser une demande, ou retirer un accord : effet immediat. */
+  repondreAccesDossier(id: string, geste: 'accorder' | 'refuser' | 'retirer'): Observable<ApiResponse<AutorisationAccesDossierView>> {
+    return this.api.post<ApiResponse<AutorisationAccesDossierView>>(`/patients/me/acces-dossier/${id}/${geste}`, {});
   }
 }

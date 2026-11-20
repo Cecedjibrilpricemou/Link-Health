@@ -6,6 +6,7 @@ import { CreatePatientDto, PatientFilters, UpdatePatientDto } from '../types/pat
 import { generateTokenPair } from '../utils/jwt.utils';
 import { hashPassword } from '../utils/password.utils';
 import { assertCanAccessPatient, buildPatientWhereForUser } from './access-control.service';
+import { assertHistoriqueSiMedecin, filtrePatientsLisibles } from './acces-dossier.service';
 import { recordSyncEvent } from './sync.service';
 import { initialiserConsentementsParDefaut } from './privacy.service';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
@@ -92,6 +93,9 @@ export async function getPatients(user: JwtPayload, filters: PatientFilters) {
   const where = {
     AND: [
       await buildPatientWhereForUser(user),
+      // La fiche medicale est de l'historique : pour un medecin, elle suit
+      // l'accord du patient.
+      filtrePatientsLisibles(user),
       {
         ...(filters.prefecture && { prefecture: filters.prefecture }),
         ...(filters.search && {
@@ -125,6 +129,7 @@ export async function getPatients(user: JwtPayload, filters: PatientFilters) {
 
 export async function getPatientById(user: JwtPayload, id: string) {
   await assertCanAccessPatient(user, id);
+  await assertHistoriqueSiMedecin(user, id);
 
   const patient = await prisma.patientProfile.findUnique({
     where: { id },
@@ -178,6 +183,7 @@ export async function getPatientByQrCode(user: JwtPayload, qrCode: string) {
 
   if (!patient) throw new NotFoundError('Patient non trouve');
   await assertCanAccessPatient(user, patient.id);
+  await assertHistoriqueSiMedecin(user, patient.id);
   return patient;
 }
 

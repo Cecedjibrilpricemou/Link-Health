@@ -74,6 +74,11 @@ export const PATIENT_ROUTES: Routes = [
         path: 'consentements',
         loadComponent: () =>
           import('./consentements/consentements.component').then(m => m.ConsentementsComponent)
+      },
+      {
+        path: 'acces-dossier',
+        loadComponent: () =>
+          import('./acces-dossier/acces-dossier.component').then(m => m.AccesDossierComponent)
       }
     ]
   }

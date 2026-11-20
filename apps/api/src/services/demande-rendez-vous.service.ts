@@ -22,6 +22,7 @@ import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '.
 import { prochainNumero } from './numero.service';
 import { envoyerSmsSimule, notifierSansBloquer } from './notification.service';
 import { getIdentitePlateforme } from './parametres.service';
+import { demanderAccesDossier } from './acces-dossier.service';
 import type {
 
   DemandeRendezVousView,
@@ -312,7 +313,7 @@ export async function accepterDemande(
 
   const maintenant = new Date();
 
-  await prisma.$transaction(async (tx) => {
+  const cree = await prisma.$transaction(async (tx) => {
     // Attribution atomique : deux acceptations simultanees donnent un gagnant
     // et un perdant, jamais deux episodes pour une seule demande.
     const prise = await tx.demandeRendezVous.updateMany({
@@ -336,7 +337,7 @@ export async function accepterDemande(
       },
     });
 
-    await tx.rendezVous.create({
+    const rdv = await tx.rendezVous.create({
       data: {
         idPatient: d.patient.id,
         idMedecin: userId,
@@ -345,13 +346,18 @@ export async function accepterDemande(
         motif: d.motif,
         statut: 'PLANIFIE',
       },
+      select: { id: true },
     });
 
     await tx.demandeRendezVous.update({
       where: { id: idDemande },
       data: { idEpisode: episode.id },
     });
+    return { idEpisode: episode.id, idRendezVous: rdv.id };
   });
+
+  // L'historique, au-dela de cette visite, demande l'accord du patient.
+  await demanderAccesDossier({ idPatient: d.patient.id, idMedecin: userId, ...cree, prevuLe });
 
   // Le patient apprend son heure : c'est la reponse qu'il attendait.
   const patientUser = await prisma.utilisateur.findFirst({

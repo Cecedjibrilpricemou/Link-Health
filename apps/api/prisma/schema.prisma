@@ -296,6 +296,8 @@ enum TypeNotification {
   COURSE_ATTRIBUEE // P8-a : l'officine sait qu'un livreur a ete choisi
   COURSE_SANS_MOTARD // R1 : delai final atteint, le patient choisit relancer ou retrait
   IDENTITE_DEMANDE_TRAITEE // R15 : l'accueil a accepte ou refuse la correction demandee
+  ACCES_DOSSIER_DEMANDE // un medecin demande au patient l'acces a son historique
+  ACCES_DOSSIER_ACCORDE // le patient a accorde l'acces : le medecin le sait
 }
 
 enum UssdSessionStatus {
@@ -435,6 +437,7 @@ model Utilisateur {
 
   conseilsDeclares StructureConseillee[] @relation("ConseilsDeclares")
 
+  autorisationsAccesMedecin AutorisationAccesDossier[] @relation("AutorisationsAccesMedecin")
   @@map("utilisateurs")
 }
 
@@ -1316,6 +1319,7 @@ model PatientProfile {
   episodes             EpisodeSoins[]
   demandesAnalyse      DemandeAnalyse[]
 
+  autorisationsAcces AutorisationAccesDossier[]
   @@index([prefecture])
   @@index([idStructurePreferee])
   @@index([idAscPrincipal])
@@ -1872,6 +1876,7 @@ model RendezVous {
   idConsultation String?       @unique
   consultation   Consultation? @relation(fields: [idConsultation], references: [id])
 
+  autorisationsAcces AutorisationAccesDossier[]
   @@index([idPatient])
   @@index([idAsc])
   @@index([idMedecin, prevuLe])
@@ -2429,6 +2434,7 @@ model EpisodeSoins {
   /// une (addendum du 2026-09-28, point 6).
   demandeRendezVous DemandeRendezVous?
 
+  autorisationsAcces AutorisationAccesDossier[]
   @@index([idStructure, statut, ouvertLe(sort: Desc)])
   @@index([idPatient, ouvertLe(sort: Desc)])
   @@map("episodes_soins")
@@ -3626,4 +3632,60 @@ model DemandeCorrectionIdentite {
   @@index([statut, creeLe])
   @@index([idPatient, creeLe])
   @@map("demandes_correction_identite")
+}
+
+/// Ou en est l'autorisation d'un patient pour un medecin.
+enum StatutAutorisationAcces {
+  /// Demandee a la prise du rendez-vous ; le patient n'a pas encore repondu.
+  DEMANDEE
+  /// Le medecin lit l'historique, jusqu'a la cloture de l'episode plus trente
+  /// jours.
+  ACCORDEE
+  /// Le patient a dit non. On ne le lui redemande pas.
+  REFUSEE
+  /// Le patient a retire un acces qu'il avait accorde. Effet immediat.
+  RETIREE
+}
+
+/// **L'accord du patient pour que le medecin d'un rendez-vous lise son
+/// historique** : consultations passees, resultats, ordonnances, vaccinations,
+/// y compris dans d'autres structures.
+///
+/// La visite en cours reste ouverte sans accord : le medecin doit pouvoir
+/// soigner celui qu'il recoit. C'est l'histoire medicale, au-dela de cette
+/// visite, que le patient choisit de partager - avec ce medecin, pour cet
+/// episode. L'urgence passe par le bris de glace, declare et relu.
+///
+/// Demandee a la prise du rendez-vous, par notification et par courriel.
+/// Valable jusqu'a la cloture de l'episode plus trente jours ; le patient
+/// peut la retirer a tout moment, avec effet immediat.
+model AutorisationAccesDossier {
+  id String @id @default(cuid())
+
+  idPatient String
+  patient   PatientProfile @relation(fields: [idPatient], references: [id], onDelete: Cascade)
+
+  idMedecin String
+  medecin   Utilisateur @relation("AutorisationsAccesMedecin", fields: [idMedecin], references: [id], onDelete: Cascade)
+
+  /// L'episode qui borne l'autorisation : elle tombe trente jours apres sa
+  /// cloture.
+  idEpisode String?
+  episode   EpisodeSoins? @relation(fields: [idEpisode], references: [id], onDelete: SetNull)
+
+  /// Le rendez-vous qui l'a fait demander, pour le dire au patient.
+  idRendezVous String?
+  rendezVous   RendezVous? @relation(fields: [idRendezVous], references: [id], onDelete: SetNull)
+
+  statut     StatutAutorisationAcces @default(DEMANDEE)
+  demandeeLe DateTime                @default(now())
+  /// La derniere relance du medecin : une par jour au plus.
+  relanceeLe DateTime?
+  decideeLe  DateTime?
+  retireeLe  DateTime?
+
+  @@unique([idPatient, idMedecin, idEpisode])
+  @@index([idMedecin, statut])
+  @@index([idPatient, statut])
+  @@map("autorisations_acces_dossier")
 }
