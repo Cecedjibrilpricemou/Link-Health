@@ -38,6 +38,9 @@ export function masquerValeursAnalyse<T>(donnees: T): T {
   if (Array.isArray(lignes) && lignes.some((l) => estObjet(l) && 'resultat' in l)) {
     copie['lignes'] = lignes.map((l) => (estObjet(l) && 'resultat' in l ? { ...l, resultat: null } : l));
     for (const champ of CHAMPS_CLINIQUES) if (champ in copie) copie[champ] = null;
+    // « Un resultat critique attend » dit deja quelque chose du patient : ce
+    // n'est pas l'avancement de son parcours, c'est son etat.
+    if ('alerteCritiqueEnAttente' in copie) copie['alerteCritiqueEnAttente'] = false;
   }
   return copie as T;
 }

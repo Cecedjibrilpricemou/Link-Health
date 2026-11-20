@@ -53,6 +53,7 @@ function demande() {
   return {
     id: 'da-1', numero: 'DA-2026-000001', statut: 'VALIDEE', urgence: 'ROUTINE',
     indicationClinique: 'Fievre', commentaireLaboratoire: 'Hemolyse legere', commentaireMedecin: 'A recontroler',
+    alerteCritiqueEnAttente: true,
     libereePar: { id: 'm', prenom: 'F', nom: 'C' }, valideeLe: '2026-11-20T10:00:00.000Z',
     lignes: [{ id: 'l1', examen: { libelle: 'Hemoglobine', codeLoinc: '718-7' }, resultat: { valeur: '7.1', interpretation: 'CRITIQUE' } }],
   };
@@ -65,6 +66,8 @@ describe('masquerValeursAnalyse', () => {
     const m = masquerValeursAnalyse(demande());
     expect(m.lignes[0]).toEqual({ id: 'l1', examen: { libelle: 'Hemoglobine', codeLoinc: '718-7' }, resultat: null });
     expect([m.commentaireLaboratoire, m.commentaireMedecin, m.libereePar]).toEqual([null, null, null]);
+    // Qu'un resultat critique attende dit l'etat du patient : retire aussi.
+    expect(m.alerteCritiqueEnAttente).toBe(false);
     expect([m.statut, m.numero, m.valideeLe, m.indicationClinique]).toEqual(['VALIDEE', 'DA-2026-000001', '2026-11-20T10:00:00.000Z', 'Fievre']);
   });
 
