@@ -27,9 +27,10 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'ADMIN_STRUCTURE'), getConsultationsController);
+// Le contenu d'une consultation est au soin : l'administration n'y lit rien.
+router.get('/', requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN'), getConsultationsController);
 router.post('/', requireRole('ASC', 'ASC_SUPERVISOR'), validateBody(createConsultationSchema), createConsultationController);
-router.get('/:id', requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'ADMIN_STRUCTURE'), getConsultationByIdController);
+router.get('/:id', requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN'), getConsultationByIdController);
 // Compte rendu imprimable (EF-05-03) : le patient pour son dossier, les
 // soignants pour reprendre le suivi. Pas l'administration de la structure :
 // elle gere, elle ne soigne pas. Le perimetre exact (le patient ses propres
