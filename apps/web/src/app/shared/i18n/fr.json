@@ -2081,6 +2081,7 @@
       "ERR_VALIDATION_ADMIN": "Prénom, nom, téléphone et email du responsable sont obligatoires.",
       "VALIDATION_TITLE": "Validation",
       "SUCCESS_EMAIL_SENT": "Les identifiants ont aussi été envoyés par email à {{email}}",
+      "EMAIL_NON_ENVOYE": "Le courriel n'a pas pu être envoyé à {{email}} : transmettez vous-même ce mot de passe au responsable.",
       "SUCCESS_CREATED": "Structure {{nom}} créée avec succès.",
       "SUCCESS_TITLE": "Succès",
       "ERR_CREATE": "Erreur lors de la création.",

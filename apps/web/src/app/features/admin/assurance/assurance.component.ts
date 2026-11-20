@@ -66,7 +66,10 @@ interface CompagnieCreee {
   responsableNom: string;
   responsableTelephone: string;
   motDePasse: string;
-  emailEnvoye: string;
+  /** L'adresse, seulement si le courriel est **parti**. */
+  emailEnvoye: string | null;
+  /** L'adresse saisie, quand le courriel n'a pas pu partir. */
+  emailEchec: string | null;
 }
 
 function assuranceVide() {
@@ -304,7 +307,10 @@ export class AssuranceComponent implements OnInit {
           responsableNom: `${data.responsable.prenom} ${data.responsable.nom}`,
           responsableTelephone: data.responsable.telephone,
           motDePasse: data.motDePasseTemporaire,
-          emailEnvoye: data.responsable.email ?? dto.responsable.email,
+          // Ce que le serveur a fait : annoncer un envoi qui a echoue ferait
+          // fermer la modale sans noter le mot de passe.
+          emailEnvoye: data.emailEnvoye ? (data.responsable.email ?? dto.responsable.email) : null,
+          emailEchec: data.emailEnvoye ? null : (data.responsable.email ?? dto.responsable.email),
         });
         this.toastr.success(this.i18n.t('ADMIN.ASSURANCE.COMPAGNIE_CREEE', { nom: data.assureur.nom }));
         // Les fichiers retenus partent avec le formulaire : les garder

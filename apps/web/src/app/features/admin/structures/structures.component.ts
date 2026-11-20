@@ -26,7 +26,10 @@ interface MotDePasseAffiche {
   adminNom: string;
   adminTelephone: string;
   motDePasse: string;
+  /** L'adresse, seulement si le courriel est **parti**. */
   emailEnvoye?: string;
+  /** L'adresse saisie, quand le courriel n'a pas pu partir. */
+  emailEchec?: string;
 }
 
 type FiltreEtatStructure = 'TOUS' | 'ACTIVES' | 'INACTIVES';
@@ -477,8 +480,13 @@ export class StructuresComponent implements OnInit {
           adminNom: `${adminData?.prenom ?? ''} ${adminData?.nom ?? ''}`.trim(),
           adminTelephone: adminData?.telephone ?? telephoneAdminSaisi,
           motDePasse: data?.motDePasseTemporaire ?? '',
-          // L'API renvoie `null` quand aucun email n'est renseigne.
-          emailEnvoye: adminData?.email ?? undefined
+          // **Ce que le serveur a fait, pas ce qu'il aurait du faire.** La
+          // modale annoncait l'envoi des qu'une adresse etait saisie, meme
+          // sans expediteur configure : l'administrateur fermait sans noter
+          // le mot de passe, et le responsable n'avait plus aucun moyen
+          // d'entrer. L'API renvoie `null` quand aucun email n'est renseigne.
+          emailEnvoye: data?.emailEnvoye ? (adminData?.email ?? undefined) : undefined,
+          emailEchec: !data?.emailEnvoye ? (adminData?.email ?? undefined) : undefined,
         });
         this.toastr.success(this.i18n.t('ADMIN.STRUCTURES.SUCCESS_CREATED', { nom: nomStructureCree }), this.i18n.t('ADMIN.STRUCTURES.SUCCESS_TITLE'));
         this.loadStructures();

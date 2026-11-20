@@ -1851,12 +1851,16 @@ export interface CreationStructureView {
   structure: StructureAdminView;
   admin: CompteCreeView;
   motDePasseTemporaire?: string;
+  /** Vrai seulement si le courriel des identifiants est **parti**. */
+  emailEnvoye: boolean;
 }
 
 export interface CreationPharmacieView {
   structure: StructureAdminView;
   pharmacien: CompteCreeView;
   motDePasseTemporaire?: string;
+  /** Vrai seulement si le courriel des identifiants est **parti**. */
+  emailEnvoye: boolean;
 }
 
 // ─── Espace admin de structure ────────────────────────────────────────────────
@@ -3417,6 +3421,8 @@ export interface CreationAssuranceView {
   assureur: AssureurView;
   responsable: CompteCreeView;
   motDePasseTemporaire: string;
+  /** Vrai seulement si le courriel des identifiants est **parti**. */
+  emailEnvoye: boolean;
 }
 
 export interface AssureurView extends AssureurResumeView {

@@ -1254,6 +1254,10 @@ export async function creerAssuranceAvecResponsable(
 
   // Le courriel part apres le commit, et son echec n'annule rien : le mot de
   // passe est rendu une fois a l'administration, qui peut le transmettre.
+  // `emailEnvoye` dit s'il est **parti** : la modale ne doit pas affirmer un
+  // envoi qui a echoue, sinon l'administrateur ferme sans noter le mot de
+  // passe et le responsable n'a plus aucun moyen d'entrer.
+  let emailEnvoye = false;
   try {
     await envoyerEmailAdminStructure({
       destinataire: email,
@@ -1262,6 +1266,7 @@ export async function creerAssuranceAvecResponsable(
       telephone,
       motDePasseTemporaire: motDePasseTemp,
     });
+    emailEnvoye = true;
   } catch (e) {
     logger.error('[ASSURANCE] identifiants du responsable non envoyes', {
       idStructure: resultat.structure.id,
@@ -1274,6 +1279,7 @@ export async function creerAssuranceAvecResponsable(
     assureur: versAssureurView(resultat.assureur),
     responsable: resultat.responsable,
     motDePasseTemporaire: motDePasseTemp,
+    emailEnvoye,
   };
 }
 

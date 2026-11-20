@@ -206,6 +206,23 @@ describe('creer une assurance en une fois', () => {
     expect(disque.supprimerFichiers).toHaveBeenCalledWith(['abc.pdf']);
   });
 
+  // La modale ne doit pas affirmer un envoi qui a echoue : l'administrateur
+  // fermerait sans noter le mot de passe, et le responsable resterait dehors.
+  it('dit que le courriel est parti quand il est parti', async () => {
+    const r = await creerAssuranceAvecResponsable(DTO, [AGREMENT]);
+    expect(r.emailEnvoye).toBe(true);
+  });
+
+  it('dit que le courriel n est pas parti quand l envoi echoue', async () => {
+    const courriels = jest.requireMock('../src/services/email.service') as { envoyerEmailAdminStructure: M };
+    courriels.envoyerEmailAdminStructure.mockRejectedValueOnce(new Error('aucun expediteur configure'));
+
+    const r = await creerAssuranceAvecResponsable(DTO, [AGREMENT]);
+
+    expect(r.emailEnvoye).toBe(false);
+    expect(r.motDePasseTemporaire).toBe('Kq7m-Xw3P-abcd-EFGH');
+  });
+
   it('refuse un telephone de responsable deja porte par un compte, avant toute ecriture', async () => {
     bd.utilisateur.findUnique.mockImplementation(async ({ where }: { where: { telephone?: string } }) =>
       (where.telephone ? { id: 'deja' } : null));

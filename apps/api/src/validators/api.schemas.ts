@@ -410,7 +410,24 @@ const structureBase = z.object({
   }).strict(),
 }).strict();
 
-export const createStructureSchema = structureBase.refine(pasLePointZero, messagePointZero);
+/**
+ * **Une compagnie d'assurance ne se cree plus par cette route.** Elle n'y
+ * faisait que la structure : qui s'arretait la laissait un responsable devant
+ * « Cette structure n'est rattachee a aucune compagnie d'assurance ». Elle se
+ * cree en une fois par `POST /assurance/compagnies`, structure, compagnie et
+ * compte ensemble. Deux portes pour la meme chose finissent par diverger.
+ *
+ * Le refus est pose ici, a la route, et non dans `structureBase` : le schema
+ * de modification en derive, et une assurance existante doit rester
+ * modifiable. Le service, lui, garde sa correspondance generique entre le
+ * type d'une structure et le role de son responsable.
+ */
+export const createStructureSchema = structureBase
+  .refine((d) => d.type !== 'ASSURANCE', {
+    message: "Une compagnie d'assurance se crée depuis l'onglet Assurances (POST /assurance/compagnies), avec sa compagnie et son responsable.",
+    path: ['type'],
+  })
+  .refine(pasLePointZero, messagePointZero);
 
 const pharmacieBase = z.object({
   nom: z.string().trim().min(2).max(160),

@@ -1512,6 +1512,7 @@
       "ERR_VALIDATION_ADMIN": "First name, last name, phone number and email of the manager are required.",
       "VALIDATION_TITLE": "Validation",
       "SUCCESS_EMAIL_SENT": "Credentials have also been sent by email to {{email}}",
+      "EMAIL_NON_ENVOYE": "The email could not be sent to {{email}}: give this password to the manager yourself.",
       "SUCCESS_CREATED": "Facility {{nom}} created successfully.",
       "SUCCESS_TITLE": "Success",
       "ERR_CREATE": "Error while creating.",

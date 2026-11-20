@@ -39,11 +39,12 @@ const CREEE: CreationAssuranceView = {
   } as unknown as CreationAssuranceView['assureur'],
   responsable: { id: 'resp-1', prenom: 'Awa', nom: 'Bah', telephone: '620333444', email: 'awa@sunu.gn', role: 'ASSUREUR' },
   motDePasseTemporaire: 'Kq7m-Xw3P-abcd-EFGH',
+  emailEnvoye: true,
 };
 
-function monter() {
+function monter(reponse: CreationAssuranceView = CREEE) {
   const creerAssurance = vi.fn((_dto: CreerAssuranceDto, _pieces: Record<string, File>) =>
-    of({ success: true, data: CREEE }));
+    of({ success: true, data: reponse }));
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     imports: [AssuranceComponent],
@@ -170,6 +171,31 @@ describe('creer une compagnie d assurance en une fois', () => {
 
     expect(c.compagnieCreee()).toBeNull();
     expect(rendre().textContent).not.toContain('Kq7m-Xw3P-abcd-EFGH');
+  });
+
+  it('annonce l envoi par email quand le courriel est parti', () => {
+    const { c, fixture, rendre } = monter();
+    remplir(c);
+    joindreAgrement(fixture);
+    c.creerAssurance();
+
+    const el = rendre();
+    expect(el.querySelector('.bb-mdp-modal__email-note')?.textContent).toContain('awa@sunu.gn');
+    expect(el.querySelector('.bb-mdp-modal__email-echec')).toBeNull();
+  });
+
+  // Annoncer un envoi qui a echoue ferait fermer la modale sans noter le mot
+  // de passe : le responsable n'aurait plus aucun moyen d'entrer.
+  it('dit que le courriel n est pas parti quand l envoi a echoue', () => {
+    const { c, fixture, rendre } = monter({ ...CREEE, emailEnvoye: false });
+    remplir(c);
+    joindreAgrement(fixture);
+    c.creerAssurance();
+
+    const el = rendre();
+    expect(el.querySelector('.bb-mdp-modal__email-note')).toBeNull();
+    expect(el.querySelector('.bb-mdp-modal__email-echec')?.textContent).toContain('awa@sunu.gn');
+    expect(el.querySelector('.bb-mdp-modal__mdp')?.textContent).toBe('Kq7m-Xw3P-abcd-EFGH');
   });
 
   it('repart d un formulaire vide, sans la piece de la compagnie precedente', () => {
