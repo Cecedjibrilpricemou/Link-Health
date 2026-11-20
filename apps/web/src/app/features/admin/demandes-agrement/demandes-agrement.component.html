@@ -59,7 +59,8 @@
                  [class.pi-heart]="demande.type === 'CLINIQUE'"
                  [class.pi-search-plus]="demande.type === 'LABORATOIRE'"
                  [class.pi-building]="demande.type === 'HOPITAL_PREF'
-                   || demande.type === 'HOPITAL_REG' || demande.type === 'CHU'"></i>
+                   || demande.type === 'HOPITAL_REG' || demande.type === 'CHU'"
+                 [class.pi-shield]="demande.type === 'ASSURANCE'"></i>
             </span>
             <div class="bb-demandes__main">
               <div class="bb-demandes__name-line">
@@ -138,16 +139,37 @@
               }
               <div>
                 <dt>
-                  {{ (demande.estHopitalPublic ? 'AGREMENT.ACTE_CREATION_LABEL' : 'AGREMENT.CREATION_LABEL') | translate }}
+                  {{ (demande.estHopitalPublic ? 'AGREMENT.ACTE_CREATION_LABEL'
+                      : demande.type === 'ASSURANCE' ? 'AGREMENT.BCRG_LABEL' : 'AGREMENT.CREATION_LABEL') | translate }}
                 </dt>
                 <dd>{{ demande.numeroAgrementCreation || '—' }}</dd>
               </div>
-              @if (!demande.estHopitalPublic) {
+              <!-- Une assurance n'a pas d'arrete d'exploitation distinct : sa
+                   seule reference est celle de la Banque Centrale. -->
+              @if (!demande.estHopitalPublic && demande.type !== 'ASSURANCE') {
                 <div><dt>{{ 'AGREMENT.EXPLOITATION_LABEL' | translate }}</dt><dd>{{ demande.numeroAgrementExploitation || '—' }}</dd></div>
+              }
+              @if (!demande.estHopitalPublic) {
                 <div><dt>{{ 'AGREMENT.LIEU_LABEL' | translate }}</dt><dd>{{ demande.lieuAutorise || '—' }}</dd></div>
               }
             </dl>
           </section>
+
+          @if (demande.type === 'ASSURANCE') {
+            <section>
+              <h3>{{ 'ADMIN.AGREMENT_REQUESTS.COMPANY' | translate }}</h3>
+              <dl class="bb-demandes__facts">
+                <div>
+                  <dt>{{ (demande.statut === 'VALIDEE' ? 'ADMIN.AGREMENT_REQUESTS.CODE_RETAINED' : 'ADMIN.AGREMENT_REQUESTS.CODE_PROPOSED') | translate }}</dt>
+                  <dd class="bb-demandes__code">{{ demande.codeAssureur || '—' }}</dd>
+                </div>
+                <div>
+                  <dt>{{ 'ADMIN.AGREMENT_REQUESTS.MODE' | translate }}</dt>
+                  <dd>{{ ('ADMIN.ASSURANCE.MODE_' + (demande.modeEchange ?? 'MANUEL')) | translate }}</dd>
+                </div>
+              </dl>
+            </section>
+          }
 
           <section>
             <h3>{{ 'PUBLIC.STRUCTURE_REQUEST.RESPONSIBLE' | translate }}</h3>
@@ -208,7 +230,42 @@
             }
           </section>
 
-          @if (demande.statut === 'REFUSEE' && demande.motifRefus) {
+          @if (demande.historique.length > 0) {
+            <section>
+              <h3>{{ 'ADMIN.AGREMENT_REQUESTS.HISTORY' | translate }}</h3>
+              <!-- Chaque motif, tel qu'il est parti au candidat, et si le
+                   courriel est parti : l'agent qui reprend le dossier sait ce
+                   qui a deja ete dit. -->
+              <ol class="bb-demandes__history">
+                @for (evenement of demande.historique; track evenement.id) {
+                  <li [attr.data-action]="evenement.action">
+                    <div class="bb-demandes__history-head">
+                      <strong>{{ ('ADMIN.AGREMENT_REQUESTS.ACTION_' + evenement.action) | translate }}</strong>
+                      <small>
+                        {{ evenement.creeLe | date: 'dd/MM/yyyy HH:mm' }}
+                        @if (evenement.auteur) {
+                          · {{ 'ADMIN.AGREMENT_REQUESTS.HISTORY_BY' | translate: { qui: evenement.auteur } }}
+                        }
+                      </small>
+                    </div>
+                    <p class="bb-demandes__reason-text">{{ evenement.motif }}</p>
+                    @if (evenement.emailEnvoye) {
+                      <small class="bb-demandes__history-mail">
+                        <i class="pi pi-envelope" aria-hidden="true"></i>
+                        {{ 'ADMIN.AGREMENT_REQUESTS.HISTORY_EMAIL_SENT' | translate }}
+                      </small>
+                    } @else {
+                      <small class="bb-demandes__history-mail bb-demandes__history-mail--echec" role="note">
+                        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                        {{ 'ADMIN.AGREMENT_REQUESTS.HISTORY_EMAIL_NOT_SENT' | translate }}
+                      </small>
+                    }
+                  </li>
+                }
+              </ol>
+            </section>
+          } @else if (demande.statut === 'REFUSEE' && demande.motifRefus) {
+            <!-- Un dossier refuse avant l'historique n'a que son motif. -->
             <section>
               <h3>{{ 'ADMIN.AGREMENT_REQUESTS.REFUSAL_REASON' | translate }}</h3>
               <p class="bb-demandes__reason-text">{{ demande.motifRefus }}</p>
@@ -231,20 +288,29 @@
             <strong>{{ ('ADMIN.AGREMENT_REQUESTS.STATE_' + demande.statut) | translate }}</strong>
           </span>
 
+          @if (avertissement(); as message) {
+            <p class="bb-demandes__notice bb-demandes__notice--error" role="alert">
+              <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+              {{ message }}
+            </p>
+          }
+
           @if (decidable()) {
+            <!-- La mise en verification se repete : chaque fois, le candidat
+                 apprend ce qu'on attend de lui. -->
             <div class="bb-demandes__action-buttons">
-              <button type="button" matButton [disabled]="action() || demande.statut === 'EN_ANALYSE'"
-                      (click)="mettreEnAnalyse()">
+              <button type="button" matButton class="bb-demandes__analyse" [disabled]="action()"
+                      (click)="ouvrirAction('ANALYSE')">
                 <i class="pi pi-search" aria-hidden="true"></i>
                 {{ 'ADMIN.AGREMENT_REQUESTS.MARK_ANALYSIS' | translate }}
               </button>
               <button type="button" matButton="filled" class="bb-demandes__validate"
-                      [disabled]="action() || !demande.complet" (click)="valider()">
+                      [disabled]="action() || !demande.complet" (click)="ouvrirAction('VALIDATION')">
                 <i class="pi pi-check" aria-hidden="true"></i>
                 {{ 'ADMIN.AGREMENT_REQUESTS.VALIDATE' | translate }}
               </button>
               <button type="button" matButton class="bb-demandes__refuse"
-                      [disabled]="action()" (click)="ouvrirSaisieMotif()">
+                      [disabled]="action()" (click)="ouvrirAction('REFUS')">
                 <i class="pi pi-ban" aria-hidden="true"></i>
                 {{ 'ADMIN.AGREMENT_REQUESTS.REFUSE' | translate }}
               </button>
@@ -258,20 +324,41 @@
             </p>
           }
 
-          @if (saisieMotifOuverte()) {
-            <div class="bb-demandes__reason">
-              <label for="demande-motif">{{ 'ADMIN.AGREMENT_REQUESTS.REASON' | translate }} *</label>
-              <!-- Le motif parvient tel quel au candidat : sans lui, il
-                   redepose un dossier identique. -->
-              <textarea id="demande-motif" rows="3" maxlength="600" [ngModel]="motifRefus()"
-                        (ngModelChange)="motifRefus.set($event)"></textarea>
+          @if (actionOuverte(); as choisie) {
+            <div class="bb-demandes__reason"
+                 [class.bb-demandes__reason--analyse]="choisie === 'ANALYSE'"
+                 [class.bb-demandes__reason--validation]="choisie === 'VALIDATION'">
+              @if (choisie === 'VALIDATION' && estAssurance()) {
+                <!-- Le code des cartes : propose par la compagnie, corrigeable
+                     ici s'il est deja pris ou ne convient pas. -->
+                <label for="demande-code">{{ 'ADMIN.AGREMENT_REQUESTS.CODE_LABEL' | translate }} *</label>
+                <input id="demande-code" maxlength="16" autocomplete="off" class="bb-demandes__code-input"
+                       [ngModel]="codeCorrige()" (ngModelChange)="codeCorrige.set($event)" />
+                @if (codeValide()) {
+                  <span class="bb-demandes__reason-hint">{{ 'ADMIN.AGREMENT_REQUESTS.CODE_HINT' | translate }}</span>
+                } @else {
+                  <small role="alert">{{ 'ADMIN.AGREMENT_REQUESTS.CODE_INVALID' | translate }}</small>
+                }
+              }
+              <label for="demande-motif">{{ ('ADMIN.AGREMENT_REQUESTS.REASON_' + choisie) | translate }} *</label>
+              <!-- Le motif parvient tel quel au candidat, par courriel : il doit
+                   lui dire ou en est son dossier, ou quoi corriger. -->
+              <textarea id="demande-motif" rows="3" maxlength="600" [ngModel]="motif()"
+                        (ngModelChange)="motif.set($event)"></textarea>
+              <span class="bb-demandes__reason-hint">{{ 'ADMIN.AGREMENT_REQUESTS.REASON_HINT' | translate }}</span>
               @if (erreurMotif()) {
                 <small role="alert">{{ 'ADMIN.AGREMENT_REQUESTS.REASON_TOO_SHORT' | translate }}</small>
               }
-              <button type="button" matButton="filled" class="bb-demandes__confirm-refusal"
-                      [disabled]="!motifSuffisant() || action()" (click)="refuser()">
-                {{ 'ADMIN.AGREMENT_REQUESTS.CONFIRM_REFUSAL' | translate }}
-              </button>
+              <div class="bb-demandes__reason-actions">
+                <button type="button" matButton [disabled]="action()" (click)="annulerAction()">
+                  {{ 'ADMIN.AGREMENT_REQUESTS.CANCEL' | translate }}
+                </button>
+                <button type="button" matButton="filled" class="bb-demandes__confirm"
+                        [class.bb-demandes__confirm-refusal]="choisie === 'REFUS'"
+                        [disabled]="!motifSuffisant() || !codeValide() || action()" (click)="confirmer()">
+                  {{ ('ADMIN.AGREMENT_REQUESTS.CONFIRM_' + choisie) | translate }}
+                </button>
+              </div>
             </div>
           }
         </footer>

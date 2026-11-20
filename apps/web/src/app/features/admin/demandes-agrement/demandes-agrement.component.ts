@@ -1,9 +1,14 @@
 // L'examen des demandes de rattachement, cote administration nationale.
 //
 // **Une decision ne se reprend pas.** Valider cree la structure et le compte
-// de son responsable ; refuser envoie un motif au candidat. Le serveur refuse
-// de revenir sur un dossier deja decide, et cet ecran n'offre donc plus
-// d'action sur lui - plutot que de proposer un bouton qui echouerait.
+// de son responsable ; refuser clot le dossier. Le serveur refuse de revenir
+// sur un dossier deja decide, et cet ecran n'offre donc plus d'action sur lui
+// - plutot que de proposer un bouton qui echouerait.
+//
+// **Chaque action porte un motif, envoye par courriel au responsable** : la
+// mise en verification, la validation, le refus. Le candidat n'a aucun
+// compte : ces courriels sont tout ce qu'il voit de l'examen. L'historique du
+// dossier garde chaque motif, et dit si le courriel est parti.
 //
 // Le filtre par etat est applique **par le serveur** : filtrer une liste deja
 // recue reviendrait a trier ce qu'on a sous la main en croyant trier tout.
@@ -34,6 +39,12 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 /** Le motif exige par le serveur : dix caracteres au moins. */
 const MOTIF_MINIMUM = 10;
+
+/** Le code d'une compagnie, tel que le serveur l'accepte. */
+const FORME_CODE = /^[A-Za-z0-9-]{2,16}$/;
+
+/** Les trois gestes d'un agent sur un dossier ouvert. */
+export type ActionExamen = 'ANALYSE' | 'VALIDATION' | 'REFUS';
 
 @Component({
   selector: 'app-demandes-agrement',
@@ -66,9 +77,17 @@ export class DemandesAgrementComponent implements OnInit, OnDestroy {
   readonly demandeOuverte = signal<DemandeAgrementView | null>(null);
   readonly action = signal(false);
 
-  readonly saisieMotifOuverte = signal(false);
-  readonly motifRefus = signal('');
+  /** L'action dont l'agent saisit le motif, ou rien. */
+  readonly actionOuverte = signal<ActionExamen | null>(null);
+  readonly motif = signal('');
   readonly erreurMotif = signal(false);
+  /** Assurance seulement : le code retenu, pre-rempli avec celui propose. */
+  readonly codeCorrige = signal('');
+  /**
+   * La decision est prise, mais le courriel n'est pas parti. Le dire : une
+   * validation sans courriel laisse le responsable sans ses identifiants.
+   */
+  readonly avertissement = signal<string | null>(null);
 
   /** L'apercu d'une piece, charge par une requete authentifiee. */
   readonly apercu = signal<{ libelle: string; url: SafeResourceUrl } | null>(null);
@@ -80,7 +99,15 @@ export class DemandesAgrementComponent implements OnInit, OnDestroy {
     return statut === 'RECUE' || statut === 'EN_ANALYSE';
   });
 
-  readonly motifSuffisant = computed(() => this.motifRefus().trim().length >= MOTIF_MINIMUM);
+  readonly motifSuffisant = computed(() => this.motif().trim().length >= MOTIF_MINIMUM);
+
+  readonly estAssurance = computed(() => this.demandeOuverte()?.type === 'ASSURANCE');
+
+  /** Le code ne bloque que la validation d'une assurance. */
+  readonly codeValide = computed(
+    () => this.actionOuverte() !== 'VALIDATION' || !this.estAssurance()
+      || FORME_CODE.test(this.codeCorrige().trim()),
+  );
 
   ngOnInit(): void {
     this.charger();
@@ -166,26 +193,48 @@ export class DemandesAgrementComponent implements OnInit, OnDestroy {
     this.libererApercu();
   }
 
-  mettreEnAnalyse(): void {
-    this.decider((id) => this.service.mettreEnAnalyse(id), 'ADMIN.AGREMENT_REQUESTS.DONE_ANALYSIS');
+  /**
+   * Ouvrir la saisie du motif d'une action.
+   *
+   * Rien ne part avant la confirmation : le motif parvient tel quel au
+   * candidat, il doit avoir ete ecrit pour lui.
+   */
+  ouvrirAction(action: ActionExamen): void {
+    this.actionOuverte.set(action);
+    this.motif.set('');
+    this.erreurMotif.set(false);
+    this.avertissement.set(null);
+    if (action === 'VALIDATION') this.codeCorrige.set(this.demandeOuverte()?.codeAssureur ?? '');
   }
 
-  valider(): void {
-    this.decider((id) => this.service.valider(id), 'ADMIN.AGREMENT_REQUESTS.DONE_VALIDATED');
-  }
-
-  ouvrirSaisieMotif(): void {
-    this.saisieMotifOuverte.set(true);
+  annulerAction(): void {
+    this.actionOuverte.set(null);
+    this.motif.set('');
     this.erreurMotif.set(false);
   }
 
-  refuser(): void {
+  /** Envoyer l'action ouverte, avec son motif. */
+  confirmer(): void {
+    const action = this.actionOuverte();
+    if (!action) return;
     if (!this.motifSuffisant()) {
       this.erreurMotif.set(true);
       return;
     }
-    const motif = this.motifRefus().trim();
-    this.decider((id) => this.service.refuser(id, motif), 'ADMIN.AGREMENT_REQUESTS.DONE_REFUSED');
+    if (!this.codeValide()) return;
+    const motif = this.motif().trim();
+
+    if (action === 'ANALYSE') {
+      this.decider((id) => this.service.mettreEnAnalyse(id, motif), 'ADMIN.AGREMENT_REQUESTS.DONE_ANALYSIS');
+    } else if (action === 'VALIDATION') {
+      // Le code n'est envoye que s'il a ete corrige : sinon le serveur garde
+      // celui que la compagnie a propose.
+      const code = this.estAssurance() ? this.codeCorrige().trim().toUpperCase() : '';
+      const corrige = code && code !== (this.demandeOuverte()?.codeAssureur ?? '') ? code : undefined;
+      this.decider((id) => this.service.valider(id, motif, corrige), 'ADMIN.AGREMENT_REQUESTS.DONE_VALIDATED');
+    } else {
+      this.decider((id) => this.service.refuser(id, motif), 'ADMIN.AGREMENT_REQUESTS.DONE_REFUSED');
+    }
   }
 
   /**
@@ -209,11 +258,20 @@ export class DemandesAgrementComponent implements OnInit, OnDestroy {
     envoyer(dossier.id).subscribe({
       next: (r) => {
         this.action.set(false);
-        this.demandeOuverte.set(r.data ?? null);
-        this.saisieMotifOuverte.set(false);
-        this.motifRefus.set('');
-        this.erreurMotif.set(false);
-        this.succes.set(this.i18n.t(cleSucces, { numero: dossier.numero }));
+        const rendu = r.data ?? null;
+        this.demandeOuverte.set(rendu);
+        this.annulerAction();
+        // Ce que le serveur a fait, pas ce qu'il aurait du faire : le
+        // courriel est-il **parti** ?
+        const derniere = rendu?.historique?.at(-1);
+        const email = rendu?.responsable.email ?? dossier.responsable.email;
+        const succes = this.i18n.t(cleSucces, { numero: dossier.numero });
+        if (derniere && !derniere.emailEnvoye) {
+          this.succes.set(succes);
+          this.avertissement.set(this.i18n.t('ADMIN.AGREMENT_REQUESTS.EMAIL_NOT_SENT', { email }));
+        } else {
+          this.succes.set(`${succes} ${this.i18n.t('ADMIN.AGREMENT_REQUESTS.EMAIL_SENT', { email })}`);
+        }
         this.charger();
       },
       error: (e: unknown) => {
@@ -225,10 +283,10 @@ export class DemandesAgrementComponent implements OnInit, OnDestroy {
 
   private reinitialiserDialogue(): void {
     this.libererApercu();
-    this.saisieMotifOuverte.set(false);
-    this.motifRefus.set('');
-    this.erreurMotif.set(false);
+    this.annulerAction();
+    this.codeCorrige.set('');
     this.succes.set(null);
+    this.avertissement.set(null);
   }
 
   private libererApercu(): void {

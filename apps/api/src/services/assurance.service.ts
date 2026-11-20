@@ -1104,7 +1104,7 @@ export interface CreationAssuranceRecue extends IdentifiantsRecus {
  * structure qu'elle vient de creer. Sur `Utilisateur`, c'est le telephone ou
  * l'email du responsable.
  */
-function champEnDoublon(e: unknown): 'code' | 'telephone' | 'email' | null {
+export function champEnDoublon(e: unknown): 'code' | 'telephone' | 'email' | null {
   const err = e as { code?: string; meta?: Record<string, unknown> } | null;
   if (err?.code !== 'P2002') return null;
   const meta = JSON.stringify(err.meta ?? {});
@@ -1114,8 +1114,13 @@ function champEnDoublon(e: unknown): 'code' | 'telephone' | 'email' | null {
   return null;
 }
 
-/** Le refus d'un code deja pris : il nomme le champ, pas la contrainte. */
-function conflitCode(code: string): ConflictError {
+/**
+ * Le refus d'un code deja pris : il nomme le champ, pas la contrainte.
+ *
+ * Partage avec la validation d'une demande en ligne : les deux portes qui
+ * font naitre une compagnie disent la meme chose du meme probleme.
+ */
+export function conflitCode(code: string): ConflictError {
   return new ConflictError(
     `Le code ${code} est déjà utilisé par une autre compagnie : choisissez-en un autre, il figurera sur les cartes des assurés.`,
   );

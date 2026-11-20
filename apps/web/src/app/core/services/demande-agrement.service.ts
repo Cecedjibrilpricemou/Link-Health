@@ -34,6 +34,9 @@ export interface DepotDemandeDto {
   numeroAgrementCreation?: string;
   numeroAgrementExploitation?: string;
   lieuAutorise?: string;
+  /** Assurance seulement : le code propose pour les cartes des assures. */
+  codeAssureur?: string;
+  modeEchange?: 'MANUEL' | 'PORTAIL' | 'API';
   responsable: {
     prenom: string;
     nom: string;
@@ -94,18 +97,22 @@ export class DemandeAgrementService {
     return this.api.get<ApiResponse<DemandeAgrementView>>(`/demandes-agrement/${id}`);
   }
 
-  /** Prendre le dossier en charge, pour que deux agents ne doublonnent pas. */
-  mettreEnAnalyse(id: string): Observable<ApiResponse<DemandeAgrementView>> {
-    return this.api.post<ApiResponse<DemandeAgrementView>>(`/demandes-agrement/${id}/analyse`, {});
+  /** Mettre en cours de verification. Le motif part tel quel au candidat. */
+  mettreEnAnalyse(id: string, motif: string): Observable<ApiResponse<DemandeAgrementView>> {
+    return this.api.post<ApiResponse<DemandeAgrementView>>(`/demandes-agrement/${id}/analyse`, { motif });
   }
 
   /**
-   * Valider : la structure et le compte de son responsable naissent cote
-   * serveur. Le mot de passe temporaire part par courriel au responsable, il
-   * ne revient **jamais** dans cette reponse.
+   * Valider, avec un motif : la structure et le compte de son responsable
+   * naissent cote serveur - et pour une assurance, la compagnie, au code
+   * corrige si `codeAssureur` est donne. Le mot de passe temporaire part par
+   * courriel au responsable, il ne revient **jamais** dans cette reponse.
    */
-  valider(id: string): Observable<ApiResponse<DemandeAgrementView>> {
-    return this.api.post<ApiResponse<DemandeAgrementView>>(`/demandes-agrement/${id}/validation`, {});
+  valider(id: string, motif: string, codeAssureur?: string): Observable<ApiResponse<DemandeAgrementView>> {
+    return this.api.post<ApiResponse<DemandeAgrementView>>(
+      `/demandes-agrement/${id}/validation`,
+      codeAssureur ? { motif, codeAssureur } : { motif },
+    );
   }
 
   /** Refuser. Le motif est obligatoire et parvient tel quel au candidat. */
