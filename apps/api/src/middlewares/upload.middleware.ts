@@ -48,6 +48,27 @@ export const uploadLogo = multer({
 export const LOGOS_PUBLIC_PATH = '/uploads/logos';
 export { LOGOS_DIR };
 
+// Les images des pages publiques (Parametres > Images). En memoire : sharp les
+// reduit et les convertit en WebP ; l'original n'est jamais ecrit. Pas de
+// SVG : ce sont des photos, et un SVG peut porter du code.
+const VISUELS_DIR = path.join(process.cwd(), 'uploads', 'visuels');
+fs.mkdirSync(VISUELS_DIR, { recursive: true });
+
+export const uploadVisuel = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!TYPES_IMAGE_ACCEPTES.includes(file.mimetype)) {
+      cb(new Error('Format non supporté — utilisez une photo JPEG, PNG ou WebP.'));
+      return;
+    }
+    cb(null, true);
+  },
+}).single('image');
+
+export const VISUELS_PUBLIC_PATH = '/uploads/visuels';
+export { VISUELS_DIR };
+
 // Photo d'identite d'une personne assuree. En memoire : elle est recadree par
 // sharp puis ecrite dans le stockage prive (jamais sous `uploads/`, public).
 export const uploadPhotoAssure = multer({

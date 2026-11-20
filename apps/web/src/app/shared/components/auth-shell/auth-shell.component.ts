@@ -8,6 +8,7 @@ import { ThemeService } from '../../services/theme.service';
 import { I18nService } from '../../services/i18n.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { BrandComponent } from '../brand/brand.component';
+import { PlateformeService } from '../../services/plateforme.service';
 
 @Component({
   selector: 'app-auth-shell',
@@ -18,6 +19,8 @@ import { BrandComponent } from '../brand/brand.component';
 })
 export class AuthShellComponent {
   readonly themeService = inject(ThemeService);
+  /** La photo du panneau : celle du super-admin, sinon celle d'origine. */
+  readonly plateforme   = inject(PlateformeService);
   private i18nService   = inject(I18nService);
 
   /** Cles i18n du message pose sous la photo. */

@@ -1,0 +1,69 @@
+<div class="bb-vis">
+  @for (e of emplacements; track e) {
+    <section class="bb-vis__carte" [attr.data-emplacement]="e">
+      <!-- L'apercu, cadre comme sur la page : ce que verront les visiteurs. -->
+      <div class="bb-vis__apercu" [class.bb-vis__apercu--haut]="e === 'CONNEXION'">
+        @if (image(e); as img) {
+          <img [src]="img.src" alt="" loading="lazy" decoding="async" />
+        } @else {
+          <span class="bb-vis__icone">
+            <i class="pi pi-image" aria-hidden="true"></i>
+            {{ 'ADMIN.SETTINGS.VISUELS_ICONE' | translate }}
+          </span>
+        }
+        @if (enCours() === e) {
+          <span class="bb-vis__attente" role="status">
+            <mat-spinner diameter="26"></mat-spinner>
+          </span>
+        }
+      </div>
+
+      <div class="bb-vis__corps">
+        <div class="bb-vis__tete">
+          <h3 class="bb-vis__titre">{{ 'ADMIN.SETTINGS.VISUEL_' + e | translate }}</h3>
+          <span class="bb-vis__etat" [attr.data-etat]="image(e)?.personnalisee ? 'perso' : (image(e) ? 'origine' : 'icone')">
+            {{ (image(e)?.personnalisee ? 'ADMIN.SETTINGS.VISUELS_PERSO'
+                : (image(e) ? 'ADMIN.SETTINGS.VISUELS_ORIGINE' : 'ADMIN.SETTINGS.VISUELS_SANS')) | translate }}
+          </span>
+        </div>
+        <p class="bb-vis__ou">{{ 'ADMIN.SETTINGS.VISUEL_' + e + '_OU' | translate }}</p>
+        <p class="bb-vis__taille">{{ 'ADMIN.SETTINGS.VISUELS_TAILLE' | translate: { min: minimum[e] } }}</p>
+
+        <div class="bb-vis__actions">
+          <input #champ type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="choisirFichier(e, $event)" />
+          <button matButton="outlined" type="button" class="bb-vis__remplacer" [disabled]="enCours() !== null" (click)="champ.click()">
+            <i class="pi pi-upload" aria-hidden="true"></i>
+            {{ (image(e) ? 'ADMIN.SETTINGS.VISUELS_REMPLACER' : 'ADMIN.SETTINGS.VISUELS_AJOUTER') | translate }}
+          </button>
+          @if (image(e)?.personnalisee) {
+            <button matButton type="button" class="bb-vis__retablir" [disabled]="enCours() !== null" (click)="retablir(e)">
+              <i class="pi pi-replay" aria-hidden="true"></i> {{ 'ADMIN.SETTINGS.VISUELS_RETABLIR' | translate }}
+            </button>
+          }
+        </div>
+
+        @if (decorative(e)) {
+          <p class="bb-vis__note">{{ 'ADMIN.SETTINGS.VISUELS_DECORATIVE' | translate }}</p>
+        } @else if (image(e)) {
+          <label class="form-label bb-vis__label" [attr.for]="'vis-desc-' + e">{{ 'ADMIN.SETTINGS.VISUELS_DESCRIPTION' | translate }}</label>
+          <div class="bb-vis__description">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput [id]="'vis-desc-' + e" [maxlength]="descriptionMax"
+                     [placeholder]="(image(e)?.descriptionCle ? (image(e)!.descriptionCle! | translate) : ('ADMIN.SETTINGS.VISUELS_DESCRIPTION_PH' | translate))"
+                     [ngModel]="description(e)" (ngModelChange)="saisir(e, $event)"
+                     (keydown.enter)="decrire(e)" />
+              <mat-hint align="end">{{ description(e).length }} / {{ descriptionMax }}</mat-hint>
+            </mat-form-field>
+            <button matButton="filled" type="button" class="bb-vis__decrire"
+                    [disabled]="enCours() !== null || !descriptionModifiee(e)" (click)="decrire(e)">
+              {{ 'COMMON.SAVE' | translate }}
+            </button>
+          </div>
+          @if (image(e)?.personnalisee && !description(e)) {
+            <p class="bb-vis__note bb-vis__note--attention">{{ 'ADMIN.SETTINGS.VISUELS_DECRIRE_SVP' | translate }}</p>
+          }
+        }
+      </div>
+    </section>
+  }
+</div>

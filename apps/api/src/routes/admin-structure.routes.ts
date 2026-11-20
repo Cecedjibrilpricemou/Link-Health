@@ -5,7 +5,8 @@ import { requireRole } from '../middlewares/rbac.middleware';
 import { corpsJsonMultipart, recevoirPiecesAgrement } from '../middlewares/upload.middleware';
 import * as piecesAgrement from '../services/piece-agrement.service';
 import { validateBody } from '../middlewares/validate.middleware';
-import { uploadLogo } from '../middlewares/upload.middleware';
+import { uploadLogo, uploadVisuel } from '../middlewares/upload.middleware';
+import * as visuels from '../services/visuels.service';
 import { uploadLogoController } from '../controllers/upload.controller';
 import { ValidationError } from '../utils/app-error';
 import * as plateau from '../services/plateau-technique.service';
@@ -18,6 +19,7 @@ import type {
   CreationPharmacieView,
   CreationStructureView,
   ParametresSystemeView,
+  ParametresVisuelsView,
   StructureAdminView,
   MaStructureView, StatsStructureView,
   StructurePubliqueView,
@@ -31,6 +33,7 @@ import {
   updateParametresSystemeSchema,
   updateStructureSchema,
   definirPartenariatSchema,
+  decrireVisuelSchema,
 } from '../validators/api.schemas';
 
 const router = Router();
@@ -264,5 +267,40 @@ router.post('/parametres/logo', requireRole('SUPER_ADMIN'), (req: AuthRequest, r
     next();
   });
 }, uploadLogoController);
+
+// ── Les images des pages publiques (Parametres > Images) ─────────────
+// Remplacer (champ multipart « image »), revenir a l'image d'origine, et
+// decrire l'image pour qui ne la voit pas. Le service refuse un emplacement
+// inconnu et une image trop petite.
+router.post('/parametres/visuels/:emplacement', requireRole('SUPER_ADMIN'), (req: AuthRequest, res: Response, next: NextFunction) => {
+  uploadVisuel(req, res, (err: unknown) => {
+    if (err) {
+      const message =
+        err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+          ? 'Image trop volumineuse (8 Mo maximum).'
+          : err instanceof Error ? err.message : 'Échec du téléversement.';
+      next(new ValidationError(message));
+      return;
+    }
+    next();
+  });
+}, async (req: AuthRequest, res: Response) => {
+  if (!req.file) throw new ValidationError('Aucune image reçue.');
+  const data: ParametresVisuelsView = await visuels.remplacerVisuel(req.user!.userId, req.params['emplacement'] as string, req.file.buffer);
+  res.json({ success: true, data });
+});
+
+router.put('/parametres/visuels/:emplacement/description', requireRole('SUPER_ADMIN'), validateBody(decrireVisuelSchema),
+  async (req: AuthRequest, res: Response) => {
+    const data: ParametresVisuelsView = await visuels.decrireVisuel(
+      req.user!.userId, req.params['emplacement'] as string, req.body.description,
+    );
+    res.json({ success: true, data });
+  });
+
+router.delete('/parametres/visuels/:emplacement', requireRole('SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+  const data: ParametresVisuelsView = await visuels.retablirVisuel(req.user!.userId, req.params['emplacement'] as string);
+  res.json({ success: true, data });
+});
 
 export default router;

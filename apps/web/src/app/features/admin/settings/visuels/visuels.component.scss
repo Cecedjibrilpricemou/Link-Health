@@ -1,0 +1,82 @@
+// features/admin/settings/visuels — une carte par emplacement : l'apercu a
+// gauche, cadre comme sur la page ; ce qu'on peut en faire a droite.
+
+:host { display: block; }
+
+.bb-vis {
+  display: grid; gap: 14px;
+
+  &__carte {
+    display: grid; grid-template-columns: 220px 1fr; gap: 18px;
+    padding: 14px;
+    background: var(--bb-surface-card);
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-lg);
+    @media (max-width: 720px) { grid-template-columns: 1fr; }
+  }
+
+  &__apercu {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    border-radius: var(--bb-radius);
+    overflow: hidden;
+    background: var(--bb-surface-2);
+    border: 1px solid var(--bb-border-light);
+
+    // Le panneau de connexion est en hauteur : son apercu aussi.
+    &--haut { aspect-ratio: 3 / 4; max-height: 260px; }
+
+    img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  }
+
+  &__icone {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px; text-align: center;
+    font-size: 12px; color: var(--bb-text-muted);
+    i { font-size: 22px; }
+  }
+
+  &__attente {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--bb-surface-card) 70%, transparent);
+  }
+
+  &__corps { min-width: 0; }
+
+  &__tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+  &__titre {
+    margin: 0;
+    font-family: var(--bb-font-display); font-size: 15px; font-weight: 800;
+    letter-spacing: -.2px; color: var(--bb-text-primary);
+  }
+
+  &__etat {
+    padding: 3px 10px; border-radius: var(--bb-radius-pill);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+    background: var(--bb-surface-2); color: var(--bb-text-secondary);
+    &[data-etat='perso'] { background: var(--bb-accent-bg); color: var(--bb-primary); }
+  }
+  :host-context([data-theme="dark"]) &__etat[data-etat='perso'] { color: var(--bb-bright); }
+
+  &__ou { margin: 6px 0 2px; font-size: 13px; line-height: 1.5; color: var(--bb-text-secondary); }
+  &__taille { margin: 0 0 12px; font-size: 12px; color: var(--bb-text-muted); }
+
+  &__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+
+  &__label { display: block; margin-bottom: 4px; }
+
+  &__description {
+    display: flex; gap: 10px; align-items: flex-start;
+    mat-form-field { flex: 1; min-width: 0; }
+    button { margin-top: 4px; }
+    @media (max-width: 600px) { flex-direction: column; align-items: stretch; }
+  }
+
+  &__note {
+    margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--bb-text-muted);
+    &--attention { margin-top: 8px; color: var(--bb-warning); }
+  }
+}

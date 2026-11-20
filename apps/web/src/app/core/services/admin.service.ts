@@ -23,6 +23,9 @@ import type {
   PatientContratRechercheView,
   IdentitePlateformeView,
   ParametresSystemeView,
+  ParametresVisuelsView,
+  EmplacementVisuel,
+  DecrireVisuelDto,
   DossierAgrementView,
   StructureAdminView,
   StructureConseilleeView,
@@ -279,6 +282,26 @@ export class AdminService {
     const formData = new FormData();
     formData.append('logo', fichier);
     return this.api.post<ApiResponse<IdentitePlateformeView>>('/admin-structure/parametres/logo', formData);
+  }
+
+  // ── Les images des pages publiques (Parametres > Images) ──────────
+  /** Remplacer l'image d'un emplacement ; renvoie toutes les images a jour. */
+  remplacerVisuel(emplacement: EmplacementVisuel, fichier: File): Observable<ApiResponse<ParametresVisuelsView>> {
+    const formData = new FormData();
+    formData.append('image', fichier);
+    return this.api.post<ApiResponse<ParametresVisuelsView>>(`/admin-structure/parametres/visuels/${emplacement}`, formData);
+  }
+
+  /** Decrire l'image, pour qui ne la voit pas. */
+  decrireVisuel(emplacement: EmplacementVisuel, description: string): Observable<ApiResponse<ParametresVisuelsView>> {
+    return this.api.put<ApiResponse<ParametresVisuelsView>>(
+      `/admin-structure/parametres/visuels/${emplacement}/description`, { description } satisfies DecrireVisuelDto,
+    );
+  }
+
+  /** Revenir a l'image d'origine. */
+  retablirVisuel(emplacement: EmplacementVisuel): Observable<ApiResponse<ParametresVisuelsView>> {
+    return this.api.delete<ApiResponse<ParametresVisuelsView>>(`/admin-structure/parametres/visuels/${emplacement}`);
   }
 
   // Analytics

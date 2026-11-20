@@ -11,8 +11,13 @@ import { Prisma } from '../config/generated/client/client';
 import { prisma } from '../config/prisma';
 import { cacheDel, withCache } from '../utils/cache';
 import { ConflictError, ValidationError } from '../utils/app-error';
+import { EMPLACEMENTS_VISUELS } from '@baobaoheath/shared-types';
 import type {
+  EmplacementVisuel,
   IdentitePlateformeView,
+  ParametresPublicsView,
+  ParametresVisuelsView,
+  VisuelPublicView,
   ParametresIdentiteView,
   ParametresPaysView,
   ParametresSystemeValeurs,
@@ -123,6 +128,11 @@ export const PARAMETRES_PAR_DEFAUT: ParametresSystemeValeurs = {
     niveauBase: 'commune',
     niveauElargissement: 'prefecture',
   },
+  // Les images des pages publiques : vides, c'est l'image d'origine livree
+  // avec le site. Le super-admin les remplace depuis Parametres > Images.
+  visuels: Object.fromEntries(
+    EMPLACEMENTS_VISUELS.map((e) => [e, { url: '', urlPetite: '', description: '' }]),
+  ) as ParametresVisuelsView,
 };
 
 /**
@@ -314,6 +324,41 @@ export async function getIdentitePlateforme(): Promise<IdentitePlateformeView> {
     nomCourt: nomSms(identite),
     copyright: mentionCopyright(identite),
   };
+}
+
+/**
+ * GET /parametres/publics : l'identite, et les images des pages publiques.
+ * Lu sans authentification, a chaque chargement du site.
+ */
+export async function getParametresPublics(): Promise<ParametresPublicsView> {
+  const [identite, { visuels }] = await Promise.all([getIdentitePlateforme(), getValeursParametres()]);
+  return { ...identite, visuels };
+}
+
+/**
+ * Enregistrer l'image d'un emplacement. Hors du PUT des parametres : une
+ * image ne s'enregistre que par le televersement, qui fabrique lui-meme ses
+ * chemins - jamais une adresse saisie.
+ */
+export async function enregistrerVisuel(
+  userId: string,
+  emplacement: EmplacementVisuel,
+  visuel: VisuelPublicView,
+): Promise<ParametresVisuelsView> {
+  const ligne = await lireLigne();
+  const actuelles = fusionnerParametres(PARAMETRES_PAR_DEFAUT, ligne?.valeurs);
+  const valeurs: ParametresSystemeValeurs = {
+    ...actuelles,
+    visuels: { ...actuelles.visuels, [emplacement]: visuel },
+  };
+  const valeursJson = valeurs as unknown as Prisma.InputJsonValue;
+  await prisma.parametresSysteme.upsert({
+    where: { id: ID_GLOBAL },
+    create: { id: ID_GLOBAL, valeurs: valeursJson, idModifiePar: userId },
+    update: { valeurs: valeursJson, idModifiePar: userId },
+  });
+  await cacheDel(CACHE_KEY);
+  return valeurs.visuels;
 }
 
 /** POST /admin-structure/parametres/logo — enregistre l'URL du logo televerse. */

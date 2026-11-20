@@ -23,6 +23,7 @@ import type {
   ParametresSystemeView,
   ParametresPaysView,
   ParametresZonesView,
+  ParametresVisuelsView,
   UpdateParametresSystemeDto,
 } from '@baobaoheath/shared-types';
 import { CategorieProduitPipe } from '../../../shared/pipes/categorie-produit.pipe';
@@ -31,8 +32,11 @@ import { I18nService } from '../../../shared/services/i18n.service';
 import { AdminService } from '../../../core/services/admin.service';
 import { PlateformeService } from '../../../shared/services/plateforme.service';
 import { urlMedia } from '../../../shared/utils/url-media';
+import { VisuelsComponent } from './visuels/visuels.component';
 
 type Onglet = keyof ParametresSystemeValeurs;
+/** Les onglets a bouton « Enregistrer » ; les images s'enregistrent geste par geste. */
+type OngletFormulaire = Exclude<Onglet, 'visuels'>;
 
 /** R11 : les trois moyens de paiement, tels que la section Facturation les porte. */
 type MoyenPaiement = 'paiementEspeces' | 'paiementOrangeMoney' | 'paiementMomo';
@@ -43,7 +47,7 @@ type MoyenPaiement = 'paiementEspeces' | 'paiementOrangeMoney' | 'paiementMomo';
   imports: [
     MatButtonModule, MatFormFieldModule, MatInputModule, MatSlideToggleModule, MatSliderModule,
     MatProgressSpinnerModule, CommonModule, FormsModule, RouterLink, TranslatePipe,
-    CategorieProduitPipe
+    CategorieProduitPipe, VisuelsComponent
   ],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
@@ -62,6 +66,8 @@ export class SettingsComponent implements OnInit {
   isLoading = signal(true);
   isSaving  = signal(false);
   isUploadingLogo = signal(false);
+  /** Les images des pages publiques, telles que chargees : l'onglet Images part d'elles. */
+  visuelsCharges = signal<ParametresVisuelsView | null>(null);
   modifieLe = signal<string | Date | null>(null);
 
   get tabs(): { id: Onglet; label: string; icon: string }[] {
@@ -74,7 +80,8 @@ export class SettingsComponent implements OnInit {
       { id: 'prescription', label: this.i18n.t('ADMIN.SETTINGS.TAB_PRESCRIPTION'), icon: 'pi pi-file-edit' },
       { id: 'pharmacie',   label: this.i18n.t('ADMIN.SETTINGS.TAB_PHARMACIE'),    icon: 'pi pi-shopping-cart' },
       { id: 'zones',       label: this.i18n.t('ADMIN.SETTINGS.TAB_ZONES'),        icon: 'pi pi-map-marker' },
-      { id: 'pays',        label: this.i18n.t('ADMIN.SETTINGS.TAB_PAYS'),         icon: 'pi pi-globe' }
+      { id: 'pays',        label: this.i18n.t('ADMIN.SETTINGS.TAB_PAYS'),         icon: 'pi pi-globe' },
+      { id: 'visuels',     label: this.i18n.t('ADMIN.SETTINGS.TAB_VISUELS'),      icon: 'pi pi-images' }
     ];
   }
 
@@ -273,7 +280,7 @@ export class SettingsComponent implements OnInit {
   }
 
   /** Enregistre uniquement la section de l'onglet actif. */
-  enregistrer(section: Onglet) {
+  enregistrer(section: OngletFormulaire) {
     if (this.isSaving()) return;
     // R10 : l'ecran le dit avant d'envoyer, plutot que de laisser l'API refuser.
     if (section === 'prescription' && this.validiteIncoherente()) {
@@ -348,6 +355,7 @@ export class SettingsComponent implements OnInit {
     this.zones = { ...vue.zones };
     this.pays = { ...vue.pays, niveaux: vue.pays.niveaux.map((n) => ({ ...n, libelles: { ...n.libelles } })) };
     this.modifieLe.set(vue.modifieLe);
+    this.visuelsCharges.set(vue.visuels);
     this.decoupageFige.set(vue.decoupageFige === true);
     this.deviseFigee.set(vue.deviseFigee === true);
   }

@@ -8,9 +8,12 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { catchError, firstValueFrom, of } from 'rxjs';
-import type { IdentitePlateformeView } from '@baobaoheath/shared-types';
+import type {
+  EmplacementVisuel, IdentitePlateformeView, ParametresPublicsView, ParametresVisuelsView,
+} from '@baobaoheath/shared-types';
 import { ApiService } from '../../core/services/api.service';
 import { urlMedia } from '../utils/url-media';
+import { ImagePublique, imagePublique } from '../utils/visuels-publics';
 
 /** Valeurs affichees tant que l'API n'a pas repondu (ou si elle est injoignable). */
 export const IDENTITE_PAR_DEFAUT: IdentitePlateformeView = {
@@ -40,6 +43,9 @@ export class PlateformeService {
   private document = inject(DOCUMENT);
 
   private identiteSignal = signal<IdentitePlateformeView>(IDENTITE_PAR_DEFAUT);
+  /** Les images des pages publiques ; `null` tant que l'API n'a pas repondu. */
+  private visuelsSignal = signal<ParametresVisuelsView | null>(null);
+  readonly visuels = this.visuelsSignal.asReadonly();
 
   readonly identite = this.identiteSignal.asReadonly();
   readonly nom      = computed(() => this.identiteSignal().nom);
@@ -59,10 +65,28 @@ export class PlateformeService {
   /** Appele au demarrage (app.config) ; ne bloque jamais l'application si l'API est absente. */
   async charger(): Promise<void> {
     const reponse = await firstValueFrom(
-      this.api.get<{ success: boolean; data: IdentitePlateformeView }>('/parametres/publics')
+      this.api.get<{ success: boolean; data: ParametresPublicsView }>('/parametres/publics')
         .pipe(catchError(() => of(null)))
     );
-    if (reponse?.data) this.appliquer(reponse.data);
+    if (reponse?.data) {
+      const { visuels, ...identite } = reponse.data;
+      this.appliquer(identite);
+      if (visuels) this.visuelsSignal.set(visuels);
+    }
+  }
+
+  /**
+   * L'image d'un emplacement des pages publiques : celle du super-admin,
+   * sinon celle livree avec le site, sinon `null` (l'etape garde son icone).
+   * Lue dans un gabarit, elle suit les changements sans rechargement.
+   */
+  image(emplacement: EmplacementVisuel): ImagePublique | null {
+    return imagePublique(emplacement, this.visuelsSignal());
+  }
+
+  /** Apres un changement dans Parametres > Images : les pages suivent. */
+  appliquerVisuels(visuels: ParametresVisuelsView): void {
+    this.visuelsSignal.set(visuels);
   }
 
   /**
