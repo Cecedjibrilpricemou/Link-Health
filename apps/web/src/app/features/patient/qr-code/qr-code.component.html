@@ -47,7 +47,7 @@
               <h2 class="qr-patient-name">
                 {{ patientInfo()?.prenom }} {{ patientInfo()?.nom }}
               </h2>
-              <span class="qr-patient-role">{{ 'PATIENT.QR.ROLE_LABEL' | translate: { nom: plateforme.nom() } }}</span>
+              <span class="qr-patient-role">@if (espace()?.estStructure) { {{ 'PATIENT.QR.ROLE_LABEL' | translate: { nom: espace()!.nom } }} } @else { {{ 'PATIENT.ROLE' | translate }} }</span>
             </div>
             <div class="qr-patient-status">
               <i class="pi pi-check-circle"></i>
@@ -152,7 +152,7 @@
             <div class="security-card__icon"><i class="pi pi-shield"></i></div>
             <div class="security-card__body">
               <h4 class="security-card__title">{{ 'PATIENT.QR.SECURITY_TITLE' | translate }}</h4>
-              <p class="security-card__text">{{ 'PATIENT.QR.SECURITY_TEXT' | translate: { nom: plateforme.nom() } }}</p>
+              <p class="security-card__text">{{ 'PATIENT.QR.SECURITY_TEXT' | translate }}</p>
             </div>
           </div>
 

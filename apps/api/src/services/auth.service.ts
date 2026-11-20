@@ -19,7 +19,7 @@ import {
   ValidationError,
 } from '../utils/app-error';
 import { logger } from '../config/logger';
-import { paletteDeLUtilisateur } from './apparence.service';
+import { espaceDeLUtilisateur } from './apparence.service';
 
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const OTP_TTL_MINUTES = 10;
@@ -418,11 +418,14 @@ export async function getMe(userId: string) {
   });
   if (!utilisateur) throw new NotFoundError('Utilisateur non trouve');
   const { pharmacienProfile, ...profil } = utilisateur;
+  // Sa structure (nom, logo) et ses couleurs : l'interface les prend des la
+  // connexion, a la place de celles de la plateforme.
+  const espace = await espaceDeLUtilisateur(userId);
   return {
     ...profil,
     roleOfficine: pharmacienProfile?.roleOfficine ?? null,
-    // Les couleurs de sa structure : l'interface les prend des la connexion.
-    paletteStructure: await paletteDeLUtilisateur(userId),
+    paletteStructure: espace.palette,
+    structure: espace.structure,
   };
 }
 

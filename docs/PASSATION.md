@@ -398,6 +398,34 @@ vert d'origine.
   `var(--bb-bright)`, ou `color-mix(in srgb, var(--bb-bright) 14%, transparent)`
   pour une transparence.
 
+### La structure à la place de la plateforme
+
+**Le nom de la plateforme n'apparaît que chez son administration** (super
+admin, administrations nationale et régionale), et sur les pages publiques.
+Partout ailleurs, l'interface porte la structure :
+
+- **le personnel** : le nom et le logo de son établissement en tête de la
+  barre latérale, et dans l'onglet du navigateur ;
+- **le patient** : sa structure par défaut (`idStructurePreferee`, celle où
+  partent ses demandes de rendez-vous), pour la lui rappeler. Il garde les
+  couleurs d'origine : une palette est celle d'une équipe ;
+- **sans structure** (patient qui n'en a pas, livreur) : « Mon espace
+  santé », « Espace livreur ».
+
+`/auth/me` porte `structure` (`apparence.service.ts`, `espaceDeLUtilisateur`)
+; la barre latérale l'affiche avec `<app-brand portee="espace">`. Sans logo,
+un **monogramme** : les initiales (`CHU` pour « CHU Donka », `CP` pour
+« Clinique Pasteur »), aux couleurs de la palette.
+
+**Le logo** se téléverse depuis Apparence, par le responsable. Il est stocké
+dans `StructureSante.photoUrl` (champ jusque-là inutilisé), réduit à 512 px
+en PNG, dans `uploads/structures/`.
+
+**Les documents imprimés** (ordonnance, compte rendu, bon d'examen, reçu)
+portent en tête la structure qui les émet : nom, logo, téléphone, adresse
+(`document-emetteur.service.ts`). Une ligne discrète en pied de page dit où les
+vérifier : le site de la plateforme, sinon son nom.
+
 ### La géographie
 
 Le référentiel est **générique**, pour servir un autre pays sans toucher au
@@ -449,6 +477,10 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **La structure à la place de la plateforme** (branche
+  `feat/espace-structure`, section 6) : nom, logo ou monogramme dans les
+  interfaces des structures et des patients, documents imprimés à l'en-tête
+  de la structure émettrice.
 - **Couleurs de l'interface par structure** (branche `feat/theme-structure`,
   section 6) : six palettes vérifiées pour la lisibilité, choisies par le
   responsable, appliquées sans rechargement.

@@ -40,6 +40,11 @@ export class PlateformeService {
   private document = inject(DOCUMENT);
 
   private identiteSignal = signal<IdentitePlateformeView>(IDENTITE_PAR_DEFAUT);
+  /**
+   * L'espace ouvert (une structure, ou un libelle neutre) : l'onglet du
+   * navigateur porte son nom et son logo, et non ceux de la plateforme.
+   */
+  private espaceOnglet: { nom: string; logo: string } | null = null;
 
   readonly identite = this.identiteSignal.asReadonly();
   readonly nom      = computed(() => this.identiteSignal().nom);
@@ -78,8 +83,22 @@ export class PlateformeService {
       nom,
       copyright: identite.copyright.trim() || `© ${new Date().getFullYear()} ${nom} — Tous droits réservés`,
     });
-    this.title.setTitle(nom);
-    this.appliquerIcones(urlMedia(identite.logoUrl));
+    this.rafraichirOnglet();
+  }
+
+  /**
+   * Un espace s'ouvre (la barre laterale d'une structure) ou se ferme
+   * (`null`) : l'onglet suit. Appele par la marque de l'espace.
+   */
+  entrerEspace(espace: { nom: string; logo: string } | null): void {
+    this.espaceOnglet = espace;
+    this.rafraichirOnglet();
+  }
+
+  private rafraichirOnglet(): void {
+    const i = this.identiteSignal();
+    this.title.setTitle(this.espaceOnglet?.nom ?? i.nom);
+    this.appliquerIcones(this.espaceOnglet ? this.espaceOnglet.logo : urlMedia(i.logoUrl));
   }
 
   /**

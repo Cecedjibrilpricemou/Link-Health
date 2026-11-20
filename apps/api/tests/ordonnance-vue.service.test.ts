@@ -22,6 +22,11 @@ jest.mock('../src/services/access-control.service', () => ({
   assertCanAccessConsultation: jest.fn(),
 }));
 jest.mock('../src/services/parametres.service', () => ({ getIdentitePlateforme: jest.fn() }));
+// L'en-tete vient de la structure emettrice : le test en fournit une.
+jest.mock('../src/services/document-emetteur.service', () => ({
+  structureDeConsultation: jest.fn(),
+  identiteDocument: jest.fn(),
+}));
 
 const { prisma } = jest.requireMock('../src/config/prisma') as {
   prisma: {
@@ -31,6 +36,9 @@ const { prisma } = jest.requireMock('../src/config/prisma') as {
 };
 const { assertCanAccessConsultation } = jest.requireMock('../src/services/access-control.service') as {
   assertCanAccessConsultation: jest.Mock;
+};
+const emetteur = jest.requireMock('../src/services/document-emetteur.service') as {
+  structureDeConsultation: jest.Mock; identiteDocument: jest.Mock;
 };
 const { getIdentitePlateforme } = jest.requireMock('../src/services/parametres.service') as {
   getIdentitePlateforme: jest.Mock;
@@ -70,10 +78,13 @@ function ordonnance(etat: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   assertCanAccessConsultation.mockResolvedValue(undefined);
-  getIdentitePlateforme.mockResolvedValue({
+  const identite = {
     nom: 'KÈNÈYA', logoUrl: '', copyright: '© 2026 KÈNÈYA',
     telephone: '+224600000000', emailContact: 'contact@keneya.gn',
-  });
+  };
+  getIdentitePlateforme.mockResolvedValue(identite);
+  emetteur.structureDeConsultation.mockResolvedValue('st-1');
+  emetteur.identiteDocument.mockResolvedValue(identite);
 });
 afterEach(() => jest.resetAllMocks());
 
@@ -163,6 +174,23 @@ describe('getOrdonnancesPatient', () => {
 
 // ── Document imprimable ──────────────────────────────────────────────
 describe('documentOrdonnance', () => {
+  // Une ordonnance de l'hopital porte le nom de l'hopital, pas de la plateforme.
+  it('porte en tete la structure ou elle a ete redigee', async () => {
+    prisma.ordonnance.findUnique.mockResolvedValue(ordonnance());
+    emetteur.identiteDocument.mockResolvedValue({
+      nom: 'Hôpital de Donka', logoUrl: '/uploads/structures/s.png', telephone: '+224600111222',
+      emailContact: 'Dixinn, Conakry', copyright: 'Émis par Hôpital de Donka · vérifiable sur KÈNÈYA',
+    });
+
+    const html = await documentOrdonnance(PATIENT, 'ord-1');
+
+    expect(emetteur.structureDeConsultation).toHaveBeenCalledWith('cons-1');
+    expect(emetteur.identiteDocument).toHaveBeenCalledWith('st-1');
+    expect(html).toContain('<h1>Hôpital de Donka</h1>');
+    expect(html).toContain('/uploads/structures/s.png');
+    expect(html).toContain('vérifiable sur KÈNÈYA');
+  });
+
   it('imprime le numero, le code et les medicaments', async () => {
     prisma.ordonnance.findUnique.mockResolvedValue(ordonnance());
 
