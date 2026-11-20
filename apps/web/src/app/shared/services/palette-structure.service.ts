@@ -66,6 +66,22 @@ export class PaletteStructureService {
     );
   }
 
+  /** Le logo de la structure : la barre laterale de l'equipe le prend aussitot. */
+  televerserLogo(fichier: File): Observable<ApiResponse<ApparenceStructureView>> {
+    const donnees = new FormData();
+    donnees.append('logo', fichier);
+    return this.api.post<ApiResponse<ApparenceStructureView>>('/apparence/logo', donnees).pipe(
+      tap((r) => { if (r.data) this.auth.definirLogoStructure(r.data.logoUrl); }),
+    );
+  }
+
+  /** Retirer le logo : le monogramme revient. */
+  retirerLogo(): Observable<ApiResponse<ApparenceStructureView>> {
+    return this.api.delete<ApiResponse<ApparenceStructureView>>('/apparence/logo').pipe(
+      tap((r) => { if (r.data) this.auth.definirLogoStructure(r.data.logoUrl); }),
+    );
+  }
+
   /** Poser la palette sur le document : un attribut, une feuille de style. */
   private appliquer(palette: PaletteStructure): void {
     const racine = document.documentElement;

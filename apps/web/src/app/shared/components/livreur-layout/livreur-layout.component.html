@@ -6,7 +6,7 @@
     [disableClose]="!layout.estMobile()"
     (closedStart)="closeSidebar()"
   >
-    <div class="bb-nav__brand"><app-brand class="bb-nav__brand-name"></app-brand></div>
+    <div class="bb-nav__brand"><app-brand class="bb-nav__brand-name" portee="espace"></app-brand></div>
     <p class="bb-nav__section">{{ 'COMMON.NAVIGATION' | translate }}</p>
     <mat-nav-list class="bb-nav__list">
       @for (item of navItems; track item.route) {

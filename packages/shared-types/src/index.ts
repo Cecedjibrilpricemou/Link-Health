@@ -641,6 +641,13 @@ export interface UserDto {
    * nationale, livreur) ou dont la structure garde la palette par defaut.
    */
   paletteStructure?: PaletteStructure | null;
+  /**
+   * La structure dont l'interface porte le nom : celle du professionnel, ou
+   * pour un patient sa structure par defaut (ou partent ses demandes de
+   * rendez-vous). `null` pour l'administration de la plateforme, un livreur,
+   * ou un patient sans structure.
+   */
+  structure?: StructureEspaceView | null;
   creeLe: string;
   modifieLe: string;
 }
@@ -4925,6 +4932,8 @@ export const PALETTE_PAR_DEFAUT: PaletteStructure = 'EMERAUDE';
 /** Ce que voit l'ecran « Apparence » : la palette, et qui peut la changer. */
 export interface ApparenceStructureView {
   palette: PaletteStructure;
+  /** Le logo de la structure (/uploads/structures/...) ; vide : son monogramme. */
+  logoUrl: string;
   nomStructure: string;
   typeStructure: TypeStructure;
   /** Seul le responsable choisit : administrateur, titulaire ou assureur. */
@@ -4970,5 +4979,14 @@ export interface ParametresPublicsView extends IdentitePlateformeView {
 
 export interface DecrireVisuelDto {
   description: string;
+}
+
+/** La structure affichee en tete de l'interface, a la place de la plateforme. */
+export interface StructureEspaceView {
+  id: string;
+  nom: string;
+  type: TypeStructure;
+  /** Vide : l'interface affiche son monogramme (les initiales). */
+  logoUrl: string;
 }
 

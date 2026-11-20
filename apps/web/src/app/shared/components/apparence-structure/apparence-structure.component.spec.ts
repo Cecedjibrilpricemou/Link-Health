@@ -22,6 +22,10 @@ class I18nMaquette {
   }
 }
 
+function vueDe(vue: Partial<ApparenceStructureView>): ApparenceStructureView {
+  return { palette: 'EMERAUDE', logoUrl: '', nomStructure: 'Hôpital de Donka', typeStructure: 'CHU', peutModifier: true, ...vue };
+}
+
 function monter(vue: Partial<ApparenceStructureView>) {
   const active = signal<PaletteStructure>(vue.palette ?? 'EMERAUDE');
   const choisir = vi.fn((p: PaletteStructure) => {
@@ -29,6 +33,8 @@ function monter(vue: Partial<ApparenceStructureView>) {
     return of({ success: true, data: { ...vue, palette: p } });
   });
   const toastr = { success: vi.fn(), error: vi.fn() };
+  const televerserLogo = vi.fn(() => of({ success: true, data: { ...vueDe(vue), logoUrl: '/uploads/structures/l.png' } }));
+  const retirerLogo = vi.fn(() => of({ success: true, data: { ...vueDe(vue), logoUrl: '' } }));
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     imports: [ApparenceStructureComponent],
@@ -39,9 +45,11 @@ function monter(vue: Partial<ApparenceStructureView>) {
         useValue: {
           active,
           choisir,
+          televerserLogo,
+          retirerLogo,
           lire: () => of({
             success: true,
-            data: { palette: 'EMERAUDE', nomStructure: 'Hôpital de Donka', typeStructure: 'CHU', peutModifier: true, ...vue },
+            data: vueDe(vue),
           }),
         },
       },
@@ -51,7 +59,7 @@ function monter(vue: Partial<ApparenceStructureView>) {
   });
   const fixture = TestBed.createComponent(ApparenceStructureComponent);
   fixture.detectChanges();
-  return { fixture, el: fixture.nativeElement as HTMLElement, choisir, toastr };
+  return { fixture, el: fixture.nativeElement as HTMLElement, choisir, toastr, televerserLogo, retirerLogo };
 }
 
 const cartes = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLButtonElement>('.bb-app__carte'));
@@ -94,3 +102,40 @@ describe('l ecran apparence', () => {
     expect(el.querySelectorAll('.bb-app__conseil')).toHaveLength(1);
   });
 });
+
+describe('le logo de la structure', () => {
+  it('sans logo, les initiales ; le responsable peut en ajouter un', () => {
+    const { el } = monter({ nomStructure: 'Clinique Pasteur' });
+    expect(el.querySelector('.bb-app__logo-mono')?.textContent?.trim()).toBe('CP');
+    expect(el.querySelector('.bb-app__logo-envoyer')).not.toBeNull();
+    expect(el.querySelector('.bb-app__logo-retirer')).toBeNull();
+  });
+
+  it('televerse, puis montre le logo', () => {
+    const { el, fixture, televerserLogo } = monter({});
+    const champ = el.querySelector<HTMLInputElement>('.bb-app__logo input[type=file]')!;
+    const fichier = new File([new Uint8Array(8)], 'logo.png', { type: 'image/png' });
+    Object.defineProperty(champ, 'files', { value: [fichier] });
+    champ.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(televerserLogo).toHaveBeenCalledWith(fichier);
+    expect(el.querySelector('.bb-app__logo-apercu img')?.getAttribute('src')).toMatch(/l\.png$/);
+    expect(el.querySelector('.bb-app__logo-retirer')).not.toBeNull();
+  });
+
+  it('refuse un SVG avant tout envoi', () => {
+    const { el, televerserLogo, toastr } = monter({});
+    const champ = el.querySelector<HTMLInputElement>('.bb-app__logo input[type=file]')!;
+    Object.defineProperty(champ, 'files', { value: [new File(['<svg/>'], 'l.svg', { type: 'image/svg+xml' })] });
+    champ.dispatchEvent(new Event('change'));
+    expect(televerserLogo).not.toHaveBeenCalled();
+    expect(toastr.error).toHaveBeenCalled();
+  });
+
+  it('un membre voit le logo, sans pouvoir le changer', () => {
+    const { el } = monter({ peutModifier: false, logoUrl: '/uploads/structures/l.png' });
+    expect(el.querySelector('.bb-app__logo-apercu img')).not.toBeNull();
+    expect(el.querySelector('.bb-app__logo-envoyer')).toBeNull();
+  });
+});
+

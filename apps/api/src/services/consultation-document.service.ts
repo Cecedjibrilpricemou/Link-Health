@@ -23,7 +23,7 @@ import { JwtPayload } from '../types/auth.types';
 import { NotFoundError } from '../utils/app-error';
 import { assertCanAccessConsultation } from './access-control.service';
 import { echapper } from './hopital.service';
-import { getIdentitePlateforme } from './parametres.service';
+import { identiteDocument, IdentiteDocument, structureDeConsultation } from './document-emetteur.service';
 
 const CONSULTATION_DOCUMENT_INCLUDE = {
   patient: {
@@ -121,10 +121,11 @@ export async function documentConsultation(user: JwtPayload, idConsultation: str
     include: CONSULTATION_DOCUMENT_INCLUDE,
   });
   if (!c) throw new NotFoundError('Consultation non trouvee');
-  return rendreCompteRendu(c, await getIdentitePlateforme());
+  // L'en-tete : la structure ou la consultation s'est tenue.
+  return rendreCompteRendu(c, await identiteDocument(await structureDeConsultation(idConsultation)));
 }
 
-type Identite = Awaited<ReturnType<typeof getIdentitePlateforme>>;
+type Identite = IdentiteDocument;
 
 export function rendreCompteRendu(c: ConsultationDocument, identite: Identite): string {
   const p = c.patient;

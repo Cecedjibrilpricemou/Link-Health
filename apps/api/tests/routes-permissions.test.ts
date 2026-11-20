@@ -596,6 +596,8 @@ describe('les couleurs de la structure', () => {
   it('changer la palette est reserve aux roles de responsable', () => {
     expect(rolesPour(apparence, 'get', '/')).toEqual([]);
     expect(rolesPour(apparence, 'put', '/')).toEqual(['ADMIN_STRUCTURE', 'PHARMACIEN', 'ASSUREUR']);
+    expect(rolesPour(apparence, 'post', '/logo')).toEqual(['ADMIN_STRUCTURE', 'PHARMACIEN', 'ASSUREUR']);
+    expect(rolesPour(apparence, 'delete', '/logo')).toEqual(['ADMIN_STRUCTURE', 'PHARMACIEN', 'ASSUREUR']);
   });
 });
 

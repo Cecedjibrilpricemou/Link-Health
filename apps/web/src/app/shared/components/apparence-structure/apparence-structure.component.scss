@@ -15,6 +15,41 @@
     font-size: 14px; line-height: 1.6; color: var(--bb-text-secondary);
   }
 
+  &__logo {
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    margin: 0 0 26px; padding: 16px 18px;
+    background: var(--bb-surface-card);
+    border: 1px solid var(--bb-border-light);
+    border-radius: var(--bb-radius-lg);
+  }
+
+  &__logo-apercu {
+    display: grid; place-items: center; flex: 0 0 auto;
+    width: 76px; height: 76px; border-radius: 50%; overflow: hidden;
+    background: var(--bb-surface-1); border: 1px solid var(--bb-border-light);
+    img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  }
+
+  &__logo-mono {
+    display: grid; place-items: center; width: 100%; height: 100%;
+    background: var(--bb-bright); color: var(--bb-deep);
+    font-family: var(--bb-font-display); font-size: 26px; font-weight: 800; letter-spacing: -.02em;
+  }
+
+  &__logo-texte { flex: 1; min-width: 220px; }
+
+  &__logo-titre, &__soustitre {
+    margin: 0 0 4px;
+    font-family: var(--bb-font-display); font-size: 16px; font-weight: 800;
+    letter-spacing: -.2px; color: var(--bb-text-primary);
+  }
+
+  &__soustitre { margin: 0 0 12px; }
+
+  &__logo-aide { margin: 0 0 10px; font-size: 13px; line-height: 1.55; color: var(--bb-text-secondary); }
+
+  &__logo-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
   &__grille {
     display: grid; gap: 16px;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
