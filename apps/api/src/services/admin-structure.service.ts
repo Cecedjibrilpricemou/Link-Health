@@ -4,7 +4,9 @@ import { prisma } from '../config/prisma';
 import { hashPassword } from '../utils/password.utils';
 import { assertMotDePasseConforme } from '../utils/politique-mot-de-passe';
 import { Role, RoleOfficine, TypeStructure } from '../config/generated/client/client';
-import { envoyerEmailAdminStructure, envoyerEmailAgent } from './email.service';
+import { envoyerEmailAdminStructure, envoyerEmailAgent, envoyerReinitialisationAgent } from './email.service';
+import type { SpecialiteMedicale } from '@baobaoheath/shared-types';
+import { normaliserSpecialite } from '../utils/specialite.util';
 import { logger } from '../config/logger';
 import type { JwtPayload } from '../types/auth.types';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
@@ -17,6 +19,38 @@ import {
 } from './piece-agrement.service';
 
 const ROLES_AUTORISES: Role[] = [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+
+/**
+ * Les comptes qu'une structure cree, selon ce qu'elle fait.
+ *
+ * Un laboratoire n'a pas de medecin traitant ni d'agent communautaire ; un
+ * hopital n'a pas d'agents de sante communautaire, qui travaillent depuis les
+ * postes et les centres. Les comptes deja crees ne sont pas touches : la
+ * regle vaut pour les creations.
+ */
+export function rolesCreablesPour(type: TypeStructure | null | undefined): Role[] {
+    switch (type) {
+        case TypeStructure.POSTE:
+            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.AGENT_ACCUEIL];
+        case TypeStructure.CENTRE:
+            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+        case TypeStructure.HOPITAL_PREF:
+        case TypeStructure.HOPITAL_REG:
+        case TypeStructure.CHU:
+        case TypeStructure.CLINIQUE:
+            return [Role.MEDECIN, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+        case TypeStructure.LABORATOIRE:
+            return [Role.TECHNICIEN_LABO];
+        default:
+            return [];
+    }
+}
+
+/** Un numero d'ordre saisi : nettoye, ou `null` s'il est vide. */
+function numeroOrdreNet(v: string | null | undefined): string | null {
+    const n = (v ?? '').replace(/\s+/g, ' ').trim().toUpperCase();
+    return n.length ? n : null;
+}
 
 // ── Générer un mot de passe temporaire ───────────────────────────
 /**
@@ -532,20 +566,26 @@ export async function getAgentsStructure(adminId: string) {
         throw new ForbiddenError('La gestion des comptes de pharmacie est réservée au pharmacien titulaire');
     }
 
+    // Les comptes desactives restent dans la liste, apres les autres : sans
+    // eux, un agent desactive par erreur ne pouvait plus etre retrouve.
     const agents = await prisma.utilisateur.findMany({
-        where: { idStructure: admin.idStructure, role: { in: ROLES_AUTORISES }, estActif: true },
+        where: { idStructure: admin.idStructure, role: { in: ROLES_AUTORISES } },
         select: {
             id: true, telephone: true, email: true, prenom: true, nom: true, role: true,
-            creeLe: true, derniereConnexion: true,
-            // Le bureau n'existe que pour un medecin, et il est souvent nul.
-            medecinProfile: { select: { bureau: true } },
+            creeLe: true, derniereConnexion: true, estActif: true,
+            numeroOrdre: true, ordreVerifieLe: true,
+            // Le bureau et la specialite n'existent que pour un medecin.
+            medecinProfile: { select: { bureau: true, specialite: true } },
         },
-        orderBy: { creeLe: 'desc' }
+        orderBy: [{ estActif: 'desc' }, { creeLe: 'desc' }],
     });
 
-    return agents.map(({ medecinProfile, ...a }) => ({
+    return agents.map(({ medecinProfile, ordreVerifieLe, ...a }) => ({
         ...a,
         bureau: medecinProfile?.bureau ?? null,
+        // Une specialite saisie a la main avant la liste est rendue sous son code.
+        specialite: normaliserSpecialite(medecinProfile?.specialite) as SpecialiteMedicale | null,
+        ordreVerifie: ordreVerifieLe !== null,
     }));
 }
 
@@ -555,6 +595,9 @@ export async function creerAgent(adminId: string, dto: {
     prenom: string; nom: string; role: Role;
     /** Facultatif, et seulement pour un medecin. */
     bureau?: string;
+    /** Le metier d'un medecin ; generaliste par defaut. */
+    specialite?: SpecialiteMedicale;
+    numeroOrdre?: string;
 }) {
     if (!dto.email?.trim()) {
         throw new ValidationError('Une adresse email professionnelle est obligatoire pour se connecter');
@@ -575,6 +618,11 @@ export async function creerAgent(adminId: string, dto: {
     if (!ROLES_AUTORISES.includes(dto.role)) {
         throw new ForbiddenError(`Vous ne pouvez pas créer un compte de type ${dto.role}`);
     }
+    if (!rolesCreablesPour(admin.structure?.type).includes(dto.role)) {
+        throw new ForbiddenError("Ce metier n'existe pas dans votre type de structure.");
+    }
+    const estMedecin = dto.role === Role.MEDECIN;
+    const numeroOrdreSaisi = estMedecin ? numeroOrdreNet(dto.numeroOrdre) : null;
 
     const existingTel = await prisma.utilisateur.findUnique({ where: { telephone: dto.telephone } });
     if (existingTel) throw new ConflictError('Ce numéro de téléphone est déjà utilisé');
@@ -595,7 +643,10 @@ export async function creerAgent(adminId: string, dto: {
                 telephone: dto.telephone, email: dto.email ?? null,
                 motDePasseHash, prenom: dto.prenom, nom: dto.nom,
                 role: dto.role, idStructure: admin.idStructure,
-                doitChangerMotDePasse: isTemporaire
+                doitChangerMotDePasse: isTemporaire,
+                // Declare, pas verifie : la verification au registre de l'ordre
+                // reste a l'administration nationale.
+                numeroOrdre: numeroOrdreSaisi,
             }
         });
 
@@ -609,13 +660,10 @@ export async function creerAgent(adminId: string, dto: {
                     idStructure: admin.idStructure,
                     // Facultatif : sans numerotation de bureaux, l'agent accompagne.
                     bureau: dto.bureau?.trim() || null,
+                    specialite: dto.specialite ?? 'MEDECINE_GENERALE',
                 },
             });
         }
-        if (dto.role === Role.PHARMACIEN) {
-            await tx.pharmacienProfile.create({ data: { idUtilisateur: u.id, idStructure: admin.idStructure } });
-        }
-
         return u;
     });
 
@@ -658,6 +706,108 @@ export async function desactiverAgent(adminId: string, agentId: string) {
     }
 
     return prisma.utilisateur.update({ where: { id: agentId }, data: { estActif: false } });
+}
+
+/** Un agent de la structure de l'administrateur, ou un refus. */
+async function agentDeMaStructure(adminId: string, agentId: string) {
+    const admin = await prisma.utilisateur.findUnique({
+        where: { id: adminId },
+        select: { idStructure: true, structure: { select: { nom: true, type: true } } },
+    });
+    if (!admin?.idStructure) throw new ForbiddenError('Aucune structure assignée');
+    if (admin.structure?.type === TypeStructure.PHARMACIE) {
+        throw new ForbiddenError('La gestion des comptes de pharmacie est réservée au pharmacien titulaire');
+    }
+    const agent = await prisma.utilisateur.findUnique({
+        where: { id: agentId },
+        select: { id: true, idStructure: true, role: true, prenom: true, nom: true, email: true, numeroOrdre: true, estActif: true },
+    });
+    // Ni un agent d'ailleurs, ni l'administrateur lui-meme, ni un role qu'il ne gere pas.
+    if (!agent || agent.idStructure !== admin.idStructure || !ROLES_AUTORISES.includes(agent.role)) {
+        throw new ForbiddenError("Cet agent n'appartient pas à votre structure");
+    }
+    return { admin, agent };
+}
+
+/**
+ * Reactiver un compte desactive. Il retrouve son role et ses droits ; ses
+ * anciennes sessions ont ete refusees des la desactivation.
+ */
+export async function reactiverAgent(adminId: string, agentId: string) {
+    const { agent } = await agentDeMaStructure(adminId, agentId);
+    if (agent.estActif) throw new ConflictError('Ce compte est déjà actif.');
+    await prisma.utilisateur.update({ where: { id: agentId }, data: { estActif: true } });
+    logger.info('[AGENTS] compte reactive', { idAgent: agentId, parQui: adminId });
+    return { id: agent.id, nomComplet: `${agent.prenom} ${agent.nom}` };
+}
+
+/**
+ * Le metier d'un medecin : sa specialite, son numero d'ordre.
+ *
+ * **Changer le numero retire la verification.** Elle attestait qu'un
+ * administrateur avait confronte CE numero au registre de l'ordre : elle ne
+ * vaut pas pour le suivant.
+ */
+export async function modifierProfilAgent(adminId: string, agentId: string, dto: {
+    specialite?: SpecialiteMedicale;
+    numeroOrdre?: string | null;
+}) {
+    const { agent } = await agentDeMaStructure(adminId, agentId);
+    if (agent.role !== Role.MEDECIN) {
+        throw new ValidationError("Seul le profil d'un médecin porte une spécialité et un numéro d'ordre.");
+    }
+    const donnees: { numeroOrdre?: string | null; ordreVerifieLe?: null; idOrdreVerifiePar?: null } = {};
+    if (dto.numeroOrdre !== undefined) {
+        const nouveau = numeroOrdreNet(dto.numeroOrdre);
+        if (nouveau !== agent.numeroOrdre) {
+            donnees.numeroOrdre = nouveau;
+            donnees.ordreVerifieLe = null;
+            donnees.idOrdreVerifiePar = null;
+        }
+    }
+    await prisma.$transaction(async (tx) => {
+        if (Object.keys(donnees).length) await tx.utilisateur.update({ where: { id: agentId }, data: donnees });
+        if (dto.specialite) {
+            await tx.medecinProfile.update({ where: { idUtilisateur: agentId }, data: { specialite: dto.specialite } });
+        }
+    });
+    logger.info('[AGENTS] profil modifie', { idAgent: agentId, parQui: adminId });
+    return { id: agent.id, nomComplet: `${agent.prenom} ${agent.nom}` };
+}
+
+/**
+ * Reinitialiser le mot de passe d'un agent qui l'a perdu.
+ *
+ * Un mot de passe temporaire, a changer a la premiere connexion. **Toutes ses
+ * sessions sont fermees** : qui que ce soit qui tenait encore son compte
+ * ouvert, il en sort. Envoye par courriel s'il a une adresse, et toujours
+ * rendu une fois a l'administrateur : un courriel peut se perdre.
+ */
+export async function reinitialiserMotDePasseAgent(adminId: string, agentId: string) {
+    const { admin, agent } = await agentDeMaStructure(adminId, agentId);
+    const motDePasseTemporaire = genererMotDePasseTemp();
+    const motDePasseHash = await hashPassword(motDePasseTemporaire);
+    await prisma.$transaction([
+        prisma.utilisateur.update({ where: { id: agentId }, data: { motDePasseHash, doitChangerMotDePasse: true } }),
+        prisma.session.deleteMany({ where: { idUtilisateur: agentId } }),
+    ]);
+    logger.info('[AGENTS] mot de passe reinitialise', { idAgent: agentId, parQui: adminId });
+
+    let emailEnvoye: string | null = null;
+    if (agent.email) {
+        try {
+            await envoyerReinitialisationAgent({
+                destinataire: agent.email,
+                prenomNom: `${agent.prenom} ${agent.nom}`,
+                nomStructure: admin.structure?.nom ?? 'votre structure',
+                motDePasseTemporaire,
+            });
+            emailEnvoye = agent.email;
+        } catch (e) {
+            logger.error('[AGENTS] courriel de reinitialisation non envoye', { idAgent: agentId, erreur: e instanceof Error ? e.message : String(e) });
+        }
+    }
+    return { motDePasseTemporaire, emailEnvoye };
 }
 
 // ── ADMIN_STRUCTURE : stats de sa structure ──────────────────────

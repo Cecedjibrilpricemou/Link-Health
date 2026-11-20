@@ -17,6 +17,7 @@ import { ColonneExport, ExportListeComponent } from '../../../shared/components/
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
+import { libelleSpecialite } from '../../../shared/utils/metiers-personnel';
 
 @Component({
   selector: 'app-hopital-demandes',
@@ -28,7 +29,7 @@ import { ListeRechercheComponent, OptionListe } from '../../../shared/components
 export class DemandesComponent implements OnInit {
   /** Les medecins : on cherche par nom ou par specialite. */
   readonly optionsMedecins = computed<OptionListe[]>(() =>
-    this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}` })));
+    this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: libelleSpecialite((cle) => this.i18n.t(cle), m.specialite) })));
 
   private hopital = inject(HopitalService);
   private toastr = inject(ToastrService);

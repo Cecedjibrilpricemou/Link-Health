@@ -28,7 +28,7 @@
     <div class="bb-logout-overlay" (click)="fermerMdp()">
       <div class="bb-mdp-modal" role="dialog" aria-modal="true" aria-labelledby="agent-mdp-title" (click)="$event.stopPropagation()">
         <div class="bb-mdp-modal__icon" aria-hidden="true">✅</div>
-        <h3 id="agent-mdp-title" class="bb-mdp-modal__title">{{ 'ADMIN_STRUCTURE.AGENTS.CREATED_TITLE' | translate }}</h3>
+        <h3 id="agent-mdp-title" class="bb-mdp-modal__title">{{ (mdpAffiche()!.occasion === 'reinitialisation' ? 'ADMIN_STRUCTURE.AGENTS.REINIT_FAIT_TITRE' : 'ADMIN_STRUCTURE.AGENTS.CREATED_TITLE') | translate }}</h3>
         <div class="bb-mdp-modal__info">
           <div class="bb-mdp-modal__row">
             <span class="bb-mdp-modal__label">{{ 'ADMIN_STRUCTURE.AGENTS.AGENT_LABEL' | translate }}</span>
@@ -91,19 +91,41 @@
             <mat-hint>{{ 'ADMIN_STRUCTURE.AGENTS.EMAIL_LOGIN_HINT' | translate }}</mat-hint>
           </mat-form-field>
         </div>
+        <!-- Un metier, pas un role technique : un pediatre et un dentiste ont
+             les ecrans du medecin, mais l'accueil les distingue pour orienter.
+             Seuls les metiers de ce type de structure sont proposes. -->
         <div class="bb-agents__field">
-          <label id="agent-role-label" for="agent-role">{{ 'ADMIN_STRUCTURE.AGENTS.ROLE_LABEL' | translate }}</label>
+          <label id="agent-metier-label" for="agent-metier">{{ 'ADMIN_STRUCTURE.AGENTS.METIER_LABEL' | translate }}</label>
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-  <mat-select
-    id="agent-role"
-    [(ngModel)]="newAgent.role"
-  >
-    @for (opt of rolesOptions; track opt.value) {
-      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-    }
-  </mat-select>
-</mat-form-field>
+            <mat-select id="agent-metier" [(ngModel)]="newAgent.metier" [placeholder]="'ADMIN_STRUCTURE.AGENTS.METIER_PH' | translate">
+              @for (m of metiers(); track m) {
+                <mat-option [value]="m">{{ 'ADMIN_STRUCTURE.AGENTS.METIER_' + m | translate }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
         </div>
+        @if (newAgent.metier === 'MEDECIN_SPECIALISTE') {
+          <div class="bb-agents__field">
+            <label for="agent-specialite">{{ 'ADMIN_STRUCTURE.AGENTS.SPECIALITE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <mat-select id="agent-specialite" [(ngModel)]="newAgent.specialite" [placeholder]="'ADMIN_STRUCTURE.AGENTS.SPECIALITE_PH' | translate">
+                @for (sp of specialites; track sp) {
+                  <mat-option [value]="sp">{{ 'SPECIALITE.' + sp | translate }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        }
+        @if (estMedical(newAgent.metier)) {
+          <div class="bb-agents__field">
+            <label for="agent-ordre">{{ 'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="agent-ordre" [(ngModel)]="newAgent.numeroOrdre" maxlength="40" autocomplete="off"
+                     [placeholder]="'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_PH' | translate" />
+              <mat-hint>{{ 'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_HINT' | translate }}</mat-hint>
+            </mat-form-field>
+          </div>
+        }
         <!-- Mot de passe supprimé — généré automatiquement par le backend -->
         <div class="bb-agents__field bb-agents__field--info">
           <i class="pi pi-info-circle" aria-hidden="true"></i>
@@ -131,7 +153,7 @@
   } @else {
     <div class="bb-agents__list">
       @for (agent of agents(); track agent.id) {
-        <div class="bb-agents__item">
+        <div class="bb-agents__item" [class.bb-agents__item--inactif]="agent.estActif === false">
           <div class="bb-agents__avatar" aria-hidden="true">
             {{ agent.prenom.charAt(0) }}{{ agent.nom.charAt(0) }}
           </div>
@@ -139,10 +161,42 @@
             <p class="bb-agents__name">{{ agent.prenom }} {{ agent.nom }}</p>
             <p class="bb-agents__contact">{{ agent.telephone }}@if (agent.email) { · {{ agent.email }} }</p>
             <p class="bb-agents__meta">{{ 'ADMIN_STRUCTURE.AGENTS.ADDED_ON' | translate: { date: formatDate(agent.creeLe) } }}</p>
+            @if (agent.numeroOrdre) {
+              <p class="bb-agents__meta">
+                {{ 'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_AFFICHE' | translate: { numero: agent.numeroOrdre } }}
+                <span class="bb-agents__ordre" [class.bb-agents__ordre--verifie]="agent.ordreVerifie">
+                  {{ (agent.ordreVerifie ? 'ADMIN_STRUCTURE.AGENTS.ORDRE_VERIFIE' : 'ADMIN_STRUCTURE.AGENTS.ORDRE_A_VERIFIER') | translate }}
+                </span>
+              </p>
+            }
+
+            <!-- Le metier d'un medecin : specialite et numero d'ordre. Changer
+                 le numero retire la verification du registre. -->
+            @if (agent.role === 'MEDECIN' && agent.estActif !== false && profilEnEdition() === agent.id) {
+              <div class="bb-agents__bureau-edit">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ 'ADMIN_STRUCTURE.AGENTS.SPECIALITE_LABEL' | translate }}</mat-label>
+                  <mat-select [(ngModel)]="profilSaisi.specialite" name="specialite">
+                    @for (sp of toutesSpecialites; track sp) {
+                      <mat-option [value]="sp">{{ 'SPECIALITE.' + sp | translate }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ 'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_LABEL' | translate }}</mat-label>
+                  <input matInput [(ngModel)]="profilSaisi.numeroOrdre" name="numeroOrdre" maxlength="40" autocomplete="off" />
+                  <mat-hint>{{ 'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_MODIF_HINT' | translate }}</mat-hint>
+                </mat-form-field>
+                <div class="bb-agents__bureau-actions">
+                  <button class="bb-agents__cancel-btn" type="button" (click)="annulerProfil()">{{ 'COMMON.CANCEL' | translate }}</button>
+                  <button class="bb-agents__save-btn bb-agents__profil-save" type="button" (click)="enregistrerProfil(agent)">{{ 'COMMON.SAVE' | translate }}</button>
+                </div>
+              </div>
+            }
 
             <!-- Le bureau ne concerne que le medecin : c'est chez lui que
                  l'accueil envoie le patient. -->
-            @if (agent.role === 'MEDECIN') {
+            @if (agent.role === 'MEDECIN' && agent.estActif !== false && profilEnEdition() !== agent.id) {
               @if (bureauEnEdition() === agent.id) {
                 <div class="bb-agents__bureau-edit">
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -174,10 +228,29 @@
             }
           </div>
           <div class="bb-agents__actions">
-            <span class="bb-badge bb-badge--info">{{ getRoleLabel(agent.role) }}</span>
-            <button class="bb-agents__deactivate" (click)="desactiver(agent.id)" [attr.title]="'ADMIN_STRUCTURE.AGENTS.DEACTIVATE_TITLE' | translate" [attr.aria-label]="'ADMIN_STRUCTURE.AGENTS.DEACTIVATE_ARIA' | translate: { nom: agent.prenom + ' ' + agent.nom }">
-              <i class="pi pi-ban" aria-hidden="true"></i>
-            </button>
+            <span class="bb-badge bb-badge--info">{{ libelleMetier(agent) }}</span>
+            @if (agent.estActif === false) {
+              <span class="bb-badge bb-badge--neutral">{{ 'ADMIN_STRUCTURE.AGENTS.INACTIF' | translate }}</span>
+              <button class="bb-agents__action bb-agents__reactiver" type="button" (click)="reactiver(agent)">
+                <i class="pi pi-replay" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.AGENTS.REACTIVER' | translate }}
+              </button>
+            } @else {
+              @if (agent.role === 'MEDECIN') {
+                <button class="bb-agents__icon bb-agents__modifier" type="button" (click)="ouvrirProfil(agent)"
+                        [attr.title]="'ADMIN_STRUCTURE.AGENTS.MODIFIER' | translate"
+                        [attr.aria-label]="'ADMIN_STRUCTURE.AGENTS.MODIFIER_ARIA' | translate: { nom: agent.prenom + ' ' + agent.nom }">
+                  <i class="pi pi-pencil" aria-hidden="true"></i>
+                </button>
+              }
+              <button class="bb-agents__icon bb-agents__reinit" type="button" (click)="reinitialiser(agent)"
+                      [attr.title]="'ADMIN_STRUCTURE.AGENTS.REINIT' | translate"
+                      [attr.aria-label]="'ADMIN_STRUCTURE.AGENTS.REINIT_ARIA' | translate: { nom: agent.prenom + ' ' + agent.nom }">
+                <i class="pi pi-key" aria-hidden="true"></i>
+              </button>
+              <button class="bb-agents__deactivate" type="button" (click)="desactiver(agent)" [attr.title]="'ADMIN_STRUCTURE.AGENTS.DEACTIVATE_TITLE' | translate" [attr.aria-label]="'ADMIN_STRUCTURE.AGENTS.DEACTIVATE_ARIA' | translate: { nom: agent.prenom + ' ' + agent.nom }">
+                <i class="pi pi-ban" aria-hidden="true"></i>
+              </button>
+            }
           </div>
         </div>
       }

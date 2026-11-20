@@ -1990,6 +1990,13 @@ export interface AgentStructureView {
    * l agent accompagne le patient a pied. `null` ne s affiche pas.
    */
   bureau?: string | null;
+  /** Pour un medecin : sa specialite (`MEDECINE_GENERALE`, `DENTAIRE`...). */
+  specialite?: SpecialiteMedicale | null;
+  /** Numero d'inscription a l'ordre, et s'il a ete confronte au registre. */
+  numeroOrdre?: string | null;
+  ordreVerifie?: boolean;
+  /** Un compte desactive reste dans la liste : on peut le reactiver. */
+  estActif?: boolean;
 }
 
 /** PUT /admin-structure/agents/:id/bureau — un bureau change, un medecin demenage. */
@@ -4988,5 +4995,36 @@ export interface StructureEspaceView {
   type: TypeStructure;
   /** Vide : l'interface affiche son monogramme (les initiales). */
   logoUrl: string;
+}
+
+// ── Le personnel d'une structure ─────────────────────────────────────
+//
+// Le role dit ce qu'un compte peut faire ; la specialite dit le metier d'un
+// medecin. Un chirurgien-dentiste ou un pediatre ont les ecrans du medecin,
+// et l'accueil les reconnait a leur specialite pour orienter un patient.
+
+export const SPECIALITES_MEDICALES = [
+  'MEDECINE_GENERALE', 'DENTAIRE', 'PEDIATRIE', 'GYNECO_OBSTETRIQUE', 'CHIRURGIE_GENERALE',
+  'CARDIOLOGIE', 'MEDECINE_INTERNE', 'ORL', 'OPHTALMOLOGIE', 'DERMATOLOGIE', 'PSYCHIATRIE',
+  'NEUROLOGIE', 'RADIOLOGIE', 'ANESTHESIE_REANIMATION', 'TRAUMATO_ORTHOPEDIE', 'UROLOGIE',
+  'GASTRO_ENTEROLOGIE', 'PNEUMOLOGIE', 'NEPHROLOGIE', 'ENDOCRINOLOGIE', 'INFECTIOLOGIE', 'URGENCES',
+] as const;
+export type SpecialiteMedicale = (typeof SPECIALITES_MEDICALES)[number];
+
+/** Les roles qu'un administrateur de structure cree, selon ce que fait sa structure. */
+export type RoleAgentStructure = 'ASC' | 'ASC_SUPERVISOR' | 'MEDECIN' | 'AGENT_ACCUEIL' | 'TECHNICIEN_LABO';
+
+/** PUT /admin-structure/agents/:id/profil — le metier d'un medecin. */
+export interface ModifierProfilAgentDto {
+  specialite?: SpecialiteMedicale;
+  /** Vide : efface. Le changer retire la verification du registre. */
+  numeroOrdre?: string | null;
+}
+
+/** POST /admin-structure/agents/:id/mot-de-passe — affiche une fois. */
+export interface ReinitialisationMotDePasseView {
+  motDePasseTemporaire: string;
+  /** L'adresse a laquelle il a aussi ete envoye, s'il y en a une. */
+  emailEnvoye: string | null;
 }
 

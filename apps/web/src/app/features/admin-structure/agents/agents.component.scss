@@ -113,7 +113,41 @@
   &__contact { font-size: 12.5px; color: var(--bb-text-secondary); margin-bottom: 2px; overflow-wrap: anywhere; }
   &__meta    { font-size: 11.5px; color: var(--bb-text-muted); }
 
-  &__actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  &__actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+  // Un compte desactive reste visible, en retrait : on peut le reactiver.
+  &__item--inactif { opacity: .72; .bb-agents__avatar { filter: grayscale(1); } }
+
+  // Modifier le metier, reinitialiser le mot de passe : discrets, a cote de
+  // la desactivation, avec la meme cible tactile.
+  &__icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    border: 1px solid var(--bb-border); background: transparent;
+    color: var(--bb-text-secondary); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 13px;
+    transition: background var(--bb-transition), color var(--bb-transition), border-color var(--bb-transition);
+    &:hover { border-color: var(--bb-primary); color: var(--bb-primary); background: var(--bb-accent-bg); }
+    &:focus-visible { outline: 3px solid var(--bb-focus-ring-color); outline-offset: 2px; }
+    i { font-size: 13px; }
+  }
+
+  &__action {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 40px; padding: 0 14px; border-radius: 12px;
+    border: 1px solid var(--bb-border); background: var(--bb-surface-card);
+    color: var(--bb-primary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    &:hover { border-color: var(--bb-primary); background: var(--bb-accent-bg); }
+    &:focus-visible { outline: 3px solid var(--bb-focus-ring-color); outline-offset: 2px; }
+  }
+  :host-context([data-theme="dark"]) &__action { color: var(--bb-bright); }
+
+  // Le numero d'ordre : declare, ou verifie au registre par l'administration.
+  &__ordre {
+    display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: var(--bb-radius-pill);
+    font-size: 11px; font-weight: 700;
+    background: var(--bb-warning-bg); color: var(--bb-warning);
+    &--verifie { background: var(--bb-success-bg); color: var(--bb-success); }
+  }
 
   &__deactivate {
     // Cible tactile de 40px ; action destructive discrete au repos

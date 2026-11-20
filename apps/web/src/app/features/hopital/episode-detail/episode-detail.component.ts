@@ -22,6 +22,7 @@ import { LaboratoireService } from '../../../core/services/laboratoire.service';
 import { interpretationClasse, referenceLisible } from '../../laboratoire/laboratoire.utils';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { RACINE_ACCUEIL } from '../../../core/navigation/racines';
+import { libelleSpecialite } from '../../../shared/utils/metiers-personnel';
 
 type Panneau = 'aucun' | 'orientation' | 'analyse';
 
@@ -37,7 +38,7 @@ export class EpisodeDetailComponent implements OnInit {
 
   /** Les medecins : on cherche par nom ou par specialite. */
   readonly optionsMedecins = computed<OptionListe[]>(() =>
-    this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: m.specialite ?? undefined })));
+    this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: libelleSpecialite((cle) => this.i18n.t(cle), m.specialite) })));
 
   private route   = inject(ActivatedRoute);
   private router  = inject(Router);
