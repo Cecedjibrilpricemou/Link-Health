@@ -422,7 +422,8 @@ export async function listerEpisodes(
  * l'avancement, mais pas les valeurs.
  */
 function sansValeursPourLAccueil(user: JwtPayload, vue: EpisodeSoinsView): EpisodeSoinsView {
-  if (user.role !== 'AGENT_ACCUEIL') return vue;
+  // L'administration de la structure non plus : elle dirige, elle ne soigne pas.
+  if (user.role !== 'AGENT_ACCUEIL' && user.role !== 'ADMIN_STRUCTURE') return vue;
   return {
     ...vue,
     demandesAnalyse: vue.demandesAnalyse.map((d) => ({

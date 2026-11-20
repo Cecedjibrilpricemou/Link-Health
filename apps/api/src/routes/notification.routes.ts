@@ -69,7 +69,7 @@ router.post(
 // ─── Notification référencement — Médecin ─────────────────
 router.post(
     '/referencement/:id',
-    requireRole('MEDECIN', 'ADMIN_STRUCTURE'),
+    requireRole('MEDECIN'),
     envoyerNotificationReferencementController
 );
 

@@ -4,6 +4,7 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/rbac.middleware';
+import { sansValeursDAnalysePour } from '../middlewares/secret-medical.middleware';
 import { validateBody, validateQuery } from '../middlewares/validate.middleware';
 import * as plateau from '../services/plateau-technique.service';
 import * as labo from '../services/laboratoire.service';
@@ -21,6 +22,10 @@ const router = Router();
 
 router.use(authenticate);
 router.use(requireRole('TECHNICIEN_LABO', 'ADMIN_STRUCTURE'));
+// L'administration voit l'activite du laboratoire (plateau, file, delais),
+// jamais les valeurs : elles sont au laborantin qui les produit et au medecin
+// qui les lit.
+router.use(sansValeursDAnalysePour('ADMIN_STRUCTURE'));
 
 // ── Scan du QR patient au comptoir ───────────────────────────────────
 // Même geste que côté pharmacie, fenêtre différente : le laborantin voit ce
@@ -88,7 +93,7 @@ router.post('/demandes/:id/prelevement', validateBody(enregistrerPrelevementSche
 });
 
 // ── Resultats : saisie ou import (EF-04-04, EF-04-06) ─────────────────
-router.put('/demandes/:id/resultats', validateBody(saisirResultatsSchema), async (req: AuthRequest, res: Response) => {
+router.put('/demandes/:id/resultats', requireRole('TECHNICIEN_LABO'), validateBody(saisirResultatsSchema), async (req: AuthRequest, res: Response) => {
   const data = await labo.saisirResultats(req.user!, req.params['id'] as string, req.body);
   res.json({ success: true, data });
 });
@@ -103,7 +108,8 @@ router.post('/demandes/:id/valider', requireRole('TECHNICIEN_LABO'), validateBod
 });
 
 // ── Compte rendu imprimable ───────────────────────────────────────────
-router.get('/demandes/:id/compte-rendu', async (req: AuthRequest, res: Response) => {
+// Il porte les valeurs : au laborantin seul (le medecin passe par /resultats).
+router.get('/demandes/:id/compte-rendu', requireRole('TECHNICIEN_LABO'), async (req: AuthRequest, res: Response) => {
   const html = await labo.compteRenduLabo(req.user!, req.params['id'] as string);
   res.type('html').send(html);
 });

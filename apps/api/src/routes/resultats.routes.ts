@@ -17,7 +17,8 @@ router.use(authenticate);
 // L'accueil avait ce droit parce qu'il prescrivait. Depuis l'addendum du
 // 2026-09-28 il ne prescrit plus, donc plus aucune alerte ne lui est destinee
 // et il n'a plus de raison de lire un resultat.
-router.use(requireRole('MEDECIN', 'ADMIN_STRUCTURE', 'ASC', 'ASC_SUPERVISOR'));
+// Les resultats sont au soin : l'administration de la structure n'en lit pas.
+router.use(requireRole('MEDECIN', 'ASC', 'ASC_SUPERVISOR'));
 
 router.get('/alertes', async (req: AuthRequest, res: Response) => {
   const data: AlerteCritiqueView[] = await labo.mesAlertes(req.user!);

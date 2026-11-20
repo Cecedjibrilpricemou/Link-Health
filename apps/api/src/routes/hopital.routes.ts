@@ -4,6 +4,7 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/rbac.middleware';
+import { sansValeursDAnalysePour } from '../middlewares/secret-medical.middleware';
 import { validateBody, validateQuery } from '../middlewares/validate.middleware';
 import * as hopital from '../services/hopital.service';
 import * as demandeRdv from '../services/demande-rendez-vous.service';
@@ -36,6 +37,9 @@ const router = Router();
 
 router.use(authenticate);
 router.use(requireRole('AGENT_ACCUEIL', 'MEDECIN', 'ADMIN_STRUCTURE'));
+// L'accueil et l'administration suivent le parcours sans en lire le contenu :
+// aucune reponse de ce routeur ne leur porte une valeur d'analyse.
+router.use(sansValeursDAnalysePour('AGENT_ACCUEIL', 'ADMIN_STRUCTURE'));
 
 /**
  * Addendum du 2026-09-28 : l'accueil ne fait plus rien de medical. Il cherche
@@ -45,7 +49,11 @@ router.use(requireRole('AGENT_ACCUEIL', 'MEDECIN', 'ADMIN_STRUCTURE'));
  * Le routeur laisse passer l'accueil pour tout le reste, donc chaque route
  * medicale porte sa propre garde.
  */
-const ACTE_MEDICAL = requireRole('MEDECIN', 'ADMIN_STRUCTURE');
+//
+// L'administrateur de la structure non plus : il dirige l'etablissement, il
+// ne soigne pas. Prescrire, ouvrir une consultation, clore la prise en charge
+// sont des actes du medecin.
+const ACTE_MEDICAL = requireRole('MEDECIN');
 
 // Les erreurs metier (AppError) remontent au middleware global : pas de
 // try/catch ici, Express 5 propage les rejets des handlers async.

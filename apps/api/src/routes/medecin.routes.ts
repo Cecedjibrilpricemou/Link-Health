@@ -36,7 +36,10 @@ const router = Router();
 
 // ─── Tous les endpoints nécessitent auth + rôle MEDECIN ──
 router.use(authenticate);
-router.use(requireRole('MEDECIN', 'ADMIN_STRUCTURE', 'ADMIN_REGIONAL'));
+// Le medecin seul : valider une consultation, repondre a un referencement,
+// lire ses consultations sont des actes de soin. Les administrations
+// (structure, region) n'y avaient acces que par heritage.
+router.use(requireRole('MEDECIN'));
 
 // ─── Profil et dashboard ──────────────────────────────────
 router.get('/dashboard', getDashboardStatsController);
