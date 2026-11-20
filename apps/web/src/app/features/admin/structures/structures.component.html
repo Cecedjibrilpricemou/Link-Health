@@ -43,6 +43,13 @@
             <i class="pi pi-envelope" aria-hidden="true"></i>
             {{ 'ADMIN.STRUCTURES.SUCCESS_EMAIL_SENT' | translate: { email: email } }}
           </div>
+        } @else if (mdpAffiche()!.emailEchec; as email) {
+          <!-- Le courriel n'est pas parti : le dire, sinon l'administrateur
+               ferme sans noter le mot de passe. -->
+          <div class="bb-mdp-modal__warning bb-mdp-modal__email-echec" role="alert">
+            <i class="pi pi-envelope" aria-hidden="true"></i>
+            {{ 'ADMIN.STRUCTURES.EMAIL_NON_ENVOYE' | translate: { email: email } }}
+          </div>
         }
         <div class="bb-mdp-modal__warning">
           <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
@@ -313,7 +320,7 @@
       <span class="sr-only">{{ 'ADMIN.STRUCTURES.FILTRE_TYPE_ARIA' | translate }}</span>
       <select class="bb-struct__filtre-type" [value]="filtreType()" (change)="filtreType.set($any($event.target).value)">
         <option value="">{{ 'ADMIN.STRUCTURES.TOUS_TYPES' | translate }}</option>
-        @for (opt of typeOptions; track opt.value) {
+        @for (opt of typesAffiches; track opt.value) {
           <option [value]="opt.value">{{ opt.label }}</option>
         }
       </select>

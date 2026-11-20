@@ -26,7 +26,10 @@ interface MotDePasseAffiche {
   adminNom: string;
   adminTelephone: string;
   motDePasse: string;
+  /** L'adresse, seulement si le courriel est **parti**. */
   emailEnvoye?: string;
+  /** L'adresse saisie, quand le courriel n'a pas pu partir. */
+  emailEchec?: string;
 }
 
 type FiltreEtatStructure = 'TOUS' | 'ACTIVES' | 'INACTIVES';
@@ -214,6 +217,16 @@ export class StructuresComponent implements OnInit {
     return null;
   }
 
+  /**
+   * Les types que le formulaire de **creation** propose.
+   *
+   * **ASSURANCE n'y est plus.** Une compagnie d'assurance se cree depuis
+   * l'onglet Assurances, en une fois : structure, dossier, compagnie et compte
+   * du responsable. La creer ici ne faisait que la structure, et qui
+   * s'arretait la laissait un responsable devant « Cette structure n'est
+   * rattachee a aucune compagnie d'assurance ». Deux portes pour la meme
+   * chose finissent par diverger ; il n'en reste qu'une.
+   */
   get typeOptions() {
     return [
       { label: this.i18n.t('ADMIN.STRUCTURES.TYPE_POSTE'),        value: 'POSTE'        },
@@ -224,10 +237,19 @@ export class StructuresComponent implements OnInit {
       { label: this.i18n.t('ADMIN.STRUCTURES.TYPE_CLINIQUE'),     value: 'CLINIQUE'     },
       { label: this.i18n.t('ADMIN.STRUCTURES.TYPE_LABORATOIRE'),  value: 'LABORATOIRE'  },
       { label: this.i18n.t('ADMIN.STRUCTURES.TYPE_PHARMACIE'),    value: 'PHARMACIE'    },
-      // **Aucune route ne savait creer cette structure** : elle n'existait que
-      // par la semence. Or c'est elle qui porte l'agrement de l'assureur, donc
-      // sans elle aucun assureur ne peut etre inscrit.
-      { label: this.i18n.t('ADMIN.STRUCTURES.TYPE_ASSURANCE'),    value: 'ASSURANCE'    }
+    ];
+  }
+
+  /**
+   * Les types que la **liste** affiche et filtre : tous, assurances comprises.
+   *
+   * Les assurances existantes restent visibles, filtrables et nommees ici ;
+   * seule leur creation a quitte cet ecran.
+   */
+  get typesAffiches() {
+    return [
+      ...this.typeOptions,
+      { label: this.i18n.t('ADMIN.STRUCTURES.TYPE_ASSURANCE'), value: 'ASSURANCE' },
     ];
   }
 
@@ -458,8 +480,13 @@ export class StructuresComponent implements OnInit {
           adminNom: `${adminData?.prenom ?? ''} ${adminData?.nom ?? ''}`.trim(),
           adminTelephone: adminData?.telephone ?? telephoneAdminSaisi,
           motDePasse: data?.motDePasseTemporaire ?? '',
-          // L'API renvoie `null` quand aucun email n'est renseigne.
-          emailEnvoye: adminData?.email ?? undefined
+          // **Ce que le serveur a fait, pas ce qu'il aurait du faire.** La
+          // modale annoncait l'envoi des qu'une adresse etait saisie, meme
+          // sans expediteur configure : l'administrateur fermait sans noter
+          // le mot de passe, et le responsable n'avait plus aucun moyen
+          // d'entrer. L'API renvoie `null` quand aucun email n'est renseigne.
+          emailEnvoye: data?.emailEnvoye ? (adminData?.email ?? undefined) : undefined,
+          emailEchec: !data?.emailEnvoye ? (adminData?.email ?? undefined) : undefined,
         });
         this.toastr.success(this.i18n.t('ADMIN.STRUCTURES.SUCCESS_CREATED', { nom: nomStructureCree }), this.i18n.t('ADMIN.STRUCTURES.SUCCESS_TITLE'));
         this.loadStructures();
@@ -581,7 +608,7 @@ export class StructuresComponent implements OnInit {
   fermerMdp() { this.mdpAffiche.set(null); }
 
   getTypeLabel(type: string): string {
-    return this.typeOptions.find(t => t.value === type)?.label ?? type;
+    return this.typesAffiches.find(t => t.value === type)?.label ?? type;
   }
 
 

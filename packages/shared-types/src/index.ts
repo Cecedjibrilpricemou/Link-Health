@@ -1686,6 +1686,10 @@ export type TypePieceAgrement =
   | 'INSCRIPTION_ORDRE'
   /** L'assureur releve de la Banque Centrale, pas du ministere de la Sante. */
   | 'AGREMENT_ASSURANCE'
+  | 'EXTRAIT_RCCM'
+  /** Carte nationale d'identite ou passeport : l'une ou l'autre. */
+  | 'PIECE_IDENTITE_RESPONSABLE'
+  | 'CERTIFICAT_RESIDENCE_RESPONSABLE'
   | 'AUTRE';
 
 /** Une piece deposee. Le contenu ne passe jamais par le JSON : voir `GET /pieces/:id`. */
@@ -1851,12 +1855,16 @@ export interface CreationStructureView {
   structure: StructureAdminView;
   admin: CompteCreeView;
   motDePasseTemporaire?: string;
+  /** Vrai seulement si le courriel des identifiants est **parti**. */
+  emailEnvoye: boolean;
 }
 
 export interface CreationPharmacieView {
   structure: StructureAdminView;
   pharmacien: CompteCreeView;
   motDePasseTemporaire?: string;
+  /** Vrai seulement si le courriel des identifiants est **parti**. */
+  emailEnvoye: boolean;
 }
 
 // ─── Espace admin de structure ────────────────────────────────────────────────
@@ -3380,6 +3388,45 @@ export interface CreerAssureurDto {
   email?: string;
   modeEchange?: ModeEchangeAssureur;
   idStructure?: string;
+}
+
+/**
+ * POST /assurance/compagnies, en multipart : ces champs dans `donnees`, la
+ * piece `AGREMENT_ASSURANCE` sous son type.
+ *
+ * Une compagnie d'assurance creee **en une fois** : sa structure, son dossier,
+ * la compagnie et le compte de son responsable. C'est le chemin normal ;
+ * `CreerAssureurDto` ne sert plus qu'a rattacher une compagnie a une structure
+ * deja existante.
+ */
+export interface CreerAssuranceDto {
+  nom: string;
+  prefecture: string;
+  commune: string;
+  quartier?: string;
+  adresse?: string;
+  latitude?: number;
+  longitude?: number;
+  telephone?: string;
+  rccm?: string;
+  /** La reference de l'agrement de la Banque Centrale. */
+  numeroAgrementCreation?: string;
+  lieuAutorise?: string;
+  /** Le code imprime sur la carte de l'assure. Unique. */
+  code: string;
+  modeEchange?: ModeEchangeAssureur;
+  /** L'email est exige : un assureur se connecte par lui. */
+  responsable: { prenom: string; nom: string; telephone: string; email: string };
+}
+
+/** La reponse : le mot de passe temporaire n'est rendu qu'ici, une fois. */
+export interface CreationAssuranceView {
+  structure: StructureAdminView;
+  assureur: AssureurView;
+  responsable: CompteCreeView;
+  motDePasseTemporaire: string;
+  /** Vrai seulement si le courriel des identifiants est **parti**. */
+  emailEnvoye: boolean;
 }
 
 export interface AssureurView extends AssureurResumeView {

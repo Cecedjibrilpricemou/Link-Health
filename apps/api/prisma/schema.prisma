@@ -129,6 +129,13 @@ enum TypePieceAgrement {
   /// reference (forme D/AAAA/CAM/.../NN). Il ne se confond pas avec les deux
   /// agrements sanitaires.
   AGREMENT_ASSURANCE
+  /// L'extrait du Registre du commerce et du credit mobilier : le numero RCCM
+  /// saisi ne prouve rien tant que la piece qui le porte n'est pas jointe.
+  EXTRAIT_RCCM
+  /// Carte nationale d'identite ou passeport : une seule piece, l'une ou
+  /// l'autre selon ce que le responsable possede.
+  PIECE_IDENTITE_RESPONSABLE
+  CERTIFICAT_RESIDENCE_RESPONSABLE
   AUTRE
 }
 

@@ -131,7 +131,15 @@ export const PIECES_REQUISES: Readonly<Partial<Record<TypeStructure, readonly Ty
     TypePieceAgrement.AGREMENT_CREATION,
     TypePieceAgrement.DIPLOME_RESPONSABLE,
   ],
-  ASSURANCE: [TypePieceAgrement.AGREMENT_ASSURANCE],
+  // L'assureur releve de la Banque Centrale : ni diplome ni ordre a produire.
+  // Mais la compagnie doit prouver son existence (l'extrait RCCM, et non le
+  // seul numero saisi) et celui qui en repondra, son identite et sa residence.
+  ASSURANCE: [
+    TypePieceAgrement.AGREMENT_ASSURANCE,
+    TypePieceAgrement.EXTRAIT_RCCM,
+    TypePieceAgrement.PIECE_IDENTITE_RESPONSABLE,
+    TypePieceAgrement.CERTIFICAT_RESIDENCE_RESPONSABLE,
+  ],
 };
 
 /** Le libelle lisible d'une piece, pour nommer ce qui manque. */
@@ -141,6 +149,9 @@ const LIBELLES: Readonly<Record<TypePieceAgrement, string>> = {
   DIPLOME_RESPONSABLE: 'le diplôme légalisé du responsable',
   INSCRIPTION_ORDRE: "l'attestation d'inscription à l'ordre professionnel",
   AGREMENT_ASSURANCE: "l'agrément de la Banque Centrale",
+  EXTRAIT_RCCM: "l'extrait RCCM",
+  PIECE_IDENTITE_RESPONSABLE: "la carte d'identité ou le passeport du responsable",
+  CERTIFICAT_RESIDENCE_RESPONSABLE: 'le certificat de résidence du responsable',
   AUTRE: 'une pièce complémentaire',
 };
 

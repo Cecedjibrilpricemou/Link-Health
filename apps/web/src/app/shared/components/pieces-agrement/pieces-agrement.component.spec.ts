@@ -94,9 +94,13 @@ describe('les pieces a joindre', () => {
   });
 
   // L'assureur relève de la Banque Centrale : ni diplôme ni ordre professionnel.
-  it('l assureur ne demande que son agrement', () => {
+  // Mais l'extrait RCCM de la compagnie, et l'identité et la résidence de son
+  // responsable.
+  it('l assureur demande son agrement, son extrait RCCM, et l identite et la residence du responsable', () => {
     const f = monter('ASSURANCE');
-    expect(f.componentInstance.requises()).toEqual(['AGREMENT_ASSURANCE']);
+    expect(f.componentInstance.requises()).toEqual([
+      'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'PIECE_IDENTITE_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE',
+    ]);
   });
 
   // **Un CHU n'a pas d'agrément privé à produire.** Le bloc ne doit pas même
@@ -134,7 +138,7 @@ describe('le compte des pieces jointes', () => {
 
   it('redevient incomplet quand on retire une piece', () => {
     const f = monter('ASSURANCE');
-    f.componentInstance.choisir('AGREMENT_ASSURANCE', evenement(pdf()));
+    for (const t of f.componentInstance.requises()) f.componentInstance.choisir(t, evenement(pdf()));
     expect(f.componentInstance.manquantes()).toEqual([]);
 
     f.componentInstance.retirer('AGREMENT_ASSURANCE');
@@ -164,7 +168,7 @@ describe('les refus avant l envoi', () => {
 
     expect(f.componentInstance.refusDe('AGREMENT_ASSURANCE')).toBe('AGREMENT.PIECE.TROP_GROS');
     expect(f.componentInstance.nomDe('AGREMENT_ASSURANCE')).toBeNull();
-    expect(f.componentInstance.manquantes()).toEqual(['AGREMENT_ASSURANCE']);
+    expect(f.componentInstance.manquantes()).toContain('AGREMENT_ASSURANCE');
   });
 
   it('accepte un fichier juste sous la limite', () => {

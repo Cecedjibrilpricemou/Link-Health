@@ -30,6 +30,50 @@
     </aside>
   }
 
+  <!-- La meme modale que la creation d'une structure. Le mot de passe ne
+       s'affiche que la, une fois : la fermer l'efface. -->
+  @if (compagnieCreee(); as creee) {
+    <div class="bb-logout-overlay" (click)="fermerCompagnieCreee()">
+      <div class="bb-mdp-modal" role="dialog" aria-modal="true" aria-labelledby="assu-mdp-title" (click)="$event.stopPropagation()">
+        <div class="bb-mdp-modal__icon" aria-hidden="true">✅</div>
+        <h3 id="assu-mdp-title" class="bb-mdp-modal__title">{{ 'ADMIN.ASSURANCE.COMPAGNIE_CREEE_TITRE' | translate }}</h3>
+        <p class="bb-mdp-modal__structure">{{ creee.compagnieNom }}</p>
+        <div class="bb-mdp-modal__info">
+          <div class="bb-mdp-modal__row">
+            <span class="bb-mdp-modal__label">{{ 'ADMIN.STRUCTURES.RESPONSABLE_LABEL' | translate }}</span>
+            <span class="bb-mdp-modal__value">{{ creee.responsableNom }}</span>
+          </div>
+          <div class="bb-mdp-modal__row">
+            <span class="bb-mdp-modal__label">{{ 'ADMIN.STRUCTURES.PHONE_LABEL' | translate }}</span>
+            <span class="bb-mdp-modal__value">{{ creee.responsableTelephone }}</span>
+          </div>
+          <div class="bb-mdp-modal__row bb-mdp-modal__row--mdp">
+            <span class="bb-mdp-modal__label">{{ 'ADMIN.STRUCTURES.TEMP_PASSWORD_LABEL' | translate }}</span>
+            <span class="bb-mdp-modal__mdp">{{ creee.motDePasse }}</span>
+          </div>
+        </div>
+        @if (creee.emailEnvoye; as email) {
+          <div class="bb-mdp-modal__email-note">
+            <i class="pi pi-envelope" aria-hidden="true"></i>
+            {{ 'ADMIN.STRUCTURES.SUCCESS_EMAIL_SENT' | translate: { email: email } }}
+          </div>
+        } @else if (creee.emailEchec; as email) {
+          <!-- Le courriel n'est pas parti : le dire, sinon l'administrateur
+               ferme sans noter le mot de passe. -->
+          <div class="bb-mdp-modal__warning bb-mdp-modal__email-echec" role="alert">
+            <i class="pi pi-envelope" aria-hidden="true"></i>
+            {{ 'ADMIN.STRUCTURES.EMAIL_NON_ENVOYE' | translate: { email: email } }}
+          </div>
+        }
+        <div class="bb-mdp-modal__warning">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          {{ 'ADMIN.STRUCTURES.PASSWORD_WARNING' | translate }}
+        </div>
+        <button class="bb-mdp-modal__btn" (click)="fermerCompagnieCreee()">{{ 'ADMIN.STRUCTURES.NOTED_PASSWORD_BTN' | translate }}</button>
+      </div>
+    </div>
+  }
+
   <!-- ══ Qui assure ════════════════════════════════════════════════════ -->
   <section class="bb-assu__sec">
     <div class="bb-assu__sec-head">
@@ -37,16 +81,190 @@
         <h2 class="bb-assu__sec-titre">{{ 'ADMIN.ASSURANCE.SEC_ASSUREURS' | translate }}</h2>
         <p class="bb-assu__sec-aide">{{ 'ADMIN.ASSURANCE.SEC_ASSUREURS_AIDE' | translate }}</p>
       </div>
-      @if (!formAssureur()) {
-        <button class="bb-assu__btn" type="button" (click)="formAssureur.set(true)">
-          <i class="pi pi-plus" aria-hidden="true"></i>
-          {{ 'ADMIN.ASSURANCE.NOUVEL_ASSUREUR' | translate }}
-        </button>
+      <!-- La creation complete est le chemin normal ; le rattachement ne sert
+           plus qu'aux assurances anterieures, dont la structure existe deja. -->
+      @if (!formAssureur() && !formAssurance()) {
+        <div class="bb-assu__actions">
+          <button class="bb-assu__btn bb-assu__btn--plat" type="button" (click)="ouvrirRattachement()">
+            <i class="pi pi-link" aria-hidden="true"></i>
+            {{ 'ADMIN.ASSURANCE.RATTACHER_EXISTANTE' | translate }}
+          </button>
+          <button class="bb-assu__btn" type="button" (click)="ouvrirCreation()">
+            <i class="pi pi-plus" aria-hidden="true"></i>
+            {{ 'ADMIN.ASSURANCE.NOUVELLE_COMPAGNIE' | translate }}
+          </button>
+        </div>
       }
     </div>
 
+    @if (formAssurance()) {
+      <!-- Une compagnie en une fois : la structure, son dossier, la compagnie
+           et le compte de son responsable, dans une seule operation. Memes
+           classes que la creation d'une structure. -->
+      <div class="bb-struct__form">
+        <h3>{{ 'ADMIN.ASSURANCE.CREATION_TITRE' | translate }}</h3>
+        <p class="bb-struct__section-note">{{ 'ADMIN.ASSURANCE.CREATION_AIDE' | translate }}</p>
+
+        <h4 class="bb-struct__section-label">{{ 'ADMIN.ASSURANCE.SECTION_COMPAGNIE' | translate }}</h4>
+        <div class="bb-struct__form-grid">
+          <div class="bb-struct__field">
+            <label for="assu-nom">{{ 'ADMIN.STRUCTURES.NOM_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-nom" [(ngModel)]="nouvelleAssurance.nom" maxlength="160" autocomplete="off" required />
+            </mat-form-field>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-code">{{ 'ADMIN.ASSURANCE.CODE' | translate }} *</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-code" [(ngModel)]="nouvelleAssurance.code" maxlength="16" autocomplete="off" required />
+            </mat-form-field>
+            <small class="form-hint">{{ 'ADMIN.ASSURANCE.CODE_AIDE' | translate }}</small>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-mode">{{ 'ADMIN.ASSURANCE.MODE_ECHANGE' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <mat-select id="assu-mode" [(ngModel)]="nouvelleAssurance.modeEchange">
+                <mat-option value="MANUEL">{{ 'ADMIN.ASSURANCE.MODE_MANUEL' | translate }}</mat-option>
+                <mat-option value="PORTAIL">{{ 'ADMIN.ASSURANCE.MODE_PORTAIL' | translate }}</mat-option>
+                <mat-option value="API">{{ 'ADMIN.ASSURANCE.MODE_API' | translate }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <small class="form-hint">{{ 'ADMIN.ASSURANCE.MODE_AIDE' | translate }}</small>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-tel">{{ 'ADMIN.STRUCTURES.PHONE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-tel" [(ngModel)]="nouvelleAssurance.telephone" inputmode="tel" autocomplete="off" />
+            </mat-form-field>
+          </div>
+        </div>
+
+        <h4 class="bb-struct__section-label">{{ 'ADMIN.ASSURANCE.SECTION_SIEGE' | translate }}</h4>
+        <div class="bb-struct__form-grid">
+          <div class="bb-struct__field">
+            <label for="assu-pref">{{ geo.libelle('elargissement') }} *</label>
+            <!-- Les lieux du referentiel sont proposes ; le texte libre reste accepte. -->
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-pref" [(ngModel)]="nouvelleAssurance.prefecture" list="assu-liste-zones"
+                     maxlength="80" autocomplete="off" required />
+            </mat-form-field>
+            <app-suggestions-lieux idListe="assu-liste-zones" role="elargissement" />
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-commune">{{ geo.libelle('base') }} *</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-commune" [(ngModel)]="nouvelleAssurance.commune" list="assu-liste-communes"
+                     maxlength="80" autocomplete="off" required />
+            </mat-form-field>
+            <app-suggestions-lieux idListe="assu-liste-communes" role="base" [dans]="nouvelleAssurance.prefecture" />
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-quartier">{{ 'ADMIN.STRUCTURES.QUARTIER_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-quartier" [(ngModel)]="nouvelleAssurance.quartier" maxlength="80" autocomplete="off" />
+            </mat-form-field>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-adresse">{{ 'ADMIN.STRUCTURES.ADRESSE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-adresse" [(ngModel)]="nouvelleAssurance.adresse" maxlength="200" autocomplete="off" />
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Le dossier : l'agrement de la Banque Centrale. Il bloque - sans
+             lui, rien ne prouve que la compagnie est agreee. -->
+        <h4 class="bb-struct__section-label">{{ 'AGREMENT.SECTION_TITRE' | translate }}</h4>
+        <p class="bb-struct__section-note">{{ 'AGREMENT.SECTION_NOTE' | translate }}</p>
+        <div class="bb-struct__form-grid">
+          <div class="bb-struct__field">
+            <label for="assu-rccm">{{ 'AGREMENT.RCCM_LABEL' | translate }} *</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-rccm" maxlength="40" [(ngModel)]="nouvelleAssurance.rccm"
+                     [placeholder]="'AGREMENT.RCCM_PH' | translate" />
+            </mat-form-field>
+            <small class="form-hint">{{ 'AGREMENT.RCCM_HINT' | translate }}</small>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-lieu">{{ 'AGREMENT.LIEU_LABEL' | translate }} *</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-lieu" maxlength="200" [(ngModel)]="nouvelleAssurance.lieuAutorise"
+                     [placeholder]="'AGREMENT.LIEU_PH' | translate" />
+            </mat-form-field>
+            <small class="form-hint">{{ 'AGREMENT.LIEU_HINT' | translate }}</small>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-bcrg">{{ 'AGREMENT.BCRG_LABEL' | translate }} *</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-bcrg" maxlength="120" [(ngModel)]="nouvelleAssurance.numeroAgrementCreation"
+                     [placeholder]="'AGREMENT.BCRG_PH' | translate" />
+            </mat-form-field>
+            <small class="form-hint">{{ 'AGREMENT.BCRG_HINT' | translate }}</small>
+          </div>
+        </div>
+
+        <!-- Le meme composant de pieces que l'ecran des structures. La liste
+             et les libelles viennent du serveur. -->
+        <app-pieces-agrement
+          type="ASSURANCE"
+          [requisesImposees]="requisesImposees()"
+          [libellesImposes]="libellesImposes()"
+          (pieces)="piecesAssurance.set($event)"
+          (complet)="piecesAssuranceCompletes.set($event)" />
+
+        <h4 class="bb-struct__section-label">{{ 'ADMIN.ASSURANCE.SECTION_RESPONSABLE' | translate }}</h4>
+        <p class="bb-struct__section-note">{{ 'ADMIN.ASSURANCE.RESPONSABLE_AIDE' | translate }}</p>
+        <div class="bb-struct__form-grid">
+          <div class="bb-struct__field">
+            <label for="assu-resp-prenom">{{ 'ADMIN.STRUCTURES.PRENOM_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-resp-prenom" [(ngModel)]="nouvelleAssurance.responsable.prenom" autocomplete="off" required />
+            </mat-form-field>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-resp-nom">{{ 'ADMIN.STRUCTURES.NOM_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-resp-nom" [(ngModel)]="nouvelleAssurance.responsable.nom" autocomplete="off" required />
+            </mat-form-field>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-resp-tel">{{ 'ADMIN.STRUCTURES.TEL_ADMIN_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-resp-tel" [(ngModel)]="nouvelleAssurance.responsable.telephone" inputmode="tel" autocomplete="off" required />
+            </mat-form-field>
+          </div>
+          <div class="bb-struct__field">
+            <label for="assu-resp-email">{{ 'ADMIN.STRUCTURES.EMAIL_ADMIN_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <input matInput id="assu-resp-email" type="email" [(ngModel)]="nouvelleAssurance.responsable.email" autocomplete="off" required />
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- Un bouton grise sans explication laisse chercher : la raison du
+             blocage s'affiche juste au-dessus de lui. -->
+        @if (raisonBlocage(); as raison) {
+          <p class="bb-struct__blocage" role="status">
+            <i class="pi pi-info-circle" aria-hidden="true"></i> {{ raison }}
+          </p>
+        }
+        <div class="bb-struct__form-actions">
+          <button class="bb-struct__cancel-btn" type="button" (click)="fermerCreation()" [disabled]="enregistre()">
+            {{ 'COMMON.CANCEL' | translate }}
+          </button>
+          <button class="bb-struct__save-btn" type="button" (click)="creerAssurance()" [disabled]="!peutCreerAssurance()">
+            <i class="pi pi-shield" aria-hidden="true"></i>
+            {{ (enregistre() ? 'ADMIN.STRUCTURES.CREATING' : 'ADMIN.ASSURANCE.CREER_COMPAGNIE') | translate }}
+          </button>
+        </div>
+      </div>
+    }
+
     @if (formAssureur()) {
+      <!-- Rattacher une compagnie a une structure ASSURANCE deja existante :
+           pour les assurances creees avant la porte unique. -->
       <div class="bb-assu__form">
+        <p class="bb-assu__sec-aide">{{ 'ADMIN.ASSURANCE.RATTACHER_AIDE' | translate }}</p>
         <div class="bb-assu__grille">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>{{ 'ADMIN.ASSURANCE.NOM' | translate }}</mat-label>

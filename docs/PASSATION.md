@@ -220,7 +220,7 @@ Ce qui est exigé dépend du type (`PIECES_REQUISES` dans
 | Pharmacie, clinique, laboratoire | agrément de création, agrément d'exploitation, diplôme du responsable, inscription à l'ordre |
 | Hôpitaux publics (préfectoral, régional, CHU) | acte de création, diplôme, inscription à l'ordre |
 | Poste et centre de santé | acte de création, diplôme |
-| Assurance | agrément de la Banque Centrale |
+| Assurance | agrément de la Banque Centrale, extrait RCCM, carte d'identité ou passeport du responsable, certificat de résidence du responsable (depuis le 2026-11-20) |
 
 Les structures publiques n'ont **ni RCCM ni agrément d'exploitation** : le
 serveur efface ces champs s'ils arrivent, et la même pièce porte un libellé

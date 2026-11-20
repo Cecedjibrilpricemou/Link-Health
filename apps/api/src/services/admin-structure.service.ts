@@ -163,7 +163,12 @@ export async function creerStructureAvecAdmin(dto: {
         });
     }
 
-    // ── Envoi email si adresse disponible ────────────────────────────
+    // **Dire si le courriel est parti, et non s'il aurait du partir.** La
+    // modale de succes annoncait « identifiants envoyes par email » des
+    // qu'une adresse etait saisie, meme quand aucun expediteur n'etait
+    // configure : l'administrateur fermait la modale en croyant le
+    // responsable servi, et le mot de passe etait perdu.
+    let emailEnvoye = false;
     if (dto.admin.email) {
         try {
             await envoyerEmailAdminStructure({
@@ -173,6 +178,7 @@ export async function creerStructureAvecAdmin(dto: {
                 telephone: dto.admin.telephone,
                 motDePasseTemporaire: motDePasseTemp
             });
+            emailEnvoye = true;
         } catch (emailError) {
             // L'email échoue silencieusement — le compte est quand même créé
             logger.error('Erreur envoi email admin structure', { error: emailError });
@@ -189,7 +195,8 @@ export async function creerStructureAvecAdmin(dto: {
             nom: result.admin.nom,
             role: result.admin.role
         },
-        motDePasseTemporaire: motDePasseTemp
+        motDePasseTemporaire: motDePasseTemp,
+        emailEnvoye,
     };
 }
 
@@ -339,6 +346,12 @@ export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
         throw e;
     }
 
+    // **Dire si le courriel est parti, et non s'il aurait du partir.** La
+    // modale de succes annoncait « identifiants envoyes par email » des
+    // qu'une adresse etait saisie, meme quand aucun expediteur n'etait
+    // configure : l'administrateur fermait la modale en croyant le
+    // responsable servi, et le mot de passe etait perdu.
+    let emailEnvoye = false;
     if (dto.pharmacien.email && isTemporaire) {
         try {
             await envoyerEmailAgent({
@@ -349,6 +362,7 @@ export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
                 telephone: dto.pharmacien.telephone,
                 motDePasseTemporaire: motDePasseTemp
             });
+            emailEnvoye = true;
         } catch (emailError) {
             logger.error('Erreur envoi email pharmacien responsable', { error: emailError });
         }
@@ -364,7 +378,8 @@ export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
             nom: result.pharmacien.nom,
             role: result.pharmacien.role
         },
-        motDePasseTemporaire: isTemporaire ? motDePasseTemp : undefined
+        motDePasseTemporaire: isTemporaire ? motDePasseTemp : undefined,
+        emailEnvoye,
     };
 }
 
