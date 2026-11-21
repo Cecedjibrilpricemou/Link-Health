@@ -81,14 +81,11 @@
         <h2 class="bb-assu__sec-titre">{{ 'ADMIN.ASSURANCE.SEC_ASSUREURS' | translate }}</h2>
         <p class="bb-assu__sec-aide">{{ 'ADMIN.ASSURANCE.SEC_ASSUREURS_AIDE' | translate }}</p>
       </div>
-      <!-- La creation complete est le chemin normal ; le rattachement ne sert
-           plus qu'aux assurances anterieures, dont la structure existe deja. -->
-      @if (!formAssureur() && !formAssurance()) {
+      <!-- Une seule porte : la creation fait d'un coup la structure, la
+           compagnie et le compte de son responsable. Rattacher une compagnie
+           a une structure existante n'a plus d'objet. -->
+      @if (!formAssurance()) {
         <div class="bb-assu__actions">
-          <button class="bb-assu__btn bb-assu__btn--plat" type="button" (click)="ouvrirRattachement()">
-            <i class="pi pi-link" aria-hidden="true"></i>
-            {{ 'ADMIN.ASSURANCE.RATTACHER_EXISTANTE' | translate }}
-          </button>
           <button class="bb-assu__btn" type="button" (click)="ouvrirCreation()">
             <i class="pi pi-plus" aria-hidden="true"></i>
             {{ 'ADMIN.ASSURANCE.NOUVELLE_COMPAGNIE' | translate }}
@@ -255,70 +252,6 @@
           <button class="bb-struct__save-btn" type="button" (click)="creerAssurance()" [disabled]="!peutCreerAssurance()">
             <i class="pi pi-shield" aria-hidden="true"></i>
             {{ (enregistre() ? 'ADMIN.STRUCTURES.CREATING' : 'ADMIN.ASSURANCE.CREER_COMPAGNIE') | translate }}
-          </button>
-        </div>
-      </div>
-    }
-
-    @if (formAssureur()) {
-      <!-- Rattacher une compagnie a une structure ASSURANCE deja existante :
-           pour les assurances creees avant la porte unique. -->
-      <div class="bb-assu__form">
-        <p class="bb-assu__sec-aide">{{ 'ADMIN.ASSURANCE.RATTACHER_AIDE' | translate }}</p>
-        <div class="bb-assu__grille">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ 'ADMIN.ASSURANCE.NOM' | translate }}</mat-label>
-            <input matInput [(ngModel)]="nouvelAssureur.nom" name="nom" autocomplete="off" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ 'ADMIN.ASSURANCE.CODE' | translate }}</mat-label>
-            <input matInput [(ngModel)]="nouvelAssureur.code" name="code" autocomplete="off" />
-            <mat-hint>{{ 'ADMIN.ASSURANCE.CODE_AIDE' | translate }}</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ 'ADMIN.ASSURANCE.TELEPHONE' | translate }}</mat-label>
-            <input matInput [(ngModel)]="nouvelAssureur.telephone" name="tel" inputmode="tel" autocomplete="off" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ 'ADMIN.ASSURANCE.EMAIL' | translate }}</mat-label>
-            <input matInput [(ngModel)]="nouvelAssureur.email" name="email" type="email" autocomplete="off" />
-          </mat-form-field>
-
-          <!-- La structure porte l'agrement de la Banque Centrale : sans
-               elle, rien ne prouve que la compagnie est agreee. -->
-          <div class="bb-assu__champ-liste">
-            <label class="bb-assu__label-liste" for="assu-structure">{{ 'ADMIN.ASSURANCE.STRUCTURE' | translate }} *</label>
-            <app-liste-recherche inputId="assu-structure" name="structure" [options]="optionsStructuresAssurance()"
-                                 [(ngModel)]="nouvelAssureur.idStructure" />
-            <small class="bb-assu__aide-liste">
-              {{ (structuresAssurance().length === 0
-                    ? 'ADMIN.ASSURANCE.STRUCTURE_AUCUNE'
-                    : 'ADMIN.ASSURANCE.STRUCTURE_AIDE') | translate }}
-            </small>
-          </div>
-
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ 'ADMIN.ASSURANCE.MODE_ECHANGE' | translate }}</mat-label>
-            <mat-select [(ngModel)]="nouvelAssureur.modeEchange" name="mode">
-              <mat-option value="MANUEL">{{ 'ADMIN.ASSURANCE.MODE_MANUEL' | translate }}</mat-option>
-              <mat-option value="PORTAIL">{{ 'ADMIN.ASSURANCE.MODE_PORTAIL' | translate }}</mat-option>
-              <mat-option value="API">{{ 'ADMIN.ASSURANCE.MODE_API' | translate }}</mat-option>
-            </mat-select>
-            <mat-hint>{{ 'ADMIN.ASSURANCE.MODE_AIDE' | translate }}</mat-hint>
-          </mat-form-field>
-        </div>
-
-        <div class="bb-assu__actions">
-          <button class="bb-assu__btn bb-assu__btn--plat" type="button"
-                  (click)="formAssureur.set(false)" [disabled]="enregistre()">
-            {{ 'ADMIN.ASSURANCE.ANNULER' | translate }}
-          </button>
-          <button class="bb-assu__btn" type="button" (click)="creerAssureur()" [disabled]="!peutCreerAssureur()">
-            <i class="pi pi-check" aria-hidden="true"></i>
-            {{ 'ADMIN.ASSURANCE.ENREGISTRER' | translate }}
           </button>
         </div>
       </div>

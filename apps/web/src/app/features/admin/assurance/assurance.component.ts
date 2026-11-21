@@ -38,7 +38,6 @@ import type {
   ModeEchangeAssureur,
   PatientContratRechercheView,
   PiecesAttenduesView,
-  StructureAdminView,
   TypePieceAgrement,
 } from '@baobaoheath/shared-types';
 import { AdminService } from '../../../core/services/admin.service';
@@ -96,9 +95,6 @@ function assuranceVide() {
   styleUrls: ['./assurance.component.scss', '../structures/structures.component.scss'],
 })
 export class AssuranceComponent implements OnInit {
-  /** Structures « assurance » : la compagnie porte l'agrement de la Banque Centrale. */
-  readonly optionsStructuresAssurance = computed<OptionListe[]>(() =>
-    this.structuresAssurance().map((s) => ({ valeur: s.id, libelle: s.nom, detail: s.prefecture })));
   readonly optionsAssureurs = computed<OptionListe[]>(() =>
     this.assureurs().map((a) => ({ valeur: a.id, libelle: `${a.code} — ${a.nom}` })));
 
@@ -132,7 +128,6 @@ export class AssuranceComponent implements OnInit {
   // ── Les assureurs ──────────────────────────────────────────────────
   assureurs = signal<AssureurView[]>([]);
   chargement = signal(true);
-  formAssureur = signal(false);
   enregistre = signal(false);
   /** L'assureur dont on deplie les regles : une seule a la fois. */
   reglesOuvertes = signal<string | null>(null);
@@ -142,26 +137,6 @@ export class AssuranceComponent implements OnInit {
   readonly formAgentAssureur = signal<string | null>(null);
   /** Le mot de passe n'est conserve que jusqu'a sa fermeture. */
   readonly motDePasseAgent = signal<{ assureurNom: string; resultat: AgentAssureurCreeView } | null>(null);
-
-  nouvelAssureur = {
-    nom: '', code: '', telephone: '', email: '', idStructure: '',
-    modeEchange: 'MANUEL' as ModeEchangeAssureur,
-  };
-
-  /**
-   * Les structures de type ASSURANCE disponibles.
-   *
-   * **Un assureur ne peut plus exister sans sa structure** : c'est elle qui
-   * porte son agrement de la Banque Centrale, son RCCM et son siege autorise.
-   * L'enregistrement `Assureur` ne porte que la configuration metier — le code
-   * imprime sur la carte, le mode d'echange.
-   *
-   * La structure se cree depuis l'administration des structures, ou son
-   * agrement est exige. Si son dossier est incomplet, le serveur refuse le
-   * rattachement et **nomme ce qui manque** : on laisse parler ce message
-   * plutot que de recalculer la completude ici.
-   */
-  structuresAssurance = signal<StructureAdminView[]>([]);
 
   nouvelleRegle = {
     categorie: 'MEDICAMENT' as CategorieProduit,
@@ -191,7 +166,6 @@ export class AssuranceComponent implements OnInit {
 
   ngOnInit(): void {
     this.chargerAssureurs();
-    this.chargerStructuresAssurance();
     this.demandes.piecesAttendues().subscribe({
       next: (r) => this.attendues.set(r.data ?? []),
       // Sans la liste, le bloc des pieces retombe sur sa table, et la raison
@@ -202,13 +176,7 @@ export class AssuranceComponent implements OnInit {
 
   // ── Creer une compagnie en une fois ────────────────────────────────
   ouvrirCreation(): void {
-    this.formAssureur.set(false);
     this.formAssurance.set(true);
-  }
-
-  ouvrirRattachement(): void {
-    this.formAssurance.set(false);
-    this.formAssureur.set(true);
   }
 
   fermerCreation(): void {
@@ -320,7 +288,6 @@ export class AssuranceComponent implements OnInit {
         this.piecesAssuranceCompletes.set(false);
         this.formAssurance.set(false);
         this.chargerAssureurs();
-        this.chargerStructuresAssurance();
       },
       error: (err) => this.echec(err),
     });
@@ -329,19 +296,6 @@ export class AssuranceComponent implements OnInit {
   /** Fermer la modale efface le mot de passe : il ne s'affiche qu'une fois. */
   fermerCompagnieCreee(): void {
     this.compagnieCreee.set(null);
-  }
-
-  private chargerStructuresAssurance(): void {
-    this.admin.getStructures(1, 200).subscribe({
-      next: (r) => {
-        const page = r.data as unknown as { items?: StructureAdminView[] } | StructureAdminView[] | undefined;
-        const liste = Array.isArray(page) ? page : page?.items ?? [];
-        this.structuresAssurance.set(liste.filter((s) => s.type === 'ASSURANCE' && s.estActive));
-      },
-      // Silencieux : l'ecran reste utilisable pour tout le reste, et le champ
-      // vide dit lui-meme qu'aucune structure n'est disponible.
-      error: () => this.structuresAssurance.set([]),
-    });
   }
 
   // ── Assureurs ──────────────────────────────────────────────────────
@@ -356,37 +310,6 @@ export class AssuranceComponent implements OnInit {
         this.chargement.set(false);
         this.toastr.error(this.i18n.t('COMMON.ERROR_GENERIC'));
       },
-    });
-  }
-
-  peutCreerAssureur(): boolean {
-    return !this.enregistre()
-      && this.nouvelAssureur.nom.trim().length > 1
-      && this.nouvelAssureur.code.trim().length > 1
-      // Sans structure, le serveur refuse : autant ne pas laisser cliquer.
-      && this.nouvelAssureur.idStructure.length > 0;
-  }
-
-  creerAssureur(): void {
-    if (!this.peutCreerAssureur()) return;
-    this.enregistre.set(true);
-    const a = this.nouvelAssureur;
-    this.admin.creerAssureur({
-      nom: a.nom.trim(),
-      code: a.code.trim().toUpperCase(),
-      modeEchange: a.modeEchange,
-      idStructure: a.idStructure,
-      ...(a.telephone.trim() ? { telephone: a.telephone.trim() } : {}),
-      ...(a.email.trim() ? { email: a.email.trim() } : {}),
-    }).subscribe({
-      next: (r) => {
-        this.enregistre.set(false);
-        this.formAssureur.set(false);
-        this.toastr.success(this.i18n.t('ADMIN.ASSURANCE.ASSUREUR_CREE', { nom: r.data?.nom ?? '' }));
-        this.nouvelAssureur = { nom: '', code: '', telephone: '', email: '', idStructure: '', modeEchange: 'MANUEL' };
-        this.chargerAssureurs();
-      },
-      error: (err) => this.echec(err),
     });
   }
 

@@ -119,6 +119,17 @@ function joindre(fixture: ComponentFixture<AssuranceComponent>, types: readonly 
 const joindreDossier = (fixture: ComponentFixture<AssuranceComponent>) => joindre(fixture, QUATRE_PIECES);
 
 describe('creer une compagnie d assurance en une fois', () => {
+  // La creation fait d'un coup la structure, la compagnie et le compte de
+  // son responsable : rattacher une compagnie a une structure existante n'a
+  // plus d'objet, et l'ecran ne le propose plus.
+  it('une seule porte : la nouvelle compagnie, sans rattachement', () => {
+    const { fixture } = monter();
+    fixture.detectChanges();
+    const boutons = [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.bb-assu__sec-head .bb-assu__actions button')];
+    expect(boutons.map((b) => b.textContent!.trim())).toEqual(["Nouvelle compagnie d'assurance"]);
+    expect((fixture.nativeElement as HTMLElement).querySelector('.pi-link')).toBeNull();
+  });
+
   // (5) Sans les pieces, le bouton ne part pas - et il dit pourquoi, avec le
   // compte des pieces, juste au-dessus de lui.
   it('desactive le bouton tant que les pieces manquent, et en donne la raison au-dessus', () => {
@@ -239,7 +250,7 @@ describe('creer une compagnie d assurance en une fois', () => {
   it.each([['fr', fr], ['en', en]] as const)('%s porte toutes les cles de la creation', (_langue, catalogue) => {
     const bloc = (catalogue as Record<string, any>)['ADMIN']['ASSURANCE'];
     for (const cle of [
-      'NOUVELLE_COMPAGNIE', 'RATTACHER_EXISTANTE', 'RATTACHER_AIDE', 'CREATION_TITRE', 'CREATION_AIDE',
+      'NOUVELLE_COMPAGNIE', 'CREATION_TITRE', 'CREATION_AIDE',
       'SECTION_COMPAGNIE', 'SECTION_SIEGE', 'SECTION_RESPONSABLE', 'RESPONSABLE_AIDE', 'CREER_COMPAGNIE',
       'COMPAGNIE_CREEE_TITRE', 'COMPAGNIE_CREEE', 'BLOCAGE_NOM', 'BLOCAGE_CODE', 'BLOCAGE_LIEU',
       'BLOCAGE_IDENTIFIANTS', 'BLOCAGE_RESPONSABLE', 'BLOCAGE_PIECES',
