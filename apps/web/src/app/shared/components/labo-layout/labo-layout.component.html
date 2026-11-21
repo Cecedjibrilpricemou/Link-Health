@@ -14,10 +14,11 @@
     </div>
 
 
-    <p class="bb-nav__section">{{ 'COMMON.NAVIGATION' | translate }}</p>
+    @for (rubrique of rubriques(); track rubrique.titreKey) {
+    <p class="bb-nav__section">{{ rubrique.titreKey | translate }}</p>
 
     <mat-nav-list class="bb-nav__list">
-      @for (item of navItems; track item.route) {
+      @for (item of rubrique.items; track item.route) {
         <a
           mat-list-item
           class="bb-nav__item"
@@ -30,6 +31,10 @@
         </a>
       }
     </mat-nav-list>
+    }
+    @if (menuIllisible()) {
+      <p class="bb-nav__section" role="status">{{ 'ADMIN_STRUCTURE.NAV_LOAD_ERROR' | translate }}</p>
+    }
 
     <div class="bb-nav__footer">
       <p class="bb-nav__section">{{ 'COMMON.GENERAL' | translate }}</p>
@@ -66,7 +71,7 @@
         <mat-icon fontSet="pi" fontIcon="pi-bars" aria-hidden="true"></mat-icon>
       </button>
 
-      <app-topbar-crumb [rootKey]="'LABO.ROLE'" [items]="navItems" />
+      <app-topbar-crumb [rootKey]="racineFil()" [items]="entrees()" />
 
       <span class="bb-topbar__spacer"></span>
 

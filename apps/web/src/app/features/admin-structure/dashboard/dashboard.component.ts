@@ -26,15 +26,15 @@ import type { StatsStructureView } from '@baobaoheath/shared-types';
     }
   </div>
   <div class="bb-page-head__actions">
-    <a matButton="filled" routerLink="/admin-structure/agents"><i class="pi pi-users" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.DASHBOARD.MANAGE_LINK' | translate }}</a>
+    <a matButton="filled" routerLink="../agents"><i class="pi pi-users" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.DASHBOARD.MANAGE_LINK' | translate }}</a>
     @if (estHospital()) {
-      <a matButton="outlined" routerLink="/admin-structure/pharmacies"><i class="pi pi-plus" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.PHARMACIES.MANAGE_LINK' | translate }}</a>
+      <a matButton="outlined" routerLink="../pharmacies"><i class="pi pi-plus" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.PHARMACIES.MANAGE_LINK' | translate }}</a>
     }
   </div>
 </header>
 
 <div class="bb-stats">
-  <a class="bb-stat bb-stat--primary bb-stat--link" routerLink="/admin-structure/agents">
+  <a class="bb-stat bb-stat--primary bb-stat--link" routerLink="../agents">
     <span class="bb-stat__icon"><i class="pi pi-users"></i></span>
     <div><div class="bb-stat__value">{{ stats()?.totalAgents ?? 0 }}</div><div class="bb-stat__label">{{ 'ADMIN_STRUCTURE.DASHBOARD.ACTIVE_AGENTS' | translate }}</div></div>
   </a>
