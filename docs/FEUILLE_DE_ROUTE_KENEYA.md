@@ -8,7 +8,7 @@
 >
 > Tout ce qui est coché ci-dessous est sur **`main`**, la seule branche de référence depuis le 2026-10-31 (l'ancienne branche `develop` y a été fusionnée).
 
-## Où nous en sommes — recompté le 2026-11-06
+## Où nous en sommes — recompté le 2026-11-21
 
 Recompté **case par case, en vérifiant le code** (routes, modèles, écrans), et non en reportant le chiffre précédent. `[~]` note une case livrée en partie : ce qui reste est écrit sur la case elle-même.
 
@@ -17,26 +17,42 @@ Recompté **case par case, en vérifiant le code** (routes, modèles, écrans), 
 | **P0** Identité de la plateforme | 5 | — | — | ✅ **fini** |
 | **P1** Épisode de soins + demande d'analyse | 11 | — | — | ✅ **fini** |
 | **P2** Laboratoire | 11 | — | 1 | ⏳ reste la saisie hors connexion (EF-04-11) |
-| **P3** Ordonnance + sécurité de prescription | 5 | 1 | — | ⏳ reste le document imprimable du compte rendu de consultation |
-| **P4** Identité patient, consentement, accès | 8 | — | 1 | ⏳ reste la granularité du consentement par professionnel et par document (EF-02-05) |
-| **P5** Fil d'avancement du parcours | — | 3 | — | ⏳ « Mon parcours », documents et cartes d'assurance existent ; restent le fil unique, le reçu et la déclaration par le patient |
+| **P3** Ordonnance + sécurité de prescription | 6 | — | — | ✅ **fini** |
+| **P4** Identité patient, consentement, accès | 8 | 1 | — | ⏳ l'accord du patient par praticien et par visite est livré ; reste la granularité par document (EF-02-05) |
+| **P5** Fil d'avancement du parcours | 1 | 2 | — | ⏳ tous les documents s'impriment ; restent le fil unique et la déclaration d'assurance par le patient |
 | **P6** Commande pharmacie et gestion d'officine | 10 | 2 | 1 | ⏳ machine à états, panier, délivrance nominative, caisse, lots livrés ; restent l'import Excel, l'OCR et la pharmacie alternative automatique |
-| **P7** Paiement | 3 | 1 | 1 | ⏳ passerelle réelle livrée ; restent le reçu, les remboursements et le rapprochement |
-| **P8** Livraison, carte, annuaire | 3 | 5 | 1 | ⏳ courses, offres des motards et choix du patient livrés ; restent l'adresse GPS, la carte, le code de remise |
+| **P7** Paiement | 4 | — | 1 | ⏳ passerelle réelle et reçu livrés ; restent les remboursements et le rapprochement |
+| **P8** Livraison, carte, annuaire | 4 | 5 | — | ⏳ adresse GPS, photo du livreur et carte des pharmacies livrées ; restent les créneaux, le suivi du trajet, le code de remise |
 | **P9** Notifications neutres | 1 | — | 1 | ⏳ restent les préférences de canaux et le rejeu |
 | **P10** Assurance et tiers payant | 4 | 4 | 1 | ⏳ espace assureur, contrats collectifs, situation par officine livrés ; restent l'autorisation préalable, l'échange par API, la règle de rejet (D4) |
 | **P11** Administration, audit, référentiels | 4 | 2 | 1 | ⏳ reste EF-12-02, les conventions des partenaires |
 | **P12** Interopérabilité | — | — | 3 | ❌ non commencé (l'export FHIR initial existe) |
 | **P13** Extension (lot V4) | 1 | — | 4 | ⏳ RDV à distance livré ; téléconsultation suspendue à D2 |
-| **Total** | **66** | **18** | **15** | **sur 99** |
+| **Total** | **70** | **16** | **13** | **sur 99** |
 
 > **Écart avec le décompte du 10/10** (55 faites sur 97) : P6, P8 et P10 avaient avancé sans que leurs cases soient cochées, et P4 comptait 7 cases sur une liste qui en porte 9. Le total compte désormais les lignes de la liste, une à une.
 
-**Deux blocs sont finis : P0 et P1.** P2, P3 et P4 n'ont plus qu'une case chacun ; P5 à P8 et P10 sont tous entamés ; P12 n'est pas commencé.
+**Trois blocs sont finis : P0, P1 et P3.** P2 et P4 n'ont plus qu'une case chacun ; P5 à P8 et P10 sont tous entamés ; P12 n'est pas commencé.
+
+> **Écart avec le décompte du 06/11** (66 faites) : le compte rendu de consultation et le reçu de paiement s'impriment (06/11), l'adresse du patient porte point de repère et position GPS (11/11), la photo du livreur est vue au comptoir (06/11), la carte des pharmacies existe (14/11), et le patient donne son accord à chaque praticien pour son historique (20/11).
 
 ### Ce qui a été livré hors feuille de route, et qui compte
 
-**Depuis le 10 octobre** (PR #19 à #52) :
+**Du 6 au 21 novembre** (PR #53 à #147) :
+
+| Objet | Contenu |
+|---|---|
+| **Demandes d'agrément** | Une structure privée, puis une compagnie d'assurance, dépose son dossier sans compte ; l'administration le met en vérification, le valide ou le refuse, toujours avec un motif envoyé par courriel. **Toute structure fournit son dossier réglementaire.** La pharmacie d'un hôpital se demande elle aussi |
+| **Candidatures des livreurs** | Dépôt public avec pièces, examen et validation par l'administration |
+| **Référentiel géographique** | Pays paramétrable, découpage générique, voisinages de communes ; les appels aux pharmacies s'élargissent de la commune aux voisines puis à la préfecture |
+| **Recherche publique** | Trouver un médicament et les pharmacies qui l'ont, sans compte |
+| **Les métiers du soin** | Personnel par métiers et spécialités ; **sage-femme** (actes du médecin) et **infirmier** (soins sans prescription) ; services de l'hôpital et orientation par service |
+| **L'établissement** | Couleurs et logo par structure, la structure à la place de la plateforme dans les interfaces ; le **directeur travaille dans l'espace de son établissement** et ne lit aucun contenu médical |
+| **Accès à l'historique** | Sur l'accord du patient, par praticien et par visite |
+| Sécurité | Chiffrement de l'adresse, des traits d'identité, de la posologie et des notes de soin ; changement de téléphone sous double contrôle ; identité figée après vérification, correction tracée |
+| Exploitation | Volumes Docker conservés d'un déploiement à l'autre, migrations jouées par le serveur, courriel par Brevo |
+
+**Du 10 octobre au 6 novembre** (PR #19 à #52) :
 
 | Objet | Contenu |
 |---|---|
@@ -128,7 +144,7 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
 - [x] Front : espace « Laboratoire » (tableau de bord, file, fiche demande avec frise, planification, prélèvement, saisie, validation biologiste, compte rendu), page « Alertes critiques » côté accueil, résultats dans la fiche épisode et dans « Mon parcours », page « Mes résultats » (courbe SVG + tableau) côté patient.
 - [x] ✅ **Livré le 2026-09-29** — Médecin prescripteur : écran « Dossier de la visite » côté médecin (analyses de l'épisode, prescription, clôture). L'API l'autorisait déjà ; c'est l'écran qui manquait. Dans le même mouvement, l'accueil perd prescription, lecture de résultats, bon d'examen, clôture et envoi aux pharmacies (addendum, point 9). Les valeurs d'analyse sont masquées dans la fiche d'épisode qu'il continue de voir : fermer les routes ne suffisait pas.
 
-### P3 — Ordonnance infalsifiable + sécurité de prescription · M · EF-05 · ⏳ **5 cases sur 6**
+### P3 — Ordonnance infalsifiable + sécurité de prescription · M · EF-05 · ✅ **fini** (recompté le 2026-11-21)
 - [x] **API livrée le 2026-09-23** — Numéro unique + code de vérification, durée de validité, statuts `PARTIELLEMENT_SERVIE`/`SERVIE`, vérification côté pharmacie (EF-05-07/08, EF-07-01).
   - L'ordonnance devient un **document** (`ordonnances`) et les médicaments ses **lignes** (`lignes_ordonnance`) : avant, trois médicaments prescrits le même jour formaient trois objets sans lien, donc rien à numéroter ni à contrôler.
   - Numérotation `OR-AAAA-NNNNNN` par le compteur atomique existant ; code de vérification tiré au CSPRNG sur un alphabet sans caractères ambigus (ni 0/O, ni 1/I/L).
@@ -155,9 +171,9 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
   - Ces règles sont appliquées **au niveau du document**, après chaque prescription : le prescripteur ne peut pas s'y soustraire en les ignorant.
   - Front : champ « renouvellements » verrouillé dès qu'un produit réglementé entre dans l'ordonnance, bandeau au comptoir imposant le contrôle d'identité, bouton « Renouveler », et compteur de cycles restants côté patient.
   - Les deux durées et le plafond de renouvellements sont des **paramètres administrables** dans l'onglet « Ordonnances » du super-admin.
-- [~] Compte rendu de consultation structuré, daté, signé (EF-05-03). ✅ **Vérifié le 2026-11-06** : la consultation est structurée (constantes, diagnostics, ordonnances) et **signée par le médecin** (« Valider et signer »), datée par `signeLe`. **Reste le document imprimable** du compte rendu, comme il existe pour l'ordonnance et le bon d'examen.
+- [x] Compte rendu de consultation structuré, daté, signé (EF-05-03). ✅ **Vérifié le 2026-11-21** : la consultation est structurée (constantes, diagnostics, ordonnances), **signée** (« Valider et signer »), datée par `signeLe`, et **s'imprime** (`GET /consultations/:id/compte-rendu`, livré le 06/11) depuis l'espace du patient comme depuis celui de l'agent. Le signataire est nommé selon son métier : « Dr » pour le médecin seul.
 
-### P4 — Identité patient, consentement, accès · L · EF-01 / EF-02 · ✅ **fini**
+### P4 — Identité patient, consentement, accès · L · EF-01 / EF-02 · ⏳ **8 faites + 1 partielle sur 9**
 - [x] **Livré le 2026-10-04** — champs identito-vigilance (lieu de naissance, nom de la mère) et niveaux d'identité `PROVISOIRE` / `VERIFIEE`, avec le **verrou du tiers payant** (EF-01-04/10). La contrainte SQL `patients_identite_verifiee_fondee` interdit une identité vérifiée sans pièce nommée : l'invariant est structurel, pas déclaratif. L'écran d'accueil dit que cela **ne conditionne pas les soins** — un agent qui refuserait quelqu'un sans papiers commettrait une faute grave. Le numéro de pièce n'est jamais réaffiché en entier.
   > **Ce que cela réparait** : l'assurance livrée le 02/10 facturait des tiers sur des identités simplement déclarées. Le verrou par défaut était `VERIFIEE`, donc tout appelant qui l'oubliait passait — avec 1036 tests au vert. Le paramètre est désormais obligatoire.
 - [x] **Livré le 2026-10-04** — **détection de doublons** (EF-01-05). Proposition de candidats à un agent ; **aucune fusion n'est automatique**. Les poids viennent des données réelles : 9 patients sur 10 portaient le 1er janvier 2000, donc la date ne vaut presque rien et ce sont le nom de la mère et le lieu de naissance qui tranchent. Deux bornes structurelles : sans concordance de nom, et sur une simple variante d'orthographe, le score ne franchit jamais le seuil « probable » — deux frères partagent mère, ville, téléphone et parfois date, et atteignaient 115. Tolérance d'écriture (« Diallo » / « Dialo »), parce que c'est ainsi que naissent la plupart des doublons.
@@ -173,7 +189,7 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
   > **Ce que les données ont montré** : sur les quatre consentements en base, **deux avaient été posés par le système** à la création du dossier, sans que personne ne voie rien. L'écran du patient l'affiche désormais en ces termes — « Accord présumé, jamais recueilli. Ce n'est pas un consentement » — et propose de confirmer. C'est tout l'objet du versionnage : distinguer un accord d'une case cochée à la place de quelqu'un.
   > **La langue fait partie du texte** : seul le français existe, et un patient en pular voit le texte français avec la mention « Ce texte n'existe pas encore dans votre langue ». Le manque se voit au lieu de se cacher.
   > **Un texte plus récent ne révoque pas l'accord donné** : révoquer d'office couperait l'accès au dossier de tous les patients le jour où l'on corrige une faute d'orthographe. On demande un renouvellement, on ne l'impose pas.
-- [ ] **Granularité par professionnel et par document** (EF-02-05). Le consentement est aujourd'hui global par usage.
+- [~] **Granularité par professionnel et par document** (EF-02-05). ✅ **Vérifié le 2026-11-21** : le patient donne ou retire **à chaque praticien** l'accès à son historique, demandé à la prise du rendez-vous et borné à la visite (`AutorisationAccesDossier`, page « Accès à mon dossier »). **Reste la granularité par document.**
 - [x] **Livré le 2026-10-07** — **le consentement commande réellement l'accès au dossier.** Un retrait ferme le dossier aux soignants dès la demande suivante ; le bris de glace passe outre, parce que c'est sa raison d'être.
   > **Défaut permissif, et c'est un choix de déploiement assumé.** Pas de ligne de consentement = accès autorisé ; seul un refus explicite coupe. Exiger un accord positif aujourd'hui rendrait **11 dossiers sur 13 invisibles à tous les soignants** — mesuré avant de brancher quoi que ce soit — et treize bris de glace par jour ne sont pas une issue de secours, c'est la porte principale. Le jour où les patients auront répondu, basculer en accord positif tient en une ligne.
   > Le filtre vit **au seul endroit où tous les rôles passent** : le mettre dans chaque branche aurait laissé un rôle dehors tôt ou tard, et un rôle dehors ici, c'est un dossier lu sans droit. Les deux copies du bris de glace ont disparu au passage.
@@ -186,9 +202,9 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
 
 > Cette case était comptée comme non commencée jusqu'au 2026-10-04, alors qu'elle était livrée la veille — la livraison ayant été faite sous P11, où vit le journal d'audit.
 
-### P5 — Fil d'avancement du parcours · S · EF-06 · ⏳ **0 fait + 3 partiels sur 3**
+### P5 — Fil d'avancement du parcours · S · EF-06 · ⏳ **1 faite + 2 partielles sur 3**
 - [~] Endpoint patient agrégeant épisode → analyses → consultation → ordonnance → commande → livraison avec horodatages (EF-06-01). ✅ **Vérifié le 2026-11-06** : la page « Mon parcours » montre épisodes, analyses, rendez-vous et frise ; ordonnances, commandes et paiements ont chacun leur écran. **Reste le fil unique**, du rendez-vous à la livraison.
-- [~] Tous les documents téléchargeables/imprimables (EF-06-02/03). ✅ **Vérifié le 2026-11-06** : bon d'examen, compte rendu d'analyses et ordonnance s'impriment depuis l'espace patient. **Restent le reçu de paiement et le compte rendu de consultation.**
+- [x] Tous les documents téléchargeables/imprimables (EF-06-02/03). ✅ **Vérifié le 2026-11-21** : bon d'examen, compte rendu d'analyses, ordonnance, **compte rendu de consultation** (tableau de bord) et **reçu de paiement** (« Mes paiements ») s'impriment depuis l'espace patient, à l'en-tête de la structure émettrice.
 - [~] Déclaration des informations d'assurance (EF-06-04). ✅ **Vérifié le 2026-11-06** : le patient voit ses cartes d'assurance (« Mes cartes ») ; contrats et adhésions sont saisis par l'assureur ou l'administration. **Reste la déclaration par le patient lui-même.**
 
 ### P6 — Commande pharmacie **et gestion d'officine** · L · EF-07 / §3.2 · ⏳ **10 faites + 2 partielles sur 13** (recompté le 2026-11-06)
@@ -233,7 +249,7 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
 - [~] **Approvisionnement par facture** — **premier temps livré le 2026-09-30 (API + front)** : saisie assistée, une ligne par lot avec sa propre péremption, facture attachée en justificatif, total recalculé à la frappe. **Reste l'extraction automatique**, qui devra **toujours** être relue avant enregistrement : une erreur d'OCR sur une quantité ou une péremption ne doit jamais entrer seule en stock.
 - [x] **API + front livrés le 2026-09-30** — **Alerte de péremption proche**, seuil paramétrable (`STOCK_PEREMPTION_ALERTE_JOURS`, 90 par défaut) et horizon choisi à l'écran (30/60/90/180). Les lots déjà périmés sont présentés à part : ils sont à retirer, pas à surveiller.
 
-### P7 — Paiement · M · EF-08 · ⏳ **3 faites + 1 partielle sur 5** — passerelle **réelle** livrée les 8 et 9/10
+### P7 — Paiement · M · EF-08 · ⏳ **4 faites sur 5** — passerelle **réelle** livrée les 8 et 9/10, reçu le 06/11
 
 > Le titre disait « fournisseur simulé ». Il l'était : `payment-provider.service.ts` fabriquait une référence et n'appelait personne, et une facture ne passait à `PAYEE` que si un humain la confirmait. **Chap Chap Pay** est désormais branché pour de vrai.
 >
@@ -244,21 +260,21 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
 - [x] **Idempotence (EF-08-03)** — portée par la facture et la vente, pas par une table de tentatives : `success` est définitif et n'est jamais défait par un rappel tardif, et la prise est conditionnelle (un seul gagnant).
 - [x] **Statuts en attente et vérification (EF-08-04)** — `statutOperateur` sur la facture et sur la vente ; la relecture interroge la passerelle à la demande. **Pas de tâche de fond** : au comptoir, le pharmacien appuie quand le client dit avoir payé.
 - [x] **Aucune donnée de carte stockée (EF-08-05)** — la plateforme n'en voit jamais : le paiement se fait sur la page de l'opérateur.
-- [~] Détail du calcul avant paiement (EF-08-01) : fait à la caisse pour l'assurance, **reste le reçu et la facture téléchargeables** (EF-08-06). ✅ **Vérifié le 2026-11-06** : aucune route de reçu n'existe encore.
+- [x] Détail du calcul avant paiement (EF-08-01) : fait à la caisse pour l'assurance ; **reçu téléchargeable** (EF-08-06) livré le 06/11 (`GET /paiements/factures/:id/recu`, réservé au patient). ✅ **Vérifié le 2026-11-21.**
 - [ ] Remboursements totaux/partiels motivés (EF-08-07) ; rapprochement quotidien avec signalement des écarts (EF-08-08). ✅ **Vérifié le 2026-11-06** : le remboursement d'une commande payée se fait au comptoir, hors plateforme, et le code le dit ; la clôture de caisse signale l'écart de la session, pas un rapprochement avec l'opérateur.
 
 > **La pharmacie avait un trou** : le pharmacien cochait « Orange Money » et la vente naissait `PAYEE` sans qu'un franc ait bougé. Une vente mobile naît maintenant `EN_ATTENTE`, affiche un QR que le client scanne avec son propre téléphone, et ne devient `PAYEE` qu'en portant `referenceTransaction` — deux contraintes SQL l'imposent.
 
-### P8 — Livraison + carte + annuaire · L · EF-10 · ⏳ **3 faites + 5 partielles sur 9** (recompté le 2026-11-06)
+### P8 — Livraison + carte + annuaire · L · EF-10 · ⏳ **4 faites + 5 partielles sur 9** (recompté le 2026-11-21)
 - [x] ✅ **Vérifié le 2026-11-06** — Rôle `LIVREUR` (espace livreur, recrutement par l'administration) ; la **course** (`Course`, numéro `LV-…`) s'ouvre quand la commande est prête pour livraison, après paiement et préparation (EF-10-01).
-- [ ] Adresse avec points de repère, instructions, position GPS (EF-10-02) ; créneaux (EF-10-03). ✅ **Vérifié le 2026-11-06** : la course ne connaît que le quartier et la préfecture du patient.
+- [~] Adresse avec points de repère, instructions, position GPS (EF-10-02) ; créneaux (EF-10-03). ✅ **Vérifié le 2026-11-21** : l'adresse du patient porte un **point de repère et une position GPS consentie** (11/11), chiffrés au repos, et le motard ne la voit que le temps de livrer. **Restent les créneaux.**
 - [~] Affectation au livreur ; positions horodatées pour le **suivi du trajet** (EF-10-04/05). ✅ **Vérifié le 2026-11-06** : l'affectation se fait par le choix de l'offre (statuts `ATTRIBUEE`, `EN_COURS`, `LIVREE`). **Reste le suivi du trajet sur carte.**
 - [~] Preuve de remise : code à usage unique ou signature (EF-10-06) ; contrôle d'identité produits sensibles (EF-10-07). ✅ **Vérifié le 2026-11-06** : la pharmacie remet au motard, le patient déclare la réception. **Restent le code à usage unique et le contrôle d'identité à la porte.**
 - [~] Échec : nouvelle tentative, retour pharmacie, remboursement (EF-10-08) ; chaîne du froid (EF-10-09) ; signalement colis (EF-10-10). ✅ **Vérifié le 2026-11-06** : renoncer à la livraison et course « sans motard » existent. **Restent la nouvelle tentative, le retour à la pharmacie, la chaîne du froid et le signalement.**
 - [x] ✅ **Vérifié le 2026-11-06** — **Mise en concurrence des motards** (processus du 2026-09-26, voir `PARCOURS-COMMANDE-LIVRAISON.md`) : les motards des communes environnantes sont notifiés de la course, **chacun propose son prix**, et **le patient choisit**. La plateforme n'impose pas de tarif.
-- [~] Sur validation : la pharmacie reçoit **photo, numéro et identifiant** du motard, et **vérifie à son arrivée** avant de remettre les produits. ✅ **Vérifié le 2026-11-06** : nom, téléphone et QR du livreur sont connus de la pharmacie. **Reste la photo.**
+- [x] Sur validation : la pharmacie reçoit **photo, numéro et identifiant** du motard, et **vérifie à son arrivée** avant de remettre les produits. ✅ **Vérifié le 2026-11-21** : photo, nom, téléphone et QR du livreur sont vus au comptoir (photo livrée le 06/11).
 - [x] ✅ **Vérifié le 2026-11-06** — Le retrait en pharmacie n'est **pas un repli** : c'est un mode de remise permanent, à égalité avec la livraison (même poids à l'écran, aucune option présélectionnée).
-- [~] Annuaire public géolocalisé : cliniques, pharmacies, laboratoires (horaires, services, coordonnées). ✅ **Vérifié le 2026-11-06** : la page d'accueil liste les structures avec une recherche. **Restent la carte, la géolocalisation et les horaires.**
+- [~] Annuaire public géolocalisé : cliniques, pharmacies, laboratoires (horaires, services, coordonnées). ✅ **Vérifié le 2026-11-21** : la page d'accueil liste les structures avec une recherche ; **les pharmacies ont leur carte** (OpenStreetMap, 14/11), leur position et leurs **horaires** déclarés par le titulaire. **Restent la carte et les horaires des cliniques et laboratoires.**
 
 ### P9 — Notifications neutres · S · EF-11 · ⏳ **1 sur 2**
 - [x] **API livrée le 2026-10-02** — **aucun contenu médical dans un message sortant** (EF-11-02). Ce n'était pas une case vide mais un **défaut en service** : le code envoyait « des analyses vous attendent », « prélèvement prévu », « vos résultats d'analyses sont disponibles », « RESULTAT CRITIQUE », « votre vaccination BCG est due ». Le contrôle vit au **point de sortie** des SMS, donc un site d'appel oublié ne peut pas fuir ; des constructeurs nommés produisent les messages. Hors production le refus **lève** ; en production il remplace par un message neutre et journalise. Un message tapé par un administrateur est refusé en **400** avec le mot fautif. SMS en repli (EF-11-03) : reste à faire.
@@ -449,6 +465,7 @@ Hébergeur agréé santé et localisation des données (ENF-05), sauvegardes RPO
 
 | Date | Bloc | Commit / note |
 |---|---|---|
+| 2026-11-21 | tous | **Feuille de route recomptée contre le code** : 70 faites, 16 partielles, 13 restantes sur 99. **P3 fini** (compte rendu imprimable) ; reçu de paiement (P7), adresse GPS, photo du livreur et carte des pharmacies (P8), accord du patient par praticien (P4). Livré hors feuille de route : agrément, candidatures des livreurs, géographie, recherche publique, sage-femme, infirmier, directeur dans l'espace de son établissement. |
 | 2026-11-06 | tous | **Feuille de route recomptée case par case contre le code** : 66 faites, 18 partielles, 15 restantes sur 99. P6, P8 et P10 avaient avancé sans être cochés. Application mobile Android (PR #48, #49, #52), logos et photos par chemin (PR #51). |
 | 2026-09-30 | P13→P1 | **Bloc 5 de l'addendum livré (API + front)** : le patient demande un rendez-vous depuis chez lui, l'accueil oriente ce que personne ne vise, le médecin accepte en fixant l'heure — ce geste ouvre l'épisode et le rendez-vous dans la même transaction. La demande n'ouvre pas d'épisode tant qu'elle n'est pas acceptée : un épisode est une visite, et une demande n'en est pas encore une. 376 tests API. |
 | 2026-09-30 | P2 | **Bloc 4 de l'addendum livré** : le rôle `BIOLOGISTE` disparaît, le laborantin valide. Migration écrite à la main — Prisma proposait une conversion d'énumération qui **échoue** sur les comptes existants, et un `DROP COLUMN` qui aurait effacé les 4 conclusions de laboratoire. Vérifié : 2 comptes migrés, 4 conclusions préservées. `commentaireBiologiste` devient `commentaireLaboratoire`. Le compte rendu n'imprime plus « Biologiste » sous le signataire : cette qualification n'a jamais été stockée. |
