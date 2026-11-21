@@ -44,7 +44,7 @@
       <div><div class="bb-hop-info__label">{{ 'HOPITAL.EPISODES.OUVERT_LE' | translate }}</div><div class="bb-hop-info__value">{{ ep.ouvertLe | date:'dd/MM/yyyy HH:mm' }}</div></div>
       <div><div class="bb-hop-info__label">{{ 'HOPITAL.DETAIL.OUVERT_PAR' | translate }}</div><div class="bb-hop-info__value">{{ ep.ouvertPar.prenom }} {{ ep.ouvertPar.nom }}</div></div>
       <div><div class="bb-hop-info__label">{{ 'HOPITAL.DETAIL.SERVICE' | translate }}</div><div class="bb-hop-info__value">{{ ep.service || ('HOPITAL.DETAIL.AUCUN' | translate) }}</div></div>
-      <div><div class="bb-hop-info__label">{{ 'HOPITAL.DETAIL.RESPONSABLE' | translate }}</div><div class="bb-hop-info__value">@if (ep.responsable) { Dr {{ ep.responsable.prenom }} {{ ep.responsable.nom }} } @else { {{ 'HOPITAL.DETAIL.AUCUN' | translate }} }</div></div>
+      <div><div class="bb-hop-info__label">{{ 'HOPITAL.DETAIL.RESPONSABLE' | translate }}</div><div class="bb-hop-info__value">@if (ep.responsable) { {{ ep.responsable | nomPraticien }} } @else { {{ 'HOPITAL.DETAIL.AUCUN' | translate }} }</div></div>
       @if (ep.notes) { <div style="grid-column:1/-1"><div class="bb-hop-info__label">{{ 'HOPITAL.DETAIL.NOTES' | translate }}</div><div class="bb-hop-info__value" style="font-weight:500;white-space:pre-line">{{ ep.notes }}</div></div> }
     </div>
   </section>
@@ -237,7 +237,7 @@
               <span class="bb-hop-sub__num">{{ r.prevuLe | date:'EEEE d MMMM yyyy, HH:mm' }}</span>
               <span class="bb-badge" [class.bb-badge--success]="r.statut === 'PLANIFIE'" [class.bb-badge--neutral]="r.statut !== 'PLANIFIE'">{{ 'HOPITAL.RDV_STATUT.' + r.statut | translate }}</span>
             </div>
-            @if (r.medecin) { <p class="bb-hop-sub__line">{{ 'HOPITAL.DETAIL.RDV_AVEC' | translate }} Dr {{ r.medecin.prenom }} {{ r.medecin.nom }}</p> }
+            @if (r.medecin) { <p class="bb-hop-sub__line">{{ 'HOPITAL.DETAIL.RDV_AVEC' | translate }} {{ r.medecin | nomPraticien }}</p> }
             @if (r.motif) { <p class="bb-hop-sub__line">{{ r.motif }}</p> }
           </div>
         }

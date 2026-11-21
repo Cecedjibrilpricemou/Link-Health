@@ -71,7 +71,7 @@ export const routes: Routes = [
   {
     path: 'medecin',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['MEDECIN'] },
+    data: { roles: ['MEDECIN', 'SAGE_FEMME'] },
     loadChildren: () =>
       import('./features/medecin/medecin.routes').then(m => m.MEDECIN_ROUTES)
   },

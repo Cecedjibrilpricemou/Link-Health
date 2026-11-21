@@ -2,6 +2,7 @@ import { Prisma } from '../config/generated/client/client';
 import { prisma } from '../config/prisma';
 import { JwtPayload } from '../types/auth.types';
 import { ForbiddenError } from '../utils/app-error';
+import { estPraticien } from '../utils/praticien.util';
 
 type PatientWhere = Prisma.PatientProfileWhereInput;
 type ConsultationWhere = Prisma.ConsultationWhereInput;
@@ -101,7 +102,7 @@ async function relationDeSoin(user: JwtPayload, utilisateur: Profils): Promise<P
     ? [{ episodes: { some: { idStructure, statut: { in: ['OUVERT', 'EN_COURS'] } } } }]
     : [];
 
-  if (user.role === 'MEDECIN') {
+  if (estPraticien(user.role)) {
     return {
       OR: [
         {
@@ -212,7 +213,7 @@ export async function buildConsultationWhereForUser(user: JwtPayload): Promise<C
     };
   }
 
-  if (user.role === 'MEDECIN') {
+  if (estPraticien(user.role)) {
     const medecin = await prisma.medecinProfile.findUnique({
       where: { idUtilisateur: user.userId },
       select: { idStructure: true },

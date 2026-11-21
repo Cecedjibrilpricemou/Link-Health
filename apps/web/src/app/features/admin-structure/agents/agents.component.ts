@@ -11,7 +11,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import {
-  Metier, estMetierMedical, libelleSpecialite, metierDe, metiersPour, SPECIALITES_DE_SPECIALISTE, versCreation,
+  Metier, estMetierMedical, estRolePraticien, libelleSpecialite, metierDe, metiersPour, SPECIALITES_DE_SPECIALISTE, versCreation,
 } from '../../../shared/utils/metiers-personnel';
 import type {
   AgentStructureView, CreationAgentView, HorodatageApi, ReinitialisationMotDePasseView, ServiceHospitalierView, SpecialiteMedicale, TypeStructure,
@@ -82,6 +82,8 @@ export class AgentsComponent implements OnInit {
   }
 
   estMedical(m: Metier | '') { return !!m && estMetierMedical(m); }
+  /** Medecin ou sage-femme : numero d'ordre, service et bureau. */
+  estPraticien(role: string) { return estRolePraticien(role); }
 
   // ── Le bureau du medecin (addendum, point 2) ───────────────────────
   //
@@ -139,7 +141,8 @@ export class AgentsComponent implements OnInit {
   enregistrerProfil(agent: AgentStructureView) {
     const numero = this.profilSaisi.numeroOrdre.trim();
     this.api.put<{ success: boolean; message?: string }>(`/admin-structure/agents/${agent.id}/profil`, {
-      specialite: this.profilSaisi.specialite,
+      // La sage-femme n'a pas de specialite : l'API la refuserait.
+      ...(agent.role === 'MEDECIN' ? { specialite: this.profilSaisi.specialite } : {}),
       numeroOrdre: numero.length ? numero : null,
       // Envoye seulement si la structure a des services : sinon rien a dire.
       ...(this.services().length ? { idService: this.profilSaisi.idService || null } : {}),

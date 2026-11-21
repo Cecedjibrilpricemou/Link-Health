@@ -253,7 +253,7 @@ describe('reactiver', () => {
   // qui rétrécit avec la liste qu'il est censé vérifier.
   it('couvre exactement les rôles inscrits à un ordre', () => {
     expect([...ROLES_A_ORDRE].sort()).toEqual(
-      ['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'PHARMACIEN', 'TECHNICIEN_LABO']
+      ['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'PHARMACIEN', 'SAGE_FEMME', 'TECHNICIEN_LABO']
     );
   });
 

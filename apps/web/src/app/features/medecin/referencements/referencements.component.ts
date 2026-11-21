@@ -13,6 +13,7 @@ import type { HorodatageApi, ReferencementATraiterView, ReferralStatus } from '@
 import { MedecinService } from '../../../core/services/medecin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 type Filtre = 'EN_ATTENTE' | 'ACCEPTE' | 'REFUSE';
 
@@ -26,6 +27,8 @@ type Filtre = 'EN_ATTENTE' | 'ACCEPTE' | 'REFUSE';
   styleUrls: ['../consultations/consultations.component.scss', './referencements.component.scss'],
 })
 export class MedecinReferencementsComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private medecinService = inject(MedecinService);
   private i18n = inject(I18nService);
   private toastr = inject(ToastrService);

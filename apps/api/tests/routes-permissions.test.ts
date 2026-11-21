@@ -98,7 +98,7 @@ const paiements = require('../src/routes/paiement.routes').default as { stack: C
 
 describe('compte rendu de consultation (EF-05-03)', () => {
   it('ouvert au patient et aux soignants, ferme a l administration et au comptoir', () => {
-    expect(rolesPour(consultations, 'get', '/:id/compte-rendu')).toEqual(['PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN']);
+    expect(rolesPour(consultations, 'get', '/:id/compte-rendu')).toEqual(['PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME']);
   });
 
   describe('recu de paiement', () => {
@@ -179,25 +179,25 @@ describe('ce qui revient au medecin', () => {
   // Liberer des resultats est un acte medical : ni l'administrateur de la
   // structure, qui atteint pourtant le reste du routeur, ni personne d'autre.
   it('liberer des resultats est reserve au seul MEDECIN', () => {
-    expect(rolesPour(medecin, 'post', '/resultats/:id/liberer')).toEqual(['MEDECIN']);
-    expect(rolesPour(medecin, 'get', '/resultats')).toEqual(['MEDECIN']);
+    expect(rolesPour(medecin, 'post', '/resultats/:id/liberer')).toEqual(['MEDECIN', 'SAGE_FEMME']);
+    expect(rolesPour(medecin, 'get', '/resultats')).toEqual(['MEDECIN', 'SAGE_FEMME']);
   });
 
   // Addendum, point 3 : le creneau appartient au medecin. L'administrateur de
   // structure atteint le reste du routeur mais n'a pas d'agenda a tenir.
   it('fixer un rendez-vous et tenir son agenda sont reserves au MEDECIN', () => {
-    expect(rolesPour(medecin, 'post', '/orientations/:idEpisode/rendez-vous')).toEqual(['MEDECIN']);
-    expect(rolesPour(medecin, 'get', '/rendez-vous')).toEqual(['MEDECIN']);
-    expect(rolesPour(medecin, 'patch', '/rendez-vous/:id/statut')).toEqual(['MEDECIN']);
+    expect(rolesPour(medecin, 'post', '/orientations/:idEpisode/rendez-vous')).toEqual(['MEDECIN', 'SAGE_FEMME']);
+    expect(rolesPour(medecin, 'get', '/rendez-vous')).toEqual(['MEDECIN', 'SAGE_FEMME']);
+    expect(rolesPour(medecin, 'patch', '/rendez-vous/:id/statut')).toEqual(['MEDECIN', 'SAGE_FEMME']);
   });
 });
 
 describe('prise de rendez-vous a distance (addendum, point 6)', () => {
   // Chaque metier a son geste, et un seul.
   it('seul le medecin accepte ou refuse une demande', () => {
-    expect(rolesPour(medecin, 'get', '/demandes')).toEqual(['MEDECIN']);
-    expect(rolesPour(medecin, 'post', '/demandes/:id/accepter')).toEqual(['MEDECIN']);
-    expect(rolesPour(medecin, 'post', '/demandes/:id/refuser')).toEqual(['MEDECIN']);
+    expect(rolesPour(medecin, 'get', '/demandes')).toEqual(['MEDECIN', 'SAGE_FEMME']);
+    expect(rolesPour(medecin, 'post', '/demandes/:id/accepter')).toEqual(['MEDECIN', 'SAGE_FEMME']);
+    expect(rolesPour(medecin, 'post', '/demandes/:id/refuser')).toEqual(['MEDECIN', 'SAGE_FEMME']);
   });
 
   // L'accueil oriente ce que personne ne vise : c'est son metier.
@@ -632,7 +632,7 @@ describe('les services de l etablissement', () => {
   });
 
   it('se lisent a l accueil, chez le medecin et l administrateur', () => {
-    expect(rolesPour(hopital, 'get', '/services')).toEqual(['AGENT_ACCUEIL', 'MEDECIN', 'ADMIN_STRUCTURE']);
+    expect(rolesPour(hopital, 'get', '/services')).toEqual(['AGENT_ACCUEIL', 'MEDECIN', 'SAGE_FEMME', 'ADMIN_STRUCTURE']);
   });
 });
 

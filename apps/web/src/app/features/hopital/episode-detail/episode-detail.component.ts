@@ -24,13 +24,14 @@ import { interpretationClasse, referenceLisible } from '../../laboratoire/labora
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { RACINE_ACCUEIL } from '../../../core/navigation/racines';
 import { libelleSpecialite } from '../../../shared/utils/metiers-personnel';
+import { NomPraticienPipe, nomPraticien } from '../../../shared/pipes/nom-praticien.pipe';
 
 type Panneau = 'aucun' | 'orientation' | 'analyse';
 
 @Component({
   selector: 'app-hopital-episode-detail',
   standalone: true,
-  imports: [ListeRechercheComponent, RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatDialogModule, ChoixLaboratoireComponent, TranslatePipe],
+  imports: [NomPraticienPipe, ListeRechercheComponent, RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatDialogModule, ChoixLaboratoireComponent, TranslatePipe],
   templateUrl: './episode-detail.component.html',
 })
 export class EpisodeDetailComponent implements OnInit {
@@ -52,9 +53,9 @@ export class EpisodeDetailComponent implements OnInit {
     const liste = duService.length ? duService : this.medecins();
     return liste.map((m) => ({
       valeur: m.id,
-      libelle: `Dr ${m.prenom} ${m.nom}`,
+      libelle: nomPraticien(m),
       // Specialite et service, sans repeter un meme nom (« Pédiatrie · Pédiatrie »).
-      detail: [...new Map([libelleSpecialite((cle) => this.i18n.t(cle), m.specialite), m.service?.nom]
+      detail: [...new Map([m.role === 'SAGE_FEMME' ? this.i18n.t('ROLE.SAGE_FEMME') : libelleSpecialite((cle) => this.i18n.t(cle), m.specialite), m.service?.nom]
         .filter((v): v is string => !!v).map((v) => [v.toLocaleLowerCase('fr'), v])).values()].join(' · ') || undefined,
     }));
   });

@@ -30,6 +30,8 @@ export type Role =
   | 'ASC'
   | 'ASC_SUPERVISOR'
   | 'MEDECIN'
+  /** Sage-femme : les ecrans et les actes du medecin, un metier a part. */
+  | 'SAGE_FEMME'
   | 'PHARMACIEN'
   | 'AGENT_ACCUEIL'
   | 'TECHNICIEN_LABO'
@@ -2875,7 +2877,8 @@ export interface DemandeRendezVousView {
    * `null` — tous les hopitaux ne numerotent pas leurs bureaux, et l agent
    * d accueil accompagne a pied.
    */
-  medecin?: { id: string; prenom: string; nom: string; bureau?: string | null } | null;
+  /** `role` : un « Dr » pour le medecin seul, pas pour la sage-femme. */
+  medecin?: { id: string; prenom: string; nom: string; role?: Role; bureau?: string | null } | null;
   /** Rempli a l'acceptation : la demande est devenue une visite. */
   idEpisode?: string | null;
   numeroEpisode?: string | null;
@@ -2928,7 +2931,8 @@ export interface PresenceDuJourView {
    * `null` : beaucoup d hopitaux ne numerotent pas leurs bureaux, et l agent
    * accompagne a pied. Dans ce cas l ecran n affiche rien.
    */
-  medecin?: { id: string; prenom: string; nom: string; bureau?: string | null } | null;
+  /** `role` : un « Dr » pour le medecin seul, pas pour la sage-femme. */
+  medecin?: { id: string; prenom: string; nom: string; role?: Role; bureau?: string | null } | null;
   idEpisode?: string | null;
 }
 
@@ -5053,7 +5057,7 @@ export const SPECIALITES_MEDICALES = [
 export type SpecialiteMedicale = (typeof SPECIALITES_MEDICALES)[number];
 
 /** Les roles qu'un administrateur de structure cree, selon ce que fait sa structure. */
-export type RoleAgentStructure = 'ASC' | 'ASC_SUPERVISOR' | 'MEDECIN' | 'AGENT_ACCUEIL' | 'TECHNICIEN_LABO';
+export type RoleAgentStructure = 'ASC' | 'ASC_SUPERVISOR' | 'MEDECIN' | 'SAGE_FEMME' | 'AGENT_ACCUEIL' | 'TECHNICIEN_LABO';
 
 /** PUT /admin-structure/agents/:id/profil — le metier d'un medecin. */
 export interface ModifierProfilAgentDto {

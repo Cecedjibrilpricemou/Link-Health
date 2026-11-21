@@ -12,6 +12,8 @@ export const ACCUEIL_PAR_ROLE: Readonly<Record<string, string>> = {
   ASC:             '/asc/consultations',
   ASC_SUPERVISOR:  '/asc/consultations',
   MEDECIN:         '/medecin/dashboard',
+  // La sage-femme a les ecrans du medecin.
+  SAGE_FEMME:      '/medecin/dashboard',
   PHARMACIEN:      '/pharmacien/tableau-de-bord',
   AGENT_ACCUEIL:   '/hopital/tableau-de-bord',
   TECHNICIEN_LABO: '/laboratoire/tableau-de-bord',

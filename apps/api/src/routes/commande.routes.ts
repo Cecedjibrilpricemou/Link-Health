@@ -32,7 +32,7 @@ router.use(authenticate);
  */
 router.post(
   '/',
-  requireRole('MEDECIN', 'ASC', 'ASC_SUPERVISOR'),
+  requireRole('MEDECIN', 'SAGE_FEMME', 'ASC', 'ASC_SUPERVISOR'),
   validateBody(lancerRechercheSchema),
   async (req: AuthRequest, res: Response) => {
     const data = await commande.lancerRecherchePharmacie(req.body.idOrdonnance);

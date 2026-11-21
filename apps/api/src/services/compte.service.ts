@@ -222,7 +222,7 @@ export async function suspendre(
  * agents d'accueil, et exiger un numero qu'on ne peut pas produire bloquerait
  * des comptes legitimes.
  */
-export const ROLES_A_ORDRE: Role[] = ['MEDECIN', 'PHARMACIEN', 'ASC', 'ASC_SUPERVISOR', 'TECHNICIEN_LABO'];
+export const ROLES_A_ORDRE: Role[] = ['MEDECIN', 'SAGE_FEMME', 'PHARMACIEN', 'ASC', 'ASC_SUPERVISOR', 'TECHNICIEN_LABO'];
 
 /**
  * Enregistrer qu'un numero d'ordre a ete confronte au registre (EF-01-08).

@@ -186,16 +186,19 @@
 
             <!-- Le metier d'un medecin : specialite et numero d'ordre. Changer
                  le numero retire la verification du registre. -->
-            @if (agent.role === 'MEDECIN' && agent.estActif !== false && profilEnEdition() === agent.id) {
+            @if (estPraticien(agent.role) && agent.estActif !== false && profilEnEdition() === agent.id) {
               <div class="bb-agents__bureau-edit">
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>{{ 'ADMIN_STRUCTURE.AGENTS.SPECIALITE_LABEL' | translate }}</mat-label>
-                  <mat-select [(ngModel)]="profilSaisi.specialite" name="specialite">
-                    @for (sp of toutesSpecialites; track sp) {
-                      <mat-option [value]="sp">{{ 'SPECIALITE.' + sp | translate }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
+                <!-- La sage-femme n'a pas de specialite : son metier en tient lieu. -->
+                @if (agent.role === 'MEDECIN') {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>{{ 'ADMIN_STRUCTURE.AGENTS.SPECIALITE_LABEL' | translate }}</mat-label>
+                    <mat-select [(ngModel)]="profilSaisi.specialite" name="specialite">
+                      @for (sp of toutesSpecialites; track sp) {
+                        <mat-option [value]="sp">{{ 'SPECIALITE.' + sp | translate }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
                 @if (services().length) {
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <mat-label>{{ 'ADMIN_STRUCTURE.AGENTS.SERVICE_LABEL' | translate }}</mat-label>
@@ -219,7 +222,7 @@
 
             <!-- Le bureau ne concerne que le medecin : c'est chez lui que
                  l'accueil envoie le patient. -->
-            @if (agent.role === 'MEDECIN' && agent.estActif !== false && profilEnEdition() !== agent.id) {
+            @if (estPraticien(agent.role) && agent.estActif !== false && profilEnEdition() !== agent.id) {
               @if (bureauEnEdition() === agent.id) {
                 <div class="bb-agents__bureau-edit">
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -258,7 +261,7 @@
                 <i class="pi pi-replay" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.AGENTS.REACTIVER' | translate }}
               </button>
             } @else {
-              @if (agent.role === 'MEDECIN') {
+              @if (estPraticien(agent.role)) {
                 <button class="bb-agents__icon bb-agents__modifier" type="button" (click)="ouvrirProfil(agent)"
                         [attr.title]="'ADMIN_STRUCTURE.AGENTS.MODIFIER' | translate"
                         [attr.aria-label]="'ADMIN_STRUCTURE.AGENTS.MODIFIER_ARIA' | translate: { nom: agent.prenom + ' ' + agent.nom }">

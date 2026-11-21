@@ -24,6 +24,7 @@ import type { BrisDeGlaceView, MotifBrisDeGlace } from '@baobaoheath/shared-type
 import { BrisDeGlaceService } from '../../../core/services/bris-de-glace.service';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 const MOTIFS: MotifBrisDeGlace[] = [
   'URGENCE_VITALE',
@@ -51,6 +52,8 @@ const DUREE_HEURES = 4;
   styleUrl: './bris-de-glace.component.scss',
 })
 export class BrisDeGlaceComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private service = inject(BrisDeGlaceService);
   private route = inject(ActivatedRoute);
   private i18n = inject(I18nService);

@@ -29,6 +29,7 @@ import type {
   CreerDemandeRendezVousDto,
   AccepterDemandeRendezVousDto,
 } from '@baobaoheath/shared-types';
+import { ROLES_PRATICIENS } from '../utils/praticien.util';
 
 /**
  * Les structures ou l'on peut etre recu en consultation.
@@ -49,7 +50,7 @@ const DEMANDE_INCLUDE = {
   // `bureau` : ou le patient devra se rendre. Souvent nul.
   medecin: {
     select: {
-      id: true, prenom: true, nom: true,
+      id: true, prenom: true, nom: true, role: true,
       medecinProfile: { select: { bureau: true } },
     },
   },
@@ -80,6 +81,7 @@ function versVue(d: DemandeRow): DemandeRendezVousView {
           id: d.medecin.id,
           prenom: d.medecin.prenom,
           nom: d.medecin.nom,
+          role: d.medecin.role,
           bureau: d.medecin.medecinProfile?.bureau ?? null,
         }
       : null,
@@ -134,7 +136,7 @@ export async function creerDemande(userId: string, dto: CreerDemandeRendezVousDt
   if (dto.idMedecin) {
     const m = await prisma.utilisateur.findFirst({
       where: {
-        id: dto.idMedecin, role: 'MEDECIN', estActif: true,
+        id: dto.idMedecin, role: { in: [...ROLES_PRATICIENS] }, estActif: true,
         OR: [{ idStructure }, { medecinProfile: { idStructure } }],
       },
       select: { id: true },
@@ -249,7 +251,7 @@ export async function orienterDemande(user: JwtPayload, idDemande: string, idMed
 
   const medecin = await prisma.utilisateur.findFirst({
     where: {
-      id: idMedecin, role: 'MEDECIN', estActif: true,
+      id: idMedecin, role: { in: [...ROLES_PRATICIENS] }, estActif: true,
       OR: [{ idStructure }, { medecinProfile: { idStructure } }],
     },
     select: { id: true },

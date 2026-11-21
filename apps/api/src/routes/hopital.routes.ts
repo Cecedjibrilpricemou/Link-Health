@@ -37,7 +37,7 @@ import type {
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole('AGENT_ACCUEIL', 'MEDECIN', 'ADMIN_STRUCTURE'));
+router.use(requireRole('AGENT_ACCUEIL', 'MEDECIN', 'SAGE_FEMME', 'ADMIN_STRUCTURE'));
 // L'accueil et l'administration suivent le parcours sans en lire le contenu :
 // aucune reponse de ce routeur ne leur porte une valeur d'analyse.
 router.use(sansValeursDAnalysePour('AGENT_ACCUEIL', 'ADMIN_STRUCTURE'));
@@ -54,7 +54,7 @@ router.use(sansValeursDAnalysePour('AGENT_ACCUEIL', 'ADMIN_STRUCTURE'));
 // L'administrateur de la structure non plus : il dirige l'etablissement, il
 // ne soigne pas. Prescrire, ouvrir une consultation, clore la prise en charge
 // sont des actes du medecin.
-const ACTE_MEDICAL = requireRole('MEDECIN');
+const ACTE_MEDICAL = requireRole('MEDECIN', 'SAGE_FEMME');
 
 // Les erreurs metier (AppError) remontent au middleware global : pas de
 // try/catch ici, Express 5 propage les rejets des handlers async.

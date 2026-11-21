@@ -8,7 +8,7 @@ import { triageSchema } from '../validators/api.schemas';
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN'));
+router.use(requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME'));
 
 router.post('/evaluer', validateBody(triageSchema), evaluerTriageController);
 

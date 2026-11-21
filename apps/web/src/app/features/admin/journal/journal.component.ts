@@ -33,7 +33,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 /** Les roles proposes au filtre, dans l'ordre du parcours de soins. */
 const ROLES: Role[] = [
-  'PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'PHARMACIEN', 'AGENT_ACCUEIL',
+  'PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'PHARMACIEN', 'AGENT_ACCUEIL',
   'TECHNICIEN_LABO', 'LIVREUR', 'ADMIN_STRUCTURE', 'ADMIN_REGIONAL',
   'ADMIN_NATIONAL', 'SUPER_ADMIN',
 ];

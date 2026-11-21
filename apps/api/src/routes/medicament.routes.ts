@@ -22,7 +22,7 @@ router.use(authenticate);
 
 router.get(
   '/',
-  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'PHARMACIEN', 'ADMIN_STRUCTURE'),
+  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'PHARMACIEN', 'ADMIN_STRUCTURE'),
   async (_req: AuthRequest, res: Response) => {
     const data = await pharmacienService.getMedicamentsPrescriptibles();
     res.json({ success: true, data });

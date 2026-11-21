@@ -146,6 +146,25 @@ describe('mes agents', () => {
     expect(api.put).toHaveBeenCalledWith('/admin-structure/agents/a1/profil', expect.objectContaining({ idService: 'sv-2' }));
   });
 
+  // La sage-femme a un profil de praticien - numero d'ordre, service, bureau -
+  // mais pas de specialite : l'API la refuserait.
+  it('la sage-femme se modifie sans specialite, et part comme sage-femme a la creation', () => {
+    const { el, fixture, api, c } = monter([agent({ role: 'SAGE_FEMME', specialite: null })]);
+    expect(el.querySelector('.bb-agents__bureau')).not.toBeNull();
+    el.querySelector<HTMLButtonElement>('.bb-agents__modifier')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[name="specialite"]')).toBeNull();
+    c.profilSaisi = { ...c.profilSaisi, numeroOrdre: 'SF-7' };
+    el.querySelector<HTMLButtonElement>('.bb-agents__profil-save')!.click();
+    expect(api.put).toHaveBeenCalledWith('/admin-structure/agents/a1/profil', { numeroOrdre: 'SF-7' });
+
+    c.newAgent = { telephone: '620', email: 's@x.test', prenom: 'S', nom: 'F', metier: 'SAGE_FEMME', specialite: '', numeroOrdre: '', idService: '' } as typeof c.newAgent;
+    c.creerAgent();
+    const corps = api.post.mock.calls[0]![1] as Record<string, unknown>;
+    expect(corps['role']).toBe('SAGE_FEMME');
+    expect(corps).not.toHaveProperty('specialite');
+  });
+
   it('sans services declares, le profil n envoie pas de service', () => {
     const { el, fixture, api } = monter([agent()]);
     el.querySelector<HTMLButtonElement>('.bb-agents__modifier')!.click();

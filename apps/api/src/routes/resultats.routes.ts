@@ -18,7 +18,7 @@ router.use(authenticate);
 // 2026-09-28 il ne prescrit plus, donc plus aucune alerte ne lui est destinee
 // et il n'a plus de raison de lire un resultat.
 // Les resultats sont au soin : l'administration de la structure n'en lit pas.
-router.use(requireRole('MEDECIN', 'ASC', 'ASC_SUPERVISOR'));
+router.use(requireRole('MEDECIN', 'SAGE_FEMME', 'ASC', 'ASC_SUPERVISOR'));
 
 router.get('/alertes', async (req: AuthRequest, res: Response) => {
   const data: AlerteCritiqueView[] = await labo.mesAlertes(req.user!);

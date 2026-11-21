@@ -24,6 +24,7 @@ import { NotFoundError } from '../utils/app-error';
 import { assertCanAccessConsultation } from './access-control.service';
 import { echapper } from './hopital.service';
 import { identiteDocument, IdentiteDocument, structureDeConsultation } from './document-emetteur.service';
+import { nomDuPraticien, qualiteDuPraticien } from '../utils/praticien.util';
 
 const CONSULTATION_DOCUMENT_INCLUDE = {
   patient: {
@@ -33,7 +34,7 @@ const CONSULTATION_DOCUMENT_INCLUDE = {
     },
   },
   asc: { select: { utilisateur: { select: { prenom: true, nom: true } } } },
-  medecinValideur: { select: { prenom: true, nom: true } },
+  medecinValideur: { select: { prenom: true, nom: true, role: true } },
   constantes: true,
   diagnostics: { orderBy: { creeLe: 'asc' } },
   ordonnances: {
@@ -220,16 +221,16 @@ export function rendreCompteRendu(c: ConsultationDocument, identite: Identite): 
     section('Constantes', tableConstantes),
     section('Diagnostics', diagnostics),
     section('Observations de l\'agent de sant&eacute;', c.notesAsc ? '<p>' + texte(c.notesAsc) + '</p>' : ''),
-    section('Conclusion du m&eacute;decin', c.notesMedecin ? '<p>' + texte(c.notesMedecin) + '</p>' : ''),
+    section(medecin?.role === 'SAGE_FEMME' ? 'Conclusion de la sage-femme' : 'Conclusion du m&eacute;decin', c.notesMedecin ? '<p>' + texte(c.notesMedecin) + '</p>' : ''),
     section('Prescriptions', ordonnances),
     section('Orientation', referencement),
 
     '<h2>Intervenants</h2><div class="grid">',
     '<div>Agent de sant&eacute; : ', agent ? echapper(agent.prenom) + ' ' + echapper(agent.nom) : '&mdash;', '</div>',
-    '<div>M&eacute;decin : ', medecin ? 'Dr ' + echapper(medecin.prenom) + ' ' + echapper(medecin.nom) : '&mdash;', '</div>',
+    '<div>', echapper(qualiteDuPraticien(medecin?.role)), ' : ', medecin ? echapper(nomDuPraticien(medecin)) : '&mdash;', '</div>',
     '</div>',
     '<div class="sign"><div>',
-    signe ? 'Sign&eacute; le ' + dateHeure(c.signeLe!) + '<br>Dr ' + echapper(medecin!.prenom) + ' ' + echapper(medecin!.nom)
+    signe ? 'Sign&eacute; le ' + dateHeure(c.signeLe!) + '<br>' + echapper(nomDuPraticien(medecin!))
       : 'Non sign&eacute; par un m&eacute;decin',
     '</div></div>',
     '<footer><span>', echapper(identite.copyright), '</span><span>', coordonnees, '</span></footer>',

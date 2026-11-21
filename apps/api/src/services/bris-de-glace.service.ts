@@ -51,7 +51,7 @@ export const DUREE_HEURES = 4;
  * regle. Un pharmacien non plus : il verifie une ordonnance, qui lui est
  * presentee.
  */
-export const ROLES_AUTORISES: Role[] = [Role.MEDECIN, Role.ASC, Role.ASC_SUPERVISOR];
+export const ROLES_AUTORISES: Role[] = [Role.MEDECIN, Role.SAGE_FEMME, Role.ASC, Role.ASC_SUPERVISOR];
 
 export const EXPLICATION_MIN = 20;
 

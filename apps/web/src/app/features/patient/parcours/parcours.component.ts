@@ -12,13 +12,14 @@ import { statutDemandeClasse, statutEpisodeClasse, urgenceClasse } from '../../h
 import { LaboratoireService } from '../../../core/services/laboratoire.service';
 import { interpretationClasse, referenceLisible } from '../../laboratoire/laboratoire.utils';
 import { RouterLink } from '@angular/router';
+import { NomPraticienPipe } from '../../../shared/pipes/nom-praticien.pipe';
 
 type Etape = { cle: string; etat: 'done' | 'now' | 'todo' | 'soon' };
 
 @Component({
   selector: 'app-patient-parcours',
   standalone: true,
-  imports: [DatePipe, MatButtonModule, TranslatePipe, RouterLink],
+  imports: [NomPraticienPipe, DatePipe, MatButtonModule, TranslatePipe, RouterLink],
   templateUrl: './parcours.component.html',
 })
 export class ParcoursComponent implements OnInit {

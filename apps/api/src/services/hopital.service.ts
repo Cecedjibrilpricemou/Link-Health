@@ -38,6 +38,7 @@ import type {
   TableauDeBordHopitalView,
   UpdateEpisodeDto,
 } from '@baobaoheath/shared-types';
+import { ROLES_PRATICIENS } from '../utils/praticien.util';
 
 // ── Selections partagees ─────────────────────────────────────────────
 // Partagees avec laboratoire.service (P2) : une seule forme de demande.
@@ -383,7 +384,7 @@ export async function creerEpisode(user: JwtPayload, dto: CreateEpisodeDto): Pro
 async function verifierMedecinDeLaStructure(idMedecin: string, idStructure: string) {
   const medecin = await prisma.utilisateur.findFirst({
     where: {
-      id: idMedecin, role: Role.MEDECIN, estActif: true,
+      id: idMedecin, role: { in: [...ROLES_PRATICIENS] }, estActif: true,
       OR: [{ idStructure }, { medecinProfile: { idStructure } }],
     },
     select: { id: true },
@@ -563,7 +564,7 @@ export async function listerLaboratoires(): Promise<StructureRefView[]> {
 export async function listerMedecinsDeLaStructure(user: JwtPayload) {
   const idStructure = await structureDe(user);
   return prisma.utilisateur.findMany({
-    where: { role: Role.MEDECIN, estActif: true, OR: [{ idStructure }, { medecinProfile: { idStructure } }] },
+    where: { role: { in: [...ROLES_PRATICIENS] }, estActif: true, OR: [{ idStructure }, { medecinProfile: { idStructure } }] },
     select: {
       ...PERSONNE_SELECT,
       medecinProfile: { select: { specialite: true, service: { select: { id: true, nom: true, actif: true } } } },
@@ -786,7 +787,7 @@ const PRESENCE_INCLUDE = {
   // `bureau` : ce que l'agent lit au patient juste apres l'avoir pointe.
   medecin: {
     select: {
-      id: true, prenom: true, nom: true,
+      id: true, prenom: true, nom: true, role: true,
       medecinProfile: { select: { bureau: true } },
     },
   },
@@ -812,6 +813,7 @@ function versPresence(r: PresenceRow): PresenceDuJourView {
           id: r.medecin.id,
           prenom: r.medecin.prenom,
           nom: r.medecin.nom,
+          role: r.medecin.role,
           // Souvent nul : l'ecran n'affiche alors rien plutot qu'un tiret.
           bureau: r.medecin.medecinProfile?.bureau ?? null,
         }
