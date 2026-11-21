@@ -7,6 +7,7 @@ import * as piecesAgrement from '../services/piece-agrement.service';
 import { validateBody } from '../middlewares/validate.middleware';
 import { uploadLogo, uploadVisuel } from '../middlewares/upload.middleware';
 import * as visuels from '../services/visuels.service';
+import * as servicesHospitaliers from '../services/services-hospitaliers.service';
 import { uploadLogoController } from '../controllers/upload.controller';
 import { ValidationError } from '../utils/app-error';
 import * as plateau from '../services/plateau-technique.service';
@@ -21,6 +22,7 @@ import type {
   ParametresSystemeView,
   ParametresVisuelsView,
   ReinitialisationMotDePasseView,
+  ServiceHospitalierView,
   StructureAdminView,
   MaStructureView, StatsStructureView,
   StructurePubliqueView,
@@ -36,6 +38,8 @@ import {
   definirPartenariatSchema,
   decrireVisuelSchema,
   modifierProfilAgentSchema,
+  creerServiceSchema,
+  modifierServiceSchema,
 } from '../validators/api.schemas';
 
 const router = Router();
@@ -121,6 +125,23 @@ router.put('/agents/:id/bureau', requireRole('ADMIN_STRUCTURE'), validateBody(de
 router.put('/agents/:id/desactiver', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
   await service.desactiverAgent(req.user!.userId, String(req.params.id));
   res.json({ success: true, message: 'Agent desactive' });
+});
+
+// ── Les services de l'etablissement ──────────────────────────────────
+router.get('/services', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
+  const data: ServiceHospitalierView[] = await servicesHospitaliers.listerServices(req.user!.userId);
+  res.json({ success: true, data });
+});
+
+router.post('/services', requireRole('ADMIN_STRUCTURE'), validateBody(creerServiceSchema), async (req: AuthRequest, res: Response) => {
+  const data: ServiceHospitalierView = await servicesHospitaliers.creerService(req.user!.userId, req.body.nom);
+  res.status(201).json({ success: true, data });
+});
+
+// Renommer, fermer ou rouvrir. Un service ne se supprime pas.
+router.put('/services/:id', requireRole('ADMIN_STRUCTURE'), validateBody(modifierServiceSchema), async (req: AuthRequest, res: Response) => {
+  const data: ServiceHospitalierView = await servicesHospitaliers.modifierService(req.user!.userId, String(req.params.id), req.body);
+  res.json({ success: true, data });
 });
 
 router.put('/agents/:id/reactiver', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {

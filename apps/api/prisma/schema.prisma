@@ -875,6 +875,7 @@ model StructureSante {
   conseille             StructureConseillee[] @relation("StructureQuiConseille")
   conseilleePar         StructureConseillee[] @relation("StructureConseillee")
 
+  services ServiceHospitalier[]
   @@index([idStructureParente])
   @@map("structures")
 }
@@ -1387,6 +1388,11 @@ model MedecinProfile {
 
   idStructure String?
   structure   StructureSante? @relation(fields: [idStructure], references: [id])
+
+  /// Le service ou il exerce (Pediatrie, Urgences...). L'accueil oriente vers
+  /// un service et se voit proposer ses medecins. Nul : rattache a aucun.
+  idService String?
+  service   ServiceHospitalier? @relation(fields: [idService], references: [id], onDelete: SetNull)
 
   @@map("profils_medecin")
 }
@@ -3695,4 +3701,30 @@ model AutorisationAccesDossier {
   @@index([idMedecin, statut])
   @@index([idPatient, statut])
   @@map("autorisations_acces_dossier")
+}
+
+/// **Les services d'un etablissement** : Urgences, Maternite, Pediatrie...
+///
+/// Declares par l'administrateur de la structure, qui y rattache ses
+/// medecins. L'accueil oriente un patient vers un service et se voit proposer
+/// ses medecins. L'episode garde le NOM du service au moment de
+/// l'orientation : renommer ou fermer un service ne reecrit pas l'histoire.
+///
+/// Un service ferme (`actif = false`) n'est plus propose a l'accueil ; ses
+/// medecins gardent leur rattachement, pour le jour ou il rouvre.
+model ServiceHospitalier {
+  id String @id @default(cuid())
+
+  idStructure String
+  structure   StructureSante @relation(fields: [idStructure], references: [id], onDelete: Cascade)
+
+  nom    String
+  actif  Boolean  @default(true)
+  creeLe DateTime @default(now())
+
+  medecins MedecinProfile[]
+
+  @@unique([idStructure, nom])
+  @@index([idStructure, actif])
+  @@map("services_hospitaliers")
 }

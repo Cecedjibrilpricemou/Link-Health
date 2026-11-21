@@ -80,8 +80,16 @@
         <div class="form-field-wrap">
           <label class="form-label" for="adm-service">{{ 'HOPITAL.ADMISSION.SERVICE' | translate }}</label>
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-            <input matInput id="adm-service" maxlength="120" [placeholder]="'HOPITAL.ADMISSION.SERVICE_PH' | translate" [(ngModel)]="formulaire.service" />
+            @if (services().length) {
+              <mat-select id="adm-service" [ngModel]="idService()" (ngModelChange)="choisirService($event)" [placeholder]="'HOPITAL.SERVICE_CHOISIR' | translate">
+                <mat-option value="">{{ 'HOPITAL.SERVICE_AUCUN' | translate }}</mat-option>
+                @for (s of services(); track s.id) { <mat-option [value]="s.id">{{ s.nom }}</mat-option> }
+              </mat-select>
+            } @else {
+              <input matInput id="adm-service" maxlength="120" [placeholder]="'HOPITAL.ADMISSION.SERVICE_PH' | translate" [(ngModel)]="formulaire.service" />
+            }
           </mat-form-field>
+          @if (serviceSansMedecin()) { <p class="bb-hop-hint">{{ 'HOPITAL.SERVICE_SANS_MEDECIN' | translate }}</p> }
         </div>
         <div class="form-field-wrap">
           <label class="form-label" for="adm-resp">{{ 'HOPITAL.ADMISSION.RESPONSABLE' | translate }}</label>

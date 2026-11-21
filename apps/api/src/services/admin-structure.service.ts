@@ -7,6 +7,7 @@ import { Role, RoleOfficine, TypeStructure } from '../config/generated/client/cl
 import { envoyerEmailAdminStructure, envoyerEmailAgent, envoyerReinitialisationAgent } from './email.service';
 import type { SpecialiteMedicale } from '@baobaoheath/shared-types';
 import { normaliserSpecialite } from '../utils/specialite.util';
+import { exigerServiceOuvert } from './services-hospitaliers.service';
 import { logger } from '../config/logger';
 import type { JwtPayload } from '../types/auth.types';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
@@ -575,7 +576,7 @@ export async function getAgentsStructure(adminId: string) {
             creeLe: true, derniereConnexion: true, estActif: true,
             numeroOrdre: true, ordreVerifieLe: true,
             // Le bureau et la specialite n'existent que pour un medecin.
-            medecinProfile: { select: { bureau: true, specialite: true } },
+            medecinProfile: { select: { bureau: true, specialite: true, service: { select: { id: true, nom: true } } } },
         },
         orderBy: [{ estActif: 'desc' }, { creeLe: 'desc' }],
     });
@@ -586,6 +587,7 @@ export async function getAgentsStructure(adminId: string) {
         // Une specialite saisie a la main avant la liste est rendue sous son code.
         specialite: normaliserSpecialite(medecinProfile?.specialite) as SpecialiteMedicale | null,
         ordreVerifie: ordreVerifieLe !== null,
+        service: medecinProfile?.service ?? null,
     }));
 }
 
@@ -598,6 +600,8 @@ export async function creerAgent(adminId: string, dto: {
     /** Le metier d'un medecin ; generaliste par defaut. */
     specialite?: SpecialiteMedicale;
     numeroOrdre?: string;
+    /** Le service ou il exercera : un service ouvert de la structure. */
+    idService?: string;
 }) {
     if (!dto.email?.trim()) {
         throw new ValidationError('Une adresse email professionnelle est obligatoire pour se connecter');
@@ -623,6 +627,8 @@ export async function creerAgent(adminId: string, dto: {
     }
     const estMedecin = dto.role === Role.MEDECIN;
     const numeroOrdreSaisi = estMedecin ? numeroOrdreNet(dto.numeroOrdre) : null;
+    const idService = estMedecin && dto.idService ? dto.idService : null;
+    if (idService) await exigerServiceOuvert(admin.idStructure, idService);
 
     const existingTel = await prisma.utilisateur.findUnique({ where: { telephone: dto.telephone } });
     if (existingTel) throw new ConflictError('Ce numéro de téléphone est déjà utilisé');
@@ -661,6 +667,7 @@ export async function creerAgent(adminId: string, dto: {
                     // Facultatif : sans numerotation de bureaux, l'agent accompagne.
                     bureau: dto.bureau?.trim() || null,
                     specialite: dto.specialite ?? 'MEDECINE_GENERALE',
+                    idService,
                 },
             });
         }
@@ -751,8 +758,10 @@ export async function reactiverAgent(adminId: string, agentId: string) {
 export async function modifierProfilAgent(adminId: string, agentId: string, dto: {
     specialite?: SpecialiteMedicale;
     numeroOrdre?: string | null;
+    /** Le service du medecin ; `null` le detache. */
+    idService?: string | null;
 }) {
-    const { agent } = await agentDeMaStructure(adminId, agentId);
+    const { admin, agent } = await agentDeMaStructure(adminId, agentId);
     if (agent.role !== Role.MEDECIN) {
         throw new ValidationError("Seul le profil d'un médecin porte une spécialité et un numéro d'ordre.");
     }
@@ -765,10 +774,14 @@ export async function modifierProfilAgent(adminId: string, agentId: string, dto:
             donnees.idOrdreVerifiePar = null;
         }
     }
+    if (dto.idService) await exigerServiceOuvert(admin.idStructure!, dto.idService);
+    const profil: { specialite?: SpecialiteMedicale; idService?: string | null } = {};
+    if (dto.specialite) profil.specialite = dto.specialite;
+    if (dto.idService !== undefined) profil.idService = dto.idService;
     await prisma.$transaction(async (tx) => {
         if (Object.keys(donnees).length) await tx.utilisateur.update({ where: { id: agentId }, data: donnees });
-        if (dto.specialite) {
-            await tx.medecinProfile.update({ where: { idUtilisateur: agentId }, data: { specialite: dto.specialite } });
+        if (Object.keys(profil).length) {
+            await tx.medecinProfile.update({ where: { idUtilisateur: agentId }, data: profil });
         }
     });
     logger.info('[AGENTS] profil modifie', { idAgent: agentId, parQui: adminId });

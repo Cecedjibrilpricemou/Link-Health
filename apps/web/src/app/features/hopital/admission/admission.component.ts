@@ -12,6 +12,7 @@ import { ToastrService } from 'ngx-toastr';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
 import type { PatientRechercheView } from '@baobaoheath/shared-types';
 import { HopitalService, MedecinRefView } from '../../../core/services/hopital.service';
+import type { ServiceHospitalierView } from '@baobaoheath/shared-types';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
@@ -30,9 +31,33 @@ export class AdmissionComponent implements OnInit {
   /** /hopital, ou l'interface de l'administrateur : voir core/navigation/racines.ts. */
   readonly racine = inject(RACINE_ACCUEIL);
 
-  /** Les medecins : on cherche par nom ou par specialite. */
-  readonly optionsMedecins = computed<OptionListe[]>(() =>
-    this.medecins().map((m) => ({ valeur: m.id, libelle: `Dr ${m.prenom} ${m.nom}`, detail: libelleSpecialite((cle) => this.i18n.t(cle), m.specialite) })));
+  /**
+   * Les services ouverts. **S'il y en a, on oriente vers un service** et ses
+   * medecins seuls sont proposes ; une structure qui n'en declare aucun garde
+   * le champ libre d'avant. L'episode garde le NOM du service.
+   */
+  services = signal<ServiceHospitalierView[]>([]);
+  idService = signal('');
+
+  /** Les medecins : du service choisi s'il en a, tous sinon. */
+  readonly optionsMedecins = computed<OptionListe[]>(() => {
+    const id = this.idService();
+    const duService = id ? this.medecins().filter((m) => m.service?.id === id) : [];
+    const liste = duService.length ? duService : this.medecins();
+    return liste.map((m) => ({
+      valeur: m.id,
+      libelle: `Dr ${m.prenom} ${m.nom}`,
+      // Specialite et service, sans repeter un meme nom (« Pédiatrie · Pédiatrie »).
+      detail: [...new Map([libelleSpecialite((cle) => this.i18n.t(cle), m.specialite), m.service?.nom]
+        .filter((v): v is string => !!v).map((v) => [v.toLocaleLowerCase('fr'), v])).values()].join(' · ') || undefined,
+    }));
+  });
+
+  /** Le service choisi n'a aucun medecin rattache : tous sont proposes, et on le dit. */
+  readonly serviceSansMedecin = computed(() => {
+    const id = this.idService();
+    return !!id && !this.medecins().some((m) => m.service?.id === id);
+  });
 
   private hopital = inject(HopitalService);
   /** R9 : le nom du niveau (« Prefecture », « LGA »...) et ses lieux viennent du pays installe. */
@@ -144,10 +169,19 @@ export class AdmissionComponent implements OnInit {
     };
   }
 
+  /** Choisir un service : son nom part avec l'episode, ses medecins sont proposes. */
+  choisirService(id: string) {
+    this.idService.set(id);
+    this.formulaire.service = this.services().find((s) => s.id === id)?.nom ?? '';
+    const choisi = this.medecins().find((m) => m.id === this.formulaire.idResponsable);
+    if (id && choisi && choisi.service?.id !== id && !this.serviceSansMedecin()) this.formulaire.idResponsable = '';
+  }
+
   private terme$ = new Subject<string>();
 
   ngOnInit() {
     this.hopital.listerMedecins().subscribe({ next: (r) => this.medecins.set(r.data ?? []) });
+    this.hopital.listerServices().subscribe({ next: (r) => this.services.set(r.data ?? []), error: () => this.services.set([]) });
 
     this.terme$.pipe(
       debounceTime(300),
@@ -173,6 +207,7 @@ export class AdmissionComponent implements OnInit {
   choisir(p: PatientRechercheView) {
     this.selection.set(p);
     this.formulaire = { motif: '', service: '', idResponsable: '', notes: '' };
+    this.idService.set('');
   }
 
   annuler() { this.selection.set(null); }

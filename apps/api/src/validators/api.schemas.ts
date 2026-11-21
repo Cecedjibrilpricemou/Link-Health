@@ -311,6 +311,8 @@ export const createAgentStructureSchema = z.object({
   // defaut, specialiste, chirurgien-dentiste.
   specialite: z.enum(SPECIALITES_MEDICALES).optional(),
   numeroOrdre: numeroOrdre.optional(),
+  // Le service ou il exercera (medecin seulement).
+  idService: id.optional(),
   // Ou le patient devra se rendre. **Facultatif** : beaucoup d'hopitaux ne
   // numerotent pas leurs bureaux, et l'agent accompagne a pied. Ignore pour
   // les roles autres que MEDECIN.
@@ -361,7 +363,18 @@ export const creerReglementSchema = z.object({
 export const modifierProfilAgentSchema = z.object({
   specialite: z.enum(SPECIALITES_MEDICALES).optional(),
   numeroOrdre: numeroOrdre.nullable().optional(),
-}).strict().refine((d) => d.specialite !== undefined || d.numeroOrdre !== undefined, { message: 'Rien a modifier' });
+  idService: id.nullable().optional(),
+}).strict().refine((d) => d.specialite !== undefined || d.numeroOrdre !== undefined || d.idService !== undefined, { message: 'Rien a modifier' });
+
+// Les services d'un etablissement.
+export const creerServiceSchema = z.object({
+  nom: z.string().trim().min(2).max(80),
+}).strict();
+
+export const modifierServiceSchema = z.object({
+  nom: z.string().trim().min(2).max(80).optional(),
+  actif: z.boolean().optional(),
+}).strict().refine((d) => d.nom !== undefined || d.actif !== undefined, { message: 'Rien a modifier' });
 
 export const definirBureauSchema = z.object({
   bureau: z.string().trim().min(1).max(120).nullable(),

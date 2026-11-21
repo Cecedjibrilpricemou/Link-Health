@@ -21,6 +21,7 @@ import { envoyerSmsSimule, notifierSansBloquer } from './notification.service';
 import { getIdentitePlateforme } from './parametres.service';
 import { identiteDocument, structureDeDemandeAnalyse } from './document-emetteur.service';
 import { normaliserSpecialite } from '../utils/specialite.util';
+import { servicesOuverts } from './services-hospitaliers.service';
 import { diffuserRendezVous } from '../realtime/rendez-vous.events';
 import type {
   PresenceDuJourView,
@@ -563,9 +564,21 @@ export async function listerMedecinsDeLaStructure(user: JwtPayload) {
   const idStructure = await structureDe(user);
   return prisma.utilisateur.findMany({
     where: { role: Role.MEDECIN, estActif: true, OR: [{ idStructure }, { medecinProfile: { idStructure } }] },
-    select: { ...PERSONNE_SELECT, medecinProfile: { select: { specialite: true } } },
+    select: {
+      ...PERSONNE_SELECT,
+      medecinProfile: { select: { specialite: true, service: { select: { id: true, nom: true, actif: true } } } },
+    },
     orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
-  }).then((rows) => rows.map((m) => ({ id: m.id, prenom: m.prenom, nom: m.nom, role: m.role, specialite: normaliserSpecialite(m.medecinProfile?.specialite) })));
+  }).then((rows) => rows.map((m) => {
+    // Un service ferme n'oriente plus personne : le medecin y apparait sans.
+    const service = m.medecinProfile?.service?.actif ? { id: m.medecinProfile.service.id, nom: m.medecinProfile.service.nom } : null;
+    return { id: m.id, prenom: m.prenom, nom: m.nom, role: m.role, specialite: normaliserSpecialite(m.medecinProfile?.specialite), service };
+  }));
+}
+
+/** Les services ouverts de la structure : l'accueil y oriente ses patients. */
+export async function listerServicesDeLaStructure(user: JwtPayload) {
+  return servicesOuverts(await structureDe(user));
 }
 
 // ── EF-03-03 / EF-03-04 : demande d'analyse structuree ───────────────

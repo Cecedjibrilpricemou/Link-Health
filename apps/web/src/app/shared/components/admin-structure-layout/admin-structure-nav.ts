@@ -23,6 +23,8 @@ export interface RubriqueNav {
 
 /** Les structures qui recoivent des patients : elles ont un accueil. */
 export const TYPES_AVEC_ACCUEIL: readonly TypeStructure[] = ['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE'];
+/** Les structures qui ont des services (Urgences, Maternite...). */
+export const TYPES_AVEC_SERVICES: readonly TypeStructure[] = ['CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE'];
 /** Les structures qui realisent des analyses. */
 export const TYPES_AVEC_LABORATOIRE: readonly TypeStructure[] = ['CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE', 'LABORATOIRE'];
 
@@ -57,9 +59,11 @@ export function rubriquesAdmin(type: TypeStructure | null, hospitaliere: boolean
     ] });
   }
 
-  rubriques.push({ titreKey: 'ADMIN_STRUCTURE.NAV_RUBRIQUE_EQUIPE', items: [
-    { labelKey: 'ADMIN_STRUCTURE.NAV_AGENTS', icon: 'pi-users', route: `${R}/agents` },
-  ] });
+  const equipe: EntreeNav[] = [{ labelKey: 'ADMIN_STRUCTURE.NAV_AGENTS', icon: 'pi-users', route: `${R}/agents` }];
+  if (type && TYPES_AVEC_SERVICES.includes(type)) {
+    equipe.push({ labelKey: 'ADMIN_STRUCTURE.NAV_SERVICES', icon: 'pi-sitemap', route: `${R}/services` });
+  }
+  rubriques.push({ titreKey: 'ADMIN_STRUCTURE.NAV_RUBRIQUE_EQUIPE', items: equipe });
 
   const etablissement: EntreeNav[] = [];
   if (hospitaliere) {

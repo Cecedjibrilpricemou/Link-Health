@@ -2907,6 +2907,28 @@
   "ADMIN_STRUCTURE": {
     "ROLE": "Facility Admin",
     "NAV_DASHBOARD": "Dashboard",
+    "NAV_SERVICES": "Departments",
+    "SERVICES": {
+      "TITLE": "Facility departments",
+      "SUB": "Emergency, maternity, paediatrics… Reception routes patients there, to their doctors.",
+      "NOUVEAU": "New department",
+      "NOUVEAU_PH": "E.g. Paediatrics",
+      "AJOUTER": "Add",
+      "SUGGESTIONS": "The most common departments, in one click:",
+      "VIDE": "No department declared. Until there is one, reception types the department by hand.",
+      "OUVERTS": "Open departments",
+      "FERMES": "Closed departments",
+      "RATTACHER": "Assign each doctor to their department from \"My agents\": reception will then see the doctors of the chosen department.",
+      "MEDECINS": "{{n}} doctor(s) assigned",
+      "FERME_BADGE": "Closed",
+      "RENOMMER": "Rename",
+      "FERMER": "Close",
+      "ROUVRIR": "Reopen",
+      "AJOUTE": "Department \"{{nom}}\" added.",
+      "RENOMME": "Department renamed: \"{{nom}}\".",
+      "FERME": "Department \"{{nom}}\" closed: it is no longer offered to reception.",
+      "ROUVERT": "Department \"{{nom}}\" reopened."
+    },
     "NAV_RUBRIQUE_PILOTAGE": "Overview",
     "NAV_RUBRIQUE_ACCUEIL": "Reception",
     "NAV_RUBRIQUE_LABO": "Laboratory",
@@ -2965,6 +2987,8 @@
       "SAVE_ERROR": "Unable to save the agreement."
     },
     "AGENTS": {
+      "SERVICE_LABEL": "Department",
+      "SERVICE_AUCUN": "No department",
       "METIER_LABEL": "Profession",
       "METIER_PH": "Choose a profession",
       "METIER_MEDECIN_GENERALISTE": "General practitioner",
@@ -3102,6 +3126,9 @@
     "ERR_GENERIC": "Could not start the camera. Type the code instead."
   },
   "HOPITAL": {
+    "SERVICE_CHOISIR": "Choose a department",
+    "SERVICE_AUCUN": "No department",
+    "SERVICE_SANS_MEDECIN": "No doctor is assigned to this department: all doctors are offered.",
     "ROLE": "Hospital front desk",
     "NAV_DASHBOARD": "Dashboard",
     "NAV_ADMISSION": "Admission",
