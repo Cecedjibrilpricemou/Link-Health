@@ -11,7 +11,7 @@ import { SPECIALITES_MEDICALES } from '@baobaoheath/shared-types';
 import type { RoleAgentStructure, SpecialiteMedicale, TypeStructure } from '@baobaoheath/shared-types';
 
 export const METIERS = [
-  'MEDECIN_GENERALISTE', 'MEDECIN_SPECIALISTE', 'CHIRURGIEN_DENTISTE', 'SAGE_FEMME',
+  'MEDECIN_GENERALISTE', 'MEDECIN_SPECIALISTE', 'CHIRURGIEN_DENTISTE', 'SAGE_FEMME', 'INFIRMIER',
   'AGENT_ACCUEIL', 'TECHNICIEN_LABO', 'ASC', 'ASC_SUPERVISOR',
 ] as const;
 export type Metier = (typeof METIERS)[number];
@@ -21,6 +21,7 @@ const ROLE_DU_METIER: Record<Metier, RoleAgentStructure> = {
   MEDECIN_SPECIALISTE: 'MEDECIN',
   CHIRURGIEN_DENTISTE: 'MEDECIN',
   SAGE_FEMME: 'SAGE_FEMME',
+  INFIRMIER: 'INFIRMIER',
   AGENT_ACCUEIL: 'AGENT_ACCUEIL',
   TECHNICIEN_LABO: 'TECHNICIEN_LABO',
   ASC: 'ASC',
@@ -30,12 +31,12 @@ const ROLE_DU_METIER: Record<Metier, RoleAgentStructure> = {
 /** Les roles qu'une structure cree : copie de `rolesCreablesPour` (API). */
 export function rolesCreablesPour(type: TypeStructure | null | undefined): RoleAgentStructure[] {
   switch (type) {
-    case 'POSTE': return ['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'AGENT_ACCUEIL'];
-    case 'CENTRE': return ['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO'];
+    case 'POSTE': return ['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'INFIRMIER', 'AGENT_ACCUEIL'];
+    case 'CENTRE': return ['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'INFIRMIER', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO'];
     case 'HOPITAL_PREF':
     case 'HOPITAL_REG':
     case 'CHU':
-    case 'CLINIQUE': return ['MEDECIN', 'SAGE_FEMME', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO'];
+    case 'CLINIQUE': return ['MEDECIN', 'SAGE_FEMME', 'INFIRMIER', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO'];
     case 'LABORATOIRE': return ['TECHNICIEN_LABO'];
     default: return [];
   }

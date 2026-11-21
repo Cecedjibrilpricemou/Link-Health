@@ -44,7 +44,7 @@ const FICHIERS = [
   'admin-structure', 'analytics', 'apparence', 'asc', 'assurance', 'auth', 'bris-de-glace',
   'candidature-livreur', 'commande', 'compte', 'consentement', 'consultation', 'course', 'demande-agrement',
   'fhir', 'geographie', 'hopital',
-  'identite', 'journal', 'laboratoire', 'medecin', 'medicament', 'notification',
+  'identite', 'infirmier', 'journal', 'laboratoire', 'medecin', 'medicament', 'notification',
   'ordonnance', 'paiement', 'parametres', 'patient', 'pharmacien', 'privacy',
   'recherche', 'referentiel', 'resultats', 'rgpd', 'stats', 'sync', 'triage', 'upload',
   'ussd', 'vaccination', 'webhook-chapchap',

@@ -14,6 +14,7 @@ export const ACCUEIL_PAR_ROLE: Readonly<Record<string, string>> = {
   MEDECIN:         '/medecin/dashboard',
   // La sage-femme a les ecrans du medecin.
   SAGE_FEMME:      '/medecin/dashboard',
+  INFIRMIER:       '/infirmier/patients',
   PHARMACIEN:      '/pharmacien/tableau-de-bord',
   AGENT_ACCUEIL:   '/hopital/tableau-de-bord',
   TECHNICIEN_LABO: '/laboratoire/tableau-de-bord',

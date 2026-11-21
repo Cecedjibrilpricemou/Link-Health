@@ -1,0 +1,153 @@
+<a routerLink="/infirmier/patients" class="bb-hop-back"><i class="pi pi-arrow-left" aria-hidden="true"></i> {{ 'INFIRMIER.VISITE.RETOUR' | translate }}</a>
+
+@if (chargement()) {
+  <div class="bb-skeleton" style="height:140px;border-radius:20px;margin-bottom:1rem"></div>
+  <div class="bb-skeleton" style="height:260px;border-radius:20px"></div>
+} @else if (erreur()) {
+  <div class="bb-hop-empty"><i class="pi pi-exclamation-circle"></i><p>{{ erreur() }}</p></div>
+} @else if (visite(); as v) {
+
+  <header class="bb-page-head" style="margin-bottom:1rem">
+    <div class="bb-page-head__text" style="display:flex;gap:14px;align-items:flex-start">
+      <span class="bb-hop-item__avatar" style="width:56px;height:56px;font-size:18px" aria-hidden="true">{{ initiales(v) }}</span>
+      <div>
+        <span class="bb-page-head__tag"><i class="pi pi-folder-open" aria-hidden="true"></i> {{ v.numero }}</span>
+        <h1 class="bb-page-head__title">{{ v.patient.prenom }} {{ v.patient.nom }}</h1>
+        <p class="bb-page-head__sub">{{ v.motif }}</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Les allergies d'abord : c'est ce qu'il faut lire avant tout geste. -->
+  @if (v.patient.allergies.length) {
+    <div class="bb-inf-alerte" role="alert">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      <div><strong>{{ 'INFIRMIER.VISITE.ALLERGIES' | translate }}</strong> {{ v.patient.allergies.join(', ') }}</div>
+    </div>
+  }
+
+  <section class="bb-hop-card">
+    <div class="bb-hop-info">
+      <div><div class="bb-hop-info__label">{{ 'INFIRMIER.VISITE.NE_LE' | translate }}</div><div class="bb-hop-info__value">{{ v.patient.dateNaissance | date:'dd/MM/yyyy' }}</div></div>
+      <div><div class="bb-hop-info__label">{{ 'INFIRMIER.VISITE.GROUPE' | translate }}</div><div class="bb-hop-info__value">{{ v.patient.groupeSanguin || ('INFIRMIER.VISITE.INCONNU' | translate) }}</div></div>
+      <div><div class="bb-hop-info__label">{{ 'HOPITAL.DETAIL.SERVICE' | translate }}</div><div class="bb-hop-info__value">{{ v.service || ('HOPITAL.DETAIL.AUCUN' | translate) }}</div></div>
+      <div><div class="bb-hop-info__label">{{ 'HOPITAL.DETAIL.RESPONSABLE' | translate }}</div><div class="bb-hop-info__value">{{ v.responsable || ('HOPITAL.DETAIL.AUCUN' | translate) }}</div></div>
+      @if (v.patient.maladiesChroniques.length) {
+        <div style="grid-column:1/-1"><div class="bb-hop-info__label">{{ 'INFIRMIER.VISITE.MALADIES' | translate }}</div><div class="bb-hop-info__value">{{ v.patient.maladiesChroniques.join(', ') }}</div></div>
+      }
+    </div>
+  </section>
+
+  <!-- ── Noter un passage ─────────────────────────────────────────── -->
+  <section class="bb-hop-card bb-inf-passage">
+    <h2 class="bb-hop-card__title"><i class="pi pi-heart" aria-hidden="true"></i> {{ 'INFIRMIER.VISITE.PASSAGE_TITRE' | translate }}</h2>
+    <p class="bb-inf-aide">{{ 'INFIRMIER.VISITE.PASSAGE_AIDE' | translate }}</p>
+    <div class="bb-inf-constantes">
+      @for (c of constantes; track c.cle) {
+        <div class="form-field-wrap">
+          <label class="form-label" [for]="'inf-' + c.cle">{{ ('INFIRMIER.CONSTANTE.' + c.cle) | translate }} ({{ c.unite }})</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+            <!-- Du texte au clavier numerique : la virgule francaise y passe, un champ
+                 « number » la refuse selon la langue du navigateur. -->
+            <input matInput type="text" inputmode="decimal" autocomplete="off" [id]="'inf-' + c.cle" [name]="c.cle" [(ngModel)]="passage[c.cle]" />
+          </mat-form-field>
+        </div>
+      }
+    </div>
+    <div class="form-field-wrap">
+      <label class="form-label" for="inf-note">{{ 'INFIRMIER.VISITE.NOTE' | translate }}</label>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+        <textarea matInput id="inf-note" name="note" rows="3" maxlength="2000" [(ngModel)]="passage.note"
+                  [placeholder]="'INFIRMIER.VISITE.NOTE_PH' | translate"></textarea>
+      </mat-form-field>
+    </div>
+    <div class="bb-inf-actions">
+      <button matButton="filled" type="button" class="bb-inf-noter" [disabled]="envoi()" (click)="noterPassage()">
+        <i class="pi pi-check" aria-hidden="true"></i> {{ 'INFIRMIER.VISITE.ENREGISTRER' | translate }}
+      </button>
+    </div>
+  </section>
+
+  <!-- ── Ce que le medecin a prescrit pendant la visite ───────────── -->
+  <section class="bb-hop-card">
+    <h2 class="bb-hop-card__title"><i class="pi pi-file-edit" aria-hidden="true"></i> {{ 'INFIRMIER.VISITE.PRESCRIPTIONS' | translate }}</h2>
+    @if (v.prescriptions.length) {
+      <ul class="bb-inf-liste">
+        @for (p of v.prescriptions; track $index) {
+          <li><strong>{{ p.produit }}</strong> — {{ p.posologie }}@if (p.frequence) { · {{ p.frequence }} }@if (p.dureeJours) { · {{ 'INFIRMIER.VISITE.JOURS' | translate: { n: p.dureeJours } }} }</li>
+        }
+      </ul>
+    } @else {
+      <p class="bb-inf-aide">{{ 'INFIRMIER.VISITE.AUCUNE_PRESCRIPTION' | translate }}</p>
+    }
+  </section>
+
+  <!-- ── Les soins deja faits ─────────────────────────────────────── -->
+  <section class="bb-hop-card">
+    <h2 class="bb-hop-card__title"><i class="pi pi-history" aria-hidden="true"></i> {{ 'INFIRMIER.VISITE.SOINS' | translate }}</h2>
+    @if (v.soins.length) {
+      <div class="bb-inf-soins">
+        @for (s of v.soins; track s.id) {
+          <div class="bb-hop-sub bb-inf-soin">
+            <div class="bb-hop-sub__head"><span class="bb-hop-sub__num">{{ s.creeLe | date:'dd/MM HH:mm' }}</span> <span>{{ s.auteur }}</span></div>
+            @if (constantesDe(s.constantes).length) {
+              <div class="bb-hop-sub__tags">
+                @for (c of constantesDe(s.constantes); track c.cle) {
+                  <span class="bb-badge bb-badge--neutral">{{ ('INFIRMIER.CONSTANTE.' + c.cle) | translate }} : {{ c.valeur }} {{ c.unite }}</span>
+                }
+              </div>
+            }
+            @if (s.note) { <p class="bb-hop-sub__line" style="white-space:pre-line">{{ s.note }}</p> }
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="bb-inf-aide">{{ 'INFIRMIER.VISITE.AUCUN_SOIN' | translate }}</p>
+    }
+  </section>
+
+  <!-- ── Les vaccins ──────────────────────────────────────────────── -->
+  <section class="bb-hop-card">
+    <h2 class="bb-hop-card__title"><i class="pi pi-shield" aria-hidden="true"></i> {{ 'INFIRMIER.VISITE.VACCINS' | translate }}</h2>
+    @if (v.vaccinations.length) {
+      <ul class="bb-inf-liste">
+        @for (x of v.vaccinations; track x.id) {
+          <li><strong>{{ x.vaccin }}</strong> — {{ x.administreLe | date:'dd/MM/yyyy' }}@if (x.rappelLe) { · {{ 'INFIRMIER.VISITE.RAPPEL_LE' | translate: { date: (x.rappelLe | date:'dd/MM/yyyy') ?? '' } }} }</li>
+        }
+      </ul>
+    } @else {
+      <p class="bb-inf-aide">{{ 'INFIRMIER.VISITE.AUCUN_VACCIN' | translate }}</p>
+    }
+    <div class="bb-inf-constantes">
+      <div class="form-field-wrap">
+        <label class="form-label" for="inf-vaccin">{{ 'INFIRMIER.VISITE.VACCIN_NOM' | translate }}</label>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+          <input matInput id="inf-vaccin" name="vaccinNom" maxlength="120" [(ngModel)]="vaccin.vaccinNom" />
+        </mat-form-field>
+      </div>
+      <div class="form-field-wrap">
+        <label class="form-label" for="inf-lot">{{ 'INFIRMIER.VISITE.VACCIN_LOT' | translate }}</label>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+          <input matInput id="inf-lot" name="numeroLot" maxlength="80" [(ngModel)]="vaccin.numeroLot" />
+        </mat-form-field>
+      </div>
+      <div class="form-field-wrap">
+        <label class="form-label" for="inf-site">{{ 'INFIRMIER.VISITE.VACCIN_SITE' | translate }}</label>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+          <input matInput id="inf-site" name="siteInjection" maxlength="120" [(ngModel)]="vaccin.siteInjection" />
+        </mat-form-field>
+      </div>
+      <div class="form-field-wrap">
+        <label class="form-label" for="inf-rappel">{{ 'INFIRMIER.VISITE.VACCIN_RAPPEL' | translate }}</label>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+          <input matInput id="inf-rappel" name="dateProchaineD" type="date" [(ngModel)]="vaccin.dateProchaineD" />
+        </mat-form-field>
+      </div>
+    </div>
+    <div class="bb-inf-actions">
+      <button matButton="outlined" type="button" class="bb-inf-vacciner" [disabled]="envoi() || vaccin.vaccinNom.trim().length < 2" (click)="enregistrerVaccin()">
+        <i class="pi pi-plus" aria-hidden="true"></i> {{ 'INFIRMIER.VISITE.VACCIN_ENREGISTRER' | translate }}
+      </button>
+    </div>
+  </section>
+}

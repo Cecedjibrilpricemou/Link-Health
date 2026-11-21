@@ -54,7 +54,7 @@ function etat(o: Partial<EtatAccesDossierView>): EtatAccesDossierView {
   return { etat: 'AUCUNE', expireLe: null, peutRelancer: false, brisDeGlaceJusquau: null, peutLire: false, ...o };
 }
 
-function monter(acces: EtatAccesDossierView | 'erreur', historique: HistoriquePatientView | 'refus' = HISTORIQUE) {
+function monter(acces: EtatAccesDossierView | 'erreur', historique: HistoriquePatientView | 'refus' = HISTORIQUE, soins: unknown[] = []) {
   const getAccesDossier = vi.fn(() => (acces === 'erreur' ? throwError(() => ({ status: 500 })) : of({ success: true, data: acces })));
   const getHistoriquePatient = vi.fn(() => (historique === 'refus'
     ? throwError(() => ({ status: 403, error: { error: 'accord retire' } }))
@@ -69,7 +69,7 @@ function monter(acces: EtatAccesDossierView | 'erreur', historique: HistoriquePa
       provideZonelessChangeDetection(),
       provideRouter([]),
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'ep-1' } } } },
-      { provide: HopitalService, useValue: { getEpisode: () => of({ success: true, data: EPISODE }), listerExamens: () => of({ success: true, data: [] }) } },
+      { provide: HopitalService, useValue: { getEpisode: () => of({ success: true, data: EPISODE }), listerExamens: () => of({ success: true, data: [] }), soinsDeLaVisite: () => of({ success: true, data: soins }) } },
       { provide: LaboratoireService, useValue: {} },
       { provide: MedecinService, useValue: { getAccesDossier, getHistoriquePatient, relancerAccesDossier } },
       { provide: I18nService, useClass: I18nMaquette },
@@ -157,5 +157,22 @@ describe('le panneau historique du dossier de la visite', () => {
     const { el } = monter('erreur');
     expect(panneau(el)).toBeNull();
     expect(el.textContent).toContain('MEDECIN.DOSSIER.OUVRIR_CONSULTATION');
+  });
+
+  // Les soins de l'infirmier pendant la visite : le praticien les lit avant
+  // de consulter, et apres avoir prescrit.
+  it('les soins de l infirmier s affichent dans la visite ; sans soin, rien', () => {
+    const soin = {
+      id: 's1', creeLe: '2026-11-21T08:00:00.000Z', note: 'Pansement refait', auteur: 'Mariama Sow',
+      constantes: { temperature: 38.5, tensionSystolique: null, tensionDiastolique: null, frequenceCardiaque: null,
+        frequenceRespiratoire: null, spo2: null, poidsKg: null, glycemie: null },
+    };
+    const { el } = monter(etat({ etat: 'AUCUNE' }), HISTORIQUE, [soin]);
+    const carte = el.querySelector('.bb-hop-soins');
+    expect(carte?.textContent).toContain('Mariama Sow');
+    expect(carte?.textContent).toContain('38.5');
+    expect(carte?.textContent).toContain('Pansement refait');
+    const vide = monter(etat({ etat: 'AUCUNE' }));
+    expect(vide.el.querySelector('.bb-hop-soins')).toBeNull();
   });
 });

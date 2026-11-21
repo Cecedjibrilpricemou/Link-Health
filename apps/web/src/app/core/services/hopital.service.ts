@@ -3,6 +3,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
+import type { SoinInfirmierView } from '@baobaoheath/shared-types';
 import { ApiResponse } from '../models/api.model';
 import { environment } from '../../../environments/environment';
 import type {
@@ -65,6 +66,11 @@ export class HopitalService {
 
   getEpisode(id: string): Observable<ApiResponse<EpisodeSoinsView>> {
     return this.api.get<ApiResponse<EpisodeSoinsView>>(`/hopital/episodes/${id}`);
+  }
+
+  /** Les soins infirmiers de la visite : pour le praticien seul. */
+  soinsDeLaVisite(id: string): Observable<ApiResponse<SoinInfirmierView[]>> {
+    return this.api.get<ApiResponse<SoinInfirmierView[]>>(`/hopital/episodes/${id}/soins`);
   }
 
   creerEpisode(dto: CreateEpisodeDto): Observable<ApiResponse<EpisodeSoinsView>> {

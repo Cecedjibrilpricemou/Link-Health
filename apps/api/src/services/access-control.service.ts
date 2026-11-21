@@ -122,6 +122,11 @@ async function relationDeSoin(user: JwtPayload, utilisateur: Profils): Promise<P
     };
   }
 
+  // L'infirmier soigne les patients en visite dans sa structure, et eux seuls.
+  if (user.role === 'INFIRMIER' && idStructure) {
+    return { OR: parEpisode };
+  }
+
   if (user.role === 'AGENT_ACCUEIL' && idStructure) {
     return {
       OR: [

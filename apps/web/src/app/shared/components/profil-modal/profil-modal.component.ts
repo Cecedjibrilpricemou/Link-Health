@@ -249,6 +249,7 @@ export class ProfilModalComponent implements OnInit {
       'ASC_SUPERVISOR': this.i18n.t('ADMIN_STRUCTURE.AGENTS.ROLE_ASC_SUPERVISOR'),
       'MEDECIN': this.i18n.t('MEDECIN.ROLE'),
       'SAGE_FEMME': this.i18n.t('ROLE.SAGE_FEMME'),
+      'INFIRMIER': this.i18n.t('ROLE.INFIRMIER'),
       'PHARMACIEN': this.i18n.t('PHARMACIEN.ROLE'),
       'ADMIN_STRUCTURE': this.i18n.t('ADMIN_STRUCTURE.ROLE'),
       'ADMIN_REGIONAL': this.i18n.t('PROFIL_MODAL.ROLE_ADMIN_REGIONAL'),

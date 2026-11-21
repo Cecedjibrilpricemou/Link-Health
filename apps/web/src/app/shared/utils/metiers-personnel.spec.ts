@@ -2,10 +2,21 @@
 import { estMetierMedical, estRolePraticien, libelleSpecialite, metierDe, metiersPour, SPECIALITES_DE_SPECIALISTE, versCreation } from './metiers-personnel';
 
 describe('les metiers du personnel', () => {
-  it('un hopital : medecins, dentistes, sages-femmes, accueil, laboratoire ; pas d agents communautaires', () => {
+  it('un hopital : medecins, dentistes, sages-femmes, infirmiers, accueil, laboratoire ; pas d agents communautaires', () => {
     expect(metiersPour('CHU')).toEqual([
-      'MEDECIN_GENERALISTE', 'MEDECIN_SPECIALISTE', 'CHIRURGIEN_DENTISTE', 'SAGE_FEMME', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO',
+      'MEDECIN_GENERALISTE', 'MEDECIN_SPECIALISTE', 'CHIRURGIEN_DENTISTE', 'SAGE_FEMME', 'INFIRMIER', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO',
     ]);
+  });
+
+  // L'infirmier soigne sans prescrire : un metier a part, sans profil de
+  // praticien - ni specialite, ni service a orienter, ni bureau.
+  it('l infirmier : son role, sans profil de praticien', () => {
+    expect(metiersPour('POSTE')).toContain('INFIRMIER');
+    expect(metiersPour('LABORATOIRE')).not.toContain('INFIRMIER');
+    expect(versCreation('INFIRMIER')).toEqual({ role: 'INFIRMIER' });
+    expect(metierDe('INFIRMIER', null)).toBe('INFIRMIER');
+    expect(estMetierMedical('INFIRMIER')).toBe(false);
+    expect(estRolePraticien('INFIRMIER')).toBe(false);
   });
 
   // La sage-femme a les ecrans du medecin, mais son propre role : l'accueil

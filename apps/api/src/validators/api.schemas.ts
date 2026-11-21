@@ -295,7 +295,7 @@ export const libererResultatsSchema = z.object({
 
 // Pas de PHARMACIEN : le personnel d'une pharmacie est cree par son titulaire,
 // et une pharmacie d'hopital passe par une demande validee par l'administration.
-export const roleAgentStructureSchema = z.enum(['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO']);
+export const roleAgentStructureSchema = z.enum(['ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'INFIRMIER', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO']);
 
 /** Le numero d'inscription a l'ordre : lettres, chiffres, tirets, barres. */
 const numeroOrdre = z.string().trim().max(40).regex(/^[A-Za-z0-9 ./-]*$/, "Numero d'ordre : lettres, chiffres, tirets et barres seulement");
@@ -771,6 +771,15 @@ export const vitalsSchema = z.object({
   spo2: z.coerce.number().min(0).max(100).optional(),
   glycemie: z.coerce.number().positive().max(50).optional(),
 }).strict();
+
+/**
+ * Un passage de l'infirmier : les memes bornes que les constantes d'une
+ * consultation, et le soin fait. Le service refuse un passage vide.
+ */
+export const soinInfirmierSchema = vitalsSchema
+  .omit({ tailleCm: true, perimetreBrachial: true })
+  .extend({ note: z.string().trim().max(2000).optional() })
+  .strict();
 
 export const diagnosticSchema = z.object({
   libelle: z.string().trim().min(2).max(200),

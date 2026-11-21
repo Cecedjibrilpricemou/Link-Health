@@ -32,6 +32,8 @@ export type Role =
   | 'MEDECIN'
   /** Sage-femme : les ecrans et les actes du medecin, un metier a part. */
   | 'SAGE_FEMME'
+  /** Infirmier : il soigne sans prescrire. Constantes, vaccins, notes de soins. */
+  | 'INFIRMIER'
   | 'PHARMACIEN'
   | 'AGENT_ACCUEIL'
   | 'TECHNICIEN_LABO'
@@ -5057,7 +5059,68 @@ export const SPECIALITES_MEDICALES = [
 export type SpecialiteMedicale = (typeof SPECIALITES_MEDICALES)[number];
 
 /** Les roles qu'un administrateur de structure cree, selon ce que fait sa structure. */
-export type RoleAgentStructure = 'ASC' | 'ASC_SUPERVISOR' | 'MEDECIN' | 'SAGE_FEMME' | 'AGENT_ACCUEIL' | 'TECHNICIEN_LABO';
+export type RoleAgentStructure = 'ASC' | 'ASC_SUPERVISOR' | 'MEDECIN' | 'SAGE_FEMME' | 'INFIRMIER' | 'AGENT_ACCUEIL' | 'TECHNICIEN_LABO';
+
+// ─── L'infirmier ──────────────────────────────────────────────────────────────
+
+/** Les constantes d'un passage de l'infirmier : chacune facultative. */
+export interface ConstantesSoinView {
+  temperature: number | null;
+  tensionSystolique: number | null;
+  tensionDiastolique: number | null;
+  frequenceCardiaque: number | null;
+  frequenceRespiratoire: number | null;
+  spo2: number | null;
+  poidsKg: number | null;
+  glycemie: number | null;
+}
+
+/** Un passage de l'infirmier aupres du patient. */
+export interface SoinInfirmierView {
+  id: string;
+  creeLe: HorodatageApi;
+  note: string | null;
+  constantes: ConstantesSoinView;
+  /** Prenom et nom de l'infirmier. */
+  auteur: string;
+}
+
+/** POST /infirmier/visites/:id/soins — au moins une constante ou une note. */
+export type CreerSoinInfirmierDto = Partial<Record<keyof ConstantesSoinView, number>> & { note?: string };
+
+/** GET /infirmier/patients — un patient en visite dans la structure. */
+export interface PatientEnVisiteView {
+  idEpisode: string;
+  numero: string;
+  motif: string;
+  service: string | null;
+  statut: string;
+  ouvertLe: HorodatageApi;
+  patient: { id: string; prenom: string; nom: string; dateNaissance: HorodatageApi; sexe: string };
+  /** « Dr Bah », ou le nom seul d'une sage-femme ; nul si personne n'est designe. */
+  responsable: string | null;
+  dernierSoinLe: HorodatageApi | null;
+  nombreSoins: number;
+}
+
+/** GET /infirmier/visites/:id — ce qu'il faut pour soigner pendant la visite. */
+export interface DossierVisiteInfirmierView {
+  idEpisode: string;
+  numero: string;
+  motif: string;
+  service: string | null;
+  statut: string;
+  ouvertLe: HorodatageApi;
+  responsable: string | null;
+  patient: {
+    id: string; prenom: string; nom: string; dateNaissance: HorodatageApi; sexe: string;
+    groupeSanguin: string | null; allergies: string[]; maladiesChroniques: string[];
+  };
+  /** Les lignes prescrites pendant cette visite : ce qu'il administre. */
+  prescriptions: { produit: string; posologie: string; frequence: string | null; dureeJours: number | null; prescritLe: HorodatageApi }[];
+  vaccinations: { id: string; vaccin: string; administreLe: HorodatageApi; rappelLe: HorodatageApi | null }[];
+  soins: SoinInfirmierView[];
+}
 
 /** PUT /admin-structure/agents/:id/profil — le metier d'un medecin. */
 export interface ModifierProfilAgentDto {

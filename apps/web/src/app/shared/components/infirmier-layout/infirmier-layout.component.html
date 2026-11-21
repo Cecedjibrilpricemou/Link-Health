@@ -1,0 +1,123 @@
+<!-- shared/components/infirmier-layout/infirmier-layout.component.html -->
+<mat-sidenav-container class="bb-shell" autosize>
+
+    <mat-sidenav
+    class="bb-nav"
+    [mode]="layout.estMobile() ? 'over' : 'side'"
+    [opened]="layout.estMobile() ? sidebarOpen() : true"
+    [disableClose]="!layout.estMobile()"
+    (closedStart)="closeSidebar()"
+  >
+    <div class="bb-nav__brand">
+      <app-brand class="bb-nav__brand-name" portee="espace"></app-brand>
+    </div>
+
+
+    <p class="bb-nav__section">{{ 'COMMON.NAVIGATION' | translate }}</p>
+
+    <mat-nav-list class="bb-nav__list">
+      @for (item of navItems; track item.route) {
+        <a
+          mat-list-item
+          class="bb-nav__item"
+          [routerLink]="item.route"
+          routerLinkActive="bb-nav__item--active"
+          (click)="closeSidebar()"
+        >
+          <mat-icon matListItemIcon fontSet="pi" [fontIcon]="item.icon" aria-hidden="true"></mat-icon>
+          <span matListItemTitle>{{ item.labelKey | translate }}</span>
+        </a>
+      }
+    </mat-nav-list>
+
+    <div class="bb-nav__footer">
+      <p class="bb-nav__section">{{ 'COMMON.GENERAL' | translate }}</p>
+
+      <mat-nav-list class="bb-nav__list">
+        <button mat-list-item class="bb-nav__item" type="button" (click)="toggleTheme()">
+          <mat-icon matListItemIcon fontSet="pi" [fontIcon]="themeService.isDark() ? 'pi-sun' : 'pi-moon'" aria-hidden="true"></mat-icon>
+          <span matListItemTitle>{{ themeService.isDark() ? ('COMMON.LIGHT_MODE' | translate) : ('COMMON.DARK_MODE' | translate) }}</span>
+        </button>
+
+        <button mat-list-item class="bb-nav__item" type="button" (click)="toggleLang()">
+          <mat-icon matListItemIcon fontSet="pi" fontIcon="pi-globe" aria-hidden="true"></mat-icon>
+          <span matListItemTitle>{{ 'COMMON.LANG_TOGGLE' | translate }}</span>
+        </button>
+
+        <button mat-list-item class="bb-nav__item bb-nav__item--danger" type="button" (click)="askLogout()">
+          <mat-icon matListItemIcon fontSet="pi" fontIcon="pi-sign-out" aria-hidden="true"></mat-icon>
+          <span matListItemTitle>{{ 'COMMON.LOGOUT' | translate }}</span>
+        </button>
+      </mat-nav-list>
+    </div>
+  </mat-sidenav>
+
+    <mat-sidenav-content class="bb-shell__content">
+
+    <mat-toolbar class="bb-topbar">
+      <button
+        matIconButton
+        class="bb-topbar__burger"
+        (click)="toggleSidebar()"
+        [attr.aria-label]="'COMMON.OPEN_MENU_ARIA' | translate"
+      >
+        <mat-icon fontSet="pi" fontIcon="pi-bars" aria-hidden="true"></mat-icon>
+      </button>
+
+      <app-topbar-crumb [rootKey]="'INFIRMIER.ROLE'" [items]="navItems" />
+
+      <span class="bb-topbar__spacer"></span>
+
+      <app-notification-bell />
+
+      <button
+        matIconButton
+        [matTooltip]="(themeService.isDark() ? 'COMMON.ENABLE_LIGHT_MODE' : 'COMMON.ENABLE_DARK_MODE') | translate"
+        (click)="toggleTheme()"
+      >
+        <mat-icon fontSet="pi" [fontIcon]="themeService.isDark() ? 'pi-sun' : 'pi-moon'" aria-hidden="true"></mat-icon>
+      </button>
+
+      <button matIconButton [matTooltip]="'COMMON.CHANGE_LANG_ARIA' | translate" (click)="toggleLang()">
+        <mat-icon fontSet="pi" fontIcon="pi-globe" aria-hidden="true"></mat-icon>
+      </button>
+
+      <button matIconButton [matMenuTriggerFor]="userMenu" class="bb-topbar__user">
+        <app-avatar
+          class="bb-topbar__avatar"
+          [photoUrl]="currentUser()?.photoUrl"
+          [initiales]="getInitiales()"
+        />
+      </button>
+
+      <mat-menu #userMenu="matMenu" class="bb-user-menu">
+        <div class="bb-user-menu__head">
+          <span class="bb-user-menu__name">{{ currentUser()?.prenom }} {{ currentUser()?.nom }}</span>
+          <span class="bb-user-menu__mail">{{ currentUser()?.email }}</span>
+        </div>
+        <button mat-menu-item (click)="showProfil.set(true)">
+          <mat-icon fontSet="pi" fontIcon="pi-user" aria-hidden="true"></mat-icon>
+          <span>{{ 'PROFIL_MODAL.TAB_PROFIL' | translate }}</span>
+        </button>
+        <button mat-menu-item (click)="askLogout()">
+          <mat-icon fontSet="pi" fontIcon="pi-sign-out" aria-hidden="true"></mat-icon>
+          <span>{{ 'COMMON.LOGOUT' | translate }}</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main class="bb-shell__page">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
+
+<!-- Hors du mat-sidenav-container : ce dernier ne projette que
+     mat-sidenav et mat-sidenav-content, tout autre enfant est ignore. -->
+@if (showProfil()) {
+  <app-profil-modal
+      [forcerChangement]="doitChangerMotDePasse()"
+      (fermer)="showProfil.set(false)"
+    />
+}
+
