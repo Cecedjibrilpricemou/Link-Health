@@ -329,11 +329,23 @@ describe('l assurance separe le comptoir de l administration', () => {
   });
 
   it.each([
-    ['post', '/assureurs'],
     ['post', '/assureurs/:id/regles'],
-    ['post', '/contrats'],
   ])('%s %s est reservee a l administration nationale', (methode, chemin) => {
     expect(rolesPour(assurance, methode, chemin)).toEqual(['ADMIN_NATIONAL', 'SUPER_ADMIN']);
+  });
+
+  // La compagnie est reconnue et agit dans ses pleins droits : rattacher une
+  // police a un assure, creer son compte agent, rattacher une compagnie deja
+  // creee, ce n'est pas l'administration (decision du 2026-11-21).
+  it.each([
+    ['post', '/assureurs'], ['post', '/contrats'], ['get', '/patients/recherche'],
+    ['get', '/patients/:id/contrats'], ['post', '/assureurs/:id/agents'],
+  ])('%s %s n existe plus : l administration ne fait pas le metier de l assureur', (methode, chemin) => {
+    expect(rolesPour(assurance, methode, chemin)).toBeNull();
+  });
+
+  it('la compagnie renseigne elle-meme ses assures', () => {
+    expect(rolesPour(assurance, 'post', '/moi/contrats')).toEqual(['ASSUREUR']);
   });
 
   it.each([
@@ -351,10 +363,10 @@ describe('l assurance separe le comptoir de l administration', () => {
   });
 
   // Un pharmacien qui pourrait creer un contrat pourrait s'assurer lui-meme.
-  it.each(['PHARMACIEN', 'AGENT_ACCUEIL', 'MEDECIN', 'PATIENT', 'ADMIN_STRUCTURE'] as const)(
+  it.each(['PHARMACIEN', 'AGENT_ACCUEIL', 'MEDECIN', 'PATIENT', 'ADMIN_STRUCTURE', 'SUPER_ADMIN'] as const)(
     'ferme la creation de contrat a %s',
     (role) => {
-      expect(rolesPour(assurance, 'post', '/contrats')).not.toContain(role);
+      expect(rolesPour(assurance, 'post', '/moi/contrats')).not.toContain(role);
     }
   );
 
@@ -366,9 +378,9 @@ describe('l assurance separe le comptoir de l administration', () => {
   it('les routes assurance existent bien', () => {
     for (const [methode, chemin] of [
       ['post', '/eligibilite'], ['get', '/patients/:id/eligibilite'],
-      ['post', '/simulation'], ['get', '/patients/:id/contrats'],
-      ['get', '/assureurs'], ['post', '/assureurs'],
-      ['post', '/assureurs/:id/regles'], ['post', '/contrats'],
+      ['post', '/simulation'],
+      ['get', '/assureurs'],
+      ['post', '/assureurs/:id/regles'],
       ['get', '/assureurs/catalogue'], ['post', '/assureurs/:id/convention'],
       ['delete', '/assureurs/:id/convention'],
       ['post', '/cartes/verifier'], ['get', '/mes-cartes'],

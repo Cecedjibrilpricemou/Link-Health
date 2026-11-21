@@ -30,13 +30,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ToastrService } from 'ngx-toastr';
 import type {
-  AgentAssureurCreeView,
   AssureurView,
   CategorieProduit,
-  ContratAssuranceView,
   CreerAssuranceDto,
   ModeEchangeAssureur,
-  PatientContratRechercheView,
   PiecesAttenduesView,
   TypePieceAgrement,
 } from '@baobaoheath/shared-types';
@@ -45,7 +42,6 @@ import { DemandeAgrementService } from '../../../core/services/demande-agrement.
 import { PiecesAgrementComponent } from '../../../shared/components/pieces-agrement/pieces-agrement.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
-import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
 import { SuggestionsLieuxComponent } from '../../../shared/components/suggestions-lieux/suggestions-lieux.component';
 import { GeographieService } from '../../../core/services/geographie.service';
 
@@ -83,8 +79,7 @@ function assuranceVide() {
 @Component({
   selector: 'app-admin-assurance',
   standalone: true,
-  imports: [ListeRechercheComponent, 
-    CommonModule, FormsModule, MatFormFieldModule, MatInputModule,
+  imports: [CommonModule, FormsModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatCheckboxModule, TranslatePipe, SuggestionsLieuxComponent,
     PiecesAgrementComponent,
   ],
@@ -95,8 +90,6 @@ function assuranceVide() {
   styleUrls: ['./assurance.component.scss', '../structures/structures.component.scss'],
 })
 export class AssuranceComponent implements OnInit {
-  readonly optionsAssureurs = computed<OptionListe[]>(() =>
-    this.assureurs().map((a) => ({ valeur: a.id, libelle: `${a.code} — ${a.nom}` })));
 
   private admin = inject(AdminService);
   private demandes = inject(DemandeAgrementService);
@@ -133,10 +126,7 @@ export class AssuranceComponent implements OnInit {
   reglesOuvertes = signal<string | null>(null);
   /** L'assureur auquel on ajoute une regle. */
   formRegle = signal<string | null>(null);
-  /** L'assureur auquel l'administration ajoute son compte agent. */
-  readonly formAgentAssureur = signal<string | null>(null);
-  /** Le mot de passe n'est conserve que jusqu'a sa fermeture. */
-  readonly motDePasseAgent = signal<{ assureurNom: string; resultat: AgentAssureurCreeView } | null>(null);
+
 
   nouvelleRegle = {
     categorie: 'MEDICAMENT' as CategorieProduit,
@@ -144,22 +134,6 @@ export class AssuranceComponent implements OnInit {
     tauxPourcent: null as number | null,
     plafondLigneGnf: 0,
     dateEffet: this.aujourdhui(),
-  };
-
-  nouvelAgentAssureur = { prenom: '', nom: '', telephone: '', email: '', prefecture: '' };
-
-  // ── Les polices ────────────────────────────────────────────────────
-  recherche = '';
-  resultats = signal<PatientContratRechercheView[] | null>(null);
-  chercheEnCours = signal(false);
-  patient = signal<PatientContratRechercheView | null>(null);
-  contrats = signal<ContratAssuranceView[]>([]);
-  formPolice = signal(false);
-
-  nouvellePolice = {
-    idAssureur: '', numeroPolice: '',
-    tauxBasePourcent: 80, plafondAnnuelGnf: 0, franchiseGnf: 0,
-    dateEffet: this.aujourdhui(), dateFin: '', carenceJours: 0,
   };
 
   readonly categories = CATEGORIES;
@@ -318,72 +292,6 @@ export class AssuranceComponent implements OnInit {
     this.formRegle.set(null);
   }
 
-  ouvrirFormAgentAssureur(id: string): void {
-    const assureur = this.assureurs().find((item) => item.id === id);
-    if (!assureur || assureur.agentExistant) return;
-    this.nouvelAgentAssureur = { prenom: '', nom: '', telephone: '', email: '', prefecture: '' };
-    this.formAgentAssureur.set(id);
-  }
-
-  peutCreerAgentAssureur(): boolean {
-    const a = this.nouvelAgentAssureur;
-    return !this.enregistre()
-      && !!a.prenom.trim()
-      && !!a.nom.trim()
-      && !!a.telephone.trim()
-      && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email.trim())
-      && !!a.prefecture.trim();
-  }
-
-  creerAgentAssureur(idAssureur: string): void {
-    if (!this.peutCreerAgentAssureur()) return;
-    this.enregistre.set(true);
-    const formulaire = this.nouvelAgentAssureur;
-    const assureur = this.assureurs().find((item) => item.id === idAssureur);
-    if (!assureur || assureur.agentExistant) {
-      this.enregistre.set(false);
-      return;
-    }
-    this.admin.creerAgentAssureur(idAssureur, {
-      prenom: formulaire.prenom.trim(),
-      nom: formulaire.nom.trim(),
-      telephone: formulaire.telephone.trim(),
-      email: formulaire.email.trim(),
-      prefecture: formulaire.prefecture.trim(),
-    }).subscribe({
-      next: (response) => {
-        this.enregistre.set(false);
-        if (!response.data) {
-          this.toastr.error(this.i18n.t('COMMON.ERROR_GENERIC'));
-          return;
-        }
-        this.motDePasseAgent.set({ assureurNom: assureur.nom, resultat: response.data });
-        this.formAgentAssureur.set(null);
-        this.nouvelAgentAssureur = { prenom: '', nom: '', telephone: '', email: '', prefecture: '' };
-        this.chargerAssureurs();
-      },
-      error: (err) => this.echec(err),
-    });
-  }
-
-  copierMotDePasseAgent(): void {
-    const motDePasse = this.motDePasseAgent()?.resultat.motDePasseTemporaire;
-    if (!motDePasse) return;
-    const pressePapiers = navigator.clipboard;
-    if (!pressePapiers) {
-      this.toastr.error(this.i18n.t('ADMIN.ASSURANCE.AGENT_PASSWORD_COPY_ERROR'));
-      return;
-    }
-    pressePapiers.writeText(motDePasse).then(
-      () => this.toastr.success(this.i18n.t('ADMIN.ASSURANCE.AGENT_PASSWORD_COPIED')),
-      () => this.toastr.error(this.i18n.t('ADMIN.ASSURANCE.AGENT_PASSWORD_COPY_ERROR')),
-    );
-  }
-
-  fermerMotDePasseAgent(): void {
-    this.motDePasseAgent.set(null);
-  }
-
   ouvrirFormRegle(id: string): void {
     this.formRegle.set(id);
     this.nouvelleRegle = {
@@ -423,89 +331,6 @@ export class AssuranceComponent implements OnInit {
     });
   }
 
-  // ── Polices ────────────────────────────────────────────────────────
-  chercher(): void {
-    const q = this.recherche.trim();
-    if (q.length < 3) {
-      this.resultats.set(null);
-      return;
-    }
-    this.chercheEnCours.set(true);
-    this.admin.rechercherPatientsPourPolice(q).subscribe({
-      next: (r) => {
-        this.chercheEnCours.set(false);
-        this.resultats.set(r.data ?? []);
-      },
-      error: (err) => {
-        this.chercheEnCours.set(false);
-        this.echec(err);
-      },
-    });
-  }
-
-  choisirPatient(p: PatientContratRechercheView): void {
-    this.patient.set(p);
-    this.resultats.set(null);
-    this.contrats.set([]);
-    this.admin.contratsDuPatient(p.id).subscribe({
-      next: (r) => this.contrats.set(r.data ?? []),
-      error: (err) => this.echec(err),
-    });
-  }
-
-  changerPatient(): void {
-    this.patient.set(null);
-    this.contrats.set([]);
-    this.formPolice.set(false);
-    this.recherche = '';
-    this.resultats.set(null);
-  }
-
-  ouvrirFormPolice(): void {
-    this.formPolice.set(true);
-    this.nouvellePolice = {
-      idAssureur: this.assureurs()[0]?.id ?? '', numeroPolice: '',
-      tauxBasePourcent: 80, plafondAnnuelGnf: 0, franchiseGnf: 0,
-      dateEffet: this.aujourdhui(), dateFin: '', carenceJours: 0,
-    };
-  }
-
-  peutCreerPolice(): boolean {
-    const p = this.nouvellePolice;
-    return !this.enregistre()
-      && !!this.patient()
-      && p.idAssureur.length > 0
-      && p.numeroPolice.trim().length > 0
-      && p.dateEffet.length > 0;
-  }
-
-  creerPolice(): void {
-    if (!this.peutCreerPolice()) return;
-    this.enregistre.set(true);
-    const p = this.nouvellePolice;
-    this.admin.creerContrat({
-      idAssureur: p.idAssureur,
-      idPatient: this.patient()!.id,
-      numeroPolice: p.numeroPolice.trim(),
-      tauxBasePourcent: Number(p.tauxBasePourcent),
-      plafondAnnuelGnf: Number(p.plafondAnnuelGnf) || 0,
-      franchiseGnf: Number(p.franchiseGnf) || 0,
-      dateEffet: new Date(p.dateEffet).toISOString(),
-      ...(p.dateFin ? { dateFin: new Date(p.dateFin).toISOString() } : {}),
-      carenceJours: Number(p.carenceJours) || 0,
-    }).subscribe({
-      next: (r) => {
-        this.enregistre.set(false);
-        this.formPolice.set(false);
-        this.toastr.success(this.i18n.t('ADMIN.ASSURANCE.POLICE_CREEE', { numero: r.data?.numeroPolice ?? '' }));
-        const pat = this.patient();
-        if (pat) this.choisirPatient(pat);
-        this.chargerAssureurs();
-      },
-      error: (err) => this.echec(err),
-    });
-  }
-
   // ── Affichage ──────────────────────────────────────────────────────
   /** 1 500 000 plutot que 1500000 : au comptoir on compte les zeros. */
   montant(gnf: number): string {
@@ -514,10 +339,6 @@ export class AssuranceComponent implements OnInit {
 
   libelleCategorie(c: CategorieProduit): string {
     return this.i18n.t(`ADMIN.ASSURANCE.CAT_${c}`);
-  }
-
-  libelleStatut(s: string): string {
-    return this.i18n.t(`ADMIN.ASSURANCE.STATUT_${s}`);
   }
 
   private aujourdhui(): string {

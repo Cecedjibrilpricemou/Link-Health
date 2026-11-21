@@ -19,38 +19,8 @@
 
 .bb-assu {
 
-  // ✦ Refonte UI : le mot de passe temporaire reste lisible jusqu'a fermeture.
-  &__agent-password {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 20px;
-    padding: 18px;
-    border: 1px solid var(--bb-success-border);
-    border-radius: var(--bb-radius-lg);
-    background: var(--bb-success-bg);
-    color: var(--bb-text-primary);
 
-    h2 { margin: 0 0 6px; font: 800 16px var(--bb-font-display); }
-    p { margin: 0 0 8px; color: var(--bb-text-secondary); }
-    code { display: inline-block; padding: 8px 12px; border-radius: var(--bb-radius-sm); background: var(--bb-surface-card); color: var(--bb-text-primary); font: 700 18px var(--bb-font-mono); }
-  }
 
-  &__agent-password-identity { font-weight: 700; }
-
-  &__agent { margin-top: 14px; }
-  &__agent-existant {
-    margin: 0;
-    padding: 10px 12px;
-    border: 1px solid var(--bb-success-border);
-    border-radius: var(--bb-radius-sm);
-    background: var(--bb-success-bg);
-    color: var(--bb-success);
-    font-weight: 700;
-  }
-  &__form--agent { margin: 10px 0 0; }
 
   &__sec {
     background: var(--bb-surface-card);
@@ -70,10 +40,6 @@
     color: var(--bb-text-primary); margin: 0 0 4px; letter-spacing: -0.2px;
   }
 
-  &__sous-titre {
-    font-family: var(--bb-font-display); font-size: 14px; font-weight: 700;
-    color: var(--bb-text-primary); margin: 20px 0 10px;
-  }
 
   &__sec-aide,
   &__attente { font-size: 13px; color: var(--bb-text-muted); margin: 0; }
@@ -131,7 +97,6 @@
     margin-top: 16px; flex-wrap: wrap;
   }
 
-  &__recherche { width: 100%; max-width: 420px; margin-bottom: 14px; display: block; }
 
   // ── Listes ────────────────────────────────────────────────────
   &__liste { list-style: none; margin: 16px 0 0; padding: 0; }
@@ -221,15 +186,6 @@
     }
   }
 
-  // ── Le patient retenu ─────────────────────────────────────────
-  &__patient {
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 12px;
-    background: var(--bb-surface-2);
-    border: 1px solid var(--bb-border-light);
-    border-radius: var(--bb-radius);
-    padding: 14px 16px;
-  }
 
   // ── Etat vide ─────────────────────────────────────────────────
   &__vide {

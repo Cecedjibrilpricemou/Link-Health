@@ -32,19 +32,16 @@ import {
 import { envoyerEmailAdminStructure } from './email.service';
 import { verifierCoordonnees } from '../utils/coordonnees';
 import type {
-  AgentAssureurCreeView,
   AssureView,
   AssureurView,
   CatalogueAssureursView,
   CreerReglementDto,
   MonAssureurView,
-  PatientContratRechercheView,
   ReglementView,
   SituationPharmacieView,
   ContratAssuranceView,
   ControleEligibiliteView,
   CouvertureLigneView,
-  CreerAssureurDto,
   CreerContratDto,
   CreerContratCollectifDto,
   CreerContratIndividuelDto,
@@ -1017,67 +1014,6 @@ function versAssureurView(a: AssureurAvecInclude): AssureurView {
   };
 }
 
-/**
- * Creer un assureur.
- *
- * **Il ne peut pas exister sans sa structure.** C'est elle qui porte l'agrement
- * de la Banque Centrale, le RCCM et le siege autorise : l'enregistrement
- * `Assureur` ne porte que la configuration metier — le code imprime sur la
- * carte, le mode d'echange. Creer un assureur sans structure revenait a
- * l'inscrire sans aucune preuve qu'il est agree.
- *
- * L'agrement vient de la **Banque Centrale**, pas du ministere de la Sante :
- * autre autorite, autre reference (forme `D/2009/CAM/LOA/07`), et pas d'arrete
- * d'exploitation distinct. La structure se cree donc par la porte generique,
- * qui exige cette piece ; ici on verifie seulement qu'elle a bien ete produite.
- */
-export async function creerAssureur(dto: CreerAssureurDto): Promise<AssureurView> {
-  const code = dto.code.trim().toUpperCase();
-  const existant = await prisma.assureur.findUnique({ where: { code } });
-  if (existant) throw new ConflictError(`Un assureur porte deja le code ${code}`);
-
-  if (!dto.idStructure) {
-    throw new ValidationError(
-      "Un assureur doit etre rattache a sa structure de type ASSURANCE : c'est elle qui porte son agrement."
-    );
-  }
-
-  // La structure doit etre de type ASSURANCE, sinon ses agents heriteraient des
-  // droits d'un hopital ou d'une pharmacie.
-  const s = await prisma.structureSante.findUnique({
-    where: { id: dto.idStructure },
-    select: { type: true },
-  });
-  if (!s) throw new NotFoundError('Structure non trouvee');
-  if (s.type !== TypeStructure.ASSURANCE) {
-    throw new ValidationError('La structure rattachee doit etre de type ASSURANCE');
-  }
-
-  // **La ceinture qui rend le blocage reel.** La porte de creation exige
-  // l'agrement, mais une structure anterieure a cette regle — ou issue de la
-  // semence — n'en a pas. Sans ce controle, il suffirait de rattacher
-  // l'assureur a l'une d'elles pour contourner l'exigence.
-  const dossier = await dossierDe(dto.idStructure);
-  if (!dossier.complet) {
-    throw new ValidationError(
-      `Le dossier de ${dossier.nom} est incomplet : il manque ${dossier.manquantes.join(', ')}.`
-    );
-  }
-
-  const cree = await prisma.assureur.create({
-    data: {
-      nom: dto.nom.trim(),
-      code,
-      telephone: dto.telephone?.trim() || null,
-      email: dto.email?.trim() || null,
-      modeEchange: dto.modeEchange ?? 'MANUEL',
-      idStructure: dto.idStructure ?? null,
-    },
-    include: ASSUREUR_INCLUDE,
-  });
-  return versAssureurView(cree);
-}
-
 // ── Une assurance en une seule fois ────────────────────────────────────
 
 /** Ce que l'onglet Assurances envoie pour creer une compagnie entiere. */
@@ -1496,43 +1432,6 @@ export async function creerContrat(
     patient: { id: patient.id, prenom: patient.utilisateur.prenom, nom: patient.utilisateur.nom },
     consommeAnneeGnf: 0,
   };
-}
-
-/** Les contrats d'un patient, avec ce qui a deja ete consomme cette annee. */
-export async function contratsDuPatient(
-  idPatient: string,
-  maintenant = new Date()
-): Promise<ContratAssuranceView[]> {
-  const contrats = await prisma.contratAssurance.findMany({
-    where: { idPatient },
-    include: {
-      assureur: { select: { id: true, nom: true, code: true } },
-      patient: { select: { id: true, utilisateur: { select: { prenom: true, nom: true } } } },
-    },
-    orderBy: { dateEffet: 'desc' },
-  });
-
-  const debutAnnee = new Date(maintenant.getFullYear(), 0, 1);
-  return Promise.all(contrats.map(async (c) => {
-    const consomme = await prisma.venteComptoir.aggregate({
-      where: { idContratAssurance: c.id, statut: 'PAYEE', creeLe: { gte: debutAnnee } },
-      _sum: { montantAssureGnf: true },
-    });
-    return {
-      id: c.id,
-      numeroPolice: c.numeroPolice,
-      tauxBasePourcent: c.tauxBasePourcent,
-      plafondAnnuelGnf: c.plafondAnnuelGnf,
-      franchiseGnf: c.franchiseGnf,
-      dateEffet: c.dateEffet.toISOString(),
-      dateFin: c.dateFin ? c.dateFin.toISOString() : null,
-      carenceJours: c.carenceJours,
-      statut: c.statut,
-      assureur: c.assureur,
-      patient: { id: c.patient.id, prenom: c.patient.utilisateur.prenom, nom: c.patient.utilisateur.nom },
-      consommeAnneeGnf: consomme._sum.montantAssureGnf ?? 0,
-    };
-  }));
 }
 
 /**
@@ -2072,45 +1971,6 @@ export async function rechercherPatientParTelephone(
   }));
 }
 
-/**
- * Trouver la personne a qui rattacher une police (point 5.2).
- *
- * **L'administration nationale n'a pas le QR du patient sous les yeux.** Au
- * comptoir le patient est la et scanne ; ici l'assureur envoie une liste de
- * noms et de numeros de police, et c'est sur ces noms qu'il faut retomber.
- *
- * Le predicat est celui du comptoir (`filtreRecherchePatient`) : un patient
- * trouvable a l'admission doit l'etre ici, sinon sa police reste en suspens.
- *
- * **Rien de medical ne sort d'ici** : l'identite, et le numero masque comme
- * partout ailleurs. Il sert a distinguer deux Camara, pas a appeler qui que
- * ce soit.
- */
-export async function rechercherPatientsPourContrat(q: string): Promise<PatientContratRechercheView[]> {
-  const terme = q.trim();
-  if (terme.length < 3) throw new ValidationError('Saisissez au moins 3 caracteres');
-
-  const patients = await prisma.patientProfile.findMany({
-    where: filtreRecherchePatient(terme),
-    select: {
-      id: true, sexe: true, dateNaissance: true, prefecture: true,
-      utilisateur: { select: { prenom: true, nom: true, telephone: true } },
-    },
-    orderBy: [{ utilisateur: { nom: 'asc' } }, { utilisateur: { prenom: 'asc' } }],
-    take: 20,
-  });
-
-  return patients.map((p) => ({
-    id: p.id,
-    prenom: p.utilisateur.prenom,
-    nom: p.utilisateur.nom,
-    sexe: p.sexe,
-    dateNaissance: p.dateNaissance,
-    prefecture: p.prefecture,
-    telephoneMasque: p.utilisateur.telephone.replace(/.(?=.{3})/g, String.fromCharCode(8226)),
-  }));
-}
-
 // ═══════════════════════════════════════════════════════════════════
 // L'espace de l'assureur (addendum du 2026-09-28, point 5.2)
 //
@@ -2457,97 +2317,3 @@ export async function mesReglements(user: JwtPayload): Promise<ReglementView[]> 
   });
 }
 
-/**
- * Creer le compte par lequel un assureur se connecte (addendum, point 5.2).
- *
- * **L'assureur n'appartient a aucun hopital.** Ses agents se connectent depuis
- * une structure de type ASSURANCE qui lui est propre — sans elle, ils
- * heriteraient des droits d'une pharmacie ou d'un etablissement de soins, et
- * donc d'un acces aux dossiers.
- *
- * La structure est creee a la volee si la compagnie n'en a pas : demander a
- * l'administration de declarer d'abord un « etablissement de sante » pour une
- * compagnie d'assurance n'aurait aucun sens a l'ecran, alors que le modele,
- * lui, en a besoin.
- *
- * Le mot de passe n'est rendu qu'une fois, et devra etre change.
- */
-export async function creerAgentAssureur(
-  auteur: JwtPayload,
-  idAssureur: string,
-  dto: { prenom: string; nom: string; telephone: string; email?: string; prefecture?: string },
-): Promise<AgentAssureurCreeView> {
-  if (!dto.email?.trim()) {
-    throw new ValidationError('Une adresse email professionnelle est obligatoire pour se connecter');
-  }
-
-  const assureur = await prisma.assureur.findUnique({
-    where: { id: idAssureur },
-    select: { id: true, nom: true, code: true, idStructure: true },
-  });
-  if (!assureur) throw new NotFoundError('Assureur introuvable');
-
-  const existant = await prisma.utilisateur.findUnique({
-    where: { telephone: dto.telephone },
-    select: { prenom: true, nom: true },
-  });
-  if (existant) {
-    throw new ConflictError(
-      `Ce numero appartient deja a ${existant.prenom} ${existant.nom}.`,
-    );
-  }
-
-  const motDePasseTemporaire = genererMotDePasseTemp();
-  const motDePasseHash = await hashPassword(motDePasseTemporaire);
-
-  const agent = await prisma.$transaction(async (tx) => {
-    let idStructure = assureur.idStructure;
-    if (!idStructure) {
-      const s = await tx.structureSante.create({
-        data: {
-          nom: assureur.nom,
-          type: TypeStructure.ASSURANCE,
-          // Faute de mieux : une compagnie n'a pas de prefecture au modele, et
-          // la colonne est obligatoire. Conakry est le siege par defaut.
-          prefecture: dto.prefecture?.trim() || 'Conakry',
-        },
-        select: { id: true },
-      });
-      idStructure = s.id;
-      await tx.assureur.update({ where: { id: assureur.id }, data: { idStructure } });
-    }
-
-    const agentExistant = await tx.utilisateur.findFirst({
-      where: { idStructure, role: 'ASSUREUR' },
-      select: { id: true },
-    });
-    if (agentExistant) {
-      throw new ConflictError('Cette compagnie a déjà un compte agent');
-    }
-
-    return tx.utilisateur.create({
-      data: {
-        telephone: dto.telephone.trim(),
-        email: dto.email?.trim() || null,
-        motDePasseHash,
-        prenom: dto.prenom.trim(),
-        nom: dto.nom.trim(),
-        role: 'ASSUREUR',
-        idStructure,
-        estActif: true,
-        doitChangerMotDePasse: true,
-      },
-      select: { id: true, prenom: true, nom: true, telephone: true },
-    });
-  });
-
-  logger.info('[ASSURANCE] compte agent assureur cree', {
-    idAssureur: assureur.id, idAgent: agent.id, parQui: auteur.userId,
-  });
-
-  return {
-    agent,
-    assureur: { id: assureur.id, nom: assureur.nom, code: assureur.code },
-    motDePasseTemporaire,
-  };
-}

@@ -9,11 +9,8 @@ import { corpsJsonMultipart, recevoirPiecesAgrement, uploadPhotoAssure } from '.
 import type { FichierRecu } from '../services/piece-agrement.service';
 import { ValidationError } from '../utils/app-error';
 import {
-  creerAgentAssureurSchema,
   creerAssuranceSchema,
-  creerAssureurSchema,
   creerReglementSchema,
-  creerContratAssuranceSchema,
   creerRegleCouvertureSchema,
   simulerPriseEnChargeSchema,
   verifierEligibiliteSchema,
@@ -30,12 +27,10 @@ import {
   importerTravailleursSchema,
 } from '../validators/api.schemas';
 import type {
-  AgentAssureurCreeView,
   CreationAssuranceView,
   AssureView,
   AssureurView,
   MonAssureurView,
-  PatientContratRechercheView,
   ReglementView,
   SituationPharmacieView,
   ContratAssuranceView,
@@ -169,27 +164,6 @@ router.post(
   }
 );
 
-/**
- * Les contrats d'un patient, pour l'administration des polices.
- *
- * **Le garde etait bien plus large que l'usage.** La route s'ouvrait au
- * pharmacien, a l'accueil et a l'administrateur de structure, et le service ne
- * recevait meme pas l'appelant : n'importe lequel d'entre eux lisait, par
- * identifiant, la couverture de n'importe quel patient.
- *
- * Son seul appelant est l'ecran `/admin/assurance`, reserve au national. Au
- * comptoir, le tiers payant passe par le jeton de la carte presentee, pas par
- * un identifiant de patient : la pharmacie n'a rien a chercher ici.
- */
-router.get(
-  '/patients/:id/contrats',
-  requireRole('ADMIN_NATIONAL', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    const data: ContratAssuranceView[] = await assurance.contratsDuPatient(req.params['id'] as string);
-    res.json({ success: true, data });
-  }
-);
-
 // ── Le patient ───────────────────────────────────────────────────────
 
 /** Les cartes d'assurance du patient connecte, a afficher, telecharger ou imprimer. */
@@ -272,20 +246,6 @@ router.post(
 );
 
 /**
- * Rattacher une compagnie a une structure ASSURANCE **deja existante** - les
- * assurances creees avant la porte unique. Ce n'est plus le chemin normal.
- */
-router.post(
-  '/assureurs',
-  requireRole('ADMIN_NATIONAL', 'SUPER_ADMIN'),
-  validateBody(creerAssureurSchema),
-  async (req: AuthRequest, res: Response) => {
-    const data: AssureurView = await assurance.creerAssureur(req.body);
-    res.status(201).json({ success: true, data, message: `Assureur ${data.code} cree` });
-  }
-);
-
-/**
  * Ajoute une regle de couverture. Elle ne remplace pas la precedente : sa
  * date d'effet decide, et le calcul retient celle en vigueur a la date de la
  * vente (EF-09-03).
@@ -297,57 +257,6 @@ router.post(
   async (req: AuthRequest, res: Response) => {
     const data: AssureurView = await assurance.ajouterRegle(req.params['id'] as string, req.body);
     res.status(201).json({ success: true, data, message: 'Regle de couverture ajoutee' });
-  }
-);
-
-/**
- * Trouver le patient a qui rattacher une police.
- *
- * **Reserve a l'administration** : le comptoir reconnait le patient par son
- * QR, il est devant lui. Ici l'assureur envoie une liste de noms, et il faut
- * chercher a l'echelle du pays — donc hors de toute structure.
- */
-router.get(
-  '/patients/recherche',
-  requireRole('ADMIN_NATIONAL', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    const q = typeof req.query['q'] === 'string' ? req.query['q'] : '';
-    const data: PatientContratRechercheView[] = await assurance.rechercherPatientsPourContrat(q);
-    res.json({ success: true, data });
-  }
-);
-
-router.post(
-  '/contrats',
-  requireRole('ADMIN_NATIONAL', 'SUPER_ADMIN'),
-  validateBody(creerContratAssuranceSchema),
-  async (req: AuthRequest, res: Response) => {
-    const data: ContratAssuranceView = await assurance.creerContrat(req.body);
-    res.status(201).json({ success: true, data, message: `Police ${data.numeroPolice} enregistree` });
-  }
-);
-
-/**
- * Creer le compte par lequel un assureur se connecte.
- *
- * Sa structure de type ASSURANCE est creee a la volee si la compagnie n'en a
- * pas : sans elle, ses agents heriteraient des droits d'une pharmacie ou d'un
- * etablissement de soins, et donc d'un acces aux dossiers.
- */
-router.post(
-  '/assureurs/:id/agents',
-  requireRole('ADMIN_NATIONAL', 'SUPER_ADMIN'),
-  validateBody(creerAgentAssureurSchema),
-  async (req: AuthRequest, res: Response) => {
-    const data: AgentAssureurCreeView = await assurance.creerAgentAssureur(
-      req.user!, req.params['id'] as string, req.body,
-    );
-    res.status(201).json({
-      success: true,
-      data,
-      message: `Compte de ${data.agent.prenom} ${data.agent.nom} créé pour ${data.assureur.nom}. `
-        + `Remettez-lui son mot de passe : il devra le changer à sa première connexion.`,
-    });
   }
 );
 

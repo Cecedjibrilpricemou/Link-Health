@@ -1,15 +1,12 @@
-// Le comptoir et l'assurance cherchent le patient de la meme facon.
+// Le comptoir cherche le patient avec le predicat partage.
 //
-// **Le predicat a ete extrait pour etre partage, pas pour etre range.** Si les
-// deux chemins divergent, un patient trouvable a l'admission devient
-// introuvable quand on lui rattache une police — et la police reste en
-// suspens sans que personne ne sache pourquoi.
+// L'administration cherchait aussi un patient pour lui rattacher une police ;
+// depuis le 2026-11-21, c'est la compagnie qui renseigne ses assures, depuis
+// son espace : ce chemin-la n'existe plus.
 //
 // Les tests existants simulent `findMany` : ils ne regardent jamais le filtre
 // produit. C'est exactement ce que ce fichier regarde.
 import { filtreRecherchePatient, rechercherPatients } from '../src/services/hopital.service';
-import { rechercherPatientsPourContrat } from '../src/services/assurance.service';
-import { ValidationError } from '../src/utils/app-error';
 
 jest.mock('../src/config/prisma', () => {
   const prisma: Record<string, unknown> = {
@@ -64,51 +61,11 @@ describe('filtreRecherchePatient', () => {
   });
 });
 
-describe('les deux chemins cherchent pareil', () => {
+describe('le comptoir cherche avec le predicat partage', () => {
   it('le comptoir passe le predicat partage', async () => {
     await rechercherPatients({ userId: 'u-1', role: 'AGENT_ACCUEIL' } as never, 'Diallo');
     expect(prisma.patientProfile.findMany.mock.calls[0]![0].where)
       .toEqual(filtreRecherchePatient('Diallo'));
   });
 
-  it("l'assurance passe le meme", async () => {
-    await rechercherPatientsPourContrat('Diallo');
-    expect(prisma.patientProfile.findMany.mock.calls[0]![0].where)
-      .toEqual(filtreRecherchePatient('Diallo'));
-  });
-
-  it('et le meme terme donne le meme filtre des deux cotes', async () => {
-    await rechercherPatients({ userId: 'u-1', role: 'AGENT_ACCUEIL' } as never, 'Diallo Ma');
-    const cote1 = prisma.patientProfile.findMany.mock.calls[0]![0].where;
-    prisma.patientProfile.findMany.mockClear();
-    await rechercherPatientsPourContrat('Diallo Ma');
-    expect(prisma.patientProfile.findMany.mock.calls[0]![0].where).toEqual(cote1);
-  });
-});
-
-describe('rechercherPatientsPourContrat', () => {
-  it('exige au moins 3 caracteres, comme au comptoir', async () => {
-    await expect(rechercherPatientsPourContrat('Di')).rejects.toBeInstanceOf(ValidationError);
-    expect(prisma.patientProfile.findMany).not.toHaveBeenCalled();
-  });
-
-  it('masque le numero : il sert a distinguer, pas a appeler', async () => {
-    const [r] = await rechercherPatientsPourContrat('Diallo');
-    expect(r!.telephoneMasque).toBe('••••••456');
-  });
-
-  // Une police se rattache a une personne, pas a un passage : l'administration
-  // n'appartient a aucune structure et ne doit pas dependre d'un episode.
-  it("ne demande aucun episode : l'administration n'a pas de structure", async () => {
-    await rechercherPatientsPourContrat('Diallo');
-    const select = prisma.patientProfile.findMany.mock.calls[0]![0].select;
-    expect(select.episodes).toBeUndefined();
-    expect(prisma.utilisateur.findUnique).not.toHaveBeenCalled();
-  });
-
-  it('ne laisse filtrer aucune donnee medicale', async () => {
-    const [r] = await rechercherPatientsPourContrat('Diallo');
-    expect(Object.keys(r!).sort()).toEqual(
-      ['dateNaissance', 'id', 'nom', 'prefecture', 'prenom', 'sexe', 'telephoneMasque']);
-  });
 });

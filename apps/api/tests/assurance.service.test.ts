@@ -12,7 +12,6 @@ import {
   regleEnVigueur,
   repartir,
   verifierEligibilite,
-  creerAgentAssureur,
   listerAssureursAdmin,
   type LigneAChiffrer,
   type ReglePourCalcul,
@@ -246,57 +245,6 @@ describe('verifierEligibilite', () => {
     const r = await verifierEligibilite(pharmacien, 'p-1', LE_2_OCTOBRE);
     expect(r.eligible).toBe(false);
     expect(r.tauxBasePourcent).toBeNull();
-  });
-});
-
-describe('creerAgentAssureur', () => {
-  beforeEach(() => {
-    jest.resetAllMocks();
-    prisma.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
-  });
-
-  it('refuse un professionnel sans email avant de créer un compte', async () => {
-    await expect(creerAgentAssureur(
-      { userId: 'admin-1', role: 'SUPER_ADMIN' } as JwtPayload,
-      'assureur-1',
-      { prenom: 'Mamadou', nom: 'Bah', telephone: '+224620000003' },
-    )).rejects.toBeInstanceOf(ValidationError);
-  });
-
-  it('refuse de créer un deuxième agent pour une compagnie', async () => {
-    prisma.assureur.findUnique.mockResolvedValue({
-      id: 'assureur-1', nom: 'Sante GN', code: 'SGN', idStructure: 'structure-assureur-1',
-    });
-    prisma.utilisateur.findUnique.mockResolvedValue(null);
-    prisma.utilisateur.findFirst.mockResolvedValue({ id: 'agent-existant' });
-
-    await expect(creerAgentAssureur(
-      { userId: 'admin-1', role: 'SUPER_ADMIN' } as JwtPayload,
-      'assureur-1',
-      {
-        prenom: 'Mamadou', nom: 'Bah', telephone: '+224620000003',
-        email: 'mamadou@example.com',
-      },
-    )).rejects.toThrow(/compte agent/i);
-    expect(prisma.utilisateur.create).not.toHaveBeenCalled();
-  });
-
-  it('signale dans la liste d administration si une compagnie a déjà son agent', async () => {
-    prisma.assureur.findMany.mockResolvedValue([
-      {
-        id: 'assureur-1', nom: 'Sante GN', code: 'SGN', telephone: null, email: null,
-        estActif: true, modeEchange: 'MANUEL', regles: [], _count: { contrats: 0 },
-        structure: { utilisateurs: [{ id: 'agent-1' }] },
-      },
-      {
-        id: 'assureur-2', nom: 'Mutuelle GN', code: 'MGN', telephone: null, email: null,
-        estActif: true, modeEchange: 'MANUEL', regles: [], _count: { contrats: 0 },
-        structure: null,
-      },
-    ]);
-
-    const result = await listerAssureursAdmin();
-    expect(result.map((a) => a.agentExistant)).toEqual([true, false]);
   });
 });
 
