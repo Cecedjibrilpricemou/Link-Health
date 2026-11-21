@@ -21,6 +21,7 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
 import { TopbarCrumbComponent } from '../topbar-crumb/topbar-crumb.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
 import { BrandComponent } from '../brand/brand.component';
+import { roleDeLEspace } from '../../utils/role-espace';
 
 @Component({
   selector: 'app-medecin-layout',
@@ -35,6 +36,8 @@ import { BrandComponent } from '../brand/brand.component';
   styleUrl: './medecin-layout.component.scss'
 })
 export class MedecinLayoutComponent {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private authService   = inject(AuthService);
   readonly themeService = inject(ThemeService);
   readonly layout        = inject(LayoutService);

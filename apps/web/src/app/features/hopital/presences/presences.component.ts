@@ -18,11 +18,12 @@ import { SocketService } from '../../../core/services/socket.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { NomPraticienPipe } from '../../../shared/pipes/nom-praticien.pipe';
 
 @Component({
   selector: 'app-hopital-presences',
   standalone: true,
-  imports: [DatePipe, MatButtonModule, TranslatePipe, ExportListeComponent],
+  imports: [NomPraticienPipe, DatePipe, MatButtonModule, TranslatePipe, ExportListeComponent],
   templateUrl: './presences.component.html',
   styleUrl: './presences.component.scss',
 })

@@ -44,7 +44,7 @@
             <span class="bb-hop-item__num">{{ e.numero }}</span>
             <span><i class="pi pi-calendar"></i>{{ 'HOPITAL.EPISODES.OUVERT_LE' | translate }} {{ e.ouvertLe | date:'dd/MM/yyyy HH:mm' }} {{ 'HOPITAL.EPISODES.PAR' | translate }} {{ e.ouvertPar.prenom }} {{ e.ouvertPar.nom }}</span>
             @if (e.service) { <span><i class="pi pi-sitemap"></i>{{ e.service }}</span> }
-            @if (e.responsable) { <span><i class="pi pi-user"></i>Dr {{ e.responsable.prenom }} {{ e.responsable.nom }}</span> }
+            @if (e.responsable) { <span><i class="pi pi-user"></i>{{ e.responsable | nomPraticien }}</span> }
             <span><i class="pi pi-filter"></i>{{ 'HOPITAL.EPISODES.ANALYSES' | translate: { count: e.nbDemandesAnalyse } }}</span>
           </p>
         </div>

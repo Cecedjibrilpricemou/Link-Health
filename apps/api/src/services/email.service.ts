@@ -780,6 +780,7 @@ export async function envoyerEmailAgent(dto: {
         'ASC_SUPERVISOR': 'Superviseur ASC',
         'AGENT_ACCUEIL': "Agent d'accueil",
         'MEDECIN': 'Médecin',
+        'SAGE_FEMME': 'Sage-femme',
         'PHARMACIEN': 'Pharmacien'
     };
 

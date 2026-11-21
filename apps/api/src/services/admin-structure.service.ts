@@ -7,6 +7,7 @@ import { Role, RoleOfficine, TypeStructure } from '../config/generated/client/cl
 import { envoyerEmailAdminStructure, envoyerEmailAgent, envoyerReinitialisationAgent } from './email.service';
 import type { SpecialiteMedicale } from '@baobaoheath/shared-types';
 import { normaliserSpecialite } from '../utils/specialite.util';
+import { estPraticien, ROLES_PRATICIENS } from '../utils/praticien.util';
 import { exigerServiceOuvert } from './services-hospitaliers.service';
 import { logger } from '../config/logger';
 import type { JwtPayload } from '../types/auth.types';
@@ -19,7 +20,7 @@ import {
     type FichierRecu, type IdentifiantsRecus,
 } from './piece-agrement.service';
 
-const ROLES_AUTORISES: Role[] = [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+const ROLES_AUTORISES: Role[] = [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
 
 /**
  * Les comptes qu'une structure cree, selon ce qu'elle fait.
@@ -28,18 +29,21 @@ const ROLES_AUTORISES: Role[] = [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Ro
  * hopital n'a pas d'agents de sante communautaire, qui travaillent depuis les
  * postes et les centres. Les comptes deja crees ne sont pas touches : la
  * regle vaut pour les creations.
+ *
+ * La sage-femme exerce partout ou l'on soigne - suivi de grossesse au poste,
+ * accouchement au centre et a l'hopital -, jamais au laboratoire.
  */
 export function rolesCreablesPour(type: TypeStructure | null | undefined): Role[] {
     switch (type) {
         case TypeStructure.POSTE:
-            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.AGENT_ACCUEIL];
+            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.AGENT_ACCUEIL];
         case TypeStructure.CENTRE:
-            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
         case TypeStructure.HOPITAL_PREF:
         case TypeStructure.HOPITAL_REG:
         case TypeStructure.CHU:
         case TypeStructure.CLINIQUE:
-            return [Role.MEDECIN, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+            return [Role.MEDECIN, Role.SAGE_FEMME, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
         case TypeStructure.LABORATOIRE:
             return [Role.TECHNICIEN_LABO];
         default:
@@ -620,7 +624,10 @@ export async function creerAgent(adminId: string, dto: {
     if (!rolesCreablesPour(admin.structure?.type).includes(dto.role)) {
         throw new ForbiddenError("Ce metier n'existe pas dans votre type de structure.");
     }
-    const estMedecin = dto.role === Role.MEDECIN;
+    // Le medecin et la sage-femme ont un profil de praticien : un numero
+    // d'ordre, un service, un bureau. Seul le medecin a une specialite : celle
+    // de la sage-femme, c'est son metier.
+    const estMedecin = estPraticien(dto.role);
     const numeroOrdreSaisi = estMedecin ? numeroOrdreNet(dto.numeroOrdre) : null;
     const idService = estMedecin && dto.idService ? dto.idService : null;
     if (idService) await exigerServiceOuvert(admin.idStructure, idService);
@@ -654,14 +661,14 @@ export async function creerAgent(adminId: string, dto: {
         if (dto.role === Role.ASC || dto.role === Role.ASC_SUPERVISOR) {
             await tx.ascProfile.create({ data: { idUtilisateur: u.id, idStructure: admin.idStructure } });
         }
-        if (dto.role === Role.MEDECIN) {
+        if (estMedecin) {
             await tx.medecinProfile.create({
                 data: {
                     idUtilisateur: u.id,
                     idStructure: admin.idStructure,
                     // Facultatif : sans numerotation de bureaux, l'agent accompagne.
                     bureau: dto.bureau?.trim() || null,
-                    specialite: dto.specialite ?? 'MEDECINE_GENERALE',
+                    specialite: dto.role === Role.MEDECIN ? (dto.specialite ?? 'MEDECINE_GENERALE') : null,
                     idService,
                 },
             });
@@ -757,8 +764,11 @@ export async function modifierProfilAgent(adminId: string, agentId: string, dto:
     idService?: string | null;
 }) {
     const { admin, agent } = await agentDeMaStructure(adminId, agentId);
-    if (agent.role !== Role.MEDECIN) {
-        throw new ValidationError("Seul le profil d'un médecin porte une spécialité et un numéro d'ordre.");
+    if (!estPraticien(agent.role)) {
+        throw new ValidationError("Seul le profil d'un médecin ou d'une sage-femme porte un numéro d'ordre et un service.");
+    }
+    if (dto.specialite && agent.role !== Role.MEDECIN) {
+        throw new ValidationError("Une sage-femme n'a pas de spécialité : son métier en tient lieu.");
     }
     const donnees: { numeroOrdre?: string | null; ordreVerifieLe?: null; idOrdreVerifiePar?: null } = {};
     if (dto.numeroOrdre !== undefined) {
@@ -886,7 +896,7 @@ export async function definirBureau(
     // fonder sur le profil faisait echouer le garde sur des medecins
     // parfaitement legitimes.
     const medecin = await prisma.utilisateur.findFirst({
-        where: { id: idAgent, role: Role.MEDECIN, idStructure: admin.idStructure },
+        where: { id: idAgent, role: { in: [...ROLES_PRATICIENS] }, idStructure: admin.idStructure },
         select: { prenom: true, nom: true, medecinProfile: { select: { id: true } } },
     });
     if (!medecin) throw new NotFoundError('Medecin introuvable dans cette structure');

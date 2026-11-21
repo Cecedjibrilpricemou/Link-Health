@@ -171,6 +171,7 @@ const ENTITES_PAR_ROLE: Readonly<Record<string, readonly string[]>> = {
   ASC: ['PatientProfile', 'Consultation', 'ConstantesVitales', 'Vaccination'],
   ASC_SUPERVISOR: ['PatientProfile', 'Consultation', 'ConstantesVitales', 'Vaccination'],
   MEDECIN: ['PatientProfile', 'Consultation', 'ConstantesVitales', 'Vaccination'],
+  SAGE_FEMME: ['PatientProfile', 'Consultation', 'ConstantesVitales', 'Vaccination'],
   // L'officine remonte son stock, et c'est tout ce qu'elle a a remonter.
   PHARMACIEN: ['Stock'],
   // L'administrateur de structure ne soigne pas : il n'ecrit pas de dossier.

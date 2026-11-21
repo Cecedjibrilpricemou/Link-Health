@@ -71,7 +71,7 @@ function repondre(res: Response, r: { refus: MotifRefusBrisDeGlace }): void {
  */
 router.post(
   '/',
-  requireRole('MEDECIN', 'ASC', 'ASC_SUPERVISOR'),
+  requireRole('MEDECIN', 'SAGE_FEMME', 'ASC', 'ASC_SUPERVISOR'),
   validateBody(declarerBrisDeGlaceSchema),
   async (req: AuthRequest, res: Response) => {
     const r = await bris.declarer(req.user!, req.body);
@@ -92,7 +92,7 @@ router.post(
 /** Refermer avant l'heure, quand on n'a plus besoin du dossier. */
 router.post(
   '/:id/refermer',
-  requireRole('MEDECIN', 'ASC', 'ASC_SUPERVISOR'),
+  requireRole('MEDECIN', 'SAGE_FEMME', 'ASC', 'ASC_SUPERVISOR'),
   async (req: AuthRequest, res: Response) => {
     const r = await bris.refermer(req.user!, req.params['id'] as string);
     if ('refus' in r) { repondre(res, r); return; }

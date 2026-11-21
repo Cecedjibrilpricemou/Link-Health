@@ -34,6 +34,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
 import { ChoixLaboratoireComponent, ChoixLaboratoire } from '../../../shared/components/choix-laboratoire/choix-laboratoire.component';
 import { statutDemandeClasse, statutEpisodeClasse, urgenceClasse } from '../../hopital/hopital.utils';
 import { interpretationClasse, referenceLisible } from '../../laboratoire/laboratoire.utils';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 @Component({
   selector: 'app-medecin-dossier',
@@ -47,6 +48,8 @@ import { interpretationClasse, referenceLisible } from '../../laboratoire/labora
   styleUrl: './dossier.component.scss',
 })
 export class DossierComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private route   = inject(ActivatedRoute);
   private router  = inject(Router);
   private hopital = inject(HopitalService);

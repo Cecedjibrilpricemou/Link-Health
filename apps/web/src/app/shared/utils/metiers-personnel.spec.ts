@@ -1,11 +1,24 @@
 // Les metiers du personnel, et ce que l'API en recoit.
-import { libelleSpecialite, metierDe, metiersPour, SPECIALITES_DE_SPECIALISTE, versCreation } from './metiers-personnel';
+import { estMetierMedical, estRolePraticien, libelleSpecialite, metierDe, metiersPour, SPECIALITES_DE_SPECIALISTE, versCreation } from './metiers-personnel';
 
 describe('les metiers du personnel', () => {
-  it('un hopital : medecins, dentistes, accueil, laboratoire ; pas d agents communautaires', () => {
+  it('un hopital : medecins, dentistes, sages-femmes, accueil, laboratoire ; pas d agents communautaires', () => {
     expect(metiersPour('CHU')).toEqual([
-      'MEDECIN_GENERALISTE', 'MEDECIN_SPECIALISTE', 'CHIRURGIEN_DENTISTE', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO',
+      'MEDECIN_GENERALISTE', 'MEDECIN_SPECIALISTE', 'CHIRURGIEN_DENTISTE', 'SAGE_FEMME', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO',
     ]);
+  });
+
+  // La sage-femme a les ecrans du medecin, mais son propre role : l'accueil
+  // l'oriente comme sage-femme. Elle n'a pas de specialite.
+  it('la sage-femme : son role, un profil de praticien, sans specialite', () => {
+    expect(metiersPour('POSTE')).toContain('SAGE_FEMME');
+    expect(metiersPour('LABORATOIRE')).not.toContain('SAGE_FEMME');
+    expect(versCreation('SAGE_FEMME', 'PEDIATRIE')).toEqual({ role: 'SAGE_FEMME' });
+    expect(metierDe('SAGE_FEMME', null)).toBe('SAGE_FEMME');
+    expect(estMetierMedical('SAGE_FEMME')).toBe(true);
+    expect(estRolePraticien('SAGE_FEMME')).toBe(true);
+    expect(estRolePraticien('MEDECIN')).toBe(true);
+    expect(estRolePraticien('AGENT_ACCUEIL')).toBe(false);
   });
 
   it('un centre de sante : tout, agents communautaires compris ; un laboratoire : ses techniciens', () => {

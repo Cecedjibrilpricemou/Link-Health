@@ -6,9 +6,10 @@
     <div class="bb-med-dash__header-left">
       <div class="bb-med-dash__avatar" aria-hidden="true">{{ getInitiales() }}</div>
       <div class="bb-med-dash__header-text">
-        <span class="bb-page-head__tag"><i class="pi pi-user-plus" aria-hidden="true"></i> {{ 'MEDECIN.ROLE' | translate }}</span>
+        <span class="bb-page-head__tag"><i class="pi pi-user-plus" aria-hidden="true"></i> {{ roleEspace() | translate }}</span>
         <h1 class="bb-page-head__title bb-med-dash__title">
-          {{ 'MEDECIN.DASHBOARD.GREETING_PREFIX' | translate }} {{ currentUser()?.prenom }} {{ currentUser()?.nom }}
+          <!-- « Bonjour Dr » pour le medecin seul : une sage-femme n'est pas docteur. -->
+          {{ (currentUser()?.role === 'SAGE_FEMME' ? 'MEDECIN.DASHBOARD.GREETING_SAGE_FEMME' : 'MEDECIN.DASHBOARD.GREETING_PREFIX') | translate }} {{ currentUser()?.prenom }} {{ currentUser()?.nom }}
         </h1>
         @if (stats()?.structure) {
           <p class="bb-med-dash__structure">

@@ -10,7 +10,7 @@ const router = Router();
 router.use(authenticate);
 // La synchronisation hors ligne emporte des dossiers : l'administration n'a
 // pas de mode hors ligne, et n'a pas a les emporter.
-router.use(requireRole('PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'PHARMACIEN'));
+router.use(requireRole('PATIENT', 'ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'PHARMACIEN'));
 
 // Lu par le client web au demarrage : mode hors-ligne autorise, frequence de rejeu.
 router.get('/config', getConfigController);

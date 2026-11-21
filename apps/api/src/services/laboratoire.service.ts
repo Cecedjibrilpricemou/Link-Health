@@ -40,6 +40,7 @@ import type {
   TableauDeBordLaboView,
   ValiderResultatsDto,
 } from '@baobaoheath/shared-types';
+import { estPraticien } from '../utils/praticien.util';
 
 // Delais du circuit critique (EF-04-08), en minutes.
 const ESCALADE_APRES_MIN = Number(process.env.LABO_ESCALADE_MINUTES ?? 30);
@@ -440,7 +441,7 @@ export async function mesResultatsALiberer(user: JwtPayload): Promise<ResultatAL
 }
 
 export async function libererResultats(user: JwtPayload, idDemande: string, dto: LibererResultatsDto): Promise<DemandeAnalyseView> {
-  if (user.role !== 'MEDECIN') throw new ForbiddenError('Seul un medecin peut liberer des resultats');
+  if (!estPraticien(user.role)) throw new ForbiddenError('Seul un medecin ou une sage-femme peut liberer des resultats');
 
   const d = await prisma.demandeAnalyse.findUnique({
     where: { id: idDemande },

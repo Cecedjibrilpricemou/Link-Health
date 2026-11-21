@@ -20,6 +20,7 @@ import { demanderAccesDossier } from './acces-dossier.service';
 import { envoyerSmsSimule, notifierSansBloquer } from './notification.service';
 import { lancerRecherchePharmacie } from './commande.service';
 import { logger } from '../config/logger';
+import { estPraticien } from '../utils/praticien.util';
 
 const ADMIN_ROLES = new Set(['ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN']);
 
@@ -30,6 +31,7 @@ function lienEspace(role: string, sousChemin: string): string {
         ASC: '/asc',
         ASC_SUPERVISOR: '/asc',
         MEDECIN: '/medecin',
+        SAGE_FEMME: '/medecin',
         PHARMACIEN: '/pharmacien',
     };
     return `${espaces[role] ?? '/'}${sousChemin}`;
@@ -476,7 +478,7 @@ export async function sendMessage(userId: string, dto: SendMessageDto) {
         type: 'NOUVEAU_MESSAGE',
         titre: `Nouveau message de ${message.expediteur.prenom} ${message.expediteur.nom}`,
         contenu: dto.contenu.length > 120 ? `${dto.contenu.slice(0, 117)}...` : dto.contenu,
-        lienAction: destinataire.role === 'MEDECIN' ? '/medecin/messagerie' : undefined,
+        lienAction: estPraticien(destinataire.role) ? '/medecin/messagerie' : undefined,
         metadonnees: { idMessage: message.id, idExpediteur: userId },
     });
 

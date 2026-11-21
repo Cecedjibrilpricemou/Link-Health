@@ -55,7 +55,7 @@ router.post(
 // ─── Rappel vaccination — ASC / Médecin ───────────────────
 router.post(
     '/rappel/vaccination/:id',
-    requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN'),
+    requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME'),
     envoyerRappelVaccinationController
 );
 
@@ -69,7 +69,7 @@ router.post(
 // ─── Notification référencement — Médecin ─────────────────
 router.post(
     '/referencement/:id',
-    requireRole('MEDECIN'),
+    requireRole('MEDECIN', 'SAGE_FEMME'),
     envoyerNotificationReferencementController
 );
 

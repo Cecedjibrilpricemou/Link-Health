@@ -9,6 +9,7 @@ import { ColonneExport, ExportListeComponent } from '../../../shared/components/
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import type { ConsultationAValiderView, HorodatageApi } from '@baobaoheath/shared-types';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 @Component({
   selector: 'app-medecin-consultations',
@@ -18,6 +19,8 @@ import type { ConsultationAValiderView, HorodatageApi } from '@baobaoheath/share
   styleUrl: './consultations.component.scss'
 })
 export class MedecinConsultationsComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private medecinService = inject(MedecinService);
   private i18n = inject(I18nService);
 

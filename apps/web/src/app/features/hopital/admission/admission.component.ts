@@ -20,6 +20,7 @@ import { SuggestionsLieuxComponent } from '../../../shared/components/suggestion
 import { GeographieService } from '../../../core/services/geographie.service';
 import { RACINE_ACCUEIL } from '../../../core/navigation/racines';
 import { libelleSpecialite } from '../../../shared/utils/metiers-personnel';
+import { nomPraticien } from '../../../shared/pipes/nom-praticien.pipe';
 
 @Component({
   selector: 'app-hopital-admission',
@@ -46,9 +47,9 @@ export class AdmissionComponent implements OnInit {
     const liste = duService.length ? duService : this.medecins();
     return liste.map((m) => ({
       valeur: m.id,
-      libelle: `Dr ${m.prenom} ${m.nom}`,
+      libelle: nomPraticien(m),
       // Specialite et service, sans repeter un meme nom (« Pédiatrie · Pédiatrie »).
-      detail: [...new Map([libelleSpecialite((cle) => this.i18n.t(cle), m.specialite), m.service?.nom]
+      detail: [...new Map([m.role === 'SAGE_FEMME' ? this.i18n.t('ROLE.SAGE_FEMME') : libelleSpecialite((cle) => this.i18n.t(cle), m.specialite), m.service?.nom]
         .filter((v): v is string => !!v).map((v) => [v.toLocaleLowerCase('fr'), v])).values()].join(' · ') || undefined,
     }));
   });

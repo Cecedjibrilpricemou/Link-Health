@@ -18,6 +18,7 @@ import { appliquerReglesDocument, avecExpirationEtAlertes, ordonnanceEnRedaction
 import { analyserPrescription } from './prescription-securite.service';
 import { recordSyncEvent } from './sync.service';
 import { ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
+import { estPraticien } from '../utils/praticien.util';
 
 async function getAscForUser(userId: string) {
   const asc = await prisma.ascProfile.findUnique({
@@ -153,7 +154,7 @@ export async function saveVitals(user: JwtPayload, idConsultation: string, dto: 
   // qui prend la tension quand il mene l'entretien. Meme forme que
   // `alertesPrescription` et `addOrdonnance`, qui branchent deja sur le role.
   let idStructureAuteur: string | undefined;
-  if (user.role === 'MEDECIN') {
+  if (estPraticien(user.role)) {
     await assertCanAccessConsultation(user, idConsultation);
     const u = await prisma.utilisateur.findUnique({
       where: { id: user.userId },
@@ -243,7 +244,7 @@ export async function addDiagnostic(
   idConsultation: string,
   dto: DiagnosticDto
 ) {
-  if (user.role === 'MEDECIN') {
+  if (estPraticien(user.role)) {
     await assertCanAccessConsultation(user, idConsultation);
   } else {
     await assertCanModifyAsAsc(user, idConsultation);
@@ -284,7 +285,7 @@ export async function alertesPrescription(
   idConsultation: string,
   idMedicament: string
 ) {
-  if (user.role === 'MEDECIN') {
+  if (estPraticien(user.role)) {
     await assertCanAccessConsultation(user, idConsultation);
   } else {
     await assertCanModifyAsAsc(user, idConsultation);
@@ -297,7 +298,7 @@ export async function addOrdonnance(
   idConsultation: string,
   dto: OrdonnanceDto
 ) {
-  if (user.role === 'MEDECIN') {
+  if (estPraticien(user.role)) {
     await assertCanAccessConsultation(user, idConsultation);
   } else {
     await assertCanModifyAsAsc(user, idConsultation);

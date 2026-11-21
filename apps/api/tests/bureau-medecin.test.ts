@@ -69,7 +69,8 @@ describe('definirBureau', () => {
   it('cherche le médecin par la structure de son compte', async () => {
     await definirBureau(ADMIN, 'u-doc', 'B12');
     const where = prisma.utilisateur.findFirst.mock.calls[0]![0].where;
-    expect(where).toMatchObject({ id: 'u-doc', role: 'MEDECIN', idStructure: 's-1' });
+    // Un praticien : medecin ou sage-femme, qui recoit aussi dans un bureau.
+    expect(where).toMatchObject({ id: 'u-doc', role: { in: ['MEDECIN', 'SAGE_FEMME'] }, idStructure: 's-1' });
   });
 
   it('refuse un médecin d une autre structure', async () => {

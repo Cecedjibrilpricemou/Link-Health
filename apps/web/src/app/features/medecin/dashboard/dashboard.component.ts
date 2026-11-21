@@ -6,6 +6,7 @@ import { MedecinService } from '../../../core/services/medecin.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import type { ConsultationAValiderView, HorodatageApi, MedecinDashboardView } from '@baobaoheath/shared-types';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 @Component({
   selector: 'app-medecin-dashboard',
@@ -15,6 +16,8 @@ import type { ConsultationAValiderView, HorodatageApi, MedecinDashboardView } fr
   styleUrl: './dashboard.component.scss'
 })
 export class MedecinDashboardComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private medecinService = inject(MedecinService);
   private authService    = inject(AuthService);
 

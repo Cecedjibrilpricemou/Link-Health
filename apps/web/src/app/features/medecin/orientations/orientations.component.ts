@@ -14,6 +14,7 @@ import type { OrientationMedecinView } from '@baobaoheath/shared-types';
 import { MedecinService } from '../../../core/services/medecin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 @Component({
   selector: 'app-medecin-orientations',
@@ -23,6 +24,8 @@ import { I18nService } from '../../../shared/services/i18n.service';
   styleUrl: './orientations.component.scss',
 })
 export class OrientationsComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private service = inject(MedecinService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);

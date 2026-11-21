@@ -172,7 +172,7 @@ describe('les actes et les lectures de soin sont fermes a l administration', () 
       ['post', '/episodes/:id/cloturer'], ['post', '/episodes/:id/consultation'], ['post', '/episodes/:id/demandes-analyse'],
       ['get', '/demandes-analyse/:id'], ['post', '/demandes-analyse/:id/annuler'], ['get', '/demandes-analyse/:id/document'],
     ] as const) {
-      expect({ c, roles: rolesPour(routesHopital, m, c) }).toEqual({ c, roles: ['MEDECIN'] });
+      expect({ c, roles: rolesPour(routesHopital, m, c) }).toEqual({ c, roles: ['MEDECIN', 'SAGE_FEMME'] });
     }
   });
 
@@ -187,7 +187,7 @@ describe('les actes et les lectures de soin sont fermes a l administration', () 
 
   it('l espace medecin est au seul medecin', () => {
     for (const [m, c] of [['get', '/dashboard'], ['get', '/consultations'], ['put', '/consultations/:id/valider'], ['put', '/referencements/:id/repondre']] as const) {
-      expect(rolesPour(routesMedecin, m, c)).toEqual(['MEDECIN']);
+      expect(rolesPour(routesMedecin, m, c)).toEqual(['MEDECIN', 'SAGE_FEMME']);
     }
   });
 

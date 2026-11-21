@@ -14,6 +14,9 @@ enum Role {
   ASC
   ASC_SUPERVISOR
   MEDECIN
+  /// Sage-femme : les ecrans et les actes du medecin (`ROLES_PRATICIENS`),
+  /// un metier a part pour l'orientation et l'ordre professionnel.
+  SAGE_FEMME
   PHARMACIEN
   AGENT_ACCUEIL // Hopital : admission, episodes de soins, demandes d'analyse (EF-03)
   TECHNICIEN_LABO // Laborantin : reception, prelevement, saisie ET validation (EF-04)

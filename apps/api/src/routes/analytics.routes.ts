@@ -19,7 +19,7 @@ router.use(authenticate);
 router.get(
     '/dashboard',
     requireRole(
-        'MEDECIN', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
+        'MEDECIN', 'SAGE_FEMME', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
         'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'
     ),
     getDashboardGlobalController
@@ -29,7 +29,7 @@ router.get(
 router.get(
     '/heatmap',
     requireRole(
-        'MEDECIN', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
+        'MEDECIN', 'SAGE_FEMME', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
         'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'
     ),
     getHeatmapController
@@ -39,7 +39,7 @@ router.get(
 router.get(
     '/alertes',
     requireRole(
-        'MEDECIN', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
+        'MEDECIN', 'SAGE_FEMME', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
         'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'
     ),
     getAlertesEpidemiquesController
@@ -49,7 +49,7 @@ router.get(
 router.get(
     '/vaccinations/couverture',
     requireRole(
-        'MEDECIN', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
+        'MEDECIN', 'SAGE_FEMME', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
         'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'
     ),
     getCouvertureVaccinaleController
@@ -59,7 +59,7 @@ router.get(
 router.get(
     '/tendances',
     requireRole(
-        'MEDECIN', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
+        'MEDECIN', 'SAGE_FEMME', 'ASC_SUPERVISOR', 'ADMIN_STRUCTURE',
         'ADMIN_REGIONAL', 'ADMIN_NATIONAL', 'SUPER_ADMIN'
     ),
     getTendancesController

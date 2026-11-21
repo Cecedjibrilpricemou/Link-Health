@@ -31,6 +31,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from '../utils/app-error
 import { envoyerDemandeAccesDossier } from './email.service';
 import { examensSuivisDuPatient } from './laboratoire.service';
 import { notifierSansBloquer } from './notification.service';
+import { estPraticien, nomDuPraticien } from '../utils/praticien.util';
 
 /** Apres la cloture de l'episode, l'accord court encore ce nombre de jours. */
 export const JOURS_APRES_CLOTURE = 30;
@@ -83,7 +84,7 @@ export async function peutLireHistorique(user: JwtPayload, idPatient: string, ma
  * regle que `peutLireHistorique`, en filtre. Sans effet pour les autres roles.
  */
 export function filtrePatientsLisibles(user: JwtPayload, maintenant = new Date()): Prisma.PatientProfileWhereInput {
-  if (user.role !== 'MEDECIN') return {};
+  if (!estPraticien(user.role)) return {};
   return {
     OR: [
       { autorisationsAcces: { some: { idMedecin: user.userId, ...filtreAutorisationActive(maintenant) } } },
@@ -106,7 +107,7 @@ export async function assertPeutLireHistorique(user: JwtPayload, idPatient: stri
  * autres roles gardent leurs regles.
  */
 export async function assertHistoriqueSiMedecin(user: JwtPayload, idPatient: string): Promise<void> {
-  if (user.role === 'MEDECIN') await assertPeutLireHistorique(user, idPatient);
+  if (estPraticien(user.role)) await assertPeutLireHistorique(user, idPatient);
 }
 
 // ── La demande, a la prise du rendez-vous ────────────────────────────
@@ -162,11 +163,11 @@ async function prevenirPatient(idAutorisation: string, prevuLe: Date): Promise<v
   const a = await prisma.autorisationAccesDossier.findUniqueOrThrow({
     where: { id: idAutorisation },
     select: {
-      medecin: { select: { prenom: true, nom: true } },
+      medecin: { select: { prenom: true, nom: true, role: true } },
       patient: { select: { utilisateur: { select: { id: true, prenom: true, nom: true, email: true } } } },
     },
   });
-  const medecin = `Dr ${a.medecin.prenom} ${a.medecin.nom}`;
+  const medecin = nomDuPraticien(a.medecin);
   const patient = a.patient.utilisateur;
 
   await notifierSansBloquer({
@@ -200,7 +201,7 @@ async function prevenirPatient(idAutorisation: string, prevuLe: Date): Promise<v
 
 const VUE_SELECT = {
   id: true, statut: true, demandeeLe: true, decideeLe: true, retireeLe: true,
-  medecin: { select: { prenom: true, nom: true } },
+  medecin: { select: { prenom: true, nom: true, role: true } },
   episode: { select: { closLe: true, structure: { select: { nom: true } } } },
   rendezVous: { select: { prevuLe: true } },
 } satisfies Prisma.AutorisationAccesDossierSelect;
@@ -213,7 +214,7 @@ function versVue(a: LigneAutorisation, maintenant: Date): AutorisationAccesDossi
   return {
     id: a.id,
     statut: expiree ? ('EXPIREE' as const) : a.statut,
-    medecin: `Dr ${a.medecin.prenom} ${a.medecin.nom}`,
+    medecin: nomDuPraticien(a.medecin),
     structure: a.episode?.structure.nom ?? null,
     rendezVousLe: a.rendezVous?.prevuLe.toISOString() ?? null,
     demandeeLe: a.demandeeLe.toISOString(),
@@ -390,7 +391,7 @@ export async function historiquePatient(user: JwtPayload, idPatient: string): Pr
         id: true, consulteeLE: true, motifPrincipal: true, statut: true,
         episode: { select: { structure: { select: { nom: true } } } },
         asc: { select: { structure: { select: { nom: true } } } },
-        medecinValideur: { select: { prenom: true, nom: true } },
+        medecinValideur: { select: { prenom: true, nom: true, role: true } },
         diagnostics: { select: { libelle: true, typeDiagnostic: true, statutClinique: true } },
         ordonnances: {
           select: {
@@ -425,7 +426,7 @@ export async function historiquePatient(user: JwtPayload, idPatient: string): Pr
       date: c.consulteeLE.toISOString(),
       motif: c.motifPrincipal,
       structure: c.episode?.structure.nom ?? c.asc?.structure?.nom ?? null,
-      medecin: c.medecinValideur ? `Dr ${c.medecinValideur.prenom} ${c.medecinValideur.nom}` : null,
+      medecin: c.medecinValideur ? nomDuPraticien(c.medecinValideur) : null,
       diagnostics: c.diagnostics.map((d) => d.libelle),
       traitements: c.ordonnances.flatMap((o) => o.lignes.map((l) => ({
         produit: l.medicament.libelle, posologie: l.posologie, frequence: l.frequence, dureeJours: l.dureeJours, quantite: l.quantite,

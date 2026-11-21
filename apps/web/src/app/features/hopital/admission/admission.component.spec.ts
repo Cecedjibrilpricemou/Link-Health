@@ -24,6 +24,7 @@ function monter(services: { id: string; nom: string; actif: boolean; nbMedecins:
     listerMedecins: () => of({ success: true, data: [
       { id: 'm1', prenom: 'Fanta', nom: 'Camara', specialite: 'Pédiatrie', service: { id: 'sv-ped', nom: 'Pédiatrie' } },
       { id: 'm2', prenom: 'Alpha', nom: 'Diallo', specialite: 'URGENCES', service: { id: 'sv-urg', nom: 'Urgences' } },
+      { id: 'sf1', prenom: 'Awa', nom: 'Keita', role: 'SAGE_FEMME', specialite: null, service: { id: 'sv-mat', nom: 'Maternité' } },
     ] }),
     listerServices: () => of({ success: true, data: services }),
     rechercherPatients: (q: string) => { appels.recherche.push(q); return of({ success: true, data: [PATIENT] }); },
@@ -144,7 +145,7 @@ describe('hôpital : admission', () => {
 
     it('choisir un service ne propose que ses medecins, et garde son nom', () => {
       const { c } = monter(SERVICES);
-      expect(c.optionsMedecins()).toHaveLength(2);
+      expect(c.optionsMedecins()).toHaveLength(3);
       c.choisirService('sv-urg');
       expect(c.optionsMedecins().map((o) => o.valeur)).toEqual(['m2']);
       expect(c.formulaire.service).toBe('Urgences');
@@ -158,10 +159,20 @@ describe('hôpital : admission', () => {
     });
 
     it('un service sans medecin : tous sont proposes, et on le dit', () => {
+      const { c } = monter([...SERVICES, { id: 'sv-den', nom: 'Dentaire', actif: true, nbMedecins: 0 }]);
+      c.choisirService('sv-den');
+      expect(c.serviceSansMedecin()).toBe(true);
+      expect(c.optionsMedecins()).toHaveLength(3);
+    });
+
+    // La sage-femme s'oriente comme un medecin, et se reconnait a son metier.
+    it('la maternite propose sa sage-femme, nommee comme telle', () => {
       const { c } = monter(SERVICES);
       c.choisirService('sv-mat');
-      expect(c.serviceSansMedecin()).toBe(true);
-      expect(c.optionsMedecins()).toHaveLength(2);
+      expect(c.serviceSansMedecin()).toBe(false);
+      const options = c.optionsMedecins();
+      expect(options.map((o) => o.valeur)).toEqual(['sf1']);
+      expect(options[0]?.detail).toBe('Sage-femme · Maternité');
     });
 
     it('le medecin propose porte sa specialite et son service', () => {

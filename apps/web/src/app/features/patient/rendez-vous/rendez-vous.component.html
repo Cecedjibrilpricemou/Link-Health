@@ -27,7 +27,7 @@
         <p class="bb-rdvp__motif">{{ d.motif }}</p>
         <p class="bb-rdvp__meta">
           {{ d.structure.nom }}
-          @if (d.medecin) { · Dr {{ d.medecin.prenom }} {{ d.medecin.nom }} }
+          @if (d.medecin) { · {{ d.medecin | nomPraticien }} }
           <!-- Le patient sait où aller avant de venir, pas une fois sur
                place. Absent quand l'hôpital ne numérote pas ses bureaux. -->
           @if (d.medecin?.bureau) {

@@ -15,13 +15,14 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { statutEpisodeClasse } from '../hopital.utils';
 import { RACINE_ACCUEIL } from '../../../core/navigation/racines';
+import { NomPraticienPipe } from '../../../shared/pipes/nom-praticien.pipe';
 
 type Filtre = 'TOUS' | StatutEpisode;
 
 @Component({
   selector: 'app-hopital-episodes',
   standalone: true,
-  imports: [RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, TranslatePipe, ExportListeComponent],
+  imports: [NomPraticienPipe, RouterLink, DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, TranslatePipe, ExportListeComponent],
   templateUrl: './episodes.component.html',
 })
 export class EpisodesComponent implements OnInit {

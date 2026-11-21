@@ -39,7 +39,7 @@ router.use(authenticate);
 // Le medecin seul : valider une consultation, repondre a un referencement,
 // lire ses consultations sont des actes de soin. Les administrations
 // (structure, region) n'y avaient acces que par heritage.
-router.use(requireRole('MEDECIN'));
+router.use(requireRole('MEDECIN', 'SAGE_FEMME'));
 
 // ─── Profil et dashboard ──────────────────────────────────
 router.get('/dashboard', getDashboardStatsController);
@@ -50,34 +50,34 @@ router.put('/consultations/:id/valider', validateBody(validerConsultationSchema)
 
 // ─── Demandes de rendez-vous a distance (addendum, point 6) ───
 // Accepter, c'est fixer l'heure — et c'est ce geste qui ouvre la visite.
-router.get('/demandes', requireRole('MEDECIN'), async (req: AuthRequest, res: Response) => {
+router.get('/demandes', requireRole('MEDECIN', 'SAGE_FEMME'), async (req: AuthRequest, res: Response) => {
   const data: DemandeRendezVousView[] = await demandeRdv.mesDemandesRecues(req.user!.userId);
   res.json({ success: true, data });
 });
 
-router.post('/demandes/:id/accepter', requireRole('MEDECIN'), validateBody(accepterDemandeRendezVousSchema), async (req: AuthRequest, res: Response) => {
+router.post('/demandes/:id/accepter', requireRole('MEDECIN', 'SAGE_FEMME'), validateBody(accepterDemandeRendezVousSchema), async (req: AuthRequest, res: Response) => {
   const data: DemandeRendezVousView = await demandeRdv.accepterDemande(req.user!.userId, req.params['id'] as string, req.body);
   res.json({ success: true, data, message: 'Rendez-vous fixe : le patient est prevenu' });
 });
 
-router.post('/demandes/:id/refuser', requireRole('MEDECIN'), validateBody(refuserDemandeRendezVousSchema), async (req: AuthRequest, res: Response) => {
+router.post('/demandes/:id/refuser', requireRole('MEDECIN', 'SAGE_FEMME'), validateBody(refuserDemandeRendezVousSchema), async (req: AuthRequest, res: Response) => {
   const data: DemandeRendezVousView = await demandeRdv.refuserDemande(req.user!.userId, req.params['id'] as string, req.body.motif);
   res.json({ success: true, data });
 });
 
 // ─── Rendez-vous ──────────────────────────────────────────
 // Addendum du 2026-09-28 : c'est le médecin qui fixe le créneau, pas l'accueil.
-router.post('/orientations/:idEpisode/rendez-vous', requireRole('MEDECIN'), validateBody(fixerRendezVousSchema), fixerRendezVousController);
-router.get('/rendez-vous', requireRole('MEDECIN'), getAgendaController);
-router.patch('/rendez-vous/:id/statut', requireRole('MEDECIN'), validateBody(statutRendezVousSchema), changerStatutRendezVousController);
+router.post('/orientations/:idEpisode/rendez-vous', requireRole('MEDECIN', 'SAGE_FEMME'), validateBody(fixerRendezVousSchema), fixerRendezVousController);
+router.get('/rendez-vous', requireRole('MEDECIN', 'SAGE_FEMME'), getAgendaController);
+router.patch('/rendez-vous/:id/statut', requireRole('MEDECIN', 'SAGE_FEMME'), validateBody(statutRendezVousSchema), changerStatutRendezVousController);
 
 // ─── Résultats d'analyse à libérer ────────────────────────
 // Addendum du 2026-09-28 : le patient ne voit un résultat qu'après qu'un
 // médecin l'a libéré, avec la possibilité d'y joindre une explication en
-// langage clair. `requireRole('MEDECIN')` est explicite ici : le routeur laisse
+// langage clair. `requireRole('MEDECIN', 'SAGE_FEMME')` est explicite ici : le routeur laisse
 // aussi passer les administrateurs, qui n'ont rien à libérer.
-router.get('/resultats', requireRole('MEDECIN'), getResultatsALibererController);
-router.post('/resultats/:id/liberer', requireRole('MEDECIN'), validateBody(libererResultatsSchema), libererResultatsController);
+router.get('/resultats', requireRole('MEDECIN', 'SAGE_FEMME'), getResultatsALibererController);
+router.post('/resultats/:id/liberer', requireRole('MEDECIN', 'SAGE_FEMME'), validateBody(libererResultatsSchema), libererResultatsController);
 
 // ─── Référencements ───────────────────────────────────────
 // EF-03-05 : les patients que l'accueil a orientes vers ce medecin.
@@ -93,13 +93,13 @@ router.post('/messages', validateBody(sendMessageSchema), sendMessageController)
 // Ou en est l'acces, relancer une demande restee sans reponse, et lire
 // l'historique une fois accorde. Le service refuse sans accord ni bris de
 // glace : la garde de role dit « un medecin », pas « ce medecin-la ».
-router.get('/patients/:idPatient/acces', requireRole('MEDECIN'), async (req: AuthRequest, res: Response) => {
+router.get('/patients/:idPatient/acces', requireRole('MEDECIN', 'SAGE_FEMME'), async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: await accesDossier.etatAcces(req.user!, req.params['idPatient'] as string) });
 });
-router.post('/patients/:idPatient/acces/relancer', requireRole('MEDECIN'), async (req: AuthRequest, res: Response) => {
+router.post('/patients/:idPatient/acces/relancer', requireRole('MEDECIN', 'SAGE_FEMME'), async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: await accesDossier.relancerDemande(req.user!, req.params['idPatient'] as string) });
 });
-router.get('/patients/:idPatient/historique', requireRole('MEDECIN'), async (req: AuthRequest, res: Response) => {
+router.get('/patients/:idPatient/historique', requireRole('MEDECIN', 'SAGE_FEMME'), async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: await accesDossier.historiquePatient(req.user!, req.params['idPatient'] as string) });
 });
 

@@ -21,7 +21,7 @@
           </div>
           <span style="font-size:12.5px;color:var(--bb-text-muted)">{{ 'PATIENT.PARCOURS.OUVERT_LE' | translate }} {{ e.ouvertLe | date:'dd/MM/yyyy' }}@if (e.closLe) { · {{ 'PATIENT.PARCOURS.CLOS_LE' | translate }} {{ e.closLe | date:'dd/MM/yyyy' }} }</span>
         </div>
-        <p class="bb-hop-sub__line" style="margin-bottom:10px"><strong>{{ e.motif }}</strong>@if (e.service) { · {{ e.service }} }@if (e.responsable) { · {{ 'PATIENT.PARCOURS.RESPONSABLE' | translate }} Dr {{ e.responsable.prenom }} {{ e.responsable.nom }} }</p>
+        <p class="bb-hop-sub__line" style="margin-bottom:10px"><strong>{{ e.motif }}</strong>@if (e.service) { · {{ e.service }} }@if (e.responsable) { · {{ 'PATIENT.PARCOURS.RESPONSABLE' | translate }} {{ e.responsable | nomPraticien }} }</p>
 
         <!-- Frise -->
         <div class="bb-parcours__etapes" aria-label="Etapes du parcours">
@@ -49,7 +49,7 @@
                       <strong class="bb-explication__titre">
                         <i class="pi pi-comment" aria-hidden="true"></i>
                         {{ 'PATIENT.EXPLICATION_MEDECIN' | translate }}
-                        @if (d.libereePar) { — Dr {{ d.libereePar.prenom }} {{ d.libereePar.nom }} }
+                        @if (d.libereePar) { — {{ d.libereePar | nomPraticien }} }
                       </strong>
                       <p class="bb-explication__texte">{{ d.commentaireMedecin }}</p>
                     </div>
@@ -91,7 +91,7 @@
             @for (r of e.rendezVous; track r.id) {
               <div class="bb-hop-sub">
                 <div class="bb-hop-sub__head"><span class="bb-hop-sub__num">{{ r.prevuLe | date:'EEEE d MMMM yyyy, HH:mm' }}</span><span class="bb-badge" [class.bb-badge--success]="r.statut === 'PLANIFIE'" [class.bb-badge--neutral]="r.statut !== 'PLANIFIE'">{{ 'HOPITAL.RDV_STATUT.' + r.statut | translate }}</span></div>
-                @if (r.medecin) { <p class="bb-hop-sub__line">Dr {{ r.medecin.prenom }} {{ r.medecin.nom }}</p> }
+                @if (r.medecin) { <p class="bb-hop-sub__line">{{ r.medecin | nomPraticien }}</p> }
                 @if (r.motif) { <p class="bb-hop-sub__line">{{ r.motif }}</p> }
               </div>
             }

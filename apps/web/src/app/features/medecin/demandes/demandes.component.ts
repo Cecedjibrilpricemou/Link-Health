@@ -14,6 +14,7 @@ import { MedecinService } from '../../../core/services/medecin.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 type Panneau = { id: string; mode: 'accepter' | 'refuser' } | null;
 
@@ -25,6 +26,8 @@ type Panneau = { id: string; mode: 'accepter' | 'refuser' } | null;
   styleUrl: './demandes.component.scss',
 })
 export class DemandesComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private service = inject(MedecinService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);

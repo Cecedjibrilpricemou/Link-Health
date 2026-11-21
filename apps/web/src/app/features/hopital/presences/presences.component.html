@@ -35,7 +35,7 @@
             <span class="bb-pres__meta">
               {{ p.patient.telephone }} ·
               @if (p.medecin) {
-                {{ 'HOPITAL.PRESENCES.AVEC' | translate }} Dr {{ p.medecin.prenom }} {{ p.medecin.nom }}
+                {{ 'HOPITAL.PRESENCES.AVEC' | translate }} {{ p.medecin | nomPraticien }}
               } @else {
                 {{ 'HOPITAL.PRESENCES.SANS_MEDECIN' | translate }}
               }
@@ -73,7 +73,7 @@
             <span class="bb-pres__meta">
               @if (p.arriveeLe) { {{ 'HOPITAL.PRESENCES.ARRIVE_A' | translate }} {{ p.arriveeLe | date:'HH:mm' }} · }
               @if (p.medecin) {
-                {{ 'HOPITAL.PRESENCES.AVEC' | translate }} Dr {{ p.medecin.prenom }} {{ p.medecin.nom }}
+                {{ 'HOPITAL.PRESENCES.AVEC' | translate }} {{ p.medecin | nomPraticien }}
               }
             </span>
             <!-- Le patient est arrivé : c'est maintenant qu'on lui dit où aller. -->

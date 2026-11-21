@@ -16,6 +16,7 @@ import { MedecinService } from '../../../core/services/medecin.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 @Component({
   selector: 'app-medecin-resultats',
@@ -25,6 +26,8 @@ import { I18nService } from '../../../shared/services/i18n.service';
   styleUrl: './resultats.component.scss',
 })
 export class ResultatsComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private service = inject(MedecinService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);

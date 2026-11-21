@@ -24,6 +24,7 @@ import { SocketService } from '../../../core/services/socket.service';
 import { ColonneExport, ExportListeComponent } from '../../../shared/components/export-liste/export-liste.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 type Groupe = { cle: string; libelle: string; rdvs: RendezVousMedecinView[] };
 
@@ -45,6 +46,8 @@ function estAujourdhui(iso: string | Date, maintenant: number): boolean {
   styleUrl: './agenda.component.scss',
 })
 export class AgendaComponent implements OnInit {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   private service = inject(MedecinService);
   private toastr = inject(ToastrService);
   private i18n = inject(I18nService);

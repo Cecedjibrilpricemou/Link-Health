@@ -17,11 +17,12 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import { DicteeComponent } from '../../../shared/components/dictee/dictee.component';
 import { ListeRechercheComponent, OptionListe } from '../../../shared/components/liste-recherche/liste-recherche.component';
+import { NomPraticienPipe } from '../../../shared/pipes/nom-praticien.pipe';
 
 @Component({
   selector: 'app-patient-rendez-vous',
   standalone: true,
-  imports: [DicteeComponent, ListeRechercheComponent, DatePipe, FormsModule, MatButtonModule, TranslatePipe, ExportListeComponent],
+  imports: [NomPraticienPipe, DicteeComponent, ListeRechercheComponent, DatePipe, FormsModule, MatButtonModule, TranslatePipe, ExportListeComponent],
   templateUrl: './rendez-vous.component.html',
   styleUrl: './rendez-vous.component.scss',
 })

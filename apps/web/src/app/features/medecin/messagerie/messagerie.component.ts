@@ -11,6 +11,7 @@ import { SocketService } from '../../../core/services/socket.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../shared/services/i18n.service';
 import type { HorodatageApi, MessageView, UtilisateurResumeView } from '@baobaoheath/shared-types';
+import { roleDeLEspace } from '../../../shared/utils/role-espace';
 
 /** Regroupement client : l'API renvoie des messages a plat. */
 interface Conversation {
@@ -29,6 +30,8 @@ interface Conversation {
   styleUrl: './messagerie.component.scss'
 })
 export class MessagerieComponent implements OnInit, AfterViewChecked {
+  /** « Médecin » ou « Sage-femme » : l'etiquette de l'espace suit le metier. */
+  readonly roleEspace = roleDeLEspace();
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
 
   private medecinService = inject(MedecinService);

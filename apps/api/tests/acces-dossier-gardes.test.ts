@@ -129,8 +129,8 @@ describe('les routes de l accord', () => {
   // Ni l'administrateur de structure ni l'administrateur regional : l'accord
   // est donne a un medecin, pas a une fonction.
   it('le medecin seul lit l historique et relance', () => {
-    expect(rolesPour(medecin, 'get', '/patients/:idPatient/acces')).toEqual(['MEDECIN']);
-    expect(rolesPour(medecin, 'post', '/patients/:idPatient/acces/relancer')).toEqual(['MEDECIN']);
-    expect(rolesPour(medecin, 'get', '/patients/:idPatient/historique')).toEqual(['MEDECIN']);
+    expect(rolesPour(medecin, 'get', '/patients/:idPatient/acces')).toEqual(['MEDECIN', 'SAGE_FEMME']);
+    expect(rolesPour(medecin, 'post', '/patients/:idPatient/acces/relancer')).toEqual(['MEDECIN', 'SAGE_FEMME']);
+    expect(rolesPour(medecin, 'get', '/patients/:idPatient/historique')).toEqual(['MEDECIN', 'SAGE_FEMME']);
   });
 });

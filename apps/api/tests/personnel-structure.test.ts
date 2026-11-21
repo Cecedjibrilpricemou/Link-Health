@@ -67,7 +67,7 @@ beforeEach(() => {
 describe('rolesCreablesPour — les metiers selon la structure', () => {
   it('hopitaux, CHU, cliniques : medecins, accueil, laboratoire ; pas d agents communautaires', () => {
     for (const t of ['HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE'] as const) {
-      expect(rolesCreablesPour(t)).toEqual(['MEDECIN', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO']);
+      expect(rolesCreablesPour(t)).toEqual(['MEDECIN', 'SAGE_FEMME', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO']);
     }
   });
   it('centre et poste : les agents communautaires aussi ; le poste sans laboratoire', () => {
@@ -146,6 +146,34 @@ describe('reactiver un compte', () => {
     await expect(reactiverAgent('admin', 'ag-1')).rejects.toBeInstanceOf(ConflictError);
     lire(ADMIN, agent({ idStructure: 'ailleurs', estActif: false }));
     await expect(reactiverAgent('admin', 'ag-1')).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+describe('la sage-femme', () => {
+  it('se cree partout ou l on soigne, jamais au laboratoire', () => {
+    for (const t of ['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE'] as const) {
+      expect(rolesCreablesPour(t)).toContain('SAGE_FEMME');
+    }
+    expect(rolesCreablesPour('LABORATOIRE')).not.toContain('SAGE_FEMME');
+    expect(createAgentStructureSchema.safeParse({ ...base, role: 'SAGE_FEMME' }).success).toBe(true);
+  });
+
+  // Elle a un profil de praticien - c'est lui qui la rend orientable par
+  // l'accueil, et qui porte son service et son bureau -, mais pas de
+  // specialite : son metier en tient lieu.
+  it('a un profil de praticien, avec son service et son numero d ordre, sans specialite', async () => {
+    lire(ADMIN);
+    prisma.utilisateur.create.mockResolvedValue({ id: 'sf-1', telephone: base.telephone, prenom: 'Awa', nom: 'Camara', role: 'SAGE_FEMME' });
+    await creerAgent('admin', { ...base, role: 'SAGE_FEMME' as never, specialite: 'PEDIATRIE', numeroOrdre: 'sf-0042' });
+    expect(prisma.medecinProfile.create.mock.calls[0][0].data).toMatchObject({ idUtilisateur: 'sf-1', specialite: null });
+    expect(prisma.utilisateur.create.mock.calls[0][0].data).toMatchObject({ role: 'SAGE_FEMME', numeroOrdre: 'SF-0042' });
+  });
+
+  it('son profil se modifie, mais on ne lui donne pas de specialite', async () => {
+    lire(ADMIN, agent({ role: 'SAGE_FEMME' }));
+    await modifierProfilAgent('admin', 'ag-1', { numeroOrdre: 'sf-7' });
+    expect(prisma.utilisateur.update.mock.calls[0][0].data.numeroOrdre).toBe('SF-7');
+    await expect(modifierProfilAgent('admin', 'ag-1', { specialite: 'ORL' })).rejects.toThrow(/pas de spécialité/);
   });
 });
 
