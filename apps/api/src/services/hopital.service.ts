@@ -39,6 +39,7 @@ import type {
   UpdateEpisodeDto,
 } from '@baobaoheath/shared-types';
 import { ROLES_PRATICIENS } from '../utils/praticien.util';
+import { filsDesVisites } from './fil-parcours.service';
 
 // ── Selections partagees ─────────────────────────────────────────────
 // Partagees avec laboratoire.service (P2) : une seule forme de demande.
@@ -758,9 +759,12 @@ export async function mesEpisodes(userId: string): Promise<EpisodePatientView[]>
     include: EPISODE_INCLUDE,
     orderBy: { ouvertLe: 'desc' },
   });
+  // Le fil de chaque visite : une seule requete pour toutes.
+  const fils = await filsDesVisites(rows.map((e) => e.id));
   return rows.map((e) => ({
     id: e.id, numero: e.numero, motif: e.motif, service: e.service, statut: e.statut,
     ouvertLe: e.ouvertLe, closLe: e.closLe, structure: e.structure, responsable: e.responsable,
+    fil: fils.get(e.id) ?? [],
     demandesAnalyse: e.demandesAnalyse.map(versDemandeViewPatient),
     // Le patient ne voit pas les rendez-vous remplaces (ANNULE) : seul le
     // rendez-vous en vigueur et l'historique tenu comptent pour lui.
