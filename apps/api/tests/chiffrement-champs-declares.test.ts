@@ -44,6 +44,14 @@ describe('les champs declares chiffres', () => {
     expect(SCHEMA.get(modele)?.get(champ)).toBe('String[]');
   });
 
+  // Un texte libre de soignant dit l'etat du patient : une sauvegarde volee
+  // ne doit pas le livrer en clair. Retirer l'un d'eux de la liste fait
+  // tomber ce test, au lieu de laisser la donnee en clair sans bruit.
+  it('les notes libres des soignants sont chiffrees', () => {
+    expect(ENCRYPTED_FIELDS['Consultation']?.scalar).toEqual(expect.arrayContaining(['notesAsc', 'notesMedecin']));
+    expect(ENCRYPTED_FIELDS['SoinInfirmier']?.scalar).toContain('note');
+  });
+
   it('chaque empreinte porte sur un champ chiffre, dans une colonne texte qui existe', () => {
     for (const [modele, empreintes] of Object.entries(EMPREINTES)) {
       for (const [champ, colonne] of Object.entries(empreintes)) {

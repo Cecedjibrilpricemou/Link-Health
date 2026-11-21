@@ -30,6 +30,10 @@ export const ENCRYPTED_FIELDS: Record<string, FieldMap> = {
   // desormais cette liste au schema.
   LigneOrdonnance: { scalar: ['posologie', 'instructions'], array: [] },
   Vaccination: { scalar: ['reaction'], array: [] },
+  // La note de l'infirmier dit ce qui a ete fait au patient, comme la
+  // conclusion du medecin : meme protection. Les constantes, des nombres, ne
+  // se chiffrent pas ici.
+  SoinInfirmier: { scalar: ['note'], array: [] },
   Message: { scalar: ['contenu'], array: [] },
   PersonneAssuree: { scalar: ['lieuNaissance', 'nationalite', 'adresse'], array: [] },
 };
