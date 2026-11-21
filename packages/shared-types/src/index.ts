@@ -3173,6 +3173,30 @@ export interface EpisodePatientView {
   responsable: PersonneRefView | null;
   demandesAnalyse: DemandeAnalyseView[];
   rendezVous: RendezVousEpisodeView[];
+  /**
+   * Le fil de la visite (P5, EF-06-01) : chaque etape datee, du rendez-vous
+   * demande a la livraison, dans l'ordre du temps. Aucune valeur medicale.
+   */
+  fil: EtapeFilView[];
+}
+
+/** Les etapes que le fil d'une visite sait dire. */
+export type TypeEtapeFil =
+  | 'DEMANDE_RDV' | 'VISITE_OUVERTE' | 'RENDEZ_VOUS' | 'ARRIVEE'
+  | 'ANALYSE_PRESCRITE' | 'PRELEVEMENT' | 'RESULTATS' | 'ANALYSE_ANNULEE'
+  | 'CONSULTATION' | 'ORDONNANCE'
+  | 'COMMANDE' | 'PHARMACIE_TROUVEE' | 'SANS_PHARMACIE' | 'PAIEMENT' | 'PRETE'
+  | 'REMISE_LIVREUR' | 'LIVREE' | 'RETIREE' | 'COMMANDE_ANNULEE'
+  | 'VISITE_CLOSE' | 'VISITE_ANNULEE';
+
+/** Une etape du fil. */
+export interface EtapeFilView {
+  type: TypeEtapeFil;
+  le: HorodatageApi;
+  /** Un nom de structure, un numero, ou le mode de remise : jamais une valeur medicale. */
+  detail: string | null;
+  /** Une etape prevue (un rendez-vous a venir) : le fil la montre sans la compter faite. */
+  aVenir?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════

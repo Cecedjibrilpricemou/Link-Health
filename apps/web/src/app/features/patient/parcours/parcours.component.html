@@ -21,17 +21,31 @@
           </div>
           <span style="font-size:12.5px;color:var(--bb-text-muted)">{{ 'PATIENT.PARCOURS.OUVERT_LE' | translate }} {{ e.ouvertLe | date:'dd/MM/yyyy' }}@if (e.closLe) { · {{ 'PATIENT.PARCOURS.CLOS_LE' | translate }} {{ e.closLe | date:'dd/MM/yyyy' }} }</span>
         </div>
-        <p class="bb-hop-sub__line" style="margin-bottom:10px"><strong>{{ e.motif }}</strong>@if (e.service) { · {{ e.service }} }@if (e.responsable) { · {{ 'PATIENT.PARCOURS.RESPONSABLE' | translate }} {{ e.responsable | nomPraticien }} }</p>
+        <p class="bb-hop-sub__line" style="margin-bottom:10px"><strong>{{ e.motif }}</strong>@if (e.service) { · {{ e.service }} }@if (e.responsable) { · {{ (e.responsable.role === 'SAGE_FEMME' ? 'ROLE.SAGE_FEMME' : 'PATIENT.PARCOURS.RESPONSABLE') | translate }} {{ e.responsable | nomPraticien }} }</p>
 
         <!-- Frise -->
         <div class="bb-parcours__etapes" aria-label="Etapes du parcours">
           @for (s of etapes(e); track s.cle) {
             <span class="bb-parcours__etape" [class.bb-parcours__etape--done]="s.etat === 'done'" [class.bb-parcours__etape--now]="s.etat === 'now'">
-              <i class="pi" [class.pi-check]="s.etat === 'done'" [class.pi-circle-fill]="s.etat === 'now'" [class.pi-circle]="s.etat === 'todo' || s.etat === 'soon'" aria-hidden="true"></i>
-              {{ 'PATIENT.PARCOURS.' + s.cle | translate }}@if (s.etat === 'soon') { <small>({{ 'PATIENT.PARCOURS.BIENTOT' | translate }})</small> }
+              <i class="pi" [class.pi-check]="s.etat === 'done'" [class.pi-circle-fill]="s.etat === 'now'" [class.pi-circle]="s.etat === 'todo'" aria-hidden="true"></i>
+              {{ 'PATIENT.PARCOURS.' + s.cle | translate }}
             </span>
           }
         </div>
+
+        <!-- Le fil : chaque etape datee, du rendez-vous a la livraison. -->
+        @if (e.fil.length) {
+          <h3 class="bb-hop-card__title bb-fil__titre"><i class="pi pi-history" aria-hidden="true"></i> {{ 'PATIENT.FIL.TITRE' | translate }}</h3>
+          <ol class="bb-fil">
+            @for (x of e.fil; track $index) {
+              <li class="bb-fil__etape" [class.bb-fil__etape--avenir]="x.aVenir" [attr.data-type]="x.type">
+                <time class="bb-fil__date" [attr.datetime]="x.le">{{ x.le | date:'dd/MM/yyyy HH:mm' }}</time>
+                <span class="bb-fil__texte">{{ texteDuFil(x) }}@if (x.aVenir) { <small class="bb-fil__avenir">{{ 'PATIENT.FIL.A_VENIR' | translate }}</small> }</span>
+                @if (lienDuFil(x); as lien) { <a class="bb-fil__lien" [routerLink]="lien">{{ 'PATIENT.FIL.VOIR' | translate }}</a> }
+              </li>
+            }
+          </ol>
+        }
 
         <div class="bb-hop-sections" style="margin-top:.75rem">
           <div>
