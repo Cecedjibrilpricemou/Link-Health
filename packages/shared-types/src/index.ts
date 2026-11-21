@@ -1188,7 +1188,8 @@ export interface ConsultationView {
   idPatient?: string;
   constantes?: ConstantesVitalesView;
   asc?: { utilisateur: { prenom: string; nom: string } };
-  medecinValideur?: { prenom: string; nom: string };
+  /** `role` : « Dr » pour le medecin seul, pas pour la sage-femme. */
+  medecinValideur?: { prenom: string; nom: string; role?: Role };
   diagnostics?: DiagnosticView[];
   ordonnances?: OrdonnanceView[];
 }

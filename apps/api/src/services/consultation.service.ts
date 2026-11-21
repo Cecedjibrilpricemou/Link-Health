@@ -492,7 +492,8 @@ export async function getMesConsultations(
         // Qui a vu le patient : affiche dans son dossier et son tableau de
         // bord ("Agent Mamadou Bah"), a la place d'un motif technique.
         asc: { select: { utilisateur: { select: { prenom: true, nom: true } } } },
-        medecinValideur: { select: { prenom: true, nom: true } },
+        // Le role : « Dr » pour le medecin seul, pas pour la sage-femme.
+        medecinValideur: { select: { prenom: true, nom: true, role: true } },
       },
       orderBy: { consulteeLE: 'desc' },
     }),
