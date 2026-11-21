@@ -465,31 +465,45 @@ celui du CSS (`object-fit: cover`).
   `api_uploads` : ils survivent aux redéploiements, mais ne sont pas dans la
   sauvegarde de la base (section 7).
 
-### L'interface unique de l'administrateur de structure
+### Le directeur travaille dans l'espace de son établissement
 
-Comme le titulaire d'une officine, l'administrateur d'un hôpital, d'une
-clinique ou d'un centre de santé a **une seule interface** pour tout son
-établissement. Son menu est fait de rubriques, selon ce que la structure
-fait (`admin-structure-nav.ts`) :
+**Pas d'interface à part** (depuis le 2026-11-21). Comme le titulaire d'une
+officine, qui tient son comptoir et gère son officine depuis l'espace
+pharmacie, le directeur (`ADMIN_STRUCTURE`) entre dans l'espace de son
+personnel et y voit **en plus** les menus de gestion. Ses droits ne changent
+pas : tout, sauf le soin.
 
-| Rubrique | Structures | Écrans |
+| Structure | Espace | Ce que le directeur voit en plus |
 |---|---|---|
-| Pilotage | toutes | tableau de bord |
-| Accueil | poste, centre, hôpitaux, CHU, clinique | activité, admissions, rendez-vous à orienter, présences, épisodes |
-| Laboratoire | centre, hôpitaux, CHU, clinique, laboratoire | activité, plateau technique, demandes d'analyse |
-| Équipe | toutes | agents |
-| Établissement | selon le type | pharmacies et assurances (hospitalières), laboratoires conseillés, identités, dossier réglementaire, apparence |
+| Poste, centre, hôpitaux, CHU, clinique | `/hopital` (celui de l'accueil) | pilotage, laboratoire de l'établissement (`/hopital/laboratoire/...`), agents, services, pharmacies et assurances (hospitalières), laboratoires conseillés, dossier, apparence |
+| Laboratoire | `/laboratoire` | pilotage, agents, dossier, apparence |
 
-**Les écrans sont ceux du métier**, montés sous `/admin-structure/accueil` et
-`/admin-structure/laboratoire`. Leurs liens partent d'une racine injectée
-(`core/navigation/racines.ts` : `RACINE_ACCUEIL`, `RACINE_LABO`) au lieu d'un
-chemin écrit en dur. Sans elle, un clic ferait basculer l'administrateur dans
-l'interface de l'accueil. **Tout nouveau lien de ces écrans doit partir de
-`racine`.**
+- **Le rôle choisit l'espace et les menus ; le type de structure choisit
+  l'espace du seul directeur** (`core/navigation/menu-directeur.ts` :
+  `espaceDuDirecteur`, `rubriquesDirecteur`). La coquille de l'espace
+  (`hopital-layout`, `labo-layout`) montre au personnel son menu d'un seul
+  tenant, au directeur ses rubriques.
+- Les pages de gestion sont déclarées une fois
+  (`features/admin-structure/pages-directeur.routes.ts`) et montées dans les
+  deux espaces, gardées par `roleGuard` : le personnel qui tape leur adresse est
+  renvoyé à son accueil.
+- **Les anciennes adresses `/admin-structure/...` mènent à l'écran
+  équivalent** (`traduireAncienneAdresse`, `ancienneAdresseDirecteurGuard`) :
+  un favori ou un lien reçu continue de marcher. Un directeur qui tape
+  l'adresse de l'autre espace est ramené à son pilotage
+  (`espaceDirecteurGuard`).
+- La structure du directeur est lue une fois par compte
+  (`DirecteurService`, `GET /admin-structure/ma-structure`) : l'API garde ses
+  routes `/admin-structure/...`, seule l'interface a changé.
+- **Les écrans de l'accueil et du laboratoire** partent d'une racine injectée
+  (`core/navigation/racines.ts` : `RACINE_ACCUEIL`, `RACINE_LABO`) au lieu d'un
+  chemin écrit en dur : le laboratoire d'un hôpital vit sous
+  `/hopital/laboratoire`. **Tout nouveau lien de ces écrans doit partir de
+  `racine`.**
 
-L'écran ne lui propose aucun acte de soin : ni prescription, ni clôture, ni
+Aucun acte de soin ne lui est proposé : ni prescription, ni clôture, ni
 saisie, validation ou impression de résultats. L'API les lui refuse de toute
-façon (branche `fix/admin-sans-contenu-medical-v2`).
+façon.
 
 ### La structure à la place de la plateforme
 
@@ -566,8 +580,44 @@ technique côté serveur ; un dentiste ou un pédiatre ont les écrans du médec
 - Un compte désactivé reste dans la liste et se réactive.
 - Réinitialiser un mot de passe : temporaire, envoyé par courriel et montré une
   seule fois ; toutes les sessions de l'agent sont fermées.
-- **Infirmier et sage-femme ne sont pas encore des rôles** : c'est la phase
-  suivante (section 9).
+- Sage-femme et infirmier sont des métiers à part entière (ci-dessous).
+
+### La sage-femme : les écrans et les actes du médecin
+
+Rôle `SAGE_FEMME`. Elle consulte, prescrit, demande des analyses, libère des
+résultats, clôt une prise en charge, tient son agenda et lit l'historique sur
+l'accord de la patiente : **les droits du médecin**, dans l'espace `/medecin`,
+étiqueté « Sage-femme ».
+
+- **Une seule liste des praticiens** (`utils/praticien.util.ts` :
+  `ROLES_PRATICIENS`, `estPraticien`), lue par toutes les gardes de route et
+  les services. `tests/role-sage-femme.test.ts` fait tomber toute garde qui
+  s'ouvrirait au médecin sans s'ouvrir à elle, et tout service qui comparerait
+  le rôle à `'MEDECIN'` en dur. **Une nouvelle route du médecin s'écrit
+  `requireRole('MEDECIN', 'SAGE_FEMME')`.**
+- Un profil de praticien (`MedecinProfile`) : numéro d'ordre, service, bureau,
+  **sans spécialité**. L'accueil l'oriente comme un médecin.
+- **Jamais de « Dr » devant son nom** : `nomDuPraticien` (API) et le pipe
+  `nomPraticien` (web) ne le donnent qu'au médecin, partout où un nom de
+  soignant s'affiche.
+
+### L'infirmier : il soigne sans prescrire
+
+Rôle `INFIRMIER`, espace `/infirmier` : les patients en visite dans sa
+structure, le dossier de la visite (allergies en tête, motif, prescriptions de
+la visite, vaccins, soins faits), noter un passage (constantes, soin, ou les
+deux) et enregistrer un vaccin.
+
+- **Ni consultation, ni ordonnance, ni analyse, ni clôture, ni historique** :
+  ce sont des actes du praticien. Son périmètre est la visite ouverte dans sa
+  structure.
+- Chaque passage est une ligne de `SoinInfirmier`, rattachée à la visite et à
+  son auteur — pas à une consultation : il prend les constantes avant que le
+  médecin ait ouvert quoi que ce soit. **Sa note est chiffrée au repos**, comme
+  celle du médecin.
+- Le praticien lit les soins dans le dossier de la visite
+  (`GET /hopital/episodes/:id/soins`) ; l'accueil et l'administration, non.
+- **Pas de numéro d'ordre** exigé (décision du 2026-11-21).
 
 ### Les services de l'hôpital
 
@@ -638,6 +688,20 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **Le directeur dans l'espace de son établissement** (branche
+  `feat/directeur-dans-espace-etablissement`, section 6) : plus d'interface
+  « Admin structure » à part ; anciennes adresses redirigées.
+- **La note de soin chiffrée** (branche `feat/chiffrement-note-soin`). Le
+  rattrapage des notes déjà saisies se lance en production :
+  `MODEL_FILTER=SoinInfirmier` avec `prisma/backfill-encryption.ts`.
+- **L'infirmier** (branche `feat/role-infirmier`, section 6).
+- **La sage-femme** (branche `feat/role-sage-femme`, section 6), et « Dr » pour
+  le médecin seul, y compris dans le dossier du patient
+  (`fix/dr-medecin-seul-dossier-patient`).
+- **L'assurance a sa seule porte** : retirée de la liste des types du
+  formulaire de demande (`fix/demande-agrement-sans-assurance`), et plus de
+  rattachement d'une compagnie à une structure existante dans la page
+  Assurance du super admin (`fix/admin-assurance-sans-rattachement`).
 - **La pharmacie d'un hôpital se demande** (branche
   `feat/pharmacie-hopital-agrement`, section 6) : l'hôpital dépose, le super
   admin met en analyse, valide ou refuse avec un motif envoyé à
@@ -718,11 +782,13 @@ Par ordre de risque décroissant.
    l'analyse est faite mais le message d'erreur exact manque pour conclure. Les
    trois causes possibles sont identifiées dans
    `features/patient/profil/adresse/`.
-5. **Infirmier et sage-femme** ne sont pas encore des rôles : ils ne peuvent
-   être créés comme personnel. C'est la phase prévue après les étapes 1 à 4.
+5. **Le rattrapage du chiffrement des notes de soin** n'a pas été lancé en
+   production : les notes saisies avant la fusion y sont en clair.
 6. **Les pharmacies hospitalières créées avant le 2026-11-21** l'ont été sans
    demande : aucune trace d'examen par l'administration.
-7. Ménage : branches fusionnées à supprimer, référentiel LOINC, voisinages de
+7. **« Créer le compte de l'agent »**, dans la page Assurance du super admin, ne
+   sert plus qu'aux compagnies créées avant la création en une fois.
+8. Ménage : branches fusionnées à supprimer, référentiel LOINC, voisinages de
    Conakry, identité de la plateforme en production.
 
 ---
