@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpResponse } from '@angular/common/http';
 import type {
   AnomalieView, CompteView, CorrigerNomCompteDto, DemandeRgpdView, FileDemandesView, FiltreJournalDto,
-  AgentAssureurCreeView, CreerAgentAssureurDto, PageJournalView, Role, SeuilsAnomalies, StatutDemandeRgpd, SuspensionView,
+  PageJournalView, Role, SeuilsAnomalies, StatutDemandeRgpd, SuspensionView,
   TypeDemandeRgpd,
 } from '@baobaoheath/shared-types';
 import { Observable } from 'rxjs';
@@ -12,16 +12,13 @@ import { UtilisateurAdmin, DashboardStatsGlobal } from '../models/admin.model';
 import type {
   AssureurView,
   CatalogueAssureursView,
-  ContratAssuranceView,
   CreerAssuranceDto,
   CreationAssuranceView,
-  CreerContratDto,
   CreerRegleCouvertureDto,
   CreationStructureView,
   DemandePharmacieHospitaliereDto,
   DemandePharmacieView,
   DepotDemandeView,
-  PatientContratRechercheView,
   IdentitePlateformeView,
   ParametresSystemeView,
   ParametresVisuelsView,
@@ -248,30 +245,12 @@ export class AdminService {
     return this.api.post<ApiResponse<CreationAssuranceView>>('/assurance/compagnies', corps);
   }
 
-  creerAgentAssureur(idAssureur: string, payload: CreerAgentAssureurDto): Observable<ApiResponse<AgentAssureurCreeView>> {
-    return this.api.post<ApiResponse<AgentAssureurCreeView>>(`/assurance/assureurs/${idAssureur}/agents`, payload);
-  }
-
   /**
    * Une regle ne remplace pas la precedente : sa date d'effet decide, et le
    * calcul retient celle en vigueur a la date de la vente (EF-09-03).
    */
   ajouterRegleCouverture(idAssureur: string, payload: CreerRegleCouvertureDto): Observable<ApiResponse<AssureurView>> {
     return this.api.post<ApiResponse<AssureurView>>(`/assurance/assureurs/${idAssureur}/regles`, payload);
-  }
-
-  /** L'assureur envoie une liste de noms : c'est par le nom qu'on retombe. */
-  rechercherPatientsPourPolice(q: string): Observable<ApiResponse<PatientContratRechercheView[]>> {
-    return this.api.get<ApiResponse<PatientContratRechercheView[]>>(
-      `/assurance/patients/recherche?q=${encodeURIComponent(q)}`);
-  }
-
-  contratsDuPatient(idPatient: string): Observable<ApiResponse<ContratAssuranceView[]>> {
-    return this.api.get<ApiResponse<ContratAssuranceView[]>>(`/assurance/patients/${idPatient}/contrats`);
-  }
-
-  creerContrat(payload: CreerContratDto): Observable<ApiResponse<ContratAssuranceView>> {
-    return this.api.post<ApiResponse<ContratAssuranceView>>('/assurance/contrats', payload);
   }
 
   getParametres(): Observable<ApiResponse<ParametresSystemeView>> {

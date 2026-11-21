@@ -1,7 +1,7 @@
 import { syncPushSchema, ussdSessionSchema, verifyLoginOtpSchema,
   choisirOffreCourseSchema, confirmerReceptionCourseSchema, filtreJournalSchema,
   proposerOffreCourseSchema, remettreAuMotardSchema, renoncerLivraisonSchema,
-  createAgentStructureSchema, creerAgentAssureurSchema, creerLivreurSchema,
+  createAgentStructureSchema, creerLivreurSchema,
   createStructureSchema, createPharmacieSchema, definirPositionSchema,
   updateStructureSchema,
 } from '../src/validators/api.schemas';
@@ -38,12 +38,9 @@ describe('api.schemas', () => {
     expect(parsed.code).toBe('123456');
   });
 
-  it('exige un email professionnel pour les agents de structure et d assureur', () => {
+  it('exige un email professionnel pour les agents de structure', () => {
     expect(() => createAgentStructureSchema.parse({
       telephone: '+224620000001', prenom: 'Awa', nom: 'Bah', role: 'MEDECIN',
-    })).toThrow();
-    expect(() => creerAgentAssureurSchema.parse({
-      prenom: 'Awa', nom: 'Bah', telephone: '+224620000001',
     })).toThrow();
     expect(createAgentStructureSchema.parse({
       telephone: '+224620000001', email: 'awa@example.com',

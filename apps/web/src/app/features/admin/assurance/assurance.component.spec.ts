@@ -50,7 +50,7 @@ const CREEE: CreationAssuranceView = {
   emailEnvoye: true,
 };
 
-function monter(reponse: CreationAssuranceView = CREEE) {
+function monter(reponse: CreationAssuranceView = CREEE, assureurs: unknown[] = []) {
   const creerAssurance = vi.fn((_dto: CreerAssuranceDto, _pieces: Record<string, File>) =>
     of({ success: true, data: reponse }));
   TestBed.resetTestingModule();
@@ -61,7 +61,7 @@ function monter(reponse: CreationAssuranceView = CREEE) {
       {
         provide: AdminService,
         useValue: {
-          getAssureurs: () => of({ success: true, data: [] }),
+          getAssureurs: () => of({ success: true, data: assureurs }),
           getStructures: () => of({ success: true, data: [] }),
           creerAssurance,
         },
@@ -122,6 +122,19 @@ describe('creer une compagnie d assurance en une fois', () => {
   // La creation fait d'un coup la structure, la compagnie et le compte de
   // son responsable : rattacher une compagnie a une structure existante n'a
   // plus d'objet, et l'ecran ne le propose plus.
+  // La compagnie est reconnue et agit dans ses pleins droits : l'administration
+  // ne cree ni son compte agent - elle nait avec son administrateur -, ni les
+  // polices de ses assures (decision du 2026-11-21).
+  it('ni compte agent a creer, ni police a rattacher : c est le metier de la compagnie', () => {
+    const ancienne = { id: 'a1', code: 'TST', nom: 'Test Assurance', estActif: true, nombreContrats: 0, regles: [], agentExistant: false };
+    const { rendre } = monter(CREEE, [ancienne]);
+    const el = rendre();
+    expect(el.textContent).toContain('Test Assurance');
+    expect(el.querySelector('.bb-assu__agent')).toBeNull();
+    expect(el.querySelectorAll('section.bb-assu__sec')).toHaveLength(1);
+    expect(el.querySelector('#assu-police-assureur')).toBeNull();
+  });
+
   it('une seule porte : la nouvelle compagnie, sans rattachement', () => {
     const { fixture } = monter();
     fixture.detectChanges();

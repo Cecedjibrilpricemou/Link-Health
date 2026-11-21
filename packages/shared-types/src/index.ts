@@ -2967,17 +2967,6 @@ export interface PatientRechercheView {
   episodeOuvert: { id: string; numero: string } | null;
 }
 
-/**
- * GET /assurance/patients/recherche — trouver la personne a qui rattacher une
- * police.
- *
- * **L'episode de soins n'a pas de sens ici** : l'administration nationale
- * n'appartient a aucune structure, et une police se rattache a une personne,
- * pas a un passage. Le reste de l'identite est le meme, numero masque
- * compris : il faut distinguer deux Camara, pas appeler le patient.
- */
-export type PatientContratRechercheView = Omit<PatientRechercheView, 'episodeOuvert'>;
-
 export interface PersonneRefView {
   id: string;
   prenom: string;
@@ -3564,24 +3553,13 @@ export interface PriseEnChargeView {
   lignes: (CouvertureLigneView & { idMedicament: string })[];
 }
 
-/** POST /assurance/assureurs — creation par l'administration. */
-export interface CreerAssureurDto {
-  nom: string;
-  code: string;
-  telephone?: string;
-  email?: string;
-  modeEchange?: ModeEchangeAssureur;
-  idStructure?: string;
-}
-
 /**
  * POST /assurance/compagnies, en multipart : ces champs dans `donnees`, la
  * piece `AGREMENT_ASSURANCE` sous son type.
  *
  * Une compagnie d'assurance creee **en une fois** : sa structure, son dossier,
- * la compagnie et le compte de son responsable. C'est le chemin normal ;
- * `CreerAssureurDto` ne sert plus qu'a rattacher une compagnie a une structure
- * deja existante.
+ * la compagnie et le compte de son responsable. C'est le seul chemin : une
+ * compagnie ne nait jamais sans son administrateur (decision du 2026-11-21).
  */
 export interface CreerAssuranceDto {
   nom: string;
@@ -3974,23 +3952,6 @@ export interface PatientAssureurRechercheView {
 // lignes de vente. Le decompte detaille, s'il devient necessaire, releve de
 // l'echange conventionne avec la compagnie (EF-09-02), pas de cet ecran.
 // ═══════════════════════════════════════════════════════════════════
-
-/** POST /assurance/assureurs/{id}/agents — le compte par lequel l'assureur se connecte. */
-export interface CreerAgentAssureurDto {
-  prenom: string;
-  nom: string;
-  telephone: string;
-  email: string;
-  /** Siege de la compagnie, si sa structure reste a creer. */
-  prefecture?: string;
-}
-
-export interface AgentAssureurCreeView {
-  agent: { id: string; prenom: string; nom: string; telephone: string };
-  assureur: { id: string; nom: string; code: string };
-  /** Rendu une seule fois, a remettre. Le compte devra le changer. */
-  motDePasseTemporaire: string;
-}
 
 /** GET /assurance/moi — l'assureur de l'agent connecte. */
 export interface MonAssureurView {

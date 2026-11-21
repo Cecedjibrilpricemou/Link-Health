@@ -78,7 +78,6 @@ const FAMILLES: { prefixe: string; valeurs: readonly string[] }[] = [
   { prefixe: 'PATIENT.COMMANDES.CHOISI_', valeurs: ['RETRAIT_PHARMACIE', 'LIVRAISON'] },
   { prefixe: 'PATIENT.COMMANDES.MODE_', valeurs: ['RETRAIT_PHARMACIE', 'LIVRAISON'] },
   { prefixe: 'ADMIN.ASSURANCE.CAT_', valeurs: ['MEDICAMENT', 'LAIT_INFANTILE', 'COMPLEMENT_ALIMENTAIRE', 'COSMETIQUE', 'HYGIENE', 'PARAPHARMACIE', 'DISPOSITIF_MEDICAL', 'AUTRE'] },
-  { prefixe: 'ADMIN.ASSURANCE.STATUT_', valeurs: ['ACTIF', 'SUSPENDU', 'RESILIE', 'EXPIRE'] },
   { prefixe: 'LANDING.STRUCT_TYPE_', valeurs: ['POSTE', 'CENTRE', 'HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE', 'PHARMACIE', 'LABORATOIRE', 'ASSURANCE'] },
   // Les trois groupes du choix de laboratoire, et les types que ce choix peut
   // rendre : le badge de l'ecran des conseillees construit sa cle a partir du

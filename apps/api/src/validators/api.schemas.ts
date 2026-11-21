@@ -335,15 +335,6 @@ export const creerPatientComptoirSchema = z.object({
   email: optionalEmail,
 }).strict();
 
-// --- Le compte par lequel un assureur se connecte (addendum, point 5.2) ---
-export const creerAgentAssureurSchema = z.object({
-  prenom: z.string().trim().min(1).max(80),
-  nom: z.string().trim().min(1).max(80),
-  telephone: phone,
-  email: z.string().trim().email(),
-  prefecture: z.string().trim().max(80).optional(),
-}).strict();
-
 // --- Un versement de la compagnie a une officine (addendum, point 5.2) ---
 //
 // Pas d'`idAssureur` : il se deduit de la structure de l'agent connecte.
@@ -1223,17 +1214,6 @@ const assuranceBase = z.object({
 
 export const creerAssuranceSchema = assuranceBase.refine(pasLePointZero, messagePointZero);
 
-export const creerAssureurSchema = z.object({
-  nom: z.string().trim().min(2).max(120),
-  // Le code figure sur la carte de l'assure : court, sans espace, lisible.
-  code: z.string().trim().min(2).max(16).regex(/^[A-Za-z0-9-]+$/, 'Lettres, chiffres et tirets uniquement'),
-  telephone: z.string().trim().max(40).optional(),
-  email: z.string().trim().email().max(120).optional(),
-  modeEchange: z.enum(['MANUEL', 'PORTAIL', 'API']).optional(),
-  idStructure: id.optional(),
-  ...identifiantsReglementaires,
-}).strict();
-
 // `exclu` et `tauxPourcent` ensemble seraient contradictoires ; le service le
 // refuse, et une contrainte SQL le refuse aussi.
 export const creerRegleCouvertureSchema = z.object({
@@ -1242,18 +1222,6 @@ export const creerRegleCouvertureSchema = z.object({
   tauxPourcent: z.coerce.number().int().min(0).max(100).optional(),
   plafondLigneGnf: nonNegativeInt.max(1_000_000_000).optional(),
   dateEffet: z.string().optional(),
-}).strict();
-
-export const creerContratAssuranceSchema = z.object({
-  idAssureur: id,
-  idPatient: id,
-  numeroPolice: z.string().trim().min(2).max(60),
-  tauxBasePourcent: z.coerce.number().int().min(0).max(100).optional(),
-  plafondAnnuelGnf: nonNegativeInt.max(1_000_000_000).optional(),
-  franchiseGnf: nonNegativeInt.max(1_000_000_000).optional(),
-  dateEffet: z.string().min(1),
-  dateFin: z.string().optional(),
-  carenceJours: z.coerce.number().int().min(0).max(365).optional(),
 }).strict();
 
 export const verifierCarteAssuranceSchema = z.object({
