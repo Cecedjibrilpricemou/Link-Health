@@ -23,6 +23,8 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
 import { TopbarCrumbComponent } from '../topbar-crumb/topbar-crumb.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
 import { BrandComponent } from '../brand/brand.component';
+import { DirecteurService, type StructureDuDirecteur } from '../../../core/services/directeur.service';
+import { rubriquesDirecteur, type RubriqueNav } from '../../../core/navigation/menu-directeur';
 
 @Component({
   selector: 'app-hopital-layout',
@@ -48,8 +50,26 @@ export class HopitalLayoutComponent {
   sidebarOpen           = signal(false);
   showProfil            = signal(false);
 
+
+  // ── Le directeur, dans cet espace ─────────────────────────────────
+  // Comme le titulaire d'une officine : il travaille dans l'espace de son
+  // etablissement et y voit en plus les menus de gestion. Le personnel garde
+  // son menu d'un seul tenant.
+  private readonly directeur = inject(DirecteurService);
+  readonly estDirecteur = computed(() => this.currentUser()?.role === 'ADMIN_STRUCTURE');
+  private readonly structure = signal<StructureDuDirecteur | null>(null);
+  /** La structure n'a pas pu etre lue : le menu du directeur le dit. */
+  readonly menuIllisible = computed(() => this.structure()?.illisible === true);
+  readonly rubriques = computed<RubriqueNav[]>(() => this.estDirecteur()
+    ? rubriquesDirecteur(this.structure()?.type ?? null, this.structure()?.hospitaliere === true)
+    : [{ titreKey: 'COMMON.NAVIGATION', items: this.navItems() }]);
+  /** Toutes les entrees a plat : le fil d'Ariane du haut de page les lit. */
+  readonly entrees = computed(() => this.rubriques().flatMap((r) => r.items));
+  readonly racineFil = computed(() => (this.estDirecteur() ? 'ADMIN_STRUCTURE.ROLE' : 'HOPITAL.ROLE'));
+
   constructor(iconRegistry: MatIconRegistry) {
     iconRegistry.registerFontClassAlias('pi', 'pi');
+    if (this.estDirecteur()) this.directeur.structure().subscribe((s) => this.structure.set(s));
   }
 
   /**

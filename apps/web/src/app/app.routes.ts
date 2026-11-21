@@ -2,6 +2,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
+import { ancienneAdresseDirecteurGuard, espaceDirecteurGuard } from './core/guards/directeur.guard';
 
 export const routes: Routes = [
 
@@ -87,9 +88,11 @@ export const routes: Routes = [
 
   // ── Module Hopital (accueil, P1) ────────────────────────────────────
   {
+    // L'espace de l'etablissement : son accueil, et son directeur, qui y voit
+    // en plus les menus de gestion (comme le titulaire en pharmacie).
     path: 'hopital',
-    canActivate: [authGuard, roleGuard],
-    data: { roles: ['AGENT_ACCUEIL'] },
+    canActivate: [authGuard, roleGuard, espaceDirecteurGuard('/hopital')],
+    data: { roles: ['AGENT_ACCUEIL', 'ADMIN_STRUCTURE'] },
     loadChildren: () =>
       import('./features/hopital/hopital.routes').then(m => m.HOPITAL_ROUTES)
   },
@@ -105,20 +108,22 @@ export const routes: Routes = [
 
   // ── Module Laboratoire (P2, EF-04) ──────────────────────────────────
   {
+    // Un laboratoire : ses techniciens, et son directeur.
     path: 'laboratoire',
-    canActivate: [authGuard, roleGuard],
-    data: { roles: ['TECHNICIEN_LABO'] },
+    canActivate: [authGuard, roleGuard, espaceDirecteurGuard('/laboratoire')],
+    data: { roles: ['TECHNICIEN_LABO', 'ADMIN_STRUCTURE'] },
     loadChildren: () =>
       import('./features/laboratoire/laboratoire.routes').then(m => m.LABORATOIRE_ROUTES)
   },
 
   // ── Module Admin Structure ──────────────────────────────────────────
   {
+    // Plus d'interface a part pour le directeur : ses anciennes adresses
+    // menent a l'ecran equivalent de l'espace de son etablissement.
     path: 'admin-structure',
-    canActivate: [authGuard, roleGuard],
+    canActivate: [authGuard, roleGuard, ancienneAdresseDirecteurGuard],
     data: { roles: ['ADMIN_STRUCTURE'] },
-    loadChildren: () =>
-      import('./features/admin-structure/admin-structure.routes').then(m => m.ADMIN_STRUCTURE_ROUTES)
+    children: [{ path: '**', children: [] }],
   },
 
   // ── Module Admin ────────────────────────────────────────────────────

@@ -45,7 +45,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
             <span class="bb-banner__title">{{ 'AGREMENT.DOSSIER.SANS_STRUCTURE' | translate }}</span>
           </div>
         </div>
-        <a matButton routerLink="/admin-structure/dashboard">{{ 'COMMON.BACK' | translate }}</a>
+        <a matButton routerLink="../pilotage">{{ 'COMMON.BACK' | translate }}</a>
       } @else {
         <p>{{ 'COMMON.LOADING' | translate }}</p>
       }
