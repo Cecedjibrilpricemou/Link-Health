@@ -20,7 +20,7 @@ import {
     type FichierRecu, type IdentifiantsRecus,
 } from './piece-agrement.service';
 
-const ROLES_AUTORISES: Role[] = [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+const ROLES_AUTORISES: Role[] = [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.INFIRMIER, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
 
 /**
  * Les comptes qu'une structure cree, selon ce qu'elle fait.
@@ -30,20 +30,20 @@ const ROLES_AUTORISES: Role[] = [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Ro
  * postes et les centres. Les comptes deja crees ne sont pas touches : la
  * regle vaut pour les creations.
  *
- * La sage-femme exerce partout ou l'on soigne - suivi de grossesse au poste,
- * accouchement au centre et a l'hopital -, jamais au laboratoire.
+ * La sage-femme et l'infirmier exercent partout ou l'on soigne - du poste a
+ * l'hopital -, jamais au laboratoire.
  */
 export function rolesCreablesPour(type: TypeStructure | null | undefined): Role[] {
     switch (type) {
         case TypeStructure.POSTE:
-            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.AGENT_ACCUEIL];
+            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.INFIRMIER, Role.AGENT_ACCUEIL];
         case TypeStructure.CENTRE:
-            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+            return [Role.ASC, Role.ASC_SUPERVISOR, Role.MEDECIN, Role.SAGE_FEMME, Role.INFIRMIER, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
         case TypeStructure.HOPITAL_PREF:
         case TypeStructure.HOPITAL_REG:
         case TypeStructure.CHU:
         case TypeStructure.CLINIQUE:
-            return [Role.MEDECIN, Role.SAGE_FEMME, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
+            return [Role.MEDECIN, Role.SAGE_FEMME, Role.INFIRMIER, Role.AGENT_ACCUEIL, Role.TECHNICIEN_LABO];
         case TypeStructure.LABORATOIRE:
             return [Role.TECHNICIEN_LABO];
         default:

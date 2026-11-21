@@ -1229,6 +1229,58 @@
       "MOTIF_PREFIX": "Triage support:"
     }
   },
+  "INFIRMIER": {
+    "ROLE": "Nurse",
+    "NAV_PATIENTS": "Patients on visit",
+    "PATIENTS": {
+      "TITLE": "Patients on visit",
+      "SUB": "{{count}} patient(s) on visit in your facility.",
+      "SEARCH_PH": "Name, visit number, reason or department",
+      "EMPTY": "No patient on visit.",
+      "EMPTY_SUB": "Patients admitted by reception appear here.",
+      "VU_A": "Seen at {{heure}}",
+      "JAMAIS_VU": "Not seen yet"
+    },
+    "VISITE": {
+      "RETOUR": "Patients on visit",
+      "ALLERGIES": "Allergies:",
+      "NE_LE": "Born on",
+      "GROUPE": "Blood group",
+      "INCONNU": "Unknown",
+      "MALADIES": "Chronic conditions",
+      "PASSAGE_TITRE": "Record a round",
+      "PASSAGE_AIDE": "Vital signs taken, care given, or both. The doctor reads them in the visit record.",
+      "NOTE": "Care given or observation",
+      "NOTE_PH": "E.g. dressing changed, drip set up",
+      "ENREGISTRER": "Save the round",
+      "PASSAGE_OK": "Round saved.",
+      "PASSAGE_VIDE": "Record at least one vital sign or the care given.",
+      "PRESCRIPTIONS": "Prescriptions for this visit",
+      "AUCUNE_PRESCRIPTION": "No prescription for this visit.",
+      "JOURS": "{{n}} day(s)",
+      "SOINS": "Care during this visit",
+      "AUCUN_SOIN": "No care recorded for this visit.",
+      "VACCINS": "Vaccines",
+      "AUCUN_VACCIN": "No vaccine recorded.",
+      "RAPPEL_LE": "booster on {{date}}",
+      "VACCIN_NOM": "Vaccine",
+      "VACCIN_LOT": "Batch number",
+      "VACCIN_SITE": "Injection site",
+      "VACCIN_RAPPEL": "Next dose",
+      "VACCIN_ENREGISTRER": "Record the vaccine",
+      "VACCIN_OK": "Vaccine {{vaccin}} recorded."
+    },
+    "CONSTANTE": {
+      "temperature": "Temperature",
+      "tensionSystolique": "Systolic pressure",
+      "tensionDiastolique": "Diastolic pressure",
+      "frequenceCardiaque": "Heart rate",
+      "frequenceRespiratoire": "Respiratory rate",
+      "spo2": "Saturation (SpO2)",
+      "poidsKg": "Weight",
+      "glycemie": "Blood glucose"
+    }
+  },
   "MEDECIN": {
     "ROLE": "Doctor",
     "NAV_DASHBOARD": "Dashboard",
@@ -2995,6 +3047,7 @@
       "METIER_MEDECIN_SPECIALISTE": "Specialist doctor",
       "METIER_CHIRURGIEN_DENTISTE": "Dental surgeon",
       "METIER_SAGE_FEMME": "Midwife",
+      "METIER_INFIRMIER": "Nurse",
       "METIER_AGENT_ACCUEIL": "Reception officer",
       "METIER_TECHNICIEN_LABO": "Laboratory technician",
       "METIER_ASC": "Community health worker",
@@ -3056,6 +3109,7 @@
       "ROLE_ASC_SUPERVISOR": "CHW Supervisor",
       "ROLE_MEDECIN": "Doctor",
       "ROLE_SAGE_FEMME": "Midwife",
+      "ROLE_INFIRMIER": "Nurse",
       "ROLE_PHARMACIEN": "Pharmacist",
       "ROLE_OPTION_ASC": "Community Health Worker (CHW)",
       "ERR_REQUIRED": "First name, last name, phone number, and professional email are required.",
@@ -3101,6 +3155,7 @@
     "ASC_SUPERVISOR": "CHW supervisor",
     "MEDECIN": "Doctor",
     "SAGE_FEMME": "Midwife",
+    "INFIRMIER": "Nurse",
     "PHARMACIEN": "Pharmacist",
     "AGENT_ACCUEIL": "Front-desk agent",
     "TECHNICIEN_LABO": "Laboratory technician",
@@ -3240,6 +3295,7 @@
       "URGENCE_VITALE": "Life-threatening"
     },
     "DETAIL": {
+      "SOINS_TITRE": "Nursing care",
       "BACK": "Episodes",
       "PATIENT": "Patient",
       "STRUCTURE": "Facility",

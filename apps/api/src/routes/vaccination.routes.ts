@@ -27,7 +27,7 @@ router.get(
 // ─── Routes ASC / Médecin ─────────────────────────────────
 router.post(
   '/',
-  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME'),
+  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'INFIRMIER'),
   validateBody(createVaccinationSchema),
   administrerVaccinController
 );
@@ -36,7 +36,7 @@ router.get(
   '/rappels',
   // Qui doit quel vaccin : nominatif, donc au soin. Les chiffres (/stats)
   // restent a l'administration.
-  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME'),
+  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'INFIRMIER'),
   getRappelsVaccinationController
 );
 
@@ -48,13 +48,13 @@ router.get(
 
 router.get(
   '/patient/:id',
-  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME'),
+  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'INFIRMIER'),
   getCarnetVaccinalController
 );
 
 router.put(
   '/:id',
-  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME'),
+  requireRole('ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'INFIRMIER'),
   validateBody(updateVaccinationSchema),
   updateVaccinationController
 );

@@ -9,6 +9,7 @@ import { validateBody, validateQuery } from '../middlewares/validate.middleware'
 import * as hopital from '../services/hopital.service';
 import * as demandeRdv from '../services/demande-rendez-vous.service';
 import * as plateau from '../services/plateau-technique.service';
+import * as infirmier from '../services/infirmier.service';
 import {
   annulerDemandeSchema,
   choixLaboratoiresQuerySchema,
@@ -33,6 +34,7 @@ import type {
   TableauDeBordHopitalView,
   ServiceHospitalierView,
 } from '@baobaoheath/shared-types';
+import type { SoinInfirmierView } from '@baobaoheath/shared-types';
 
 const router = Router();
 
@@ -167,6 +169,15 @@ router.get('/episodes', validateQuery(episodesQuerySchema), async (req: AuthRequ
 router.post('/episodes', validateBody(createEpisodeSchema), async (req: AuthRequest, res: Response) => {
   const data: EpisodeSoinsView = await hopital.creerEpisode(req.user!, req.body);
   res.status(201).json({ success: true, data });
+});
+
+/**
+ * Les soins infirmiers de la visite, pour le praticien qui la suit. Un acte
+ * de soin : ni l'accueil ni l'administration ne les lisent.
+ */
+router.get('/episodes/:id/soins', ACTE_MEDICAL, async (req: AuthRequest, res: Response) => {
+  const data: SoinInfirmierView[] = await infirmier.soinsDeLaVisite(req.user!, req.params['id'] as string);
+  res.json({ success: true, data });
 });
 
 router.get('/episodes/:id', async (req: AuthRequest, res: Response) => {

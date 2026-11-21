@@ -35,6 +35,8 @@ import { ChoixLaboratoireComponent, ChoixLaboratoire } from '../../../shared/com
 import { statutDemandeClasse, statutEpisodeClasse, urgenceClasse } from '../../hopital/hopital.utils';
 import { interpretationClasse, referenceLisible } from '../../laboratoire/laboratoire.utils';
 import { roleDeLEspace } from '../../../shared/utils/role-espace';
+import { constantesRenseignees } from '../../../shared/utils/constantes-soin';
+import type { SoinInfirmierView } from '@baobaoheath/shared-types';
 
 @Component({
   selector: 'app-medecin-dossier',
@@ -108,9 +110,17 @@ export class DossierComponent implements OnInit {
     return [...groupes.entries()].map(([categorie, items]) => ({ categorie, items }));
   });
 
+  /**
+   * Les soins de l'infirmier pendant la visite : les constantes prises avant
+   * la consultation, les soins faits apres la prescription.
+   */
+  readonly soins = signal<SoinInfirmierView[]>([]);
+  readonly constantesDe = constantesRenseignees;
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.charger(id);
+    this.hopital.soinsDeLaVisite(id).subscribe({ next: (r) => this.soins.set(r.data ?? []), error: () => this.soins.set([]) });
     this.hopital.listerExamens().subscribe({ next: (r) => this.examens.set(r.data ?? []) });
   }
 

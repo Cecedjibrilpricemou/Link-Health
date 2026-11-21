@@ -781,6 +781,7 @@ export async function envoyerEmailAgent(dto: {
         'AGENT_ACCUEIL': "Agent d'accueil",
         'MEDECIN': 'Médecin',
         'SAGE_FEMME': 'Sage-femme',
+        'INFIRMIER': 'Infirmier',
         'PHARMACIEN': 'Pharmacien'
     };
 

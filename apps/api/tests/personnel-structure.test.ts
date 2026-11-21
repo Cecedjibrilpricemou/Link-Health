@@ -67,7 +67,7 @@ beforeEach(() => {
 describe('rolesCreablesPour — les metiers selon la structure', () => {
   it('hopitaux, CHU, cliniques : medecins, accueil, laboratoire ; pas d agents communautaires', () => {
     for (const t of ['HOPITAL_PREF', 'HOPITAL_REG', 'CHU', 'CLINIQUE'] as const) {
-      expect(rolesCreablesPour(t)).toEqual(['MEDECIN', 'SAGE_FEMME', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO']);
+      expect(rolesCreablesPour(t)).toEqual(['MEDECIN', 'SAGE_FEMME', 'INFIRMIER', 'AGENT_ACCUEIL', 'TECHNICIEN_LABO']);
     }
   });
   it('centre et poste : les agents communautaires aussi ; le poste sans laboratoire', () => {

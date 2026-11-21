@@ -30,7 +30,7 @@ import { ColonneExport, ExportListeComponent } from '../../../shared/components/
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 const ROLES: Role[] = [
-  'ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'PHARMACIEN', 'AGENT_ACCUEIL',
+  'ASC', 'ASC_SUPERVISOR', 'MEDECIN', 'SAGE_FEMME', 'INFIRMIER', 'PHARMACIEN', 'AGENT_ACCUEIL',
   'TECHNICIEN_LABO', 'LIVREUR', 'ADMIN_STRUCTURE', 'ADMIN_REGIONAL',
   'ADMIN_NATIONAL', 'SUPER_ADMIN',
 ];

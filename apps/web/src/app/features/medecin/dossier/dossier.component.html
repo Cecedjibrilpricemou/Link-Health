@@ -55,6 +55,26 @@
       }
     </section>
 
+    <!-- ── Les soins de l'infirmier : pour le praticien seul ────────── -->
+    @if (soins().length) {
+      <section class="bb-hop-card bb-hop-soins" style="margin-bottom:1rem">
+        <h2 class="bb-hop-card__title"><i class="pi pi-heart" aria-hidden="true"></i> {{ 'HOPITAL.DETAIL.SOINS_TITRE' | translate }}</h2>
+        @for (s of soins(); track s.id) {
+          <div class="bb-hop-sub">
+            <div class="bb-hop-sub__head"><span class="bb-hop-sub__num">{{ s.creeLe | date:'dd/MM HH:mm' }}</span> <span>{{ s.auteur }}</span></div>
+            @if (constantesDe(s.constantes).length) {
+              <div class="bb-hop-sub__tags">
+                @for (c of constantesDe(s.constantes); track c.cle) {
+                  <span class="bb-badge bb-badge--neutral">{{ ('INFIRMIER.CONSTANTE.' + c.cle) | translate }} : {{ c.valeur }} {{ c.unite }}</span>
+                }
+              </div>
+            }
+            @if (s.note) { <p class="bb-hop-sub__line" style="white-space:pre-line">{{ s.note }}</p> }
+          </div>
+        }
+      </section>
+    }
+
     <!-- ── L'historique, sur l'accord du patient ─────────────────────
          La visite se soigne sans rien demander ; au-delà, le patient
          choisit. Le panneau dit où en est son accord. -->

@@ -94,6 +94,15 @@ export const routes: Routes = [
       import('./features/hopital/hopital.routes').then(m => m.HOPITAL_ROUTES)
   },
 
+  // ── Espace de l'infirmier : il soigne sans prescrire ────────────────
+  {
+    path: 'infirmier',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['INFIRMIER'] },
+    loadChildren: () =>
+      import('./features/infirmier/infirmier.routes').then(m => m.INFIRMIER_ROUTES)
+  },
+
   // ── Module Laboratoire (P2, EF-04) ──────────────────────────────────
   {
     path: 'laboratoire',

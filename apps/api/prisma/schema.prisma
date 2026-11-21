@@ -17,6 +17,9 @@ enum Role {
   /// Sage-femme : les ecrans et les actes du medecin (`ROLES_PRATICIENS`),
   /// un metier a part pour l'orientation et l'ordre professionnel.
   SAGE_FEMME
+  /// Infirmier : il soigne sans prescrire. Constantes, vaccins, notes de
+  /// soins sur la visite en cours ; ni ordonnance, ni analyse, ni cloture.
+  INFIRMIER
   PHARMACIEN
   AGENT_ACCUEIL // Hopital : admission, episodes de soins, demandes d'analyse (EF-03)
   TECHNICIEN_LABO // Laborantin : reception, prelevement, saisie ET validation (EF-04)
@@ -427,6 +430,7 @@ model Utilisateur {
   piecesAgrementDeposees    PieceAgrement[]          @relation("PiecesAgrementDeposees")
   demandesAgrementExaminees DemandeAgrement[]        @relation("DemandesAgrementExaminees")
   demandesAgrementDeposees  DemandeAgrement[]        @relation("DemandesAgrementDeposees")
+  soinsInfirmiers           SoinInfirmier[]
   evenementsDemandeAgrement EvenementDemandeAgrement[] @relation("EvenementsDemandeAgrement")
   candidaturesLivreurExaminees CandidatureLivreur[]  @relation("CandidaturesLivreurExaminees")
   /// Le dossier sur lequel ce livreur a ete admis. Absent pour un livreur cree
@@ -2465,9 +2469,45 @@ model EpisodeSoins {
   demandeRendezVous DemandeRendezVous?
 
   autorisationsAcces AutorisationAccesDossier[]
+  soinsInfirmiers    SoinInfirmier[]
   @@index([idStructure, statut, ouvertLe(sort: Desc)])
   @@index([idPatient, ouvertLe(sort: Desc)])
   @@map("episodes_soins")
+}
+
+/// Un passage de l'infirmier aupres du patient, pendant une visite.
+///
+/// **Rattache a la visite, pas a une consultation.** L'infirmier prend les
+/// constantes avant que le medecin ait ouvert quoi que ce soit, et soigne
+/// apres qu'il a prescrit : `ConstantesVitales`, liee a une consultation et
+/// unique pour elle, ne savait dire ni l'un ni l'autre. Ici chaque passage
+/// est une ligne, avec son auteur et son heure, et le medecin les lit tous.
+model SoinInfirmier {
+  id String @id @default(cuid())
+
+  temperature           Float?
+  tensionSystolique     Int?
+  tensionDiastolique    Int?
+  frequenceCardiaque    Int?
+  frequenceRespiratoire Int?
+  spo2                  Float?
+  poidsKg               Float?
+  glycemie              Float?
+
+  /// Le soin fait ou ce qui a ete observe : « pansement refait », « perfusion
+  /// posee ». Facultatif : une prise de constantes seule est un passage.
+  note String?
+
+  creeLe DateTime @default(now())
+
+  idEpisode String
+  episode   EpisodeSoins @relation(fields: [idEpisode], references: [id], onDelete: Restrict)
+
+  idAuteur String
+  auteur   Utilisateur @relation(fields: [idAuteur], references: [id], onDelete: Restrict)
+
+  @@index([idEpisode, creeLe(sort: Desc)])
+  @@map("soins_infirmiers")
 }
 
 // Referentiel des examens de laboratoire, codes LOINC (EF-03-03, EF-13-04)

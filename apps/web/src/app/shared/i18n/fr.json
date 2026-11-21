@@ -1229,6 +1229,58 @@
       "MOTIF_PREFIX": "Aide au triage :"
     }
   },
+  "INFIRMIER": {
+    "ROLE": "Infirmier",
+    "NAV_PATIENTS": "Patients en visite",
+    "PATIENTS": {
+      "TITLE": "Patients en visite",
+      "SUB": "{{count}} patient(s) en visite dans votre structure.",
+      "SEARCH_PH": "Nom, numéro de visite, motif ou service",
+      "EMPTY": "Aucun patient en visite.",
+      "EMPTY_SUB": "Les patients admis par l'accueil apparaissent ici.",
+      "VU_A": "Vu à {{heure}}",
+      "JAMAIS_VU": "Pas encore vu"
+    },
+    "VISITE": {
+      "RETOUR": "Patients en visite",
+      "ALLERGIES": "Allergies :",
+      "NE_LE": "Né(e) le",
+      "GROUPE": "Groupe sanguin",
+      "INCONNU": "Inconnu",
+      "MALADIES": "Maladies chroniques",
+      "PASSAGE_TITRE": "Noter un passage",
+      "PASSAGE_AIDE": "Les constantes prises, le soin fait, ou les deux. Le médecin les lit dans le dossier de la visite.",
+      "NOTE": "Soin fait ou observation",
+      "NOTE_PH": "Ex. : pansement refait, perfusion posée",
+      "ENREGISTRER": "Enregistrer le passage",
+      "PASSAGE_OK": "Passage enregistré.",
+      "PASSAGE_VIDE": "Notez au moins une constante ou le soin fait.",
+      "PRESCRIPTIONS": "Prescriptions de la visite",
+      "AUCUNE_PRESCRIPTION": "Aucune prescription pour cette visite.",
+      "JOURS": "{{n}} jour(s)",
+      "SOINS": "Soins de la visite",
+      "AUCUN_SOIN": "Aucun soin noté pour cette visite.",
+      "VACCINS": "Vaccins",
+      "AUCUN_VACCIN": "Aucun vaccin enregistré.",
+      "RAPPEL_LE": "rappel le {{date}}",
+      "VACCIN_NOM": "Vaccin",
+      "VACCIN_LOT": "Numéro de lot",
+      "VACCIN_SITE": "Site d'injection",
+      "VACCIN_RAPPEL": "Prochaine dose",
+      "VACCIN_ENREGISTRER": "Enregistrer le vaccin",
+      "VACCIN_OK": "Vaccin {{vaccin}} enregistré."
+    },
+    "CONSTANTE": {
+      "temperature": "Température",
+      "tensionSystolique": "Tension systolique",
+      "tensionDiastolique": "Tension diastolique",
+      "frequenceCardiaque": "Fréquence cardiaque",
+      "frequenceRespiratoire": "Fréquence respiratoire",
+      "spo2": "Saturation (SpO2)",
+      "poidsKg": "Poids",
+      "glycemie": "Glycémie"
+    }
+  },
   "MEDECIN": {
     "ROLE": "Médecin",
     "NAV_DASHBOARD": "Tableau de bord",
@@ -2995,6 +3047,7 @@
       "METIER_MEDECIN_SPECIALISTE": "Médecin spécialiste",
       "METIER_CHIRURGIEN_DENTISTE": "Chirurgien-dentiste",
       "METIER_SAGE_FEMME": "Sage-femme",
+      "METIER_INFIRMIER": "Infirmier",
       "METIER_AGENT_ACCUEIL": "Agent d'accueil",
       "METIER_TECHNICIEN_LABO": "Technicien de laboratoire",
       "METIER_ASC": "Agent de santé communautaire",
@@ -3056,6 +3109,7 @@
       "ROLE_ASC_SUPERVISOR": "Superviseur ASC",
       "ROLE_MEDECIN": "Médecin",
       "ROLE_SAGE_FEMME": "Sage-femme",
+      "ROLE_INFIRMIER": "Infirmier",
       "ROLE_PHARMACIEN": "Pharmacien",
       "ROLE_OPTION_ASC": "Agent de Santé (ASC)",
       "ERR_REQUIRED": "Prénom, nom, téléphone et e-mail professionnel sont obligatoires.",
@@ -3101,6 +3155,7 @@
     "ASC_SUPERVISOR": "Superviseur ASC",
     "MEDECIN": "Médecin",
     "SAGE_FEMME": "Sage-femme",
+    "INFIRMIER": "Infirmier",
     "PHARMACIEN": "Pharmacien",
     "AGENT_ACCUEIL": "Agent d'accueil",
     "TECHNICIEN_LABO": "Technicien de laboratoire",
@@ -3240,6 +3295,7 @@
       "URGENCE_VITALE": "Urgence vitale"
     },
     "DETAIL": {
+      "SOINS_TITRE": "Soins infirmiers",
       "BACK": "Épisodes",
       "PATIENT": "Patient",
       "STRUCTURE": "Structure",
