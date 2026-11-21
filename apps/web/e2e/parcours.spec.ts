@@ -202,15 +202,19 @@ test('4. Pharmacien — voit l ordonnance en attente et la delivre', async ({ pa
   await expect(lignes).toHaveCount(avant - 1);
 });
 
-test('5. Admin structure — voit ses agents, le compteur suit la liste', async ({ page }) => {
+test('5. Directeur — dans l espace de son etablissement, voit ses agents', async ({ page }) => {
   await login(page, E2E.adminStructure.email);
-  await expect(page).toHaveURL(/\/admin-structure\/dashboard/);
+  // Plus d'interface a part : le directeur d'un centre arrive dans l'espace
+  // de son etablissement, sur son pilotage.
+  await expect(page).toHaveURL(/\/hopital\/pilotage/);
 
   const compteur = page.locator('.bb-stat__value').first();
   await expect(compteur).not.toHaveText('0');
   const attendu = Number((await compteur.textContent())?.trim());
 
+  // L'ancienne adresse mene toujours a l'ecran : un favori continue de marcher.
   await page.goto('/admin-structure/agents');
+  await expect(page).toHaveURL(/\/hopital\/agents/);
   const agents = page.locator('.bb-agents__item');
   await expect(agents.first()).toBeVisible();
   // L'ASC et le medecin du centre, pas l'admin lui-meme.
