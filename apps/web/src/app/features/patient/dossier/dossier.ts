@@ -102,8 +102,11 @@ export class Dossier implements OnInit {
     // L'API renvoie medecinValideur (contrat ConsultationView) ; `medecin`
     // est la forme historique de certains ecrans.
     const medecin = c.medecinValideur ?? c.medecin?.utilisateur;
+    // « Dr » pour le medecin seul : une sage-femme n'est pas docteur. Sans
+    // role connu (forme historique), l'usage d'avant.
+    const titre = medecin && 'role' in medecin && medecin.role === 'SAGE_FEMME' ? '' : `${this.i18n.t('PATIENT.DOSSIER.DOCTOR_PREFIX')} `;
     const intervenant = medecin
-      ? `${this.i18n.t('PATIENT.DOSSIER.DOCTOR_PREFIX')} ${medecin.prenom} ${medecin.nom}`
+      ? `${titre}${medecin.prenom} ${medecin.nom}`
       : c.asc?.utilisateur
         ? `${this.i18n.t('PATIENT.DOSSIER.AGENT_PREFIX')} ${c.asc.utilisateur.prenom} ${c.asc.utilisateur.nom}`
         : '—';
