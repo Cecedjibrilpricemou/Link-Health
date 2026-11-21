@@ -181,6 +181,16 @@ migration générée propose de le supprimer, retirez la ligne : sans lui, deux
 lancements simultanés feraient deux commandes complètes pour la même
 ordonnance.
 
+### Prisma : ne pas lancer `prisma format`
+
+Il réaligne **tout** `schema.prisma` : une modification de trois lignes devient
+un diff de plusieurs dizaines, qui entre en conflit avec chaque branche ouverte.
+Ajoutez les champs à la main, alignés sur leurs voisins, puis
+`npx prisma validate`. Pour générer la migration, `prisma migrate diff
+--from-config-datasource --to-schema prisma/schema.prisma --script` contre une
+base jetable où toutes les migrations sont appliquées, puis retirez le
+`DROP INDEX` de l'index trigramme (ci-dessus).
+
 ### Commandes : le stock vérifié, et la prise partielle
 
 Quand une commande arrive, chaque ligne est confrontée au stock de la
@@ -307,6 +317,36 @@ compte `ASSUREUR` ; le courriel de validation porte le motif, les identifiants
 et le code retenu. Le mot de passe ne sort jamais dans la réponse : si le
 courriel échoue, l'écran et l'historique le disent, et c'est à l'administration
 de prévenir le responsable.
+
+### La pharmacie d'un hôpital
+
+**L'administrateur d'un hôpital ne crée plus sa pharmacie : il la demande**
+(depuis le 2026-11-21). Avant, il ouvrait seul une officine et le compte de son
+titulaire, sans que l'administration de la plateforme l'ait jamais vue passer.
+
+- Seuls les hôpitaux (préfectoral, régional, CHU) et les cliniques peuvent la
+  demander (`estStructureHospitaliere`), depuis leur page Pharmacies :
+  `POST /admin-structure/pharmacies/demandes`. La création directe,
+  `POST /admin-structure/pharmacies`, est réservée au super admin.
+- La demande est une `DemandeAgrement` ordinaire, avec deux colonnes en plus :
+  `idStructureParente` (l'hôpital) et `idDeposePar` (l'administrateur). Elle
+  arrive dans l'écran d'examen avec les autres, marquée « Pharmacie de … ».
+- **Aucune pièce n'est exigée** : la pharmacie opère sous l'autorisation de son
+  hôpital (`piecesExigees`, qui renvoie à `SOUS_AUTORISATION_DU_PARENT`). Le
+  dossier se montre donc complet sans pièce.
+- **Aucun mot de passe n'est reçu ni gardé** au dépôt. L'adresse du titulaire
+  est obligatoire : ses identifiants y partent à la validation.
+- **Les courriels vont à l'administrateur qui a déposé la demande**, pas au
+  pharmacien, qui n'a rien déposé : accusé de réception, puis chaque étape avec
+  son motif (`envoyerSuiviPharmacieHospitaliere`). À la validation, le
+  titulaire reçoit ses identifiants, et l'administrateur la décision sans eux.
+  Un administrateur sans adresse suit sa demande à l'écran, où s'affichent
+  l'état et le dernier motif (`GET /admin-structure/pharmacies/demandes`).
+- La validation crée la pharmacie **fille de l'hôpital**, partenaire, et son
+  titulaire (`PHARMACIEN`, profil `TITULAIRE`). Elle est refusée si l'hôpital
+  a été désactivé entre-temps.
+- Deux demandes ouvertes pour le même nom dans le même hôpital, à la casse
+  près, sont refusées.
 
 ### La candidature des livreurs
 
@@ -468,7 +508,9 @@ Partout ailleurs, l'interface porte la structure :
 `/auth/me` porte `structure` (`apparence.service.ts`, `espaceDeLUtilisateur`)
 ; la barre latérale l'affiche avec `<app-brand portee="espace">`. Sans logo,
 un **monogramme** : les initiales (`CHU` pour « CHU Donka », `CP` pour
-« Clinique Pasteur »), aux couleurs de la palette.
+« Clinique Pasteur »), aux couleurs de la palette. **Un logo qui ne se charge
+pas** (fichier perdu, réseau coupé) laisse place au monogramme, jamais à une
+image cassée ; il est de nouveau essayé quand le logo change.
 
 **Le logo** se téléverse depuis Apparence, par le responsable. Il est stocké
 dans `StructureSante.photoUrl` (champ jusque-là inutilisé), réduit à 512 px
@@ -498,8 +540,52 @@ saisir un résultat). S'il est aussi médecin, il a un compte médecin à part.
   actes médicaux de l'hôpital, saisie et compte rendu du laboratoire, espace
   médecin, consultations, fiche patient, résultats, export FHIR,
   synchronisation hors ligne, rappels de vaccination nominatifs.
+- **L'alerte « résultat critique en attente » est un contenu médical** : sans
+  valeur, elle dit pourtant l'état du patient. Le même filtre ramène
+  `alerteCritiqueEnAttente` à faux pour l'accueil et l'administration.
 - Ce qui lui reste ouvert : son administration, les chiffres (statistiques,
   couverture vaccinale), la relecture des accès d'urgence de son personnel.
+
+### Le personnel : des métiers, pas des rôles
+
+L'administrateur crée **un métier** : médecin généraliste, médecin spécialiste
+(avec sa spécialité), chirurgien-dentiste, agent d'accueil, technicien de
+laboratoire, agents de santé communautaire. Le métier se traduit en rôle
+technique côté serveur ; un dentiste ou un pédiatre ont les écrans du médecin.
+
+- **Les spécialités sont une liste fermée** de vingt-deux codes
+  (`SPECIALITES_MEDICALES`, dans `shared-types`), traduits. Les spécialités
+  saisies à la main avant la liste sont reconnues (`normaliserSpecialite`,
+  `utils/specialite.util.ts`) ; un texte inconnu reste tel quel.
+- **Seuls les métiers du type de structure sont proposés, et l'API refuse le
+  reste** (`rolesCreablesPour`) : pas d'agent communautaire à l'hôpital, des
+  techniciens seuls au laboratoire, plus aucun compte pharmacien créé par
+  l'administrateur.
+- Changer le numéro d'ordre retire sa vérification au registre, qui ne valait
+  que pour l'ancien numéro.
+- Un compte désactivé reste dans la liste et se réactive.
+- Réinitialiser un mot de passe : temporaire, envoyé par courriel et montré une
+  seule fois ; toutes les sessions de l'agent sont fermées.
+- **Infirmier et sage-femme ne sont pas encore des rôles** : c'est la phase
+  suivante (section 9).
+
+### Les services de l'hôpital
+
+Un centre, un hôpital ou une clinique déclare ses services (urgences,
+maternité, pédiatrie…) depuis « Services », dans la rubrique Équipe
+(`ServiceHospitalier`, `services-hospitaliers.service.ts`).
+
+- Un nom déjà pris **à la casse près** est refusé : « PÉDIATRIE » et
+  « Pédiatrie » sont le même service. L'index unique de la base, lui, distingue
+  la casse : c'est le service qui fait le contrôle.
+- Un service se ferme et se rouvre, il ne se supprime pas. Fermé, il n'est plus
+  proposé à l'accueil.
+- Chaque médecin est rattaché à **un** service, depuis « Mes agents »
+  (`MedecinProfile.idService`, remis à nul si le service disparaît).
+- **À l'accueil**, l'admission et l'orientation proposent les services ouverts ;
+  choisir un service ne laisse que ses médecins. Un service sans médecin
+  rattaché propose tous les médecins, et l'écran le dit. Sans service déclaré,
+  la saisie libre d'avant reste.
 
 ### La géographie
 
@@ -552,6 +638,20 @@ donne des dossiers qui pointent vers le vide.
 
 Du plus récent au plus ancien, tout est sur `main` sauf mention contraire.
 
+- **La pharmacie d'un hôpital se demande** (branche
+  `feat/pharmacie-hopital-agrement`, section 6) : l'hôpital dépose, le super
+  admin met en analyse, valide ou refuse avec un motif envoyé à
+  l'administrateur ; la validation crée la pharmacie et son titulaire.
+- **Les services de l'hôpital** (branche `feat/services-hopital`, section 6) :
+  déclarés par l'administrateur, médecins rattachés, orientation par service à
+  l'accueil.
+- **L'alerte critique cachée à l'accueil et à l'administration** (branche
+  `fix/alerte-critique-sans-soin`, section 6).
+- **Jamais une image cassée à la place d'un logo** (branche
+  `fix/logo-structure-repli`, section 6).
+- **Le personnel par métiers et spécialités** (branche
+  `feat/personnel-metiers`, section 6) : métiers proposés selon la structure,
+  spécialités en liste fermée, réactivation et réinitialisation d'un compte.
 - **L'administrateur de structure sans contenu médical** (branche
   `fix/admin-sans-contenu-medical-v2`, section 6) : actes et lectures de soin
   fermés, valeurs d'analyse retirées de toute réponse de l'accueil et du
@@ -618,7 +718,11 @@ Par ordre de risque décroissant.
    l'analyse est faite mais le message d'erreur exact manque pour conclure. Les
    trois causes possibles sont identifiées dans
    `features/patient/profil/adresse/`.
-5. Ménage : branches fusionnées à supprimer, référentiel LOINC, voisinages de
+5. **Infirmier et sage-femme** ne sont pas encore des rôles : ils ne peuvent
+   être créés comme personnel. C'est la phase prévue après les étapes 1 à 4.
+6. **Les pharmacies hospitalières créées avant le 2026-11-21** l'ont été sans
+   demande : aucune trace d'examen par l'administration.
+7. Ménage : branches fusionnées à supprimer, référentiel LOINC, voisinages de
    Conakry, identité de la plateforme en production.
 
 ---
