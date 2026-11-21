@@ -18,9 +18,15 @@ export const TAILLE_MAX_PIECE = 5 * 1024 * 1024;
  * Une clé plutôt qu'un message : l'appelant l'affiche dans la langue de
  * l'utilisateur, et le catalogue reste le seul endroit où le texte vit.
  */
-export function refusLocal(fichier: File): string | null {
+export function refusLocal(fichier: File, image = false): string | null {
   if (fichier.size === 0) return 'AGREMENT.PIECE.VIDE';
   if (fichier.size > TAILLE_MAX_PIECE) return 'AGREMENT.PIECE.TROP_GROS';
+
+  // La photo du responsable : une image JPEG ou PNG, pas un PDF.
+  if (image) {
+    const nomImage = /\.(jpe?g|png)$/i.test(fichier.name);
+    return fichier.type === 'image/jpeg' || fichier.type === 'image/png' || nomImage ? null : 'AGREMENT.PIECE.PAS_UNE_IMAGE';
+  }
 
   // Certains navigateurs ne renseignent pas `type` : l'extension sert alors de
   // dernier indice. Le serveur, lui, ne croit que les octets.
@@ -28,6 +34,13 @@ export function refusLocal(fichier: File): string | null {
   if (fichier.type !== 'application/pdf' && !nomPdf) return 'AGREMENT.PIECE.PAS_UN_PDF';
 
   return null;
+}
+
+/** Les pièces qui sont des images : la photo du responsable. Même liste que l'API. */
+export const PIECES_IMAGE: readonly string[] = ['PHOTO_RESPONSABLE'];
+
+export function estImage(piece: string): boolean {
+  return PIECES_IMAGE.includes(piece);
 }
 
 /** `200 Ko`, `2.0 Mo` — jamais `0 Ko`, qui ressemble à un téléversement raté. */

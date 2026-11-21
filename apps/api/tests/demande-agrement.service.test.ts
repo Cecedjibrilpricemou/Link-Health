@@ -151,8 +151,14 @@ function compagnie(surcharge: Record<string, unknown> = {}) {
 const PIECES_ASSURANCE = [
   pdf(TypePieceAgrement.AGREMENT_ASSURANCE),
   pdf(TypePieceAgrement.EXTRAIT_RCCM),
+  pdf(TypePieceAgrement.STATUTS_SOCIETE),
   pdf(TypePieceAgrement.PIECE_IDENTITE_RESPONSABLE),
+  pdf(TypePieceAgrement.PASSEPORT_RESPONSABLE),
   pdf(TypePieceAgrement.CERTIFICAT_RESIDENCE_RESPONSABLE),
+  pdf(TypePieceAgrement.CASIER_JUDICIAIRE_RESPONSABLE),
+  pdf(TypePieceAgrement.MANDAT_RESPONSABLE),
+  // La photo du responsable : une image, pas un PDF.
+  { fieldname: TypePieceAgrement.PHOTO_RESPONSABLE, originalname: 'photo.jpg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]) },
 ];
 
 function hopital(surcharge: Record<string, unknown> = {}) {

@@ -144,11 +144,15 @@ describe('qui doit produire un dossier', () => {
   });
 
   // L'assureur releve de la Banque Centrale, pas du ministere de la Sante : il
-  // n'a ni diplome ni ordre professionnel a produire. Mais la compagnie prouve
-  // son existence, et son responsable son identite et sa residence.
-  it('l assureur produit son agrement, son extrait RCCM, et l identite et la residence de son responsable', () => {
+  // n'a ni diplome ni ordre professionnel a produire. La compagnie prouve son
+  // existence ; son administrateur, qui manie des donnees d'assures et de
+  // l'argent, qui il est, ou il vit, son casier, et qu'elle l'a designe
+  // (decision du 2026-11-21).
+  it('l assureur : sa compagnie (agrement, RCCM, statuts) et son administrateur (identite, passeport, residence, casier, mandat, photo)', () => {
     expect(piecesRequisesPour('ASSURANCE')).toEqual([
-      'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'PIECE_IDENTITE_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE',
+      'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'STATUTS_SOCIETE',
+      'PIECE_IDENTITE_RESPONSABLE', 'PASSEPORT_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE',
+      'CASIER_JUDICIAIRE_RESPONSABLE', 'MANDAT_RESPONSABLE', 'PHOTO_RESPONSABLE',
     ]);
     expect(piecesRequisesPour('ASSURANCE')).not.toContain('DIPLOME_RESPONSABLE');
     expect(piecesRequisesPour('ASSURANCE')).not.toContain('INSCRIPTION_ORDRE');
@@ -157,9 +161,27 @@ describe('qui doit produire un dossier', () => {
   it('nomme chaque piece manquante d une assurance', () => {
     const agrementSeul = [{ fieldname: 'AGREMENT_ASSURANCE', buffer: Buffer.from('%PDF-1.4 bcrg') }];
     expect(() => validerPieces('ASSURANCE', agrementSeul)).toThrow(
-      "Dossier incomplet : il manque l'extrait RCCM, la carte d'identité ou le passeport du responsable, "
-      + 'le certificat de résidence du responsable.',
+      "Dossier incomplet : il manque l'extrait RCCM, les statuts de la société, la carte d'identité du responsable, "
+      + 'le passeport du responsable, le certificat de résidence du responsable, '
+      + "l'extrait de casier judiciaire du responsable, le mandat de la compagnie désignant le responsable, "
+      + "la photo d'identité du responsable.",
     );
+  });
+
+  // La photo est la seule image du dossier : un PDF n'y vaut rien, et une
+  // image n'est valable que pour elle.
+  it('la photo du responsable est une image ; toute autre piece, un PDF', () => {
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const pdfFaux = Buffer.from('%PDF-1.4 x');
+    const tout = (photo: Buffer, rccm: Buffer = pdfFaux) => [
+      'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'STATUTS_SOCIETE', 'PIECE_IDENTITE_RESPONSABLE', 'PASSEPORT_RESPONSABLE',
+      'CERTIFICAT_RESIDENCE_RESPONSABLE', 'CASIER_JUDICIAIRE_RESPONSABLE', 'MANDAT_RESPONSABLE',
+    ].map((f) => ({ fieldname: f, buffer: f === 'EXTRAIT_RCCM' ? rccm : pdfFaux })).concat([{ fieldname: 'PHOTO_RESPONSABLE', buffer: photo }]);
+    expect(validerPieces('ASSURANCE', tout(jpeg))).toHaveLength(9);
+    expect(validerPieces('ASSURANCE', tout(png))).toHaveLength(9);
+    expect(() => validerPieces('ASSURANCE', tout(pdfFaux))).toThrow(/doit être une image JPEG ou PNG/);
+    expect(() => validerPieces('ASSURANCE', tout(jpeg, jpeg))).toThrow(/n'est pas un vrai fichier PDF/);
   });
 
   it('reconnait les structures nees d un acte de l Etat', () => {

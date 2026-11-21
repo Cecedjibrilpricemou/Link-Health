@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/rbac.middleware';
-import { corpsJsonMultipart, recevoirPiecesAgrement } from '../middlewares/upload.middleware';
+import { corpsJsonMultipart, recevoirPiecesAgrement, typeMimeReel } from '../middlewares/upload.middleware';
 import * as piecesAgrement from '../services/piece-agrement.service';
 import { validateBody } from '../middlewares/validate.middleware';
 import { uploadLogo, uploadVisuel } from '../middlewares/upload.middleware';
@@ -243,7 +243,10 @@ router.post('/structures/:id/pieces', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL
 /** Le contenu d'une piece. Jamais une URL devinable : une route gardee. */
 router.get('/pieces/:id', requireRole('SUPER_ADMIN', 'ADMIN_NATIONAL', 'ADMIN_STRUCTURE', 'PHARMACIEN'), async (req: AuthRequest, res: Response) => {
   const { contenu } = await piecesAgrement.lirePiece(req.user!, req.params['id'] as string);
-  res.setHeader('Content-Type', 'application/pdf');
+  // Le type lu dans les octets : la photo du responsable est une image. Un
+  // contenu non reconnu part en telechargement, jamais interprete.
+  res.setHeader('Content-Type', typeMimeReel(contenu) ?? 'application/octet-stream');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Cache-Control', 'no-store, private');
   res.setHeader('Content-Disposition', 'inline');
   res.send(contenu);

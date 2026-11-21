@@ -24,7 +24,7 @@ import path from 'path';
 import { prisma } from '../config/prisma';
 import { logger } from '../config/logger';
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
-import { estPdf, TAILLE_MAX_PIECE } from '../middlewares/upload.middleware';
+import { estPdf, TAILLE_MAX_PIECE, typeMimeReel } from '../middlewares/upload.middleware';
 import type { JwtPayload } from '../types/auth.types';
 import { TypePieceAgrement, TypeStructure } from '../config/generated/client/client';
 
@@ -132,15 +132,26 @@ export const PIECES_REQUISES: Readonly<Partial<Record<TypeStructure, readonly Ty
     TypePieceAgrement.DIPLOME_RESPONSABLE,
   ],
   // L'assureur releve de la Banque Centrale : ni diplome ni ordre a produire.
-  // Mais la compagnie doit prouver son existence (l'extrait RCCM, et non le
-  // seul numero saisi) et celui qui en repondra, son identite et sa residence.
+  // La compagnie prouve son existence (agrement, extrait RCCM, statuts), et
+  // son administrateur sur la plateforme - qui manie des donnees d'assures et
+  // de l'argent - qui il est (carte d'identite ET passeport, photo), ou il
+  // vit, qu'il n'a pas d'antecedent, et que la compagnie l'a bien designe
+  // (decision du 2026-11-21).
   ASSURANCE: [
     TypePieceAgrement.AGREMENT_ASSURANCE,
     TypePieceAgrement.EXTRAIT_RCCM,
+    TypePieceAgrement.STATUTS_SOCIETE,
     TypePieceAgrement.PIECE_IDENTITE_RESPONSABLE,
+    TypePieceAgrement.PASSEPORT_RESPONSABLE,
     TypePieceAgrement.CERTIFICAT_RESIDENCE_RESPONSABLE,
+    TypePieceAgrement.CASIER_JUDICIAIRE_RESPONSABLE,
+    TypePieceAgrement.MANDAT_RESPONSABLE,
+    TypePieceAgrement.PHOTO_RESPONSABLE,
   ],
 };
+
+/** Les pieces qui sont des images (JPEG, PNG) et non des PDF. */
+export const PIECES_IMAGE: readonly TypePieceAgrement[] = [TypePieceAgrement.PHOTO_RESPONSABLE];
 
 /** Le libelle lisible d'une piece, pour nommer ce qui manque. */
 const LIBELLES: Readonly<Record<TypePieceAgrement, string>> = {
@@ -150,8 +161,13 @@ const LIBELLES: Readonly<Record<TypePieceAgrement, string>> = {
   INSCRIPTION_ORDRE: "l'attestation d'inscription à l'ordre professionnel",
   AGREMENT_ASSURANCE: "l'agrément de la Banque Centrale",
   EXTRAIT_RCCM: "l'extrait RCCM",
-  PIECE_IDENTITE_RESPONSABLE: "la carte d'identité ou le passeport du responsable",
+  PIECE_IDENTITE_RESPONSABLE: "la carte d'identité du responsable",
   CERTIFICAT_RESIDENCE_RESPONSABLE: 'le certificat de résidence du responsable',
+  STATUTS_SOCIETE: 'les statuts de la société',
+  PASSEPORT_RESPONSABLE: 'le passeport du responsable',
+  CASIER_JUDICIAIRE_RESPONSABLE: "l'extrait de casier judiciaire du responsable",
+  MANDAT_RESPONSABLE: 'le mandat de la compagnie désignant le responsable',
+  PHOTO_RESPONSABLE: "la photo d'identité du responsable",
   AUTRE: 'une pièce complémentaire',
 };
 
@@ -265,8 +281,14 @@ export function validerPieces(
     if (f.buffer.length > TAILLE_MAX_PIECE) {
       throw new ValidationError(`${LIBELLES[typePiece]} dépasse 5 Mo.`);
     }
-    // Ce qui fait foi : les octets, pas l'en-tete `Content-Type`.
-    if (!estPdf(f.buffer)) {
+    // Ce qui fait foi : les octets, pas l'en-tete `Content-Type`. La photo
+    // est une image ; toute autre piece, un PDF.
+    if (PIECES_IMAGE.includes(typePiece)) {
+      const mime = typeMimeReel(f.buffer);
+      if (mime !== 'image/jpeg' && mime !== 'image/png') {
+        throw new ValidationError(`${LIBELLES[typePiece]} doit être une image JPEG ou PNG.`);
+      }
+    } else if (!estPdf(f.buffer)) {
       throw new ValidationError(
         `${LIBELLES[typePiece]} n'est pas un vrai fichier PDF, quelle que soit son extension.`,
       );
@@ -377,7 +399,9 @@ export async function ecrireFichiers(
   const ecrites: { type: TypePieceAgrement; fichier: string; taille: number; libelle: string | null }[] = [];
   try {
     for (const p of pieces) {
-      const nom = `${randomUUID()}.pdf`;
+      // L'extension suit le contenu reel : la photo est une image.
+      const mime = typeMimeReel(p.contenu);
+      const nom = `${randomUUID()}${mime === 'image/jpeg' ? '.jpg' : mime === 'image/png' ? '.png' : '.pdf'}`;
       await fs.writeFile(cheminPiece(nom), p.contenu);
       ecrites.push({ type: p.type, fichier: nom, taille: p.contenu.length, libelle: p.libelle });
     }

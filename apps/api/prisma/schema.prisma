@@ -138,10 +138,23 @@ enum TypePieceAgrement {
   /// L'extrait du Registre du commerce et du credit mobilier : le numero RCCM
   /// saisi ne prouve rien tant que la piece qui le porte n'est pas jointe.
   EXTRAIT_RCCM
-  /// Carte nationale d'identite ou passeport : une seule piece, l'une ou
-  /// l'autre selon ce que le responsable possede.
+  /// La carte nationale d'identite du responsable. Depuis le 2026-11-21,
+  /// l'administrateur d'une assurance fournit aussi son passeport, a part.
   PIECE_IDENTITE_RESPONSABLE
   CERTIFICAT_RESIDENCE_RESPONSABLE
+  /// Les statuts de la compagnie : ce qu'elle est, qui la dirige.
+  STATUTS_SOCIETE
+  /// Le passeport du responsable, distinct de sa carte d'identite.
+  PASSEPORT_RESPONSABLE
+  /// L'extrait de casier judiciaire du responsable : il manie des donnees
+  /// d'assures et de l'argent.
+  CASIER_JUDICIAIRE_RESPONSABLE
+  /// La lettre de la direction qui designe cette personne comme
+  /// administrateur de la compagnie sur la plateforme.
+  MANDAT_RESPONSABLE
+  /// La photo d'identite du responsable : la seule piece qui soit une image
+  /// (JPEG ou PNG), toutes les autres sont des PDF.
+  PHOTO_RESPONSABLE
   AUTRE
 }
 

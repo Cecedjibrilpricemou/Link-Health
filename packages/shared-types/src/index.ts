@@ -1772,9 +1772,16 @@ export type TypePieceAgrement =
   /** L'assureur releve de la Banque Centrale, pas du ministere de la Sante. */
   | 'AGREMENT_ASSURANCE'
   | 'EXTRAIT_RCCM'
-  /** Carte nationale d'identite ou passeport : l'une ou l'autre. */
+  /** La carte nationale d'identite du responsable. */
   | 'PIECE_IDENTITE_RESPONSABLE'
   | 'CERTIFICAT_RESIDENCE_RESPONSABLE'
+  /** Assurance (2026-11-21) : statuts, passeport, casier, mandat, photo. */
+  | 'STATUTS_SOCIETE'
+  | 'PASSEPORT_RESPONSABLE'
+  | 'CASIER_JUDICIAIRE_RESPONSABLE'
+  | 'MANDAT_RESPONSABLE'
+  /** La seule piece qui soit une image (JPEG ou PNG). */
+  | 'PHOTO_RESPONSABLE'
   | 'AUTRE';
 
 /** Une piece deposee. Le contenu ne passe jamais par le JSON : voir `GET /pieces/:id`. */
