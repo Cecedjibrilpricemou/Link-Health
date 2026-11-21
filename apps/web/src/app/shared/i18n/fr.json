@@ -2907,6 +2907,28 @@
   "ADMIN_STRUCTURE": {
     "ROLE": "Admin Structure",
     "NAV_DASHBOARD": "Tableau de bord",
+    "NAV_SERVICES": "Services",
+    "SERVICES": {
+      "TITLE": "Services de l'établissement",
+      "SUB": "Urgences, maternité, pédiatrie… L'accueil y oriente les patients, vers leurs médecins.",
+      "NOUVEAU": "Nouveau service",
+      "NOUVEAU_PH": "Ex. : Pédiatrie",
+      "AJOUTER": "Ajouter",
+      "SUGGESTIONS": "Les services les plus courants, en un clic :",
+      "VIDE": "Aucun service déclaré. Tant qu'il n'y en a pas, l'accueil saisit le service à la main.",
+      "OUVERTS": "Services ouverts",
+      "FERMES": "Services fermés",
+      "RATTACHER": "Rattachez chaque médecin à son service depuis « Mes agents » : l'accueil verra alors les médecins du service choisi.",
+      "MEDECINS": "{{n}} médecin(s) rattaché(s)",
+      "FERME_BADGE": "Fermé",
+      "RENOMMER": "Renommer",
+      "FERMER": "Fermer",
+      "ROUVRIR": "Rouvrir",
+      "AJOUTE": "Service « {{nom}} » ajouté.",
+      "RENOMME": "Service renommé : « {{nom}} ».",
+      "FERME": "Service « {{nom}} » fermé : il n'est plus proposé à l'accueil.",
+      "ROUVERT": "Service « {{nom}} » rouvert."
+    },
     "NAV_RUBRIQUE_PILOTAGE": "Pilotage",
     "NAV_RUBRIQUE_ACCUEIL": "Accueil",
     "NAV_RUBRIQUE_LABO": "Laboratoire",
@@ -2965,6 +2987,8 @@
       "SAVE_ERROR": "Impossible d'enregistrer la convention."
     },
     "AGENTS": {
+      "SERVICE_LABEL": "Service",
+      "SERVICE_AUCUN": "Aucun service",
       "METIER_LABEL": "Métier",
       "METIER_PH": "Choisissez un métier",
       "METIER_MEDECIN_GENERALISTE": "Médecin généraliste",
@@ -3102,6 +3126,9 @@
     "ERR_GENERIC": "Impossible de démarrer la caméra. Saisissez le code à la main."
   },
   "HOPITAL": {
+    "SERVICE_CHOISIR": "Choisissez un service",
+    "SERVICE_AUCUN": "Aucun service",
+    "SERVICE_SANS_MEDECIN": "Aucun médecin n'est rattaché à ce service : tous les médecins sont proposés.",
     "ROLE": "Accueil hôpital",
     "NAV_DASHBOARD": "Tableau de bord",
     "NAV_ADMISSION": "Admission",

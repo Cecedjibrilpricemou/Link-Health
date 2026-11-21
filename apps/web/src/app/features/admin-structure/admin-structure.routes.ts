@@ -9,6 +9,7 @@ export const ADMIN_STRUCTURE_ROUTES: Routes = [
         .then(m => m.AdminStructureLayoutComponent),
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'services', loadComponent: () => import('./services/services.component').then(m => m.ServicesComponent) },
       // ── L'accueil et le laboratoire, dans l'interface de l'administrateur ──
       // Les ecrans du metier, sans changer d'interface : leurs liens restent
       // ici grace a la racine fournie (core/navigation/racines.ts). L'API leur

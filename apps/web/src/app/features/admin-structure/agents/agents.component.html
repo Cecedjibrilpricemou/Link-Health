@@ -116,6 +116,17 @@
             </mat-form-field>
           </div>
         }
+        @if (estMedical(newAgent.metier) && services().length) {
+          <div class="bb-agents__field">
+            <label for="agent-service">{{ 'ADMIN_STRUCTURE.AGENTS.SERVICE_LABEL' | translate }}</label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+              <mat-select id="agent-service" [(ngModel)]="newAgent.idService" [placeholder]="'ADMIN_STRUCTURE.AGENTS.SERVICE_AUCUN' | translate">
+                <mat-option value="">{{ 'ADMIN_STRUCTURE.AGENTS.SERVICE_AUCUN' | translate }}</mat-option>
+                @for (sv of services(); track sv.id) { <mat-option [value]="sv.id">{{ sv.nom }}</mat-option> }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        }
         @if (estMedical(newAgent.metier)) {
           <div class="bb-agents__field">
             <label for="agent-ordre">{{ 'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_LABEL' | translate }}</label>
@@ -161,6 +172,9 @@
             <p class="bb-agents__name">{{ agent.prenom }} {{ agent.nom }}</p>
             <p class="bb-agents__contact">{{ agent.telephone }}@if (agent.email) { · {{ agent.email }} }</p>
             <p class="bb-agents__meta">{{ 'ADMIN_STRUCTURE.AGENTS.ADDED_ON' | translate: { date: formatDate(agent.creeLe) } }}</p>
+            @if (agent.service) {
+              <p class="bb-agents__meta bb-agents__service"><i class="pi pi-sitemap" aria-hidden="true"></i> {{ agent.service.nom }}</p>
+            }
             @if (agent.numeroOrdre) {
               <p class="bb-agents__meta">
                 {{ 'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_AFFICHE' | translate: { numero: agent.numeroOrdre } }}
@@ -182,6 +196,15 @@
                     }
                   </mat-select>
                 </mat-form-field>
+                @if (services().length) {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>{{ 'ADMIN_STRUCTURE.AGENTS.SERVICE_LABEL' | translate }}</mat-label>
+                    <mat-select [(ngModel)]="profilSaisi.idService" name="idService" class="bb-agents__profil-service">
+                      <mat-option value="">{{ 'ADMIN_STRUCTURE.AGENTS.SERVICE_AUCUN' | translate }}</mat-option>
+                      @for (sv of services(); track sv.id) { <mat-option [value]="sv.id">{{ sv.nom }}</mat-option> }
+                    </mat-select>
+                  </mat-form-field>
+                }
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>{{ 'ADMIN_STRUCTURE.AGENTS.NUMERO_ORDRE_LABEL' | translate }}</mat-label>
                   <input matInput [(ngModel)]="profilSaisi.numeroOrdre" name="numeroOrdre" maxlength="40" autocomplete="off" />

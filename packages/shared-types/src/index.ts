@@ -1997,6 +1997,8 @@ export interface AgentStructureView {
   ordreVerifie?: boolean;
   /** Un compte desactive reste dans la liste : on peut le reactiver. */
   estActif?: boolean;
+  /** Pour un medecin : le service ou il exerce, s'il est rattache. */
+  service?: { id: string; nom: string } | null;
 }
 
 /** PUT /admin-structure/agents/:id/bureau — un bureau change, un medecin demenage. */
@@ -5017,6 +5019,8 @@ export type RoleAgentStructure = 'ASC' | 'ASC_SUPERVISOR' | 'MEDECIN' | 'AGENT_A
 /** PUT /admin-structure/agents/:id/profil — le metier d'un medecin. */
 export interface ModifierProfilAgentDto {
   specialite?: SpecialiteMedicale;
+  /** Le service du medecin ; `null` le detache. */
+  idService?: string | null;
   /** Vide : efface. Le changer retire la verification du registre. */
   numeroOrdre?: string | null;
 }
@@ -5026,5 +5030,25 @@ export interface ReinitialisationMotDePasseView {
   motDePasseTemporaire: string;
   /** L'adresse a laquelle il a aussi ete envoye, s'il y en a une. */
   emailEnvoye: string | null;
+}
+
+// ── Les services d'un etablissement ──────────────────────────────────
+
+/** Un service : Urgences, Maternite... Ferme, il n'est plus propose a l'accueil. */
+export interface ServiceHospitalierView {
+  id: string;
+  nom: string;
+  actif: boolean;
+  /** Les medecins qui y sont rattaches. */
+  nbMedecins: number;
+}
+
+export interface CreerServiceDto {
+  nom: string;
+}
+
+export interface ModifierServiceDto {
+  nom?: string;
+  actif?: boolean;
 }
 

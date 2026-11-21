@@ -31,6 +31,7 @@ import type {
   PatientRechercheView,
   StructureRefView,
   TableauDeBordHopitalView,
+  ServiceHospitalierView,
 } from '@baobaoheath/shared-types';
 
 const router = Router();
@@ -147,6 +148,12 @@ router.get('/laboratoires', validateQuery(choixLaboratoiresQuerySchema), async (
 
 router.get('/medecins', async (req: AuthRequest, res: Response) => {
   const data = await hopital.listerMedecinsDeLaStructure(req.user!);
+  res.json({ success: true, data });
+});
+
+// Les services ouverts : l'accueil oriente vers un service, puis l'un de ses medecins.
+router.get('/services', async (req: AuthRequest, res: Response) => {
+  const data: ServiceHospitalierView[] = await hopital.listerServicesDeLaStructure(req.user!);
   res.json({ success: true, data });
 });
 

@@ -619,3 +619,15 @@ describe('le personnel de la structure', () => {
   });
 });
 
+describe('les services de l etablissement', () => {
+  it('se declarent par l administrateur de structure seul', () => {
+    expect(rolesPour(adminStructure, 'get', '/services')).toEqual(['ADMIN_STRUCTURE']);
+    expect(rolesPour(adminStructure, 'post', '/services')).toEqual(['ADMIN_STRUCTURE']);
+    expect(rolesPour(adminStructure, 'put', '/services/:id')).toEqual(['ADMIN_STRUCTURE']);
+  });
+
+  it('se lisent a l accueil, chez le medecin et l administrateur', () => {
+    expect(rolesPour(hopital, 'get', '/services')).toEqual(['AGENT_ACCUEIL', 'MEDECIN', 'ADMIN_STRUCTURE']);
+  });
+});
+

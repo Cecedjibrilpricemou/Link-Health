@@ -50,4 +50,13 @@ describe('le menu de l administrateur de structure', () => {
     const r = routes('CHU', true);
     expect(new Set(r).size).toBe(r.length);
   });
+
+  it('les services : dans l equipe des hopitaux, cliniques et centres ; pas au poste ni au laboratoire', () => {
+    for (const type of ['CHU', 'CLINIQUE', 'CENTRE', 'HOPITAL_PREF'] as TypeStructure[]) {
+      expect(routes(type, true)).toContain('/admin-structure/services');
+    }
+    expect(routes('POSTE')).not.toContain('/admin-structure/services');
+    expect(routes('LABORATOIRE')).not.toContain('/admin-structure/services');
+  });
 });
+

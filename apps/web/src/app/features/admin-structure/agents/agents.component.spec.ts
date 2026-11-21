@@ -13,7 +13,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
-import type { AgentStructureView } from '@baobaoheath/shared-types';
+import type { AgentStructureView, ServiceHospitalierView } from '@baobaoheath/shared-types';
 
 import { AgentsComponent } from './agents.component';
 import { ApiService } from '../../../core/services/api.service';
@@ -29,13 +29,13 @@ const agent = (o: Partial<AgentStructureView> = {}): AgentStructureView => ({
   creeLe: '2026-11-01T00:00:00Z', bureau: null, specialite: 'PEDIATRIE', numeroOrdre: 'GN-1', ordreVerifie: false, estActif: true, ...o,
 });
 
-function monter(agents: AgentStructureView[], type = 'CHU', confirme = true) {
+function monter(agents: AgentStructureView[], type = 'CHU', confirme = true, services: ServiceHospitalierView[] = []) {
   const api = {
-    get: vi.fn((url: string) => of(url.endsWith('ma-structure') ? { data: { type } } : { data: agents })),
+    get: vi.fn((url: string) => of(url.endsWith('ma-structure') ? { data: { type } } : url.endsWith('/services') ? { data: services } : { data: agents })),
     post: vi.fn((url: string, _corps?: unknown) => of(url.endsWith('mot-de-passe')
       ? { success: true, data: { motDePasseTemporaire: 'Abcd-Efgh-Jkmn-Pqrs', emailEnvoye: 'a@x.test' } }
       : { data: { agent: { id: 'n', prenom: 'N', nom: 'N', telephone: '1', role: 'MEDECIN' } } })),
-    put: vi.fn(() => of({ success: true })),
+    put: vi.fn((_url: string, _corps?: unknown) => of({ success: true })),
   };
   const open = vi.fn(() => ({ afterClosed: () => of(confirme) }));
   TestBed.resetTestingModule();
@@ -62,7 +62,7 @@ describe('mes agents', () => {
 
   it('un chirurgien-dentiste part comme medecin de specialite dentaire, avec son numero d ordre', () => {
     const { c, api } = monter([]);
-    c.newAgent = { telephone: '620', email: 'd@x.test', prenom: 'D', nom: 'K', metier: 'CHIRURGIEN_DENTISTE', specialite: '', numeroOrdre: ' GN-DENT-7 ' };
+    c.newAgent = { telephone: '620', email: 'd@x.test', prenom: 'D', nom: 'K', metier: 'CHIRURGIEN_DENTISTE', specialite: '', numeroOrdre: ' GN-DENT-7 ', idService: '' };
     c.creerAgent();
     expect(api.post).toHaveBeenCalledWith('/admin-structure/agents', expect.objectContaining({
       role: 'MEDECIN', specialite: 'DENTAIRE', numeroOrdre: 'GN-DENT-7',
@@ -71,7 +71,7 @@ describe('mes agents', () => {
 
   it('un specialiste sans specialite est refuse avant tout envoi', () => {
     const { c, api } = monter([]);
-    c.newAgent = { telephone: '620', email: 'd@x.test', prenom: 'D', nom: 'K', metier: 'MEDECIN_SPECIALISTE', specialite: '', numeroOrdre: '' };
+    c.newAgent = { telephone: '620', email: 'd@x.test', prenom: 'D', nom: 'K', metier: 'MEDECIN_SPECIALISTE', specialite: '', numeroOrdre: '', idService: '' };
     c.creerAgent();
     expect(api.post).not.toHaveBeenCalled();
     expect(c.errorMsg()).toBe('ADMIN_STRUCTURE.AGENTS.ERR_SPECIALITE');
@@ -79,7 +79,7 @@ describe('mes agents', () => {
 
   it('un agent d accueil part sans specialite ni numero d ordre', () => {
     const { c, api } = monter([]);
-    c.newAgent = { telephone: '620', email: 'r@x.test', prenom: 'R', nom: 'T', metier: 'AGENT_ACCUEIL', specialite: '', numeroOrdre: 'X' };
+    c.newAgent = { telephone: '620', email: 'r@x.test', prenom: 'R', nom: 'T', metier: 'AGENT_ACCUEIL', specialite: '', numeroOrdre: 'X', idService: '' };
     c.creerAgent();
     const envoi = api.post.mock.calls[0]![1] as unknown as Record<string, unknown>;
     expect(envoi['role']).toBe('AGENT_ACCUEIL');
@@ -121,8 +121,37 @@ describe('mes agents', () => {
     const { el, fixture, api, c } = monter([agent()]);
     el.querySelector<HTMLButtonElement>('.bb-agents__modifier')!.click();
     fixture.detectChanges();
-    c.profilSaisi = { specialite: 'CARDIOLOGIE', numeroOrdre: '' };
+    c.profilSaisi = { specialite: 'CARDIOLOGIE', numeroOrdre: '', idService: '' };
     el.querySelector<HTMLButtonElement>('.bb-agents__profil-save')!.click();
     expect(api.put).toHaveBeenCalledWith('/admin-structure/agents/a1/profil', { specialite: 'CARDIOLOGIE', numeroOrdre: null });
   });
+
+  it('un medecin se rattache a un service des la creation', () => {
+    const { c, api } = monter([], 'CHU', true, [{ id: 'sv-1', nom: 'Pédiatrie', actif: true, nbMedecins: 0 }]);
+    expect(c.services().map((s) => s.nom)).toEqual(['Pédiatrie']);
+    c.newAgent = { telephone: '620', email: 'p@x.test', prenom: 'P', nom: 'D', metier: 'MEDECIN_SPECIALISTE', specialite: 'PEDIATRIE', numeroOrdre: '', idService: 'sv-1' };
+    c.creerAgent();
+    expect(api.post).toHaveBeenCalledWith('/admin-structure/agents', expect.objectContaining({ idService: 'sv-1' }));
+  });
+
+  it('le service d un medecin s affiche, et se change depuis sa fiche', () => {
+    const { el, fixture, api, c } = monter([agent({ service: { id: 'sv-1', nom: 'Pédiatrie' } })], 'CHU', true,
+      [{ id: 'sv-1', nom: 'Pédiatrie', actif: true, nbMedecins: 1 }, { id: 'sv-2', nom: 'Urgences', actif: true, nbMedecins: 0 }]);
+    expect(el.querySelector('.bb-agents__service')?.textContent).toContain('Pédiatrie');
+    el.querySelector<HTMLButtonElement>('.bb-agents__modifier')!.click();
+    fixture.detectChanges();
+    expect(c.profilSaisi.idService).toBe('sv-1');
+    c.profilSaisi = { ...c.profilSaisi, idService: 'sv-2' };
+    el.querySelector<HTMLButtonElement>('.bb-agents__profil-save')!.click();
+    expect(api.put).toHaveBeenCalledWith('/admin-structure/agents/a1/profil', expect.objectContaining({ idService: 'sv-2' }));
+  });
+
+  it('sans services declares, le profil n envoie pas de service', () => {
+    const { el, fixture, api } = monter([agent()]);
+    el.querySelector<HTMLButtonElement>('.bb-agents__modifier')!.click();
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('.bb-agents__profil-save')!.click();
+    expect(api.put.mock.calls[0]![1]).not.toHaveProperty('idService');
+  });
 });
+

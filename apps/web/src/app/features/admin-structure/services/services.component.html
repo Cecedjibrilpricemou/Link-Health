@@ -1,0 +1,90 @@
+<div class="bb-svc">
+  <header class="bb-page-head">
+    <div class="bb-page-head__text">
+      <span class="bb-page-head__tag"><i class="pi pi-sitemap" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.ROLE' | translate }}</span>
+      <h1 class="bb-page-head__title">{{ 'ADMIN_STRUCTURE.SERVICES.TITLE' | translate }}</h1>
+      <p class="bb-page-head__sub">{{ 'ADMIN_STRUCTURE.SERVICES.SUB' | translate }}</p>
+    </div>
+  </header>
+
+  <!-- ── Ajouter un service ────────────────────────────────────────── -->
+  <section class="bb-svc__ajout">
+    <label class="form-label" for="svc-nom">{{ 'ADMIN_STRUCTURE.SERVICES.NOUVEAU' | translate }}</label>
+    <div class="bb-svc__ajout-ligne">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
+        <input matInput id="svc-nom" maxlength="80" autocomplete="off" [(ngModel)]="nouveau"
+               [placeholder]="'ADMIN_STRUCTURE.SERVICES.NOUVEAU_PH' | translate" (keydown.enter)="ajouter()" />
+      </mat-form-field>
+      <button matButton="filled" type="button" class="bb-svc__ajouter" [disabled]="enCours() || nouveau.trim().length < 2" (click)="ajouter()">
+        <i class="pi pi-plus" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.SERVICES.AJOUTER' | translate }}
+      </button>
+    </div>
+    @if (suggestions().length) {
+      <p class="bb-svc__aide">{{ 'ADMIN_STRUCTURE.SERVICES.SUGGESTIONS' | translate }}</p>
+      <div class="bb-svc__suggestions">
+        @for (n of suggestions(); track n) {
+          <button type="button" class="bb-svc__suggestion" [disabled]="enCours()" (click)="ajouter(n)">
+            <i class="pi pi-plus" aria-hidden="true"></i> {{ n }}
+          </button>
+        }
+      </div>
+    }
+  </section>
+
+  @if (isLoading()) {
+    <p class="bb-svc__muted">{{ 'COMMON.LOADING' | translate }}</p>
+  } @else if (services().length === 0) {
+    <div class="bb-svc__vide">
+      <i class="pi pi-sitemap" aria-hidden="true"></i>
+      <p>{{ 'ADMIN_STRUCTURE.SERVICES.VIDE' | translate }}</p>
+    </div>
+  } @else {
+    <h2 class="bb-svc__section">{{ 'ADMIN_STRUCTURE.SERVICES.OUVERTS' | translate }}</h2>
+    <div class="bb-svc__liste">
+      @for (s of ouverts(); track s.id) {
+        <ng-container *ngTemplateOutlet="carte; context: { $implicit: s }"></ng-container>
+      }
+    </div>
+    @if (fermes().length) {
+      <h2 class="bb-svc__section">{{ 'ADMIN_STRUCTURE.SERVICES.FERMES' | translate }}</h2>
+      <div class="bb-svc__liste">
+        @for (s of fermes(); track s.id) {
+          <ng-container *ngTemplateOutlet="carte; context: { $implicit: s }"></ng-container>
+        }
+      </div>
+    }
+    <p class="bb-svc__note">
+      <i class="pi pi-info-circle" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.SERVICES.RATTACHER' | translate }}
+    </p>
+  }
+</div>
+
+<ng-template #carte let-s>
+  <div class="bb-svc__carte" [class.bb-svc__carte--ferme]="!s.actif" [attr.data-service]="s.nom">
+    @if (enRenommage() === s.id) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-svc__renommer">
+        <input matInput maxlength="80" [(ngModel)]="nomSaisi" (keydown.enter)="renommer(s)" (keydown.escape)="enRenommage.set(null)"
+               [attr.aria-label]="'ADMIN_STRUCTURE.SERVICES.RENOMMER' | translate" />
+      </mat-form-field>
+      <div class="bb-svc__actions">
+        <button matButton type="button" (click)="enRenommage.set(null)">{{ 'COMMON.CANCEL' | translate }}</button>
+        <button matButton="filled" type="button" class="bb-svc__valider" (click)="renommer(s)">{{ 'COMMON.SAVE' | translate }}</button>
+      </div>
+    } @else {
+      <div class="bb-svc__infos">
+        <span class="bb-svc__nom">{{ s.nom }}</span>
+        <span class="bb-svc__meta">{{ 'ADMIN_STRUCTURE.SERVICES.MEDECINS' | translate: { n: s.nbMedecins } }}</span>
+      </div>
+      <div class="bb-svc__actions">
+        @if (!s.actif) { <span class="bb-badge bb-badge--neutral">{{ 'ADMIN_STRUCTURE.SERVICES.FERME_BADGE' | translate }}</span> }
+        <button matButton type="button" class="bb-svc__btn-renommer" [disabled]="enCours()" (click)="ouvrirRenommage(s)">
+          <i class="pi pi-pencil" aria-hidden="true"></i> {{ 'ADMIN_STRUCTURE.SERVICES.RENOMMER' | translate }}
+        </button>
+        <button matButton type="button" class="bb-svc__basculer" [disabled]="enCours()" (click)="basculer(s)">
+          <i [class]="'pi ' + (s.actif ? 'pi-lock' : 'pi-lock-open')" aria-hidden="true"></i>
+          {{ (s.actif ? 'ADMIN_STRUCTURE.SERVICES.FERMER' : 'ADMIN_STRUCTURE.SERVICES.ROUVRIR') | translate }}
+        </button>
+      </div>
+    }
+  </div>
+</ng-template>

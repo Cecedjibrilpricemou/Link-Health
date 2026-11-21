@@ -14,7 +14,7 @@ import {
   Metier, estMetierMedical, libelleSpecialite, metierDe, metiersPour, SPECIALITES_DE_SPECIALISTE, versCreation,
 } from '../../../shared/utils/metiers-personnel';
 import type {
-  AgentStructureView, CreationAgentView, HorodatageApi, ReinitialisationMotDePasseView, SpecialiteMedicale, TypeStructure,
+  AgentStructureView, CreationAgentView, HorodatageApi, ReinitialisationMotDePasseView, ServiceHospitalierView, SpecialiteMedicale, TypeStructure,
 } from '@baobaoheath/shared-types';
 
 // Contenu de la modale du mot de passe temporaire : assemble cote client.
@@ -54,6 +54,8 @@ export class AgentsComponent implements OnInit {
   typeStructure = signal<TypeStructure | null>(null);
   readonly metiers = computed(() => metiersPour(this.typeStructure()));
   readonly specialites = SPECIALITES_DE_SPECIALISTE;
+  /** Les services ouverts : un medecin y est rattache. Vide si la structure n'en declare pas. */
+  services = signal<ServiceHospitalierView[]>([]);
 
   /**
    * Affiche un message, et **annule celui d'avant**.
@@ -72,11 +74,11 @@ export class AgentsComponent implements OnInit {
     this.minuterie = setTimeout(() => { this.successMsg.set(''); this.errorMsg.set(''); }, duree);
   }
 
-  newAgent: { telephone: string; email: string; prenom: string; nom: string; metier: Metier | ''; specialite: SpecialiteMedicale | ''; numeroOrdre: string } =
+  newAgent: { telephone: string; email: string; prenom: string; nom: string; metier: Metier | ''; specialite: SpecialiteMedicale | ''; numeroOrdre: string; idService: string } =
     this.formulaireVide();
 
   private formulaireVide() {
-    return { telephone: '', email: '', prenom: '', nom: '', metier: '' as Metier | '', specialite: '' as SpecialiteMedicale | '', numeroOrdre: '' };
+    return { telephone: '', email: '', prenom: '', nom: '', metier: '' as Metier | '', specialite: '' as SpecialiteMedicale | '', numeroOrdre: '', idService: '' };
   }
 
   estMedical(m: Metier | '') { return !!m && estMetierMedical(m); }
@@ -121,7 +123,7 @@ export class AgentsComponent implements OnInit {
 
   // ── Le metier d'un medecin : specialite, numero d'ordre ────────────
   profilEnEdition = signal<string | null>(null);
-  profilSaisi: { specialite: SpecialiteMedicale; numeroOrdre: string } = { specialite: 'MEDECINE_GENERALE', numeroOrdre: '' };
+  profilSaisi: { specialite: SpecialiteMedicale; numeroOrdre: string; idService: string } = { specialite: 'MEDECINE_GENERALE', numeroOrdre: '', idService: '' };
   readonly toutesSpecialites: SpecialiteMedicale[] = ['MEDECINE_GENERALE', 'DENTAIRE', ...SPECIALITES_DE_SPECIALISTE];
 
   ouvrirProfil(agent: AgentStructureView) {
@@ -129,7 +131,7 @@ export class AgentsComponent implements OnInit {
     this.profilEnEdition.set(agent.id);
     // Une specialite d'avant la liste, non reconnue : on repart du generaliste.
     const connue = agent.specialite && this.toutesSpecialites.includes(agent.specialite) ? agent.specialite : 'MEDECINE_GENERALE';
-    this.profilSaisi = { specialite: connue, numeroOrdre: agent.numeroOrdre ?? '' };
+    this.profilSaisi = { specialite: connue, numeroOrdre: agent.numeroOrdre ?? '', idService: agent.service?.id ?? '' };
   }
 
   annulerProfil() { this.profilEnEdition.set(null); }
@@ -139,6 +141,8 @@ export class AgentsComponent implements OnInit {
     this.api.put<{ success: boolean; message?: string }>(`/admin-structure/agents/${agent.id}/profil`, {
       specialite: this.profilSaisi.specialite,
       numeroOrdre: numero.length ? numero : null,
+      // Envoye seulement si la structure a des services : sinon rien a dire.
+      ...(this.services().length ? { idService: this.profilSaisi.idService || null } : {}),
     }).subscribe({
       next: (r) => {
         this.annulerProfil();
@@ -174,6 +178,11 @@ export class AgentsComponent implements OnInit {
     this.api.get<{ data?: { type?: TypeStructure } }>('/admin-structure/ma-structure').subscribe({
       next: (r) => this.typeStructure.set(r.data?.type ?? null),
     });
+    // Les services ouverts, s'il y en a (une structure sans services repond 403 : rien a proposer).
+    this.api.get<{ data?: ServiceHospitalierView[] }>('/admin-structure/services').subscribe({
+      next: (r) => this.services.set((r.data ?? []).filter((s) => s.actif)),
+      error: () => this.services.set([]),
+    });
   }
 
   loadAgents() {
@@ -204,6 +213,7 @@ export class AgentsComponent implements OnInit {
       email: a.email || undefined,
       ...(specialite ? { specialite } : {}),
       ...(numeroOrdre ? { numeroOrdre } : {}),
+      ...(this.estMedical(a.metier) && a.idService ? { idService: a.idService } : {}),
     };
 
     this.api.post<{ data?: CreationAgentView } | CreationAgentView>('/admin-structure/agents', payload).subscribe({

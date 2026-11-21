@@ -63,8 +63,16 @@
         <div class="form-field-wrap">
           <label class="form-label" for="or-service">{{ 'HOPITAL.DETAIL.ORIENT_SERVICE' | translate }}</label>
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bb-field-full">
-            <input matInput id="or-service" maxlength="120" [placeholder]="'HOPITAL.ADMISSION.SERVICE_PH' | translate" [(ngModel)]="orientation.service" />
+            @if (services().length) {
+              <mat-select id="or-service" [ngModel]="idService()" (ngModelChange)="choisirService($event)" [placeholder]="'HOPITAL.SERVICE_CHOISIR' | translate">
+                <mat-option value="">{{ 'HOPITAL.SERVICE_AUCUN' | translate }}</mat-option>
+                @for (s of services(); track s.id) { <mat-option [value]="s.id">{{ s.nom }}</mat-option> }
+              </mat-select>
+            } @else {
+              <input matInput id="or-service" maxlength="120" [placeholder]="'HOPITAL.ADMISSION.SERVICE_PH' | translate" [(ngModel)]="orientation.service" />
+            }
           </mat-form-field>
+          @if (serviceSansMedecin()) { <p class="bb-hop-hint">{{ 'HOPITAL.SERVICE_SANS_MEDECIN' | translate }}</p> }
         </div>
         @if (orientation.idMedecin) {
           <!-- Le champ de date a disparu le 2026-09-30 : c'est le médecin qui

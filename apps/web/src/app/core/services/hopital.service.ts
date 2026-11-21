@@ -32,10 +32,15 @@ import type {
   StructureRefView,
   TableauDeBordHopitalView,
   UpdateEpisodeDto,
+  ServiceHospitalierView,
 } from '@baobaoheath/shared-types';
 
 export interface PageEpisodes { items: EpisodeSoinsResumeView[]; total: number; page: number; limit: number }
-export type MedecinRefView = PersonneRefView & { specialite: string | null };
+export type MedecinRefView = PersonneRefView & {
+  specialite: string | null;
+  /** Le service ou il exerce, s'il est rattache a un service ouvert. */
+  service?: { id: string; nom: string } | null;
+};
 
 @Injectable({ providedIn: 'root' })
 export class HopitalService {
@@ -135,6 +140,11 @@ export class HopitalService {
     if (idsExamens.length > 0) params['examens'] = idsExamens;
     if (toutLePays) params['toutLePays'] = 'true';
     return this.api.get<ApiResponse<ChoixLaboratoiresView>>('/hopital/laboratoires', params);
+  }
+
+  /** Les services ouverts de la structure : on y oriente un patient. */
+  listerServices(): Observable<ApiResponse<ServiceHospitalierView[]>> {
+    return this.api.get<ApiResponse<ServiceHospitalierView[]>>('/hopital/services');
   }
 
   listerMedecins(): Observable<ApiResponse<MedecinRefView[]>> {
