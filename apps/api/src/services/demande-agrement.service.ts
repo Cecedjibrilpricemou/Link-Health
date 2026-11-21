@@ -20,7 +20,7 @@ import { randomUUID } from 'crypto';
 
 import { prisma } from '../config/prisma';
 import { logger } from '../config/logger';
-import { ConflictError, NotFoundError, ValidationError } from '../utils/app-error';
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/app-error';
 import { hashPassword } from '../utils/password.utils';
 import { genererMotDePasseTemp } from './admin-structure.service';
 import { champEnDoublon, conflitCode } from './assurance.service';
@@ -28,6 +28,7 @@ import {
   envoyerAccuseDemandeAgrement,
   envoyerRefusDemandeAgrement,
   envoyerSuiviDemandeAgrement,
+  envoyerSuiviPharmacieHospitaliere,
   envoyerValidationDemandeAgrement,
 } from './email.service';
 import {
@@ -42,7 +43,7 @@ import {
   validerPieces,
   type FichierRecu,
 } from './piece-agrement.service';
-import { estStructureOfficinale, roleDuResponsable } from '../utils/officine.util';
+import { estStructureHospitaliere, estStructureOfficinale, roleDuResponsable } from '../utils/officine.util';
 import type { JwtPayload } from '../types/auth.types';
 import {
   ActionDemandeAgrement,
@@ -109,6 +110,18 @@ export function piecesDemandeesPour(type: TypeStructure | string): readonly Type
   return piecesRequisesPour(type);
 }
 
+/**
+ * Les pieces qu'exige **cette** demande.
+ *
+ * Une pharmacie hospitaliere n'en produit aucune : elle opere sous
+ * l'autorisation de son hopital, comme a la creation par l'administration.
+ * Lui reclamer les quatre pieces d'une officine rendrait toute demande
+ * « incomplete » et impossible a valider.
+ */
+function piecesExigees(type: TypeStructure | string, idStructureParente: string | null): readonly TypePieceAgrement[] {
+  return piecesDemandeesPour(idStructureParente ? SOUS_AUTORISATION_DU_PARENT : type);
+}
+
 /** Reexportes pour l'ecran : le libelle et le caractere public viennent du serveur. */
 export { estStructurePublique, libellePiece };
 
@@ -172,6 +185,29 @@ async function prochainNumero(annee: number): Promise<string> {
 /** Vrai quand Prisma refuse une ecriture pour cause de doublon. */
 function estCollision(e: unknown): boolean {
   return typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2002';
+}
+
+type DonneesDemande = Omit<Parameters<typeof prisma.demandeAgrement.create>[0]['data'], 'numero'>;
+
+/**
+ * Enregistrer une demande sous le prochain numero de l'annee.
+ *
+ * Trois tentatives : une collision de numero suppose deux depots dans la meme
+ * fraction de seconde, trois de suite releveraient d'autre chose.
+ */
+async function enregistrerAvecNumero(data: DonneesDemande) {
+  for (let essai = 0; ; essai += 1) {
+    const numero = await prochainNumero(new Date().getFullYear());
+    try {
+      return await prisma.demandeAgrement.create({
+        data: { ...data, numero } as Parameters<typeof prisma.demandeAgrement.create>[0]['data'],
+        select: { id: true, numero: true, deposeLe: true },
+      });
+    } catch (e) {
+      if (!estCollision(e) || essai === 2) throw e;
+      logger.warn('[AGREMENT] numero de dossier deja pris, nouvelle tentative', { numero });
+    }
+  }
 }
 
 /**
@@ -309,31 +345,17 @@ export async function deposer(
 
   let demande: { id: string; numero: string; deposeLe: Date } | null = null;
   try {
-    // Trois tentatives : une collision de numero suppose deux depots dans la
-    // meme fraction de seconde, trois de suite releveraient d'autre chose.
-    for (let essai = 0; essai < 3 && !demande; essai += 1) {
-      const numero = await prochainNumero(new Date().getFullYear());
-      try {
-        demande = await prisma.demandeAgrement.create({
-          data: {
-            ...donnees,
-            numero,
-            pieces: {
-              create: fichiersEcrits.map((p) => ({
-                type: p.type,
-                fichier: p.fichier,
-                taille: p.taille,
-                libelle: p.libelle,
-              })),
-            },
-          },
-          select: { id: true, numero: true, deposeLe: true },
-        });
-      } catch (e) {
-        if (!estCollision(e) || essai === 2) throw e;
-        logger.warn('[AGREMENT] numero de dossier deja pris, nouvelle tentative', { numero });
-      }
-    }
+    demande = await enregistrerAvecNumero({
+      ...donnees,
+      pieces: {
+        create: fichiersEcrits.map((p) => ({
+          type: p.type,
+          fichier: p.fichier,
+          taille: p.taille,
+          libelle: p.libelle,
+        })),
+      },
+    });
   } catch (e) {
     // La demande n'existe pas : ses fichiers ne doivent pas survivre.
     await supprimerFichiers(fichiersEcrits.map((p) => p.fichier));
@@ -370,6 +392,156 @@ export async function deposer(
   };
 }
 
+// ── La pharmacie d'un hopital, demandee par son administrateur ────
+
+/** Ce que l'administrateur d'un hopital envoie pour ouvrir sa pharmacie. */
+export interface DemandePharmacieRecue {
+  nom: string;
+  prefecture: string;
+  commune?: string | undefined;
+  quartier?: string | undefined;
+  adresse?: string | undefined;
+  telephone?: string | undefined;
+  pharmacien: { prenom: string; nom: string; telephone: string; email: string };
+}
+
+/** Les demandes encore a l'examen : ni validees, ni refusees. */
+const STATUTS_OUVERTS = [StatutDemandeAgrement.RECUE, StatutDemandeAgrement.EN_ANALYSE];
+
+/** L'hopital de l'administrateur, s'il peut ouvrir une pharmacie. */
+async function hopitalDe(auteur: JwtPayload) {
+  const admin = await prisma.utilisateur.findUnique({
+    where: { id: auteur.userId },
+    select: {
+      prenom: true, nom: true, email: true,
+      structure: { select: { id: true, nom: true, type: true, commune: true, quartier: true, telephone: true } },
+    },
+  });
+  if (!admin?.structure || !estStructureHospitaliere(admin.structure.type)) {
+    throw new ForbiddenError('Seul un administrateur hospitalier peut demander une pharmacie hospitalière.');
+  }
+  return { admin, hopital: admin.structure };
+}
+
+/**
+ * Demander l'ouverture d'une pharmacie au sein de son hopital.
+ *
+ * **Une demande, et non plus une creation.** L'administrateur d'un hopital
+ * ouvrait seul une pharmacie et le compte de son titulaire : une officine
+ * apparaissait sur la plateforme, prenait des ordonnances et vendait, sans que
+ * l'administration l'ait jamais vue passer. La demande suit desormais le
+ * circuit des agrements - recue, en cours d'analyse, validee ou refusee, avec
+ * un motif a chaque etape - et c'est la validation qui fait naitre la
+ * pharmacie et le compte.
+ *
+ * Aucune piece n'est demandee : la pharmacie opere sous l'autorisation de son
+ * hopital. Aucun mot de passe n'est recu ni garde : celui du titulaire nait a
+ * la validation et part a sa propre adresse, d'ou l'adresse obligatoire.
+ */
+export async function deposerPharmacieHospitaliere(auteur: JwtPayload, dto: DemandePharmacieRecue) {
+  const { admin, hopital } = await hopitalDe(auteur);
+  const nom = dto.nom.trim();
+
+  // Deux demandes pour la meme pharmacie feraient deux dossiers a instruire.
+  const enCours = await prisma.demandeAgrement.findFirst({
+    where: {
+      idStructureParente: hopital.id,
+      nom: { equals: nom, mode: 'insensitive' },
+      statut: { in: STATUTS_OUVERTS },
+    },
+    select: { numero: true },
+  });
+  if (enCours) {
+    throw new ConflictError(`Une demande est déjà en cours d'examen pour la pharmacie « ${nom} » (dossier ${enCours.numero}).`);
+  }
+
+  // Le compte du titulaire naitra de la validation : verifier des maintenant
+  // que son telephone et son adresse sont libres evite un refus tardif. Les
+  // deux le seront de nouveau a la validation.
+  const email = dto.pharmacien.email.trim().toLowerCase();
+  if (await prisma.utilisateur.findUnique({ where: { telephone: dto.pharmacien.telephone }, select: { id: true } })) {
+    throw new ConflictError('Ce numéro de téléphone du pharmacien est déjà utilisé par un compte.');
+  }
+  if (await prisma.utilisateur.findUnique({ where: { email }, select: { id: true } })) {
+    throw new ConflictError('Cette adresse email du pharmacien est déjà utilisée par un compte.');
+  }
+
+  const demande = await enregistrerAvecNumero({
+    type: TypeStructure.PHARMACIE,
+    nom,
+    prefecture: dto.prefecture.trim(),
+    // Ce que l'administrateur ne precise pas est celui de son hopital : la
+    // pharmacie est dans ses murs. « Inconnue » se dit null, pas chaine vide.
+    commune: dto.commune?.trim() || hopital.commune || null,
+    quartier: dto.quartier?.trim() || hopital.quartier || null,
+    adresse: dto.adresse?.trim() || null,
+    telephone: dto.telephone?.trim() || hopital.telephone || dto.pharmacien.telephone,
+    responsablePrenom: dto.pharmacien.prenom.trim(),
+    responsableNom: dto.pharmacien.nom.trim(),
+    responsableTelephone: dto.pharmacien.telephone,
+    responsableEmail: email,
+    idStructureParente: hopital.id,
+    idDeposePar: auteur.userId,
+  });
+
+  logger.info('[AGREMENT] pharmacie hospitaliere demandee', {
+    numero: demande.numero,
+    idStructureParente: hopital.id,
+    parQui: auteur.userId,
+  });
+
+  if (admin.email) {
+    try {
+      await envoyerSuiviPharmacieHospitaliere({
+        destinataire: admin.email,
+        prenomNom: `${admin.prenom} ${admin.nom}`,
+        nomPharmacie: nom,
+        nomHopital: hopital.nom,
+        numero: demande.numero,
+        etape: 'RECUE',
+      });
+    } catch (e) {
+      logger.error('[AGREMENT] accuse de la demande de pharmacie non envoye', {
+        numero: demande.numero,
+        erreur: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  return {
+    numero: demande.numero,
+    statut: StatutDemandeAgrement.RECUE,
+    deposeLe: demande.deposeLe.toISOString(),
+  };
+}
+
+/**
+ * Les demandes de pharmacie de l'hopital, pour que son administrateur les
+ * suive : ou en est chacune, et le dernier motif de l'administration.
+ */
+export async function listerDemandesPharmacie(auteur: JwtPayload) {
+  const { hopital } = await hopitalDe(auteur);
+  const demandes = await prisma.demandeAgrement.findMany({
+    where: { idStructureParente: hopital.id },
+    orderBy: { deposeLe: 'desc' },
+    select: {
+      id: true, numero: true, statut: true, nom: true, deposeLe: true, examineLe: true,
+      responsablePrenom: true, responsableNom: true,
+      evenements: { select: { motif: true }, orderBy: { creeLe: 'desc' }, take: 1 },
+    },
+  });
+  return demandes.map((d) => ({
+    id: d.id,
+    numero: d.numero,
+    statut: d.statut,
+    nom: d.nom,
+    titulaire: `${d.responsablePrenom} ${d.responsableNom}`,
+    dernierMotif: d.evenements[0]?.motif ?? null,
+    deposeLe: d.deposeLe.toISOString(),
+    examineLe: d.examineLe?.toISOString() ?? null,
+  }));
+}
+
 // ── L'examen, cote administration ────────────────────────────────
 
 /** Ce que la liste affiche : de quoi trier, pas de quoi instruire. */
@@ -384,6 +556,7 @@ export async function lister(statut?: string) {
       prefecture: true, commune: true, quartier: true, telephone: true,
       deposeLe: true,
       responsablePrenom: true, responsableNom: true,
+      structureParente: { select: { nom: true } },
       _count: { select: { pieces: true } },
     },
   });
@@ -401,6 +574,7 @@ export async function lister(statut?: string) {
     deposeLe: d.deposeLe.toISOString(),
     responsable: `${d.responsablePrenom} ${d.responsableNom}`,
     nombrePieces: d._count.pieces,
+    structureParente: d.structureParente?.nom ?? null,
   }));
 }
 
@@ -426,6 +600,9 @@ export async function detail(id: string) {
       codeAssureur: true, modeEchange: true,
       deposeLe: true,
       examinePar: { select: { prenom: true, nom: true } },
+      idStructureParente: true,
+      structureParente: { select: { id: true, nom: true } },
+      deposePar: { select: { prenom: true, nom: true } },
       pieces: {
         select: { id: true, type: true, taille: true, libelle: true, deposeLe: true },
         orderBy: { deposeLe: 'asc' },
@@ -442,7 +619,7 @@ export async function detail(id: string) {
   if (!d) throw new NotFoundError('Demande introuvable');
 
   const presentes = new Set(d.pieces.map((p) => p.type));
-  const manquantes = piecesDemandeesPour(d.type).filter((p) => !presentes.has(p));
+  const manquantes = piecesExigees(d.type, d.idStructureParente).filter((p) => !presentes.has(p));
 
   return {
     id: d.id,
@@ -481,6 +658,9 @@ export async function detail(id: string) {
     idStructureCreee: d.idStructureCreee,
     codeAssureur: d.codeAssureur,
     modeEchange: d.modeEchange,
+    // Une pharmacie hospitaliere : l'hopital qui l'ouvre, et qui l'a demandee.
+    structureParente: d.structureParente,
+    deposePar: d.deposePar ? `${d.deposePar.prenom} ${d.deposePar.nom}` : null,
     // Chaque action, son motif, et si le courriel est **parti** : l'agent qui
     // reprend le dossier sait ce qui a deja ete dit au candidat.
     historique: d.evenements.map((e) => ({
@@ -558,8 +738,39 @@ async function candidat(id: string) {
     select: {
       numero: true, nom: true,
       responsablePrenom: true, responsableNom: true, responsableEmail: true,
+      structureParente: { select: { nom: true } },
+      deposePar: { select: { prenom: true, nom: true, email: true } },
     },
   });
+}
+
+type Candidat = Awaited<ReturnType<typeof candidat>>;
+
+/**
+ * Une pharmacie hospitaliere : le suivi va a l'administrateur qui l'a
+ * demandee, et non au pharmacien, qui n'a rien depose.
+ *
+ * Renvoie `null` pour une demande ordinaire - l'appelant ecrit alors au
+ * candidat -, sinon si un courriel est parti : un administrateur sans adresse
+ * n'en recoit pas, il suit sa demande a l'ecran.
+ */
+async function suiviHospitalier(
+  c: Candidat,
+  etape: 'EN_ANALYSE' | 'VALIDEE' | 'REFUSEE',
+  motif: string,
+): Promise<boolean | null> {
+  if (!c.structureParente) return null;
+  if (!c.deposePar?.email) return false;
+  await envoyerSuiviPharmacieHospitaliere({
+    destinataire: c.deposePar.email,
+    prenomNom: `${c.deposePar.prenom} ${c.deposePar.nom}`,
+    nomPharmacie: c.nom,
+    nomHopital: c.structureParente.nom,
+    numero: c.numero,
+    etape,
+    motif,
+  });
+  return true;
 }
 
 /**
@@ -588,6 +799,11 @@ export async function mettreEnAnalyse(user: JwtPayload, id: string, motif: strin
 
   const c = await candidat(id);
   try {
+    const hospitalier = await suiviHospitalier(c, 'EN_ANALYSE', motifNet);
+    if (hospitalier !== null) {
+      if (hospitalier) await marquerEmailEnvoye(idEvenement, c.numero);
+      return detail(id);
+    }
     await envoyerSuiviDemandeAgrement({
       destinataire: c.responsableEmail,
       prenomNom: `${c.responsablePrenom} ${c.responsableNom}`,
@@ -637,9 +853,16 @@ export async function valider(
       responsablePrenom: true, responsableNom: true,
       responsableTelephone: true, responsableEmail: true,
       codeAssureur: true, modeEchange: true,
+      idStructureParente: true,
+      structureParente: { select: { estActive: true } },
     },
   });
   const assurance = d.type === TypeStructure.ASSURANCE;
+
+  // Une pharmacie ne s'ouvre pas dans un hopital desactive entre-temps.
+  if (d.idStructureParente && !d.structureParente?.estActive) {
+    throw new ConflictError("L'établissement qui demande cette pharmacie n'est plus actif : la demande ne peut pas être validée.");
+  }
 
   // Le dossier doit encore etre complet : la liste des pieces exigees peut
   // avoir change depuis le depot.
@@ -648,7 +871,7 @@ export async function valider(
     select: { type: true },
   });
   const presentes = new Set(pieces.map((p) => p.type));
-  const manquantes = piecesDemandeesPour(d.type).filter((p) => !presentes.has(p));
+  const manquantes = piecesExigees(d.type, d.idStructureParente).filter((p) => !presentes.has(p));
   if (manquantes.length > 0) {
     throw new ValidationError(
       `Dossier incomplet : il manque ${manquantes.map((p) => libellePiece(d.type, p)).join(', ')}.`,
@@ -702,6 +925,7 @@ export async function valider(
         data: {
           nom: d.nom,
           type: d.type,
+          idStructureParente: d.idStructureParente,
           prefecture: d.prefecture,
           commune: d.commune,
           quartier: d.quartier,
@@ -846,6 +1070,17 @@ export async function valider(
     });
   }
 
+  // Une pharmacie hospitaliere : l'administrateur qui l'a demandee l'apprend
+  // aussi - sans mot de passe, celui-ci n'appartient qu'au titulaire.
+  try {
+    await suiviHospitalier(await candidat(id), 'VALIDEE', motifNet);
+  } catch (e) {
+    logger.error("[AGREMENT] validation de la pharmacie non notifiee a l'hopital", {
+      numero: ouverte.numero,
+      erreur: e instanceof Error ? e.message : String(e),
+    });
+  }
+
   return detail(id);
 }
 
@@ -885,6 +1120,11 @@ export async function refuser(user: JwtPayload, id: string, motif: string) {
   const complet = await candidat(id);
 
   try {
+    const hospitalier = await suiviHospitalier(complet, 'REFUSEE', motifNet);
+    if (hospitalier !== null) {
+      if (hospitalier) await marquerEmailEnvoye(idEvenement, complet.numero);
+      return detail(id);
+    }
     await envoyerRefusDemandeAgrement({
       destinataire: complet.responsableEmail,
       prenomNom: `${complet.responsablePrenom} ${complet.responsableNom}`,

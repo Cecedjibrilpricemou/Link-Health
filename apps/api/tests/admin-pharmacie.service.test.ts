@@ -89,15 +89,10 @@ beforeEach(() => {
 });
 
 describe('creerPharmacieAvecPharmacien', () => {
-  it('crée une pharmacie fille de l’hôpital de son administrateur', async () => {
-    prisma.utilisateur.findUnique.mockImplementation(async (args: { where: { id?: string } }) =>
-      args.where.id === ADMIN_HOPITAL.userId
-        ? { idStructure: 'hopital-1', structure: { type: 'CHU' } }
-        : null,
-    );
-    prisma.structureSante.findUnique.mockResolvedValue({ commune: 'Dixinn', quartier: 'Kipé' });
+  it('le super-admin crée une pharmacie fille d’un hôpital', async () => {
+    prisma.structureSante.findUnique.mockResolvedValue({ id: 'hopital-1', type: 'CHU', commune: 'Dixinn', quartier: 'Kipé' });
 
-    const result = await creerPharmacieAvecPharmacien(ADMIN_HOPITAL, DTO);
+    const result = await creerPharmacieAvecPharmacien(SUPER_ADMIN, { ...DTO, idStructureParente: 'hopital-1' });
 
     expect(prisma.structureSante.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -118,28 +113,16 @@ describe('creerPharmacieAvecPharmacien', () => {
     expect(result.structure).toEqual({ id: 'pharmacie-1', type: 'PHARMACIE' });
   });
 
-  it('refuse à un administrateur hospitalier de choisir un autre parent', async () => {
-    prisma.utilisateur.findUnique.mockResolvedValue({
-      idStructure: 'hopital-1',
-      structure: { type: 'CHU' },
-    });
-
-    await expect(creerPharmacieAvecPharmacien(ADMIN_HOPITAL, {
-      ...DTO,
-      idStructureParente: 'hopital-2',
-    })).rejects.toBeInstanceOf(ForbiddenError);
-    expect(prisma.structureSante.create).not.toHaveBeenCalled();
-  });
-
-  it('refuse la création depuis une structure qui n’est pas un hôpital', async () => {
-    prisma.utilisateur.findUnique.mockResolvedValue({
-      idStructure: 'centre-1',
-      structure: { type: 'CENTRE' },
-    });
-
+  // L'administrateur d'un hopital ne cree plus sa pharmacie : il la demande,
+  // et c'est la validation de la demande qui la fait naitre.
+  it('refuse la création directe à l’administrateur d’un hôpital : elle se demande', async () => {
+    await expect(creerPharmacieAvecPharmacien(ADMIN_HOPITAL, DTO))
+      .rejects.toThrow(/se demande/);
     await expect(creerPharmacieAvecPharmacien(ADMIN_HOPITAL, DTO))
       .rejects.toBeInstanceOf(ForbiddenError);
+    expect(prisma.utilisateur.findUnique).not.toHaveBeenCalled();
     expect(prisma.structureSante.create).not.toHaveBeenCalled();
+    expect(prisma.utilisateur.create).not.toHaveBeenCalled();
   });
 
   it('refuse une pharmacie sans parent et sans commune', async () => {
@@ -155,14 +138,9 @@ describe('creerPharmacieAvecPharmacien', () => {
   });
 
   it('utilise la commune et le quartier du parent quand ils ne sont pas fournis', async () => {
-    prisma.utilisateur.findUnique.mockImplementation(async (args: { where: { id?: string } }) =>
-      args.where.id === ADMIN_HOPITAL.userId
-        ? { idStructure: 'hopital-1', structure: { type: 'CHU' } }
-        : null,
-    );
-    prisma.structureSante.findUnique.mockResolvedValue({ commune: 'Dixinn', quartier: 'Lambanyi' });
+    prisma.structureSante.findUnique.mockResolvedValue({ id: 'hopital-1', type: 'CHU', commune: 'Dixinn', quartier: 'Lambanyi' });
 
-    await creerPharmacieAvecPharmacien(ADMIN_HOPITAL, { ...DTO, commune: undefined, quartier: undefined });
+    await creerPharmacieAvecPharmacien(SUPER_ADMIN, { ...DTO, idStructureParente: 'hopital-1', commune: undefined, quartier: undefined });
 
     expect(prisma.structureSante.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -174,14 +152,9 @@ describe('creerPharmacieAvecPharmacien', () => {
   });
 
   it('enregistre « commune inconnue » (null), jamais une chaine vide, pour un hopital sans commune', async () => {
-    prisma.utilisateur.findUnique.mockImplementation(async (args: { where: { id?: string } }) =>
-      args.where.id === ADMIN_HOPITAL.userId
-        ? { idStructure: 'hopital-1', structure: { type: 'CHU' } }
-        : null,
-    );
-    prisma.structureSante.findUnique.mockResolvedValue({ commune: null, quartier: null });
+    prisma.structureSante.findUnique.mockResolvedValue({ id: 'hopital-1', type: 'CHU', commune: null, quartier: null });
 
-    await creerPharmacieAvecPharmacien(ADMIN_HOPITAL, { ...DTO, commune: undefined, quartier: undefined });
+    await creerPharmacieAvecPharmacien(SUPER_ADMIN, { ...DTO, idStructureParente: 'hopital-1', commune: undefined, quartier: undefined });
 
     expect(prisma.structureSante.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ commune: null, quartier: null }),
@@ -272,13 +245,9 @@ describe('creerPharmacieAvecPharmacien', () => {
   // celui de son hopital. Lui demander un dossier bloquerait l'hopital qui
   // ouvre sa pharmacie interne.
   it('n’exige aucun dossier pour une pharmacie hospitalière', async () => {
-    prisma.utilisateur.findUnique.mockResolvedValueOnce({
-      idStructure: 'hopital-1',
-      structure: { type: 'CHU' },
-    });
-    prisma.structureSante.findUnique.mockResolvedValue({ commune: 'Dixinn', quartier: 'Lambanyi' });
+    prisma.structureSante.findUnique.mockResolvedValue({ id: 'hopital-1', type: 'CHU', commune: 'Dixinn', quartier: 'Lambanyi' });
 
-    const result = await creerPharmacieAvecPharmacien(ADMIN_HOPITAL, DTO);
+    const result = await creerPharmacieAvecPharmacien(SUPER_ADMIN, { ...DTO, idStructureParente: 'hopital-1' });
 
     expect(result.structure.id).toBe('pharmacie-1');
     expect(prisma.pieceAgrement.createMany).not.toHaveBeenCalled();

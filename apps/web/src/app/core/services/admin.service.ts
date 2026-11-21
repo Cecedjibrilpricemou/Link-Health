@@ -19,7 +19,9 @@ import type {
   CreerContratDto,
   CreerRegleCouvertureDto,
   CreationStructureView,
-  CreationPharmacieView,
+  DemandePharmacieHospitaliereDto,
+  DemandePharmacieView,
+  DepotDemandeView,
   PatientContratRechercheView,
   IdentitePlateformeView,
   ParametresSystemeView,
@@ -151,8 +153,17 @@ export class AdminService {
     return this.api.get<ApiResponse<StructureAdminView[]>>('/admin-structure/pharmacies');
   }
 
-  creerPharmacieHospitaliere(payload: Record<string, unknown>): Observable<ApiResponse<CreationPharmacieView>> {
-    return this.api.post<ApiResponse<CreationPharmacieView>>('/admin-structure/pharmacies', payload);
+  /**
+   * L'administrateur d'un hopital ne cree plus sa pharmacie : il la demande.
+   * L'administration de la plateforme la valide, et c'est alors que naissent
+   * la pharmacie et le compte de son titulaire.
+   */
+  demanderPharmacieHospitaliere(dto: DemandePharmacieHospitaliereDto): Observable<ApiResponse<DepotDemandeView>> {
+    return this.api.post<ApiResponse<DepotDemandeView>>('/admin-structure/pharmacies/demandes', dto);
+  }
+
+  getDemandesPharmacie(): Observable<ApiResponse<DemandePharmacieView[]>> {
+    return this.api.get<ApiResponse<DemandePharmacieView[]>>('/admin-structure/pharmacies/demandes');
   }
 
   deleteStructure(id: string): Observable<ApiResponse<void>> {

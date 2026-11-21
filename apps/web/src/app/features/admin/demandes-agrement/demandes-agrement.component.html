@@ -71,6 +71,7 @@
               </div>
               <p class="bb-demandes__meta">
                 {{ ('PUBLIC.STRUCTURE_REQUEST.TYPE_' + demande.type) | translate }}
+                @if (demande.structureParente) { · <span class="bb-demandes__parent">{{ 'ADMIN.AGREMENT_REQUESTS.HOSPITAL_OF' | translate: { nom: demande.structureParente } }}</span> }
                 · {{ demande.commune ?? demande.prefecture }}
                 · {{ demande.deposeLe | date: 'dd/MM/yyyy' }}
                 · {{ 'ADMIN.AGREMENT_REQUESTS.PIECES_COUNT' | translate: { nombre: demande.nombrePieces } }}
@@ -111,6 +112,7 @@
             <h2 id="demande-detail-title">{{ demande.nom }}</h2>
             <p class="bb-demandes__meta">
               {{ ('PUBLIC.STRUCTURE_REQUEST.TYPE_' + demande.type) | translate }}
+              @if (demande.structureParente) { · {{ 'ADMIN.AGREMENT_REQUESTS.HOSPITAL_OF' | translate: { nom: demande.structureParente.nom } }} }
               · {{ demande.commune ?? demande.prefecture }}
               · {{ demande.deposeLe | date: 'dd/MM/yyyy' }}
             </p>
@@ -131,6 +133,13 @@
               <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.QUARTIER' | translate }}</dt><dd>{{ demande.quartier || '—' }}</dd></div>
               <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.ADDRESS' | translate }}</dt><dd>{{ demande.adresse || '—' }}</dd></div>
               <div><dt>{{ 'PUBLIC.STRUCTURE_REQUEST.PHONE' | translate }}</dt><dd>{{ demande.telephone }}</dd></div>
+              <!-- Une pharmacie hospitaliere n'a aucune reference propre : elle
+                   opere sous l'autorisation de son hopital. On montre l'hopital
+                   et qui l'a demandee, plutot que quatre tirets. -->
+              @if (demande.structureParente) {
+                <div class="bb-demandes__fact-parent"><dt>{{ 'ADMIN.AGREMENT_REQUESTS.PARENT' | translate }}</dt><dd>{{ demande.structureParente.nom }}</dd></div>
+                <div><dt>{{ 'ADMIN.AGREMENT_REQUESTS.REQUESTED_BY' | translate }}</dt><dd>{{ demande.deposePar || '—' }}</dd></div>
+              } @else {
               <!-- Un hopital public n'a ni registre du commerce ni arrete
                    d'exploitation : afficher deux tirets donnerait a croire que
                    le candidat a oublie de les fournir. -->
@@ -151,6 +160,7 @@
               }
               @if (!demande.estHopitalPublic) {
                 <div><dt>{{ 'AGREMENT.LIEU_LABEL' | translate }}</dt><dd>{{ demande.lieuAutorise || '—' }}</dd></div>
+              }
               }
             </dl>
           </section>
@@ -212,6 +222,9 @@
                 </li>
               }
             </ul>
+            @if (demande.structureParente && demande.pieces.length === 0) {
+              <p class="bb-demandes__meta bb-demandes__sans-piece">{{ 'ADMIN.AGREMENT_REQUESTS.NO_PIECE_HOSPITAL' | translate }}</p>
+            }
 
             @if (apercu(); as vue) {
               <div class="bb-demandes__preview" aria-live="polite">

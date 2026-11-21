@@ -109,8 +109,13 @@ describe('compte rendu de consultation (EF-05-03)', () => {
 });
 
 describe('creation des pharmacies hospitalieres', () => {
-  it('est ouverte a l administrateur de structure et au super-admin', () => {
-    expect(rolesPour(adminStructure, 'post', '/pharmacies')).toEqual(['SUPER_ADMIN', 'ADMIN_STRUCTURE']);
+  it('la creation directe est reservee au super-admin', () => {
+    expect(rolesPour(adminStructure, 'post', '/pharmacies')).toEqual(['SUPER_ADMIN']);
+  });
+
+  it('l hopital la demande, et suit sa demande', () => {
+    expect(rolesPour(adminStructure, 'post', '/pharmacies/demandes')).toEqual(['ADMIN_STRUCTURE']);
+    expect(rolesPour(adminStructure, 'get', '/pharmacies/demandes')).toEqual(['ADMIN_STRUCTURE']);
   });
 
   it('la liste des pharmacies hospitalieres est reservee a l administrateur de structure', () => {

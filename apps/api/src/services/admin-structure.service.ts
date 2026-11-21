@@ -238,6 +238,11 @@ export async function creerStructureAvecAdmin(dto: {
 /**
  * Creer une pharmacie, avec son dossier reglementaire si c'est une officine.
  *
+ * **Reserve a l'administration de la plateforme.** L'administrateur d'un
+ * hopital ne cree plus sa pharmacie : il la demande
+ * (`deposerPharmacieHospitaliere`), et c'est la validation de la demande qui
+ * la fait naitre avec le compte de son titulaire.
+ *
  * **Seule l'officine independante produit un dossier.** Une pharmacie
  * hospitaliere n'a pas d'agrement propre : elle opere sous celui de son
  * hopital. Exiger ses quatre pieces bloquerait un hopital qui ouvre sa
@@ -249,22 +254,10 @@ export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
     adresse?: string; latitude?: number; longitude?: number; telephone?: string;
     pharmacien: { prenom: string; nom: string; telephone: string; email?: string; motDePasse?: string; };
 } & IdentifiantsRecus, pieces: readonly FichierRecu[] = [], libelles: Readonly<Record<string, string | undefined>> = {}) {
-    let idStructureParente: string | null = dto.idStructureParente ?? null;
+    const idStructureParente: string | null = dto.idStructureParente ?? null;
     verifierCoordonnees(dto.latitude, dto.longitude);
 
-    if (auteur.role === Role.ADMIN_STRUCTURE) {
-        const admin = await prisma.utilisateur.findUnique({
-            where: { id: auteur.userId },
-            select: { idStructure: true, structure: { select: { type: true } } },
-        });
-        if (!admin?.idStructure || !admin.structure || !estStructureHospitaliere(admin.structure.type)) {
-            throw new ForbiddenError('Seul un administrateur hospitalier peut creer une pharmacie hospitaliere');
-        }
-        if (dto.idStructureParente && dto.idStructureParente !== admin.idStructure) {
-            throw new ForbiddenError('Vous ne pouvez creer une pharmacie que dans votre propre structure');
-        }
-        idStructureParente = admin.idStructure;
-    } else if (auteur.role === Role.SUPER_ADMIN) {
+    if (auteur.role === Role.SUPER_ADMIN) {
         if (idStructureParente) {
             const parent = await prisma.structureSante.findUnique({
                 where: { id: idStructureParente },
@@ -276,7 +269,9 @@ export async function creerPharmacieAvecPharmacien(auteur: JwtPayload, dto: {
             }
         }
     } else {
-        throw new ForbiddenError('Vous ne pouvez pas creer une pharmacie');
+        throw new ForbiddenError(
+            'Une pharmacie hospitalière se demande : la demande est examinée par l’administration de la plateforme, qui la valide.',
+        );
     }
 
     // Apres la resolution du parent : c'est lui qui dit si un dossier est du.

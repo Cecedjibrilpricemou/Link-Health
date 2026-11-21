@@ -479,6 +479,29 @@ const pharmacieBase = z.object({
 
 export const createPharmacieSchema = pharmacieBase.refine(pasLePointZero, messagePointZero);
 
+/**
+ * La pharmacie qu'un hopital demande d'ouvrir en son sein.
+ *
+ * Ni parent, ni piece, ni mot de passe : le parent est l'hopital de
+ * l'administrateur, la pharmacie opere sous son autorisation, et le mot de
+ * passe du titulaire nait a la validation. Son adresse est donc
+ * **obligatoire** : c'est la qu'il le recevra.
+ */
+export const demandePharmacieHospitaliereSchema = z.object({
+  nom: z.string().trim().min(2).max(160),
+  prefecture: z.string().trim().min(1).max(80),
+  commune: z.string().trim().min(1).max(80).optional(),
+  quartier: z.string().trim().max(80).optional(),
+  adresse: z.string().trim().max(200).optional(),
+  telephone: phone.optional(),
+  pharmacien: z.object({
+    prenom: z.string().trim().min(1).max(80),
+    nom: z.string().trim().min(1).max(80),
+    telephone: phone,
+    email: z.string().trim().toLowerCase().email().max(160),
+  }).strict(),
+}).strict();
+
 export const updateStructureSchema = structureBase
   .omit({ admin: true })
   .partial()

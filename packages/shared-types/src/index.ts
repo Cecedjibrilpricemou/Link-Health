@@ -1866,6 +1866,8 @@ export interface DemandeAgrementListeView {
   /** Prenom et nom reunis : la liste n'a pas de colonne pour les separer. */
   responsable: string;
   nombrePieces: number;
+  /** Pharmacie hospitaliere : le nom de l'hopital qui la demande. */
+  structureParente: string | null;
 }
 
 /** Une piece du dossier, telle que l'ecran d'examen l'affiche. */
@@ -1930,6 +1932,13 @@ export interface DemandeAgrementView {
   /** Assurance seulement : le code propose, ou celui retenu une fois validee. */
   codeAssureur: string | null;
   modeEchange: ModeEchangeAssureur | null;
+  /**
+   * Pharmacie hospitaliere : l'hopital qui l'ouvre en son sein. Elle n'a pas
+   * de pieces, elle opere sous l'autorisation de son hopital.
+   */
+  structureParente: { id: string; nom: string } | null;
+  /** L'administrateur de l'hopital qui l'a demandee. */
+  deposePar: string | null;
   /** Chaque action, de la plus ancienne a la plus recente. */
   historique: EvenementDemandeView[];
   deposeLe: HorodatageApi;
@@ -1961,6 +1970,36 @@ export interface CreationStructureView {
   motDePasseTemporaire?: string;
   /** Vrai seulement si le courriel des identifiants est **parti**. */
   emailEnvoye: boolean;
+}
+
+/**
+ * POST /admin-structure/pharmacies/demandes
+ *
+ * La pharmacie qu'un hopital demande d'ouvrir. L'adresse du titulaire est
+ * obligatoire : ses identifiants y partiront a la validation.
+ */
+export interface DemandePharmacieHospitaliereDto {
+  nom: string;
+  prefecture: string;
+  commune?: string;
+  quartier?: string;
+  adresse?: string;
+  telephone?: string;
+  pharmacien: { prenom: string; nom: string; telephone: string; email: string };
+}
+
+/** GET /admin-structure/pharmacies/demandes — le suivi, cote hopital. */
+export interface DemandePharmacieView {
+  id: string;
+  numero: string;
+  statut: StatutDemandeAgrement;
+  nom: string;
+  /** Prenom et nom du pharmacien titulaire propose. */
+  titulaire: string;
+  /** Le dernier motif de l'administration, tel qu'il est parti par courriel. */
+  dernierMotif: string | null;
+  deposeLe: HorodatageApi;
+  examineLe: HorodatageApi | null;
 }
 
 export interface CreationPharmacieView {
