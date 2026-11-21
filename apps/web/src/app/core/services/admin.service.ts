@@ -15,7 +15,6 @@ import type {
   ContratAssuranceView,
   CreerAssuranceDto,
   CreationAssuranceView,
-  CreerAssureurDto,
   CreerContratDto,
   CreerRegleCouvertureDto,
   CreationStructureView,
@@ -247,11 +246,6 @@ export class AdminService {
   ): Observable<ApiResponse<CreationAssuranceView>> {
     const corps = this.corpsAvecPieces(payload as unknown as Record<string, unknown>, pieces);
     return this.api.post<ApiResponse<CreationAssuranceView>>('/assurance/compagnies', corps);
-  }
-
-  /** Rattacher une compagnie a une structure ASSURANCE deja existante. */
-  creerAssureur(payload: CreerAssureurDto): Observable<ApiResponse<AssureurView>> {
-    return this.api.post<ApiResponse<AssureurView>>('/assurance/assureurs', payload);
   }
 
   creerAgentAssureur(idAssureur: string, payload: CreerAgentAssureurDto): Observable<ApiResponse<AgentAssureurCreeView>> {
