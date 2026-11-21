@@ -8,6 +8,7 @@ import { validateBody } from '../middlewares/validate.middleware';
 import { uploadLogo, uploadVisuel } from '../middlewares/upload.middleware';
 import * as visuels from '../services/visuels.service';
 import * as servicesHospitaliers from '../services/services-hospitaliers.service';
+import * as demandes from '../services/demande-agrement.service';
 import { uploadLogoController } from '../controllers/upload.controller';
 import { ValidationError } from '../utils/app-error';
 import * as plateau from '../services/plateau-technique.service';
@@ -19,6 +20,8 @@ import type {
   CreationAgentView,
   CreationPharmacieView,
   CreationStructureView,
+  DemandePharmacieView,
+  DepotDemandeView,
   ParametresSystemeView,
   ParametresVisuelsView,
   ReinitialisationMotDePasseView,
@@ -32,6 +35,7 @@ import {
   createAgentStructureSchema,
   definirBureauSchema,
   createPharmacieSchema,
+  demandePharmacieHospitaliereSchema,
   createStructureSchema,
   updateParametresSystemeSchema,
   updateStructureSchema,
@@ -61,6 +65,23 @@ router.get('/agents', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, r
 router.get('/pharmacies', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
   const data: StructureAdminView[] = await service.getPharmaciesStructure(req.user!.userId);
   res.json({ success: true, data });
+});
+
+/**
+ * Les pharmacies que l'hopital a demande d'ouvrir, et ou en est chacune.
+ *
+ * L'administrateur d'un hopital ne cree plus sa pharmacie : il la demande, et
+ * l'administration de la plateforme la valide, la met en analyse ou la refuse,
+ * avec un motif qu'il lit ici et recoit par courriel.
+ */
+router.get('/pharmacies/demandes', requireRole('ADMIN_STRUCTURE'), async (req: AuthRequest, res: Response) => {
+  const data: DemandePharmacieView[] = await demandes.listerDemandesPharmacie(req.user!);
+  res.json({ success: true, data });
+});
+
+router.post('/pharmacies/demandes', requireRole('ADMIN_STRUCTURE'), validateBody(demandePharmacieHospitaliereSchema), async (req: AuthRequest, res: Response) => {
+  const data: DepotDemandeView = await demandes.deposerPharmacieHospitaliere(req.user!, req.body);
+  res.status(201).json({ success: true, data });
 });
 
 /**
@@ -254,7 +275,7 @@ router.post('/structures', requireRole('SUPER_ADMIN'), recevoirPiecesAgrement, c
   res.status(201).json({ success: true, data });
 });
 
-router.post('/pharmacies', requireRole('SUPER_ADMIN', 'ADMIN_STRUCTURE'), recevoirPiecesAgrement, corpsJsonMultipart, validateBody(createPharmacieSchema), async (req: AuthRequest, res: Response) => {
+router.post('/pharmacies', requireRole('SUPER_ADMIN'), recevoirPiecesAgrement, corpsJsonMultipart, validateBody(createPharmacieSchema), async (req: AuthRequest, res: Response) => {
   const fichiers = (req.files ?? []) as piecesAgrement.FichierRecu[];
   const data: CreationPharmacieView = await service.creerPharmacieAvecPharmacien(req.user!, req.body, fichiers);
   res.status(201).json({ success: true, data });

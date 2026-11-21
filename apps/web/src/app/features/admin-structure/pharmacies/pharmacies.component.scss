@@ -73,3 +73,23 @@
   .bb-agents input,
   .bb-agents select { min-height: 44px; }
 }
+
+// Le suivi des demandes : meme carte que les pharmacies, un titre a trait
+// d'accent comme les autres ecrans de l'administration.
+.bb-pharma__section {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--bb-font-display);
+  font-size: 16px; font-weight: 800; letter-spacing: -.2px;
+  color: var(--bb-text-primary);
+  margin: 24px 0 12px;
+  &::before { content: ''; width: 4px; height: 18px; border-radius: 4px; background: var(--bb-primary); flex-shrink: 0; }
+}
+
+.bb-pharma__motif {
+  margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--bb-text-secondary);
+  white-space: pre-line;
+}
+
+.bb-pharma__statut { flex-shrink: 0; align-self: flex-start; }
+
+.bb-pharma__envoyee p { margin: 0 0 1rem; color: var(--bb-text-secondary); line-height: 1.55; }

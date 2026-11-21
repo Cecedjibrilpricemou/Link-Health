@@ -37,13 +37,13 @@ const LISTE: DemandeAgrementListeView[] = [
     id: 'd1', numero: 'DA-2026-0041', statut: 'RECUE', type: 'PHARMACIE',
     nom: 'Pharmacie du Marché', prefecture: 'Conakry', commune: 'Matam',
     quartier: 'Madina', telephone: '620000101', deposeLe: '2026-11-12T09:00:00.000Z',
-    responsable: 'Mamadou Barry', nombrePieces: 4,
+    responsable: 'Mamadou Barry', nombrePieces: 4, structureParente: null,
   },
   {
     id: 'd2', numero: 'DA-2026-0040', statut: 'VALIDEE', type: 'CHU',
     nom: 'CHU de Donka', prefecture: 'Conakry', commune: 'Dixinn',
     quartier: null, telephone: '620000201', deposeLe: '2026-11-10T09:00:00.000Z',
-    responsable: 'Fatoumata Camara', nombrePieces: 3,
+    responsable: 'Fatoumata Camara', nombrePieces: 3, structureParente: null,
   },
 ];
 
@@ -82,6 +82,8 @@ function dossier(surcharge: Partial<DemandeAgrementView> = {}): DemandeAgrementV
     idStructureCreee: null,
     codeAssureur: null,
     modeEchange: null,
+    structureParente: null,
+    deposePar: null,
     historique: [],
     deposeLe: '2026-11-12T09:00:00.000Z',
     ...surcharge,
@@ -188,6 +190,38 @@ describe('examen des demandes de rattachement', () => {
 
     expect(appels.lister).toHaveBeenLastCalledWith('VALIDEE');
     expect(component.demandes().map((d) => d.numero)).toEqual(['DA-2026-0040']);
+  });
+
+  // Une pharmacie hospitaliere n'a ni reference ni piece propre : l'ecran dit
+  // de quel hopital elle releve et qui l'a demandee, au lieu de quatre tirets
+  // qui feraient croire a un dossier incomplet.
+  it('une pharmacie hospitaliere montre son hopital, et pas de references vides', () => {
+    const { component, fixture } = monter({
+      detail: dossier({
+        rccm: null, numeroAgrementCreation: null, numeroAgrementExploitation: null, lieuAutorise: null,
+        pieces: [], structureParente: { id: 'h1', nom: 'CHU de Donka' }, deposePar: 'Awa Camara',
+      }),
+    });
+    component.ouvrirDemande('d1');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const faits = el.querySelector('.bb-demandes__facts')!.textContent!;
+    expect(faits).toContain('CHU de Donka');
+    expect(faits).toContain('Awa Camara');
+    expect(faits).not.toContain('AGREMENT.RCCM_LABEL');
+    expect(faits).not.toContain('AGREMENT.EXPLOITATION_LABEL');
+    expect(el.querySelector('.bb-demandes__sans-piece')).not.toBeNull();
+    expect(el.querySelector('.bb-demandes__missing')).toBeNull();
+  });
+
+  it('une demande ordinaire garde ses references', () => {
+    const { component, fixture } = monter();
+    component.ouvrirDemande('d1');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.bb-demandes__facts')!.textContent).toContain('AGREMENT.RCCM_LABEL');
+    expect(el.querySelector('.bb-demandes__sans-piece')).toBeNull();
   });
 
   it('charge le dossier entier a l ouverture', () => {

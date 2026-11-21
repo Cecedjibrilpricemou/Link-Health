@@ -423,6 +423,7 @@ model Utilisateur {
   personnesAssureesSaisies  PersonneAssuree[]        @relation("PersonnesAssureesSaisies")
   piecesAgrementDeposees    PieceAgrement[]          @relation("PiecesAgrementDeposees")
   demandesAgrementExaminees DemandeAgrement[]        @relation("DemandesAgrementExaminees")
+  demandesAgrementDeposees  DemandeAgrement[]        @relation("DemandesAgrementDeposees")
   evenementsDemandeAgrement EvenementDemandeAgrement[] @relation("EvenementsDemandeAgrement")
   candidaturesLivreurExaminees CandidatureLivreur[]  @relation("CandidaturesLivreurExaminees")
   /// Le dossier sur lequel ce livreur a ete admis. Absent pour un livreur cree
@@ -855,6 +856,8 @@ model StructureSante {
   /// Les structures publiques et celles creees a la main par l'administration
   /// n'en ont pas : le champ est vide, il n'est pas faux.
   demandeAgrement DemandeAgrement? @relation("StructureIssueDemande")
+  /// Les pharmacies que cet hopital a demande d'ouvrir en son sein.
+  demandesPharmacie DemandeAgrement[] @relation("DemandesPharmacieHospitaliere")
 
   creeLe DateTime @default(now())
 
@@ -1000,6 +1003,16 @@ model DemandeAgrement {
 
   idExaminePar String?
   examinePar   Utilisateur? @relation("DemandesAgrementExaminees", fields: [idExaminePar], references: [id], onDelete: SetNull)
+
+  /// Pharmacie hospitaliere seulement : l'hopital qui l'ouvre en son sein, et
+  /// l'administrateur qui l'a demandee. Une telle demande ne vient pas du
+  /// formulaire public : elle n'a pas de pieces, la pharmacie operant sous
+  /// l'autorisation de son hopital, mais l'administration la valide quand
+  /// meme - c'est elle qui ouvre un compte de titulaire sur la plateforme.
+  idStructureParente String?
+  structureParente   StructureSante? @relation("DemandesPharmacieHospitaliere", fields: [idStructureParente], references: [id], onDelete: Cascade)
+  idDeposePar        String?
+  deposePar          Utilisateur?    @relation("DemandesAgrementDeposees", fields: [idDeposePar], references: [id], onDelete: SetNull)
   examineLe    DateTime?
 
   /// Assurance seulement : le code que la compagnie propose pour les cartes de
@@ -1015,6 +1028,7 @@ model DemandeAgrement {
   deposeLe DateTime @default(now())
 
   @@index([statut, deposeLe])
+  @@index([idStructureParente, statut])
   @@map("demandes_agrement")
 }
 

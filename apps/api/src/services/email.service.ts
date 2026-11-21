@@ -472,6 +472,69 @@ export async function envoyerSuiviDemandeAgrement(dto: {
 }
 
 /**
+ * Ou en est la pharmacie qu'un hopital a demande d'ouvrir en son sein.
+ *
+ * **Ce courriel va a l'administrateur qui l'a demandee, pas au pharmacien.**
+ * C'est lui qui a depose la demande et lui qui doit savoir ce qui manque ; le
+ * titulaire, lui, ne recoit que ses identifiants, le jour de la validation, et
+ * jamais par ce courriel-ci : il ne porte aucun mot de passe.
+ */
+export async function envoyerSuiviPharmacieHospitaliere(dto: {
+    destinataire: string;
+    prenomNom: string;
+    nomPharmacie: string;
+    nomHopital: string;
+    numero: string;
+    etape: 'RECUE' | 'EN_ANALYSE' | 'VALIDEE' | 'REFUSEE';
+    motif?: string;
+}): Promise<void> {
+    const identite = await getIdentitePlateforme();
+    const pharmacie = `<strong>${echapperHtml(dto.nomPharmacie)}</strong>`;
+    const hopital = echapperHtml(dto.nomHopital);
+    const textes = {
+        RECUE: {
+            titre: `Demande reçue - ${dto.numero}`,
+            phrase: `La demande d'ouverture de la pharmacie ${pharmacie} au sein de ${hopital} est bien arrivée. Elle va être examinée par l'administration de la plateforme.`,
+            suite: 'Vous recevrez sa décision à cette même adresse, et pouvez suivre la demande depuis la page Pharmacies de votre espace.',
+        },
+        EN_ANALYSE: {
+            titre: `Dossier ${dto.numero} en cours d'analyse`,
+            phrase: `La demande d'ouverture de la pharmacie ${pharmacie} au sein de ${hopital} est en cours d'analyse.`,
+            suite: 'Vous recevrez la décision à cette même adresse.',
+        },
+        VALIDEE: {
+            titre: `Pharmacie ouverte - ${dto.numero}`,
+            phrase: `La pharmacie ${pharmacie} est ouverte au sein de ${hopital}.`,
+            suite: 'Son pharmacien titulaire a reçu ses identifiants de connexion à sa propre adresse.',
+        },
+        REFUSEE: {
+            titre: `Décision sur le dossier ${dto.numero}`,
+            phrase: `La demande d'ouverture de la pharmacie ${pharmacie} au sein de ${hopital} n'a pas été retenue en l'état.`,
+            suite: 'Vous pouvez la déposer à nouveau une fois ce point corrigé.',
+        },
+    }[dto.etape];
+    const html = gabaritAgrement({
+        nom: identite.nom,
+        slogan: identite.slogan,
+        titre: textes.titre,
+        salutation: `Bonjour ${echapperHtml(dto.prenomNom)},`,
+        corps: `
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 20px;">${textes.phrase}</p>
+
+              ${dto.motif ? blocMotif(dto.motif) : ''}
+
+              <p style="color:#444;font-size:15px;line-height:1.6;margin:0;">${textes.suite}</p>`,
+    });
+
+    await envoyerCourriel({
+        destinataire: dto.destinataire,
+        nomDestinataire: dto.prenomNom,
+        sujet: textes.titre,
+        html,
+    });
+}
+
+/**
  * La demande est acceptee : le motif, et les identifiants du compte qui vient
  * de naitre.
  *
