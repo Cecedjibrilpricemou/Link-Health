@@ -17,7 +17,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import type { TypePieceAgrement } from '@baobaoheath/shared-types';
 import { TranslatePipe } from '../../pipes/translate.pipe';
-import { refusLocal, tailleLisible } from './piece-agrement.util';
+import { estImage, refusLocal, tailleLisible } from './piece-agrement.util';
 
 /**
  * Ce que chaque type doit produire, **pour les écrans d'administration
@@ -37,7 +37,11 @@ const PIECES_PAR_TYPE: Readonly<Record<string, readonly TypePieceAgrement[]>> = 
   PHARMACIE: ['AGREMENT_CREATION', 'AGREMENT_EXPLOITATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE'],
   CLINIQUE: ['AGREMENT_CREATION', 'AGREMENT_EXPLOITATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE'],
   LABORATOIRE: ['AGREMENT_CREATION', 'AGREMENT_EXPLOITATION', 'DIPLOME_RESPONSABLE', 'INSCRIPTION_ORDRE'],
-  ASSURANCE: ['AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'PIECE_IDENTITE_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE'],
+  ASSURANCE: [
+    'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'STATUTS_SOCIETE',
+    'PIECE_IDENTITE_RESPONSABLE', 'PASSEPORT_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE',
+    'CASIER_JUDICIAIRE_RESPONSABLE', 'MANDAT_RESPONSABLE', 'PHOTO_RESPONSABLE',
+  ],
 };
 
 /**
@@ -173,6 +177,9 @@ export class PiecesAgrementComponent {
     return this.refus()[piece] ?? null;
   }
 
+  /** La photo du responsable est une image ; toute autre pièce, un PDF. */
+  readonly estImage = estImage;
+
   /** Le libellé du serveur, ou rien — le gabarit retombe alors sur le catalogue. */
   libelleImpose(piece: TypePieceAgrement): string | null {
     return this.libellesImposes()[piece] ?? null;
@@ -190,7 +197,7 @@ export class PiecesAgrementComponent {
 
     // Refus avant l'envoi, pour ne pas faire monter 20 Mo inutilement. Le
     // serveur, lui, lit les octets de tête : c'est lui qui fait foi.
-    const refuse = refusLocal(fichier);
+    const refuse = refusLocal(fichier, estImage(piece));
     if (refuse) {
       champ.value = '';
       this.refus.update((r) => ({ ...r, [piece]: refuse }));

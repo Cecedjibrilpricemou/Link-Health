@@ -117,8 +117,16 @@ export const TYPE_PDF = 'application/pdf';
 /** 5 Mo : un agrement scanne a plat depasse facilement 2 Mo. */
 export const TAILLE_MAX_PIECE = 5 * 1024 * 1024;
 
-/** Quatre pieces exigees, plus quelques `AUTRE` : dix bornent le dossier. */
-export const NOMBRE_MAX_PIECES = 10;
+/** Neuf pieces exigees pour une assurance, plus quelques `AUTRE`. */
+export const NOMBRE_MAX_PIECES = 14;
+
+/**
+ * Les types declares que le filtre laisse passer. Un PDF, et pour la photo
+ * du responsable une image ; certains telephones envoient une photo sans
+ * type ou en `application/octet-stream`. Les octets trancheront, piece par
+ * piece, dans `validerPieces`.
+ */
+const TYPES_DECLARES_AGREMENT = ['application/pdf', 'image/jpeg', 'image/png', 'application/octet-stream', ''];
 
 // `.any()` et non `.fields([...])` : les quatre pieces nommees arrivent sous
 // leur propre nom, mais `AUTRE` peut etre depose plusieurs fois. Les noms de
@@ -127,8 +135,8 @@ export const uploadPiecesAgrement = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: TAILLE_MAX_PIECE, files: NOMBRE_MAX_PIECES },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype !== TYPE_PDF) {
-      cb(new Error('Les pièces justificatives doivent être des fichiers PDF.'));
+    if (!TYPES_DECLARES_AGREMENT.includes(file.mimetype ?? '')) {
+      cb(new Error('Les pièces justificatives doivent être des fichiers PDF (la photo : JPEG ou PNG).'));
       return;
     }
     cb(null, true);

@@ -23,6 +23,13 @@ function pdf(nom = 'agrement.pdf', octets = 2048): File {
   return new File([new Uint8Array(octets)], nom, { type: 'application/pdf' });
 }
 
+function photo(nom = 'photo.jpg', type = 'image/jpeg'): File {
+  return new File([new Uint8Array(2048)], nom, { type });
+}
+
+/** Le bon fichier pour chaque piece : une photo pour la photo, un PDF sinon. */
+const fichierPour = (t: TypePieceAgrement) => (t === 'PHOTO_RESPONSABLE' ? photo() : pdf());
+
 function monter(type: string, sousAutorite = false) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
@@ -94,13 +101,33 @@ describe('les pieces a joindre', () => {
   });
 
   // L'assureur relève de la Banque Centrale : ni diplôme ni ordre professionnel.
-  // Mais l'extrait RCCM de la compagnie, et l'identité et la résidence de son
-  // responsable.
-  it('l assureur demande son agrement, son extrait RCCM, et l identite et la residence du responsable', () => {
+  // Sa compagnie prouve son existence ; son administrateur, qui il est, où il
+  // vit, son casier, et qu'elle l'a désigné (décision du 2026-11-21).
+  it('l assureur : agrement, RCCM, statuts ; carte, passeport, residence, casier, mandat et photo du responsable', () => {
     const f = monter('ASSURANCE');
     expect(f.componentInstance.requises()).toEqual([
-      'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'PIECE_IDENTITE_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE',
+      'AGREMENT_ASSURANCE', 'EXTRAIT_RCCM', 'STATUTS_SOCIETE',
+      'PIECE_IDENTITE_RESPONSABLE', 'PASSEPORT_RESPONSABLE', 'CERTIFICAT_RESIDENCE_RESPONSABLE',
+      'CASIER_JUDICIAIRE_RESPONSABLE', 'MANDAT_RESPONSABLE', 'PHOTO_RESPONSABLE',
     ]);
+  });
+
+  // La photo est la seule image du dossier : le champ propose des images, et
+  // refuse un PDF ; toute autre piece refuse une image.
+  it('la photo du responsable se joint en image ; les autres pieces, en PDF', () => {
+    const f = monter('ASSURANCE');
+    const c = f.componentInstance;
+    c.choisir('PHOTO_RESPONSABLE', evenement(pdf('photo.pdf')));
+    expect(c.nomDe('PHOTO_RESPONSABLE')).toBeFalsy();
+    c.choisir('PHOTO_RESPONSABLE', evenement(photo('photo.png', 'image/png')));
+    expect(c.nomDe('PHOTO_RESPONSABLE')).toBe('photo.png');
+    c.choisir('PASSEPORT_RESPONSABLE', evenement(photo()));
+    expect(c.nomDe('PASSEPORT_RESPONSABLE')).toBeFalsy();
+    f.detectChanges();
+    const champs = [...(f.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>('input[type=file]')];
+    const accepts = champs.map((x) => x.getAttribute('accept'));
+    expect(accepts.filter((a) => a?.includes('image/jpeg'))).toHaveLength(1);
+    expect(accepts.filter((a) => a === 'application/pdf,.pdf')).toHaveLength(8);
   });
 
   // **Un CHU n'a pas d'agrément privé à produire.** Le bloc ne doit pas même
@@ -138,7 +165,7 @@ describe('le compte des pieces jointes', () => {
 
   it('redevient incomplet quand on retire une piece', () => {
     const f = monter('ASSURANCE');
-    for (const t of f.componentInstance.requises()) f.componentInstance.choisir(t, evenement(pdf()));
+    for (const t of f.componentInstance.requises()) f.componentInstance.choisir(t, evenement(fichierPour(t)));
     expect(f.componentInstance.manquantes()).toEqual([]);
 
     f.componentInstance.retirer('AGREMENT_ASSURANCE');

@@ -62,9 +62,16 @@ const disque = pieces as unknown as { ecrireFichiers: M; supprimerFichiers: M };
 
 const AGREMENT = { fieldname: 'AGREMENT_ASSURANCE', originalname: 'agrement.pdf', buffer: Buffer.from('%PDF-1.4 bcrg') };
 const pdf = (fieldname: string) => ({ fieldname, originalname: `${fieldname}.pdf`, buffer: Buffer.from('%PDF-1.4 x') });
-/** Le dossier complet : l'agrement, l'extrait RCCM, l'identite et la residence du responsable. */
+/**
+ * Le dossier complet (2026-11-21) : agrement, extrait RCCM, statuts ; carte
+ * d'identite, passeport, residence, casier, mandat et photo du responsable.
+ * La photo est une image, toutes les autres pieces des PDF.
+ */
 const DOSSIER = [
-  AGREMENT, pdf('EXTRAIT_RCCM'), pdf('PIECE_IDENTITE_RESPONSABLE'), pdf('CERTIFICAT_RESIDENCE_RESPONSABLE'),
+  AGREMENT, pdf('EXTRAIT_RCCM'), pdf('STATUTS_SOCIETE'),
+  pdf('PIECE_IDENTITE_RESPONSABLE'), pdf('PASSEPORT_RESPONSABLE'), pdf('CERTIFICAT_RESIDENCE_RESPONSABLE'),
+  pdf('CASIER_JUDICIAIRE_RESPONSABLE'), pdf('MANDAT_RESPONSABLE'),
+  { fieldname: 'PHOTO_RESPONSABLE', originalname: 'photo.jpg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]) },
 ];
 const FICHIER_ECRIT = { type: 'AGREMENT_ASSURANCE', fichier: 'abc.pdf', taille: 13, libelle: null };
 
@@ -146,12 +153,22 @@ describe('creer une assurance en une fois', () => {
     expect(bd.utilisateur.create).not.toHaveBeenCalled();
   });
 
-  it('refuse sans la piece d identite du responsable, en la nommant, et n ecrit rien', async () => {
+  it('refuse sans la carte d identite du responsable, en la nommant, et n ecrit rien', async () => {
     const sansIdentite = DOSSIER.filter((f) => f.fieldname !== 'PIECE_IDENTITE_RESPONSABLE');
 
     await expect(creerAssuranceAvecResponsable(DTO, sansIdentite))
-      .rejects.toThrow(/carte d'identité ou le passeport du responsable/);
+      .rejects.toThrow(/il manque la carte d'identité du responsable\./);
     expect(disque.ecrireFichiers).not.toHaveBeenCalled();
+    expect(bd.$transaction).not.toHaveBeenCalled();
+  });
+
+  // Depuis le 2026-11-21, la carte d'identite et le passeport sont deux
+  // pieces : l'une ne remplace plus l'autre.
+  it('refuse sans le passeport, meme avec la carte d identite', async () => {
+    const sansPasseport = DOSSIER.filter((f) => f.fieldname !== 'PASSEPORT_RESPONSABLE');
+
+    await expect(creerAssuranceAvecResponsable(DTO, sansPasseport))
+      .rejects.toThrow(/il manque le passeport du responsable\./);
     expect(bd.$transaction).not.toHaveBeenCalled();
   });
 

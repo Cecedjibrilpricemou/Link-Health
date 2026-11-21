@@ -30,7 +30,7 @@
 
           @if (nomDe(p)) {
             <small class="bb-pieces__fichier">
-              <i class="pi pi-file-pdf" aria-hidden="true"></i>
+              <i class="pi" [class.pi-image]="estImage(p)" [class.pi-file-pdf]="!estImage(p)" aria-hidden="true"></i>
               {{ nomDe(p) }} · {{ tailleDe(p) }}
             </small>
           }
@@ -48,7 +48,7 @@
           <label class="bb-pieces__bouton">
             <i class="pi" [class.pi-upload]="!nomDe(p)" [class.pi-refresh]="nomDe(p)" aria-hidden="true"></i>
             {{ (nomDe(p) ? 'AGREMENT.PIECE.REMPLACER' : 'AGREMENT.PIECE.CHOISIR') | translate }}
-            <input type="file" accept="application/pdf,.pdf" (change)="choisir(p, $event)" />
+            <input type="file" [attr.accept]="estImage(p) ? 'image/jpeg,image/png,.jpg,.jpeg,.png' : 'application/pdf,.pdf'" (change)="choisir(p, $event)" />
           </label>
           @if (nomDe(p)) {
             <button type="button" class="bb-pieces__retirer" (click)="retirer(p)"
