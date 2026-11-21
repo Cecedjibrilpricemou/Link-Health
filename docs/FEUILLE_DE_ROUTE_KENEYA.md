@@ -10,7 +10,7 @@
 
 ## Où nous en sommes — recompté le 2026-11-21
 
-Recompté **case par case, en vérifiant le code** (routes, modèles, écrans), et non en reportant le chiffre précédent. `[~]` note une case livrée en partie : ce qui reste est écrit sur la case elle-même.
+Recompté **case par case, en vérifiant le code** (routes, modèles, écrans), et non en reportant le chiffre précédent. `[~]` note une case livrée en partie : ce qui reste est écrit sur la case elle-même. `[-]` note une case **abandonnée par décision** : elle ne compte ni comme faite, ni comme restante.
 
 | Bloc | Fait | Partiel | Reste | État |
 |---|---|---|---|---|
@@ -19,7 +19,7 @@ Recompté **case par case, en vérifiant le code** (routes, modèles, écrans), 
 | **P2** Laboratoire | 11 | — | 1 | ⏳ reste la saisie hors connexion (EF-04-11) |
 | **P3** Ordonnance + sécurité de prescription | 6 | — | — | ✅ **fini** |
 | **P4** Identité patient, consentement, accès | 8 | 1 | — | ⏳ l'accord du patient par praticien et par visite est livré ; reste la granularité par document (EF-02-05) |
-| **P5** Fil d'avancement du parcours | 1 | 2 | — | ⏳ tous les documents s'impriment ; restent le fil unique et la déclaration d'assurance par le patient |
+| **P5** Fil d'avancement du parcours | 2 | — | — | ✅ **fini** — le fil de chaque visite est livré ; la déclaration d'assurance par le patient est abandonnée par décision |
 | **P6** Commande pharmacie et gestion d'officine | 10 | 2 | 1 | ⏳ machine à états, panier, délivrance nominative, caisse, lots livrés ; restent l'import Excel, l'OCR et la pharmacie alternative automatique |
 | **P7** Paiement | 4 | — | 1 | ⏳ passerelle réelle et reçu livrés ; restent les remboursements et le rapprochement |
 | **P8** Livraison, carte, annuaire | 4 | 5 | — | ⏳ adresse GPS, photo du livreur et carte des pharmacies livrées ; restent les créneaux, le suivi du trajet, le code de remise |
@@ -28,11 +28,13 @@ Recompté **case par case, en vérifiant le code** (routes, modèles, écrans), 
 | **P11** Administration, audit, référentiels | 4 | 2 | 1 | ⏳ reste EF-12-02, les conventions des partenaires |
 | **P12** Interopérabilité | — | — | 3 | ❌ non commencé (l'export FHIR initial existe) |
 | **P13** Extension (lot V4) | 1 | — | 4 | ⏳ RDV à distance livré ; téléconsultation suspendue à D2 |
-| **Total** | **70** | **16** | **13** | **sur 99** |
+| **Total** | **71** | **14** | **13** | **sur 99, dont 1 abandonnée** |
 
 > **Écart avec le décompte du 10/10** (55 faites sur 97) : P6, P8 et P10 avaient avancé sans que leurs cases soient cochées, et P4 comptait 7 cases sur une liste qui en porte 9. Le total compte désormais les lignes de la liste, une à une.
 
-**Trois blocs sont finis : P0, P1 et P3.** P2 et P4 n'ont plus qu'une case chacun ; P5 à P8 et P10 sont tous entamés ; P12 n'est pas commencé.
+**Quatre blocs sont finis : P0, P1, P3 et P5.** P2 et P4 n'ont plus qu'une case chacun ; P6 à P8 et P10 sont tous entamés ; P12 n'est pas commencé.
+
+> **Règle du 2026-11-21 : on ne traite que ce qui est sur la plateforme.** Tout se passe entre les acteurs **inscrits** — structures, professionnels, patients, compagnies d'assurance, livreurs. Un acteur sans compte n'a rien à faire dans les écrans ni dans les circuits : on ne prévoit pas de traitement « à sa place ». C'est ce qui a fait abandonner la déclaration d'assurance par le patient : un assuré voit sa couverture dans son compte, renseignée par sa compagnie inscrite.
 
 > **Écart avec le décompte du 06/11** (66 faites) : le compte rendu de consultation et le reçu de paiement s'impriment (06/11), l'adresse du patient porte point de repère et position GPS (11/11), la photo du livreur est vue au comptoir (06/11), la carte des pharmacies existe (14/11), et le patient donne son accord à chaque praticien pour son historique (20/11).
 
@@ -202,10 +204,10 @@ Tailles : **S** ≈ 1 jour · **M** ≈ 2–3 jours · **L** ≈ 4–6 jours.
 
 > Cette case était comptée comme non commencée jusqu'au 2026-10-04, alors qu'elle était livrée la veille — la livraison ayant été faite sous P11, où vit le journal d'audit.
 
-### P5 — Fil d'avancement du parcours · S · EF-06 · ⏳ **1 faite + 2 partielles sur 3**
-- [~] Endpoint patient agrégeant épisode → analyses → consultation → ordonnance → commande → livraison avec horodatages (EF-06-01). ✅ **Vérifié le 2026-11-06** : la page « Mon parcours » montre épisodes, analyses, rendez-vous et frise ; ordonnances, commandes et paiements ont chacun leur écran. **Reste le fil unique**, du rendez-vous à la livraison.
+### P5 — Fil d'avancement du parcours · S · EF-06 · ✅ **fini** le 2026-11-21 (une case abandonnée par décision)
+- [x] Endpoint patient agrégeant épisode → analyses → consultation → ordonnance → commande → livraison avec horodatages (EF-06-01). ✅ **Livré le 2026-11-21** (PR #150) : chaque visite porte son **fil** — chaque étape datée, de la demande de rendez-vous à la livraison ou au retrait, dans l'ordre du temps (`fil-parcours.service.ts`). Aucune valeur médicale ; les résultats n'y figurent qu'une fois diffusés. La frise de « Mon parcours » suit le fil, chaque étape mène à son écran.
 - [x] Tous les documents téléchargeables/imprimables (EF-06-02/03). ✅ **Vérifié le 2026-11-21** : bon d'examen, compte rendu d'analyses, ordonnance, **compte rendu de consultation** (tableau de bord) et **reçu de paiement** (« Mes paiements ») s'impriment depuis l'espace patient, à l'en-tête de la structure émettrice.
-- [~] Déclaration des informations d'assurance (EF-06-04). ✅ **Vérifié le 2026-11-06** : le patient voit ses cartes d'assurance (« Mes cartes ») ; contrats et adhésions sont saisis par l'assureur ou l'administration. **Reste la déclaration par le patient lui-même.**
+- [-] Déclaration des informations d'assurance (EF-06-04). **Abandonnée par décision le 2026-11-21** : un assuré voit tout dans son compte (« Mes cartes »), renseigné par sa compagnie inscrite sur la plateforme ; le patient n'a rien à déclarer lui-même.
 
 ### P6 — Commande pharmacie **et gestion d'officine** · L · EF-07 / §3.2 · ⏳ **10 faites + 2 partielles sur 13** (recompté le 2026-11-06)
 
@@ -465,6 +467,7 @@ Hébergeur agréé santé et localisation des données (ENF-05), sauvegardes RPO
 
 | Date | Bloc | Commit / note |
 |---|---|---|
+| 2026-11-21 | P5 | **P5 fini** : le fil de chaque visite (PR #150). La déclaration d'assurance par le patient est **abandonnée par décision**, avec une règle générale : on ne traite que les acteurs inscrits sur la plateforme. 71 faites, 14 partielles, 13 restantes, 1 abandonnée. |
 | 2026-11-21 | tous | **Feuille de route recomptée contre le code** : 70 faites, 16 partielles, 13 restantes sur 99. **P3 fini** (compte rendu imprimable) ; reçu de paiement (P7), adresse GPS, photo du livreur et carte des pharmacies (P8), accord du patient par praticien (P4). Livré hors feuille de route : agrément, candidatures des livreurs, géographie, recherche publique, sage-femme, infirmier, directeur dans l'espace de son établissement. |
 | 2026-11-06 | tous | **Feuille de route recomptée case par case contre le code** : 66 faites, 18 partielles, 15 restantes sur 99. P6, P8 et P10 avaient avancé sans être cochés. Application mobile Android (PR #48, #49, #52), logos et photos par chemin (PR #51). |
 | 2026-09-30 | P13→P1 | **Bloc 5 de l'addendum livré (API + front)** : le patient demande un rendez-vous depuis chez lui, l'accueil oriente ce que personne ne vise, le médecin accepte en fixant l'heure — ce geste ouvre l'épisode et le rendez-vous dans la même transaction. La demande n'ouvre pas d'épisode tant qu'elle n'est pas acceptée : un épisode est une visite, et une demande n'en est pas encore une. 376 tests API. |
