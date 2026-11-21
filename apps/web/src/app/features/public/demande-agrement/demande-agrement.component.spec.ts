@@ -195,8 +195,29 @@ describe('demande publique de rattachement', () => {
   it('ne propose que les types qui se demandent', () => {
     const { component } = monter();
 
-    expect(component.typesProposes()).toEqual(['PHARMACIE', 'CHU', 'ASSURANCE']);
+    expect(component.typesProposes()).toEqual(['PHARMACIE', 'CHU']);
     expect(component.typesProposes()).not.toContain('POSTE');
+  });
+
+  // L'assurance a sa page, ouverte par la tuile de l'accueil : la proposer
+  // aussi parmi les etablissements de sante faisait deux portes pour la
+  // meme demande.
+  it('la compagnie d assurance n est pas un etablissement de sante : elle a sa page', () => {
+    const { component, fixture } = monter();
+    fixture.detectChanges();
+    const options = [...(fixture.nativeElement as HTMLElement).querySelectorAll('#demande-type option')].map((o) => (o as HTMLOptionElement).value);
+    expect(options).not.toContain('ASSURANCE');
+    expect(component.pageAssurance()).toBe(false);
+  });
+
+  it('sa page ne propose qu elle, et le type ne se change pas', async () => {
+    const { component, fixture } = monter({ typeDemande: 'ASSURANCE' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component.pageAssurance()).toBe(true);
+    expect(component.typesProposes()).toEqual(['ASSURANCE']);
+    expect((fixture.nativeElement as HTMLElement).querySelector<HTMLSelectElement>('#demande-type')!.disabled).toBe(true);
   });
 
   it('tient du serveur la liste des pieces et leurs libelles', () => {

@@ -31,6 +31,7 @@
               <!-- Les types viennent du serveur : lui seul sait lesquels se
                    demandent ici, et ce qu'il exige de chacun. -->
               <select id="demande-type" name="type" [ngModel]="formulaire().type"
+                      [disabled]="pageAssurance()"
                       (ngModelChange)="modifierChamp('type', $event)">
                 @for (type of typesProposes(); track type) {
                   <option [value]="type">

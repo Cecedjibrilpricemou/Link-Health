@@ -119,10 +119,21 @@ export class DemandeAgrementComponent implements OnInit {
    * compris ceux que l'administration cree elle-meme - un poste, un centre,
    * un assureur. Seuls les types demandables figurent ici : proposer les
    * autres ferait deposer un dossier que l'API refuserait.
+   *
+   * **La compagnie d'assurance a sa page** : la tuile « Inscrire mon
+   * assurance » ouvre ce formulaire regle sur elle. Elle ne figure donc pas
+   * dans la liste des etablissements de sante, et la page de l'assurance ne
+   * propose qu'elle.
    */
-  readonly typesProposes = computed(() =>
-    this.attendues().filter((a) => a.demandable).map((a) => a.type),
-  );
+  readonly typesProposes = computed(() => {
+    const demandables = this.attendues().filter((a) => a.demandable).map((a) => a.type);
+    return this.pageAssurance()
+      ? demandables.filter((t) => t === 'ASSURANCE')
+      : demandables.filter((t) => t !== 'ASSURANCE');
+  });
+
+  /** Ouverte par la tuile de l'assurance (`?type=ASSURANCE`). */
+  readonly pageAssurance = signal(false);
 
   private readonly entreeDuType = computed(
     () => this.attendues().find((a) => a.type === this.formulaire().type) ?? null,
@@ -203,6 +214,8 @@ export class DemandeAgrementComponent implements OnInit {
     this.service.piecesAttendues().subscribe({
       next: (r) => {
         this.attendues.set(r.data ?? []);
+        const demandable = (r.data ?? []).some((a) => a.demandable && a.type === typeDemande);
+        if (typeDemande === 'ASSURANCE' && demandable) this.pageAssurance.set(true);
         if (typeDemande && this.typesProposes().includes(typeDemande)) {
           this.modifierChamp('type', typeDemande);
         }
